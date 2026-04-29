@@ -21,6 +21,7 @@ $dirs = @(
 )
 
 foreach ($d in $dirs) {
+    [void] (Assert-InProjectLogRoot -Path $d -ProjectLogRoot $logRoot)
     if (-not (Test-Path -LiteralPath $d -PathType Container)) {
         $null = New-Item -ItemType Directory -Path $d -Force
         Write-Host ('log-init: created {0}' -f $d)

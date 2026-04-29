@@ -58,7 +58,38 @@ function Get-ProjectLogRoot {
     )
 
     $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
-    return Join-Path -Path $project -ChildPath 'log'
+    $logPath = Join-Path -Path $project -ChildPath 'log'
+    return [System.IO.Path]::GetFullPath($logPath)
+}
+
+function Assert-InProjectLogRoot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+        [Parameter(Mandatory = $true)]
+        [string] $ProjectLogRoot
+    )
+
+    if ([string]::IsNullOrEmpty($ProjectLogRoot)) {
+        throw 'Assert-InProjectLogRoot: -ProjectLogRoot is required.'
+    }
+
+    $logFull = [System.IO.Path]::GetFullPath($ProjectLogRoot)
+    $full    = [System.IO.Path]::GetFullPath($Path)
+
+    $sep = [System.IO.Path]::DirectorySeparatorChar
+    $baseNorm = $logFull.TrimEnd($sep)
+    $cmp = [System.StringComparison]::OrdinalIgnoreCase
+
+    if ([string]::Equals($full, $baseNorm, $cmp)) {
+        return $true
+    }
+    $prefix = $baseNorm + $sep
+    if ($full.StartsWith($prefix, $cmp)) {
+        return $true
+    }
+    throw "Assert-InProjectLogRoot: path is outside ProjectLogRoot. Path=$full ProjectLogRoot=$baseNorm"
 }
 
 function Resolve-ProjectRelativePath {
@@ -146,6 +177,8 @@ function Assert-InReviewRunRoot {
     if ([string]::IsNullOrEmpty($ProjectLogRoot)) {
         throw 'Assert-InReviewRunRoot: -ProjectLogRoot is required.'
     }
+
+    [void] (Assert-InProjectLogRoot -Path $Path -ProjectLogRoot $ProjectLogRoot)
 
     $logFull = [System.IO.Path]::GetFullPath($ProjectLogRoot)
     $reviewBase = [System.IO.Path]::GetFullPath((Join-Path -Path $logFull -ChildPath 'review'))

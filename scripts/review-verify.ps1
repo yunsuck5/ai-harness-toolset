@@ -47,6 +47,40 @@ if (-not (Test-Path -LiteralPath $metaPath -PathType Leaf)) {
 
 $meta = Read-JsonFile -Path $metaPath
 
+$metaProjectRoot = ''
+if ($null -ne $meta.PSObject.Properties['projectRoot']) {
+    $metaProjectRoot = [string]$meta.projectRoot
+}
+if ([string]::IsNullOrEmpty($metaProjectRoot)) {
+    Write-Host 'review-verify: FAIL meta.projectRoot missing'
+    exit 1
+}
+
+$metaProjectLogRoot = ''
+if ($null -ne $meta.PSObject.Properties['projectLogRoot']) {
+    $metaProjectLogRoot = [string]$meta.projectLogRoot
+}
+if ([string]::IsNullOrEmpty($metaProjectLogRoot)) {
+    Write-Host 'review-verify: FAIL meta.projectLogRoot missing'
+    exit 1
+}
+
+$sep = [System.IO.Path]::DirectorySeparatorChar
+$metaProjectFull = ([System.IO.Path]::GetFullPath($metaProjectRoot)).TrimEnd($sep)
+$metaLogFull     = ([System.IO.Path]::GetFullPath($metaProjectLogRoot)).TrimEnd($sep)
+$projectNorm     = $project.TrimEnd($sep)
+$logRootNorm     = $logRoot.TrimEnd($sep)
+$cmp = [System.StringComparison]::OrdinalIgnoreCase
+
+if (-not [string]::Equals($metaProjectFull, $projectNorm, $cmp)) {
+    Write-Host ('review-verify: FAIL projectRoot mismatch. meta={0} runtime={1}' -f $metaProjectFull, $projectNorm)
+    exit 1
+}
+if (-not [string]::Equals($metaLogFull, $logRootNorm, $cmp)) {
+    Write-Host ('review-verify: FAIL projectLogRoot mismatch. meta={0} runtime={1}' -f $metaLogFull, $logRootNorm)
+    exit 1
+}
+
 $targetPath = [string]$meta.targetPath
 if (-not (Test-Path -LiteralPath $targetPath -PathType Leaf)) {
     Write-Host ('review-verify: FAIL target file not found: {0}' -f $targetPath)

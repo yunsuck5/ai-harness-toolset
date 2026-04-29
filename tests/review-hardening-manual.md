@@ -215,10 +215,160 @@ no UTF-8 BOM, LF line endings.
 git status --short
 ```
 
-Expected: only the five approved file paths
-(`scripts/lib/encoding.ps1`, `scripts/lib/path.ps1`, `scripts/review-prepare.ps1`,
-`scripts/review-verify.ps1`, `tests/review-hardening-manual.md`) appear.
+Expected: only the four approved file paths for the ProjectLogRoot resolution
+hardening scope appear:
+
+- `scripts/lib/path.ps1`
+- `scripts/log-init.ps1`
+- `scripts/review-verify.ps1`
+- `tests/review-hardening-manual.md`
+
 No `log/` paths are listed.
+
+## AC11 — `Get-ProjectLogRoot` normalization
+
+Confirms that `meta.projectLogRoot` is a single canonical full path regardless of
+how `-ProjectRoot` was spelled. Reuses an AC8-shaped fake project so we never
+have to mutate the source repo's own `log/`.
+
+```powershell
+$case = 'log/evidence/review-hardening/ac11'
+$fake = "$case/fakeproject"
+New-Item -ItemType Directory -Path "$fake/.ai-harness/templates" -Force | Out-Null
+New-Item -ItemType Directory -Path "$fake/.ai-harness/config"    -Force | Out-Null
+Copy-Item templates/review-input.md "$fake/.ai-harness/templates/review-input.md"
+Copy-Item templates/review-meta.json "$fake/.ai-harness/templates/review-meta.json"
+Copy-Item config/reviewer.json       "$fake/.ai-harness/config/reviewer.json"
+'note' | Out-File -FilePath "$fake/notes.md" -Encoding utf8
+
+$canonical = (Resolve-Path $fake).Path
+$variants  = @(
+    $canonical,
+    ($canonical + [System.IO.Path]::DirectorySeparatorChar),
+    ($canonical -replace '\\','/')
+)
+
+foreach ($pr in $variants) {
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 `
+      -ProjectRoot $pr -ToolRoot "$fake/.ai-harness" `
+      -TargetPath "$fake/notes.md" -Stage review -Purpose 'AC11 normalization'
+}
+```
+
+Expected:
+
+- For every variant, `meta.projectLogRoot` is byte-identical to the canonical
+  `<fake>\log` form. This is the load-bearing invariant for this batch.
+- For every variant, `meta.projectRoot` is identical to the canonical `<fake>`
+  form **after trailing `\` is trimmed**. The forward-slash variant is fully
+  back-slashed; the trailing-separator variant retains its trailing `\` because
+  `Get-ProjectRoot` is intentionally unchanged in this scope. The
+  `review-verify` cross-check trims trailing separators on both sides before
+  equality, so this drift cannot cause a false mismatch.
+- All three runs exit 0.
+
+## AC12 — `log-init` containment (positive)
+
+Validates that `log-init.ps1` only creates directories exactly under
+`<ProjectRoot>/log/`. No production function is monkey-patched.
+
+```powershell
+$case = 'log/evidence/review-hardening/ac12'
+$fake = "$case/fakeproject"
+New-Item -ItemType Directory -Path $fake -Force | Out-Null
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/log-init.ps1 -ProjectRoot $fake
+$expected = @(
+    (Join-Path $fake 'log'),
+    (Join-Path $fake 'log/chatlog'),
+    (Join-Path $fake 'log/evidence'),
+    (Join-Path $fake 'log/review')
+)
+$expected | ForEach-Object {
+    if (-not (Test-Path -LiteralPath $_ -PathType Container)) { throw "missing: $_" }
+}
+$actual = Get-ChildItem -LiteralPath (Join-Path $fake 'log') -Directory -Recurse |
+          Select-Object -ExpandProperty FullName
+$canonicalLog = [System.IO.Path]::GetFullPath((Join-Path $fake 'log'))
+foreach ($a in $actual) {
+    if (-not $a.StartsWith($canonicalLog, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "outside ProjectLogRoot: $a"
+    }
+}
+```
+
+Expected:
+
+- `log-init.ps1` exits 0.
+- All four expected directories exist.
+- No directory under `<fake>/log` lies outside the canonical `<fake>/log` prefix.
+
+## AC13 — `review-verify` cross-check against meta
+
+Catches the case where a packet was prepared in one project root but verified
+against another. Prepare in fake project A, copy the run dir into fake project B,
+then verify with `-ProjectRoot` pointed at B.
+
+```powershell
+$case = 'log/evidence/review-hardening/ac13'
+$fakeA = "$case/projectA"
+$fakeB = "$case/projectB"
+foreach ($f in @($fakeA, $fakeB)) {
+    New-Item -ItemType Directory -Path "$f/.ai-harness/templates" -Force | Out-Null
+    New-Item -ItemType Directory -Path "$f/.ai-harness/config"    -Force | Out-Null
+    Copy-Item templates/review-input.md "$f/.ai-harness/templates/review-input.md"
+    Copy-Item templates/review-meta.json "$f/.ai-harness/templates/review-meta.json"
+    Copy-Item config/reviewer.json       "$f/.ai-harness/config/reviewer.json"
+    'note' | Out-File -FilePath "$f/notes.md" -Encoding utf8
+}
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 `
+  -ProjectRoot $fakeA -ToolRoot "$fakeA/.ai-harness" `
+  -TargetPath "$fakeA/notes.md" -Stage review -Purpose 'AC13 prepare in A'
+# Note the printed run id, then mirror that run dir into B:
+New-Item -ItemType Directory -Path "$fakeB/log/review" -Force | Out-Null
+Copy-Item -Recurse "$fakeA/log/review/<id>" "$fakeB/log/review/<id>"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 `
+  -ProjectRoot $fakeB -RunId <id>
+```
+
+Expected:
+
+- Verify exits non-zero.
+- One of two deterministic FAIL messages is printed:
+  - `review-verify: FAIL projectRoot mismatch. meta=<A> runtime=<B>`, or
+  - `review-verify: FAIL projectLogRoot mismatch. meta=<A>\log runtime=<B>\log`.
+- The check fires **before** target-sha256 comparison.
+
+## AC14 — `Assert-InProjectLogRoot` direct helper checks
+
+Loads the helper directly to confirm both inside-pass and outside-throw paths.
+
+```powershell
+. .\scripts\lib\path.ps1
+$case = 'log/evidence/review-hardening/ac14'
+$fake = "$case/fakeproject"
+New-Item -ItemType Directory -Path "$fake/log/chatlog" -Force | Out-Null
+New-Item -ItemType Directory -Path "$case/outsidearea" -Force | Out-Null
+
+$logRoot = Get-ProjectLogRoot -ProjectRoot $fake
+$inside  = Join-Path $logRoot 'chatlog/sample.md'
+$outside = (Resolve-Path "$case/outsidearea").Path
+
+# Inside cases
+[void] (Assert-InProjectLogRoot -Path $logRoot                        -ProjectLogRoot $logRoot)
+[void] (Assert-InProjectLogRoot -Path (Join-Path $logRoot 'chatlog')  -ProjectLogRoot $logRoot)
+[void] (Assert-InProjectLogRoot -Path $inside                         -ProjectLogRoot $logRoot)
+
+# Outside case
+$threw = $false
+try { [void] (Assert-InProjectLogRoot -Path $outside -ProjectLogRoot $logRoot) }
+catch { $threw = $true; $_.Exception.Message }
+if (-not $threw) { throw 'AC14: expected outside path to throw' }
+```
+
+Expected:
+
+- All three inside calls return `$true` silently.
+- The outside call throws with a message starting `Assert-InProjectLogRoot: path is outside ProjectLogRoot. Path=...`.
 
 ## Cleanup
 
