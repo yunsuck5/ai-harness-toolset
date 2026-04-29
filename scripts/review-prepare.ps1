@@ -100,9 +100,10 @@ if ([string]::IsNullOrEmpty($RunId)) {
     $suffix = ([guid]::NewGuid().ToString('N')).Substring(0, 6).ToLowerInvariant()
     $RunId = "$stamp-$suffix"
 }
+[void] (Assert-ValidRunId -Value $RunId)
 
 $runDir = Join-Path -Path $logRoot -ChildPath ('review/' + $RunId)
-[void] (Assert-InProjectRoot -Path $runDir -ProjectRoot $project)
+[void] (Assert-InReviewRunRoot -Path $runDir -ProjectLogRoot $logRoot)
 if (-not (Test-Path -LiteralPath $runDir -PathType Container)) {
     $null = New-Item -ItemType Directory -Path $runDir -Force
 }
@@ -149,7 +150,7 @@ Write-JsonFile -Path $metaPath -Value $meta
 
 $templatePath = Join-Path -Path $tool -ChildPath 'templates/review-input.md'
 if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
-    throw "review-prepare: template not found: $templatePath"
+    throw "review-prepare: required template not found at '$templatePath'. ToolRoot='$tool'. Ensure templates/review-input.md exists under ToolRoot."
 }
 $template = Read-Utf8 -Path $templatePath
 

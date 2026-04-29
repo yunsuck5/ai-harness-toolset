@@ -67,6 +67,8 @@ function Write-JsonUtf8NoBom {
     }
 
     $json = [string]($Value | ConvertTo-Json -Depth $Depth)
+    $json = $json -replace "`r`n", "`n"
+    $json = $json -replace "`r", "`n"
     Write-Utf8NoBom -Path $Path -Content $json
 }
 

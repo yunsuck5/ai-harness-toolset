@@ -17,7 +17,23 @@ $ErrorActionPreference = 'Stop'
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 $logRoot = Get-ProjectLogRoot -ProjectRoot $project
 
+try {
+    [void] (Assert-ValidRunId -Value $RunId)
+}
+catch {
+    Write-Host ('review-verify: FAIL invalid RunId: {0}' -f $RunId)
+    exit 1
+}
+
 $runDir = Join-Path -Path $logRoot -ChildPath ('review/' + $RunId)
+try {
+    [void] (Assert-InReviewRunRoot -Path $runDir -ProjectLogRoot $logRoot)
+}
+catch {
+    Write-Host ('review-verify: FAIL run directory outside review root: {0}' -f $runDir)
+    exit 1
+}
+
 if (-not (Test-Path -LiteralPath $runDir -PathType Container)) {
     Write-Host ('review-verify: FAIL run directory not found: {0}' -f $runDir)
     exit 1
