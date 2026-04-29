@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "provider": "openai",
+  "model": "gpt-5.5",
+  "fallbackModel": "gpt-5.4",
+  "reasoningEffort": "medium",
+  "timeoutSeconds": 300,
+  "sandbox": "read-only",
+  "outputFormat": "markdown",
+  "resultFile": "result.md"
+}

@@ -1,0 +1,4 @@
+{
+  "fixture": "meta-without-bom",
+  "expectsBom": false
+}
