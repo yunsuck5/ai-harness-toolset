@@ -191,6 +191,63 @@ if ($RequireResult) {
         exit 1
     }
 
+    $resultTargetPath = ''
+    if ($null -ne $result.PSObject.Properties['targetPath']) {
+        $resultTargetPath = [string]$result.targetPath
+    }
+    if ([string]::IsNullOrEmpty($resultTargetPath)) {
+        Write-Host 'review-verify: FAIL result.json targetPath missing or empty'
+        exit 1
+    }
+    $metaTargetFull = ([System.IO.Path]::GetFullPath([string]$meta.targetPath)).TrimEnd($sep)
+    $resultTargetFull = $null
+    try {
+        $resultTargetFull = ([System.IO.Path]::GetFullPath($resultTargetPath)).TrimEnd($sep)
+    }
+    catch {
+        Write-Host ('review-verify: FAIL result.json targetPath could not be normalized: {0}' -f $resultTargetPath)
+        exit 1
+    }
+    if (-not [string]::Equals($resultTargetFull, $metaTargetFull, $cmp)) {
+        Write-Host ('review-verify: FAIL result.json targetPath mismatch. meta={0} result={1}' -f $metaTargetFull, $resultTargetFull)
+        exit 1
+    }
+
+    $resultCreatedAt = ''
+    if ($null -ne $result.PSObject.Properties['createdAtUtc']) {
+        $resultCreatedAt = [string]$result.createdAtUtc
+    }
+    if ([string]::IsNullOrEmpty($resultCreatedAt)) {
+        Write-Host 'review-verify: FAIL result.json createdAtUtc missing or empty'
+        exit 1
+    }
+    $parsedCreatedAt = [System.DateTimeOffset]::MinValue
+    $invariantCulture = [System.Globalization.CultureInfo]::InvariantCulture
+    $createdAtStyles = [System.Globalization.DateTimeStyles]::None
+    if (-not [System.DateTimeOffset]::TryParse($resultCreatedAt, $invariantCulture, $createdAtStyles, [ref]$parsedCreatedAt)) {
+        Write-Host ('review-verify: FAIL result.json createdAtUtc not parseable: {0}' -f $resultCreatedAt)
+        exit 1
+    }
+    if ($parsedCreatedAt.Offset -ne [System.TimeSpan]::Zero) {
+        Write-Host ('review-verify: FAIL result.json createdAtUtc not UTC offset: {0}' -f $resultCreatedAt)
+        exit 1
+    }
+
+    $metaSourceHead = ''
+    if ($null -ne $meta.PSObject.Properties['sourceHead']) {
+        $metaSourceHead = [string]$meta.sourceHead
+    }
+    $resultSourceHead = ''
+    if ($null -ne $result.PSObject.Properties['sourceHead']) {
+        $resultSourceHead = [string]$result.sourceHead
+    }
+    if (-not [string]::IsNullOrEmpty($metaSourceHead) -and -not [string]::IsNullOrEmpty($resultSourceHead)) {
+        if (-not [string]::Equals($metaSourceHead, $resultSourceHead, [System.StringComparison]::Ordinal)) {
+            Write-Host ('review-verify: FAIL result.json sourceHead mismatch. meta={0} result={1}' -f $metaSourceHead, $resultSourceHead)
+            exit 1
+        }
+    }
+
     Write-Host 'review-verify: result.json present and binding verified'
 }
 

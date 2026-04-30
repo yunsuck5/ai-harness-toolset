@@ -40,7 +40,8 @@ BeforeAll {
             [string] $ProjectRoot,
             [string] $RunId,
             [string] $TargetPath,
-            [string] $TargetSha256
+            [string] $TargetSha256,
+            $SourceHead = $null
         )
         $logRoot = [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot 'log'))
         return [ordered]@{
@@ -56,7 +57,7 @@ BeforeAll {
             stage              = 'design'
             purpose            = 'pester regression'
             reviewer           = 'codex'
-            sourceHead         = $null
+            sourceHead         = $SourceHead
             reviewerConfig     = [ordered]@{
                 provider        = 'openai'
                 model           = 'gpt-5.5'
@@ -76,7 +77,8 @@ BeforeAll {
         param(
             [string] $CaseName,
             [string] $RunId = '20260430-120000-aaaaaa',
-            [string] $TargetContent = "pester target body`n"
+            [string] $TargetContent = "pester target body`n",
+            $MetaSourceHead = $null
         )
         $projectRoot = script:New-PesterTestCaseRoot -CaseName $CaseName
 
@@ -92,7 +94,8 @@ BeforeAll {
             -ProjectRoot $projectRoot `
             -RunId $RunId `
             -TargetPath $resolvedTarget `
-            -TargetSha256 $targetSha
+            -TargetSha256 $targetSha `
+            -SourceHead $MetaSourceHead
 
         $metaPath = Join-Path $runDir 'meta.json'
         $metaJson = $meta | ConvertTo-Json -Depth 32
@@ -118,7 +121,14 @@ BeforeAll {
             [string] $Verdict = 'yes',
             [string] $TargetShaOverride = '',
             [string] $RunIdOverride = '',
-            [switch] $SkipResultMarkdown
+            [switch] $SkipResultMarkdown,
+            [switch] $OmitTargetPath,
+            [switch] $EmptyTargetPath,
+            [string] $TargetPathOverride = '',
+            [switch] $OmitCreatedAtUtc,
+            [switch] $EmptyCreatedAtUtc,
+            [string] $CreatedAtUtcOverride = '',
+            [string] $SourceHead = ''
         )
 
         $resultMdPath = Join-Path $Packet.RunDir 'result.md'
@@ -141,6 +151,22 @@ BeforeAll {
             $effectiveRunId = $RunIdOverride
         }
 
+        $effectiveTargetPath = $Packet.TargetPath
+        if (-not [string]::IsNullOrEmpty($TargetPathOverride)) {
+            $effectiveTargetPath = $TargetPathOverride
+        }
+        if ($EmptyTargetPath) {
+            $effectiveTargetPath = ''
+        }
+
+        $effectiveCreatedAt = (Get-Date).ToUniversalTime().ToString('o')
+        if (-not [string]::IsNullOrEmpty($CreatedAtUtcOverride)) {
+            $effectiveCreatedAt = $CreatedAtUtcOverride
+        }
+        if ($EmptyCreatedAtUtc) {
+            $effectiveCreatedAt = ''
+        }
+
         $obj = [ordered]@{
             schemaVersion        = 1
             runId                = $effectiveRunId
@@ -149,6 +175,16 @@ BeforeAll {
             resultMarkdownSha256 = $resultMdSha
             verdict              = $Verdict
         }
+        if (-not $OmitTargetPath) {
+            $obj.targetPath = $effectiveTargetPath
+        }
+        if (-not $OmitCreatedAtUtc) {
+            $obj.createdAtUtc = $effectiveCreatedAt
+        }
+        if (-not [string]::IsNullOrEmpty($SourceHead)) {
+            $obj.sourceHead = $SourceHead
+        }
+
         $resultJsonPath = Join-Path $Packet.RunDir 'result.json'
         script:Write-Utf8NoBomFile -Path $resultJsonPath -Content (($obj | ConvertTo-Json -Depth 32))
     }
@@ -252,5 +288,98 @@ Describe 'review-verify -RequireResult mode' {
         $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
         $result.ExitCode | Should -Not -Be 0
         $result.Output | Should -Match 'FAIL result\.json verdict invalid'
+    }
+
+    It 'AC20: fails when result.json targetPath is missing' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac20-missing'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -OmitTargetPath
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json targetPath missing or empty'
+    }
+
+    It 'AC20b: fails when result.json targetPath is empty' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac20-empty'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -EmptyTargetPath
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json targetPath missing or empty'
+    }
+
+    It 'AC21: fails when result.json targetPath does not match meta.targetPath after normalization' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac21'
+        $bogusPath = Join-Path $packet.ProjectRoot 'not-the-target.txt'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -TargetPathOverride $bogusPath
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json targetPath mismatch'
+    }
+
+    It 'AC21b: passes when result.json targetPath matches meta.targetPath in different separator form' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac21b'
+        $altPath = $packet.TargetPath.Replace('\', '/')
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -TargetPathOverride $altPath
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -Match 'review-verify: PASS'
+    }
+
+    It 'AC22: fails when result.json createdAtUtc is not parseable' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac22-unparseable'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride 'not-a-real-date'
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not parseable'
+    }
+
+    It 'AC22b: fails when result.json createdAtUtc has a non-UTC offset' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac22-nonutc'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T12:00:00+09:00'
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not UTC offset'
+    }
+
+    It 'AC22c: fails when result.json createdAtUtc is empty' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac22-empty'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -EmptyCreatedAtUtc
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json createdAtUtc missing or empty'
+    }
+
+    It 'AC23: fails when both meta.sourceHead and result.sourceHead are non-empty and mismatch' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac23' -MetaSourceHead 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -SourceHead 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json sourceHead mismatch'
+    }
+
+    It 'AC23b: passes when both sourceHead values are non-empty and match exactly' {
+        $sha = 'cccccccccccccccccccccccccccccccccccccccc'
+        $packet = script:Initialize-FreshPacket -CaseName 'ac23b' -MetaSourceHead $sha
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -SourceHead $sha
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -Match 'review-verify: PASS'
+    }
+
+    It 'AC24: passes when meta.sourceHead is null and result.sourceHead is absent' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac24'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes'
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -Match 'review-verify: PASS'
     }
 }

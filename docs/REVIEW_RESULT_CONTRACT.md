@@ -109,7 +109,11 @@ reviewer가 AI인 경우, AI 출력 본문을 정리해 result.md에 붙인다. 
 - `resultMarkdownSha256`은 result.md와 result.json을 묶기 위한 값이다.
 - `targetPath`, `targetSha256`, `runId`, `stage`, `purpose`, `reviewer` 등은 meta.json과 일치해야 한다 (사람이 채운다).
 
-이 contract는 자동 일치 검증을 하지 않는다.
+자동 일치 검증의 범위는 mode에 따라 다르다.
+
+- 기본 mode (`-RequireResult` 미지정): result artifact 자체를 요구하지 않으며 result.json 필드의 일치를 검증하지 않는다.
+- `-RequireResult` mode: 아래 "review-verify의 현재 책임과 한계" 절에 열거된 부분 집합 (`runId`, `targetSha256`, `inputSha256`, `resultMarkdownSha256`, `verdict`, `targetPath`, `createdAtUtc`, conditional `sourceHead`) 만 자동 검증한다.
+- 위 부분 집합에 들어 있지 않은 필드 (`stage`, `purpose`, `reviewer`, `schemaVersion`, `notes` 등) 는 여전히 manual convention 영역이며 사람이 직접 맞춘다.
 
 ## result.json 최소 필드
 
@@ -191,17 +195,21 @@ prepared packet의 freshness를 검증한다.
 - `result.json.inputSha256`과 실제 `input.md` SHA-256 일치 검증
 - `result.json.resultMarkdownSha256`과 실제 `result.md` SHA-256 일치 검증
 - `result.json.verdict`이 정확히 `yes` / `no` / `yes with risk` 중 하나인지 검증
+- `result.json.targetPath` 존재 / 비어있지 않음 검증, 그리고 `meta.json.targetPath`와 normalized full-path 비교 (`[System.IO.Path]::GetFullPath` 후 OrdinalIgnoreCase). source repo / target payload 모드 모두 절대경로 기준이며, 이번 batch에서는 repo-relative 표기는 지원하지 않는다.
+- `result.json.createdAtUtc` 존재 / 비어있지 않음 검증, `DateTimeOffset` parse 가능 여부 검증, 그리고 parsed offset이 `TimeSpan.Zero` (UTC) 인지 검증. 현재 wall clock과의 비교나 `meta.json.createdAtUtc`와의 시간 순서 검증은 하지 않는다.
+- `meta.json.sourceHead`와 `result.json.sourceHead`가 **둘 다 non-empty** 인 경우에만 정확히 일치하는지 검증. meta 쪽이 null/empty이면 result 쪽 sourceHead는 null/empty / absent 모두 허용한다. short-hash prefix matching은 하지 않는다.
 
-`-RequireResult` mode가 검증하지 **않는** 것:
+`-RequireResult` mode가 여전히 검증하지 **않는** 것:
 
-- `result.json.targetPath` 자동 비교 (path separator / 절대경로 표기 차이로 false negative 가능)
-- `result.json.sourceHead` 자동 비교 (short hash vs full hash 표기 차이)
-- `result.json.createdAtUtc` strict ISO-8601 parse (JSON valid 수준에서 통과로 본다)
-- `result.json.stage` / `purpose` / `reviewer` 자동 비교
-- `notes` 형식 enforcement
+- `result.json.sourceHead` required validation (meta가 null/empty이면 result도 null/empty 허용)
+- `result.json.sourceHead` short-hash prefix matching
+- `result.json.createdAtUtc` 시간 순서 / 현재 시각 비교
+- `result.json.stage` / `purpose` / `reviewer` / `schemaVersion` strict validation
+- `notes[]` schema enforcement
 - verdict 대소문자 / 공백 normalization (strict equality만 enforce)
+- default mode에서의 result artifact 요구
 
-위 항목은 future candidate로 남긴다. SHA-256 binding이 MVP에서 completed-record binding의 authority다.
+위 항목은 future candidate로 남긴다. SHA-256 binding과 위 metadata hardening v1이 MVP에서 completed-record binding의 authority다.
 
 ## source snapshot에는 log/를 포함하지 않는다
 
@@ -230,13 +238,21 @@ prepared packet의 freshness를 검증한다.
 
 아래 항목은 버리지 않는다. 다만 이번 MVP scope에서는 구현하지 않는다.
 
-- `result.json.targetPath` 자동 비교 (path separator / 절대경로 표기 normalization 필요).
-- `result.json.sourceHead` 자동 비교 (short hash / full hash prefix-match 정책 필요).
-- `result.json.createdAtUtc` strict ISO-8601 parse.
+- `result.json.sourceHead` 무조건 required 검증 (현재는 meta / result 양쪽 모두 non-empty일 때만 비교).
+- `result.json.sourceHead` short hash / full hash prefix-match 정책.
+- `result.json.createdAtUtc` 시간 순서 / 현재 시각 비교.
+- `result.json.stage` / `purpose` / `reviewer` / `schemaVersion` strict 비교.
+- `result.json.notes[]` schema enforcement.
 - `inputSha256` / `resultMarkdownSha256` 자동 계산 helper.
 - `result.json.verdict`을 읽어 후속 단계 (commit gate 등)를 막는 wrapper.
 - review history aggregation.
 - review record retention 정책.
+
+이번 v1 metadata hardening으로 future candidate에서 빠진 항목:
+
+- `result.json.targetPath` 존재 + `meta.json.targetPath`와 normalized full-path match.
+- `result.json.createdAtUtc` 존재 + parseable + UTC offset.
+- `result.json.sourceHead` conditional exact match (meta / result 양쪽 모두 non-empty인 경우에 한해).
 
 ## 향후 확장 시 고려 사항
 
