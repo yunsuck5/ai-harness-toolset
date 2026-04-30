@@ -3,7 +3,9 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $RunId,
 
-    [string] $ProjectRoot
+    [string] $ProjectRoot,
+
+    [switch] $RequireResult
 )
 
 Set-StrictMode -Version Latest
@@ -108,6 +110,88 @@ if (Test-Path -LiteralPath $resultPath -PathType Leaf) {
 }
 else {
     Write-Host 'review-verify: result.md not present (informational)'
+}
+
+if ($RequireResult) {
+    $inputPath = Join-Path -Path $runDir -ChildPath 'input.md'
+    if (-not (Test-Path -LiteralPath $inputPath -PathType Leaf)) {
+        Write-Host ('review-verify: FAIL input.md missing: {0}' -f $inputPath)
+        exit 1
+    }
+
+    if (-not (Test-Path -LiteralPath $resultPath -PathType Leaf)) {
+        Write-Host ('review-verify: FAIL result.md missing: {0}' -f $resultPath)
+        exit 1
+    }
+
+    $resultJsonPath = Join-Path -Path $runDir -ChildPath 'result.json'
+    if (-not (Test-Path -LiteralPath $resultJsonPath -PathType Leaf)) {
+        Write-Host ('review-verify: FAIL result.json missing: {0}' -f $resultJsonPath)
+        exit 1
+    }
+
+    $result = $null
+    try {
+        $result = Read-JsonFile -Path $resultJsonPath
+    }
+    catch {
+        Write-Host ('review-verify: FAIL result.json invalid JSON: {0}' -f $resultJsonPath)
+        exit 1
+    }
+
+    $metaRunId = ''
+    if ($null -ne $meta.PSObject.Properties['runId']) {
+        $metaRunId = [string]$meta.runId
+    }
+    $resultRunId = ''
+    if ($null -ne $result.PSObject.Properties['runId']) {
+        $resultRunId = [string]$result.runId
+    }
+    if ($metaRunId -ne $resultRunId) {
+        Write-Host ('review-verify: FAIL result.json runId mismatch. meta={0} result={1}' -f $metaRunId, $resultRunId)
+        exit 1
+    }
+
+    $resultTargetSha = ''
+    if ($null -ne $result.PSObject.Properties['targetSha256']) {
+        $resultTargetSha = [string]$result.targetSha256
+    }
+    if ($expectedSha -ne $resultTargetSha) {
+        Write-Host ('review-verify: FAIL result.json targetSha256 mismatch. meta={0} result={1}' -f $expectedSha, $resultTargetSha)
+        exit 1
+    }
+
+    $actualInputSha = Get-FileSha256 -Path $inputPath
+    $resultInputSha = ''
+    if ($null -ne $result.PSObject.Properties['inputSha256']) {
+        $resultInputSha = [string]$result.inputSha256
+    }
+    if ($actualInputSha -ne $resultInputSha) {
+        Write-Host ('review-verify: FAIL result.json inputSha256 mismatch. expected={0} actual={1}' -f $actualInputSha, $resultInputSha)
+        exit 1
+    }
+
+    $actualResultSha = Get-FileSha256 -Path $resultPath
+    $resultMdSha = ''
+    if ($null -ne $result.PSObject.Properties['resultMarkdownSha256']) {
+        $resultMdSha = [string]$result.resultMarkdownSha256
+    }
+    if ($actualResultSha -ne $resultMdSha) {
+        Write-Host ('review-verify: FAIL result.json resultMarkdownSha256 mismatch. expected={0} actual={1}' -f $actualResultSha, $resultMdSha)
+        exit 1
+    }
+
+    $verdict = ''
+    if ($null -ne $result.PSObject.Properties['verdict']) {
+        $verdict = [string]$result.verdict
+    }
+    $allowedVerdicts = @('yes', 'no', 'yes with risk')
+    if ($allowedVerdicts -notcontains $verdict) {
+        Write-Host ("review-verify: FAIL result.json verdict invalid: '{0}'" -f $verdict)
+        exit 1
+    }
+
+    Write-Host 'review-verify: result.json present and binding verified'
 }
 
 Write-Host ('review-verify: PASS run-id {0}' -f $RunId)

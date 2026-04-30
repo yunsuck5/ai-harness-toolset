@@ -22,3 +22,6 @@
 - context-pressure trigger / pre-compact capture is a future optional candidate, not MVP implementation
 - review result artifacts are manual convention first (`docs/REVIEW_RESULT_CONTRACT.md`)
 - completed review records use `result.md` plus `result.json`; missing result artifacts are not a default `review-verify` failure in MVP
+- review-verify gains an optional `-RequireResult` mode for completed review records; default mode behavior, messages, and exit codes remain unchanged
+- result.json `targetPath` / `sourceHead` / `createdAtUtc` strict validation remains a future candidate; SHA-256 binding is the MVP authority for completed-record binding
+- Pester remains a future regression milestone after `-RequireResult` policy and implementation are stable

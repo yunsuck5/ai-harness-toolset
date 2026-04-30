@@ -2,7 +2,7 @@
 
 `log/review/<run-id>/` 아래에 reviewer 실행이 끝난 뒤 어떤 최소 형식으로 결과를 남길지 정의한다.
 
-이 문서는 **manual convention first** 문서다. script 자동 enforcement, review-run wrapper, Codex 자동 실행, DB-backed history, retention automation은 포함하지 않는다.
+이 문서는 **manual convention first** 문서다. 기본 mode는 prepared packet freshness 검증을 유지하고, completed review record enforcement는 명시적 `-RequireResult` mode에서만 수행한다. review-run wrapper, Codex 자동 실행, DB-backed history, retention automation은 포함하지 않는다.
 
 ## 목적
 
@@ -27,7 +27,7 @@
 - review history DB 또는 index
 - review result schema 강제 검증
 - review result retention 정책
-- review-verify의 result 파일 강제 검증
+- default review-verify mode에서 result.md / result.json을 실패 조건으로 만드는 것
 - evidence subsystem과의 cross-tree 보장
 - chatlog subsystem과의 cross-tree 보장
 
@@ -37,7 +37,7 @@
 
 | 트리 | 책임 | 검증 주체 |
 |---|---|---|
-| `log/review/<run-id>/` | review packet과 freshness 검증, review result 보존 | `scripts/review-prepare.ps1`, `scripts/review-verify.ps1` (freshness만), 사람 (result 작성) |
+| `log/review/<run-id>/` | review packet과 freshness 검증, review result 보존 | `scripts/review-prepare.ps1`, `scripts/review-verify.ps1` (freshness; optional `-RequireResult` binding verification), 사람 (result 작성) |
 | `log/evidence/` | command 실행 사실, output, 재현 단서 보존 | 사람 (manual convention, `docs/EVIDENCE_CONTRACT.md`) |
 | `log/chatlog/` | session 작업 기록과 resume brief 보존 | 사람 (manual convention, `docs/CHATLOG_CONTRACT.md`) |
 
@@ -163,22 +163,45 @@ result.md와 result.json 모두 다음 세 값만 사용한다:
 
 ## review-verify의 현재 책임과 한계
 
-`scripts/review-verify.ps1`의 현재 책임:
+`scripts/review-verify.ps1`은 두 가지 mode로 동작한다.
+
+### 기본 mode (`-RequireResult` 미지정)
+
+prepared packet의 freshness를 검증한다.
 
 - run directory와 `meta.json` 존재 여부 검증
 - `meta.json.projectRoot`, `meta.json.projectLogRoot`가 현재 실행 환경과 일치하는지 검증
 - target file 존재와 ProjectRoot 내부 여부 검증
 - `meta.json.targetSha256`과 현재 target SHA-256 일치 검증
-
-`scripts/review-verify.ps1`의 현재 한계:
-
 - `result.md` 존재는 informational 출력만 한다. 실패 조건이 아니다.
 - `result.json` 존재 자체를 보지 않는다.
-- `result.md`와 `result.json`의 일치 여부를 보지 않는다.
-- `result.json.inputSha256`이 `input.md`의 실제 SHA-256과 일치하는지 보지 않는다.
-- verdict 값을 해석하지 않는다.
 
-따라서 이번 scope에서는 missing `result.md` / missing `result.json`을 review-verify 기본 실패 조건으로 만들지 않는다. completed review record validation은 future candidate로 둔다.
+기본 mode에서는 missing `result.md` / missing `result.json`을 실패 조건으로 만들지 않는다.
+
+### `-RequireResult` mode (completed review record 검증)
+
+기본 mode 검증을 모두 통과한 뒤, completed review record의 binding을 추가 검증한다.
+
+- `input.md` 존재 검증
+- `result.md` 존재 검증 (missing이면 실패)
+- `result.json` 존재 검증 (missing이면 실패)
+- `result.json` JSON valid 검증
+- `result.json.runId`과 `meta.json.runId` 일치 검증
+- `result.json.targetSha256`과 `meta.json.targetSha256` 일치 검증
+- `result.json.inputSha256`과 실제 `input.md` SHA-256 일치 검증
+- `result.json.resultMarkdownSha256`과 실제 `result.md` SHA-256 일치 검증
+- `result.json.verdict`이 정확히 `yes` / `no` / `yes with risk` 중 하나인지 검증
+
+`-RequireResult` mode가 검증하지 **않는** 것:
+
+- `result.json.targetPath` 자동 비교 (path separator / 절대경로 표기 차이로 false negative 가능)
+- `result.json.sourceHead` 자동 비교 (short hash vs full hash 표기 차이)
+- `result.json.createdAtUtc` strict ISO-8601 parse (JSON valid 수준에서 통과로 본다)
+- `result.json.stage` / `purpose` / `reviewer` 자동 비교
+- `notes` 형식 enforcement
+- verdict 대소문자 / 공백 normalization (strict equality만 enforce)
+
+위 항목은 future candidate로 남긴다. SHA-256 binding이 MVP에서 completed-record binding의 authority다.
 
 ## source snapshot에는 log/를 포함하지 않는다
 
@@ -196,7 +219,7 @@ result.md와 result.json 모두 다음 세 값만 사용한다:
 - review history DB 또는 index
 - review record 자동 retention 정책
 - result schema 자동 validator
-- review-verify의 result 파일 자동 검증
+- default review-verify mode에서 result.md / result.json을 실패 조건으로 만드는 것
 - evidence subsystem과의 cross-tree 보장
 - chatlog subsystem과의 cross-tree 보장
 - CI integration
@@ -207,7 +230,9 @@ result.md와 result.json 모두 다음 세 값만 사용한다:
 
 아래 항목은 버리지 않는다. 다만 이번 MVP scope에서는 구현하지 않는다.
 
-- review-verify의 completed review record 검증 모드 (missing `result.md` / `result.json`을 실패로 처리하는 옵션).
+- `result.json.targetPath` 자동 비교 (path separator / 절대경로 표기 normalization 필요).
+- `result.json.sourceHead` 자동 비교 (short hash / full hash prefix-match 정책 필요).
+- `result.json.createdAtUtc` strict ISO-8601 parse.
 - `inputSha256` / `resultMarkdownSha256` 자동 계산 helper.
 - `result.json.verdict`을 읽어 후속 단계 (commit gate 등)를 막는 wrapper.
 - review history aggregation.

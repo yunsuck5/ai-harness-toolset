@@ -376,6 +376,122 @@ Expected:
 - All three inside calls return `$true` silently.
 - The outside call throws with a message starting `Assert-InProjectLogRoot: path is outside ProjectLogRoot. Path=...`.
 
+## AC15 — default mode regression: missing result.md/result.json is not a failure
+
+Confirms that `review-verify` without `-RequireResult` continues to treat missing
+result artifacts as informational only.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 `
+  -TargetPath README.md -Stage review -Purpose 'AC15 default mode regression'
+# Note the printed run id, then verify without -RequireResult:
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 -RunId <id>
+```
+
+Expected:
+
+- Exit 0.
+- Output includes either `review-verify: result.md not present (informational)` or
+  `review-verify: result.md present (informational)` depending on whether the run
+  directory contains `result.md`.
+- Output ends with `review-verify: PASS run-id <id>`.
+- No new FAIL line is emitted because of missing `result.md` / `result.json`.
+
+## AC16 — `-RequireResult` happy path
+
+Prepares a packet, hand-authors `result.md` and `result.json` per
+`docs/REVIEW_RESULT_CONTRACT.md`, then verifies with `-RequireResult`.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 `
+  -TargetPath README.md -Stage review -Purpose 'AC16 require-result happy'
+# Note the printed run id. Then write result.md and result.json under
+# log/review/<id>/, copying the verdict / Target / Input binding sections from
+# templates/review-result.md and templates/review-result.json. Populate:
+#   - meta.runId          -> result.runId
+#   - meta.targetSha256   -> result.targetSha256
+#   - SHA256(input.md)    -> result.inputSha256
+#   - SHA256(result.md)   -> result.resultMarkdownSha256  (compute AFTER result.md is final)
+#   - verdict             -> 'yes' | 'no' | 'yes with risk' (exact value, no normalization)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 `
+  -RunId <id> -RequireResult
+```
+
+Expected:
+
+- Exit 0.
+- Output includes `review-verify: result.json present and binding verified`.
+- Output ends with `review-verify: PASS run-id <id>`.
+- The default-mode informational `result.md present (informational)` line is also
+  printed (default checks run before the `-RequireResult` block).
+
+## AC17 — `-RequireResult` missing result.md fails
+
+Reuses an AC16-style preparation but does not author `result.md`.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 `
+  -TargetPath README.md -Stage review -Purpose 'AC17 missing result.md'
+# Note the printed run id. Do NOT create result.md in the run directory.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 `
+  -RunId <id> -RequireResult
+```
+
+Expected:
+
+- Non-zero exit.
+- A line of the form `review-verify: FAIL result.md missing: <runDir>\result.md`.
+- The default-mode informational `result.md not present (informational)` line is
+  printed first (default checks always run, the `-RequireResult` block then
+  promotes the missing file to a hard failure).
+
+## AC18 — `-RequireResult` targetSha256 mismatch fails
+
+Authors a complete record (as in AC16) but hand-edits
+`result.json.targetSha256` to a different value.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 `
+  -TargetPath README.md -Stage review -Purpose 'AC18 targetSha256 mismatch'
+# Note the printed run id. Author result.md and result.json as in AC16, then
+# hand-edit result.json so result.targetSha256 differs from meta.targetSha256
+# (e.g., flip a single hex character).
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 `
+  -RunId <id> -RequireResult
+```
+
+Expected:
+
+- Non-zero exit.
+- Output line of the form
+  `review-verify: FAIL result.json targetSha256 mismatch. meta=<sha-from-meta> result=<sha-from-result>`.
+- Default-mode `FAIL stale ...` does NOT fire here because the on-disk target
+  file was never modified — the failure is a `result.json` binding mismatch, not
+  a freshness failure.
+
+## AC19 — `-RequireResult` invalid verdict fails
+
+Authors a complete record (as in AC16) but uses a verdict value outside the
+allowed enum.
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 `
+  -TargetPath README.md -Stage review -Purpose 'AC19 invalid verdict'
+# Note the printed run id. Author result.md and result.json as in AC16 with all
+# binding fields populated correctly, but set result.verdict to something outside
+# the allowed enum, for example "approved" or "Yes With Risk" (case differs).
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 `
+  -RunId <id> -RequireResult
+```
+
+Expected:
+
+- Non-zero exit.
+- Output line of the form
+  `review-verify: FAIL result.json verdict invalid: '<value>'`.
+- The check fires only after all binding-hash checks pass, so binding mismatches
+  in the same `result.json` would short-circuit before this line.
+
 ## Cleanup
 
 `log/evidence/review-hardening/` is gitignored. Leave it after a run for evidence
