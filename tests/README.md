@@ -11,3 +11,17 @@ Local-first test fixtures for ai-harness-toolset.
 
 - `fixtures/meta-with-bom.json` — must start with `EF BB BF`.
 - `fixtures/meta-without-bom.json` — must not start with `EF BB BF`.
+
+## Pester regression tests
+
+- Pester tests are optional local regression tests.
+- Pester v5+ is required when running them.
+- The repo does not auto-install Pester.
+- Recommended command:
+
+  ```powershell
+  Import-Module Pester -MinimumVersion 5.0.0 -ErrorAction Stop
+  Invoke-Pester -Path .\tests\review-verify.Tests.ps1 -Output Detailed
+  ```
+
+- Generated runtime test artifacts live under `log/` and are not source artifacts.
