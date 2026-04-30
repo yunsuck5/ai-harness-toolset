@@ -1,0 +1,196 @@
+# Chatlog Minimal Retention and Resume Contract
+
+`log/chatlog/` 아래에 AI-assisted development session의 작업 기록과 작업 재개용 brief를 어떤 최소 형식으로 남길지 정의한다.
+
+이 문서는 **manual convention first** 문서다. hook, parser, browser automation, DB, retention automation은 포함하지 않는다.
+
+## 목적
+
+- AI CLI agent (Claude Code, Codex CLI 등)가 진행한 한 묶음의 작업을 사람이 읽는 file 형태로 보존한다.
+- 다음 CLI agent 또는 다음 사람이 작업을 **재개**할 때 가장 먼저 읽을 짧은 brief를 남긴다.
+- 자동화 schema 없이도 사람이 읽고 쓸 수 있는 형식을 유지한다.
+
+이 contract는 chatlog가 무엇을 보장하는가가 아니라, chatlog 파일을 **어디에**, **어떤 이름으로** 남길지에 관한 합의다.
+
+## chatlog가 담당하지 않는 것
+
+- AI CLI raw transcript의 자동 capture
+- session 경계 자동 감지
+- 80% context trigger 또는 pre-compact resume packet 자동 생성
+- browser 기반 ChatGPT Web 대화 capture
+- session DB 또는 index 관리
+- retention / prune 자동화
+- review subsystem이 사용하는 packet freshness 판단
+- evidence 자동 수집
+- CI integration
+
+위 항목 중 일부는 [Future candidate](#future-candidate) 절에 기록한다. MVP에서는 구현하지 않는다.
+
+## review / evidence subsystem과의 경계
+
+`log/` 아래에는 세 종류의 트리가 공존한다. 책임이 서로 다르다.
+
+| 트리 | 책임 | 검증 주체 |
+|---|---|---|
+| `log/chatlog/` | session 작업 기록과 resume brief 보존 | 사람 (manual convention) |
+| `log/evidence/` | command 실행 사실, output, 재현 단서 보존 | 사람 (manual convention, `docs/EVIDENCE_CONTRACT.md`) |
+| `log/review/<run-id>/` | review packet과 freshness 검증 | `scripts/review-prepare.ps1`, `scripts/review-verify.ps1` |
+
+- chatlog는 review subsystem의 input이 아니며, output도 아니다.
+- chatlog는 evidence subsystem의 input이 아니며, output도 아니다.
+- 셋은 같은 `log/` 아래에 있지만 서로 enforce하지 않는다.
+
+chatlog summary가 evidence file을 **참조**하는 것은 권장된다. 그러나 chatlog가 evidence나 review packet의 정합성을 담당하지는 않는다.
+
+## 경로 규약
+
+`log/chatlog/`는 project-local runtime artifact 영역이다.
+
+- source repo 모드: `<repo-root>/log/chatlog/`
+- target payload 모드: `<project-root>/log/chatlog/`
+
+두 경우 모두 `log/`는 gitignored runtime artifact 트리이며 source snapshot에 포함하지 않는다.
+
+권장 layout:
+
+```
+<ProjectRoot>/log/chatlog/current/
+  resume.md
+  summary.md
+  decisions.md        optional
+  raw-transcript.md   optional
+
+<ProjectRoot>/log/chatlog/<session-id>/
+  resume.md
+  summary.md
+  decisions.md        optional
+  phases/             optional
+  raw-transcript.md   optional
+```
+
+- `current/`는 진행 중인 session 또는 가장 최근에 닫힌 session의 작업 영역이다. 다음 agent가 가장 먼저 보는 자리다.
+- `<session-id>/`는 닫힌 session을 보존하는 자리다. session-id 형식은 manual convention이며 강제하지 않는다. 권장 형식은 `YYYYMMDD-<short-slug>`이다 (예: `20260430-chatlog-contract`).
+- 같은 session을 `current/`에서 `<session-id>/`로 옮기거나 복사하는 것은 사람이 결정한다.
+
+`LATEST.md`는 있으면 편리하지만 이번 scope에서는 강제하지 않는다. 한 줄로 가장 최근 session-id를 가리키는 optional convenience marker로만 활용한다. MVP에서는 도입하지 않아도 된다.
+
+## 권장 파일 구성
+
+각 session 디렉터리 (`current/` 또는 `<session-id>/`) 아래에 다음 file 이름을 사용한다.
+
+| 파일 | 역할 | MVP 위치 |
+|---|---|---|
+| `resume.md` | 다음 agent가 작업을 재개할 때 가장 먼저 읽는 짧은 brief | recommended |
+| `summary.md` | session 한 묶음의 결론, 결정, 변경 범위 요약 | recommended |
+| `decisions.md` | session 중 내려진 의사결정 기록 (필요 시) | optional |
+| `phases/` | session을 phase 단위로 쪼갤 때 사용하는 하위 디렉터리 | optional |
+| `raw-transcript.md` | CLI 또는 chat의 원문 transcript 캡처 | optional |
+
+위 이름은 권장이다. 같은 의도의 파일이라면 이 이름을 쓰라는 합의다.
+
+## summary-first 원칙
+
+session이 의미 있는 작업 단위로 마무리되었다면, **`summary.md`를 먼저 남긴다.**
+
+- 사람이 읽고 무엇이 끝났고 무엇이 남았는지 한 눈에 알 수 있어야 한다.
+- raw-transcript의 길이와 무관하게 summary는 짧고 자족적이어야 한다.
+- summary는 raw-transcript를 대체할 수 있을 정도로 사실 기반이어야 한다.
+- summary template은 `templates/session-summary.md`를 참고한다.
+
+raw-transcript가 없어도 summary만으로 다음 사람이 맥락을 이해할 수 있는 상태가 MVP의 minimum bar다.
+
+## resume-first 원칙
+
+다음 CLI agent가 작업을 이어받을 때, **가장 먼저 열어야 하는 파일은 `resume.md`다.**
+
+- `resume.md`는 "지금 무엇을 해야 하는가"에 대한 single source of truth이다.
+- summary가 과거 시제(끝난 것)라면, resume은 현재/미래 시제(이어서 할 것)이다.
+- resume template은 `templates/session-resume.md`를 참고한다.
+
+resume.md가 없으면 다음 agent는 summary.md, decisions.md, raw-transcript.md를 순서대로 보면서 직접 brief를 재구성해야 한다. 가능하면 resume.md를 남기는 것이 비용을 가장 낮춘다.
+
+## raw-transcript.md optional 원칙
+
+`raw-transcript.md`는 **선택**이다.
+
+- summary와 resume이 충실하다면 raw-transcript는 없어도 된다.
+- raw-transcript가 있는 경우에도 summary와 resume의 권위를 침범하지 않는다. 두 파일이 우선이다.
+- raw-transcript는 사후 forensic 또는 재현 용도로만 활용한다.
+- raw-transcript의 자동 capture는 본 contract의 책임이 아니다.
+
+## session phase 와 carryover
+
+긴 session을 phase 단위로 쪼갤 필요가 있을 때만 다음 convention을 쓴다.
+
+- `phases/` 하위 디렉터리에 phase 단위 sub-summary를 둔다 (예: `phases/01-design.md`, `phases/02-impl.md`).
+- 끝나지 않은 작업을 다음 session으로 carry-over할 때는 `summary.md`의 carry-over 섹션과 `resume.md`의 next single action에 명시한다.
+- phase 분할이 필요 없는 session은 phase 디렉터리를 만들지 않는다.
+
+phase / carryover 개념은 모두 optional이다. MVP의 minimum bar는 `summary.md` + `resume.md` 둘이다.
+
+## handoff.md 와의 구분
+
+`handoff.md`는 **repo source artifact가 아니다.**
+
+- handoff.md는 ChatGPT Web 또는 외부 review 채널로 한 묶음의 진행 상태를 인계하기 위한 외부 artifact다.
+- 사용자는 handoff 문서를 Web 대화 세션 단위의 별도 폴더에서 관리한다.
+- 본 repo는 handoff folder, handoff template, handoff schema를 두지 않는다.
+- chatlog의 `summary.md` / `resume.md`가 handoff.md의 작성 재료로 쓰일 수는 있지만, chatlog가 handoff를 강제하지 않는다.
+
+따라서 본 contract는 handoff의 위치, 형식, 전송 방식을 규정하지 않는다.
+
+## MVP 규칙 요약
+
+- 모든 파일을 필수로 강제하지 않는다.
+- `summary.md`와 `resume.md`는 recommended로 둔다.
+- `decisions.md`, `phases/`, `raw-transcript.md`는 필요할 때만 둔다.
+- chatlog는 review subsystem의 품질 게이트가 아니다.
+- chatlog는 evidence subsystem의 품질 게이트가 아니다.
+- source snapshot에는 `log/`를 포함하지 않는다.
+- `log/chatlog/`는 gitignored runtime artifact로 유지한다 (`.gitignore`의 `log/` 규칙).
+- hook, parser, browser automation, DB, retention automation은 도입하지 않는다.
+
+## source vs runtime 경계
+
+- `templates/`, `scripts/`, `config/`, `snippets/`, `docs/` 등 source 트리에는 chatlog 파일을 두지 않는다.
+- chatlog를 source repo에 commit하지 않는다.
+- chatlog가 참조하는 fixture, snapshot은 `log/chatlog/<session-id>/` 또는 `log/evidence/<scope>/<case>/` 안에서만 생성한다.
+
+## non-goals
+
+이 contract가 다루지 않는 것:
+
+- AI CLI raw transcript 자동 capture wrapper
+- chatlog 자동 retention 정책
+- chatlog schema validator
+- review subsystem freshness 검증 (별도 책임)
+- evidence subsystem 보장 (별도 책임)
+- CI integration
+- 다른 toolset과의 chatlog format 상호운용
+
+## Future candidate
+
+아래 항목은 버리지 않는다. 다만 이번 MVP scope에서는 구현하지 않는다.
+
+```
+Future candidate:
+- optional context-pressure guard
+- optional pre-compact resume packet generation
+- optional orchestrator-specific hook integration
+- project-local and opt-in only
+- no global ~/.claude/settings.json mutation by default
+```
+
+추가 메모:
+
+- 80% context trigger는 향후 optional guard로 검토할 수 있다. 본 MVP에서는 사람이 판단한다.
+- pre-compact 시점에 resume packet을 자동 생성하는 hook은 향후 candidate이며, 도입 시에도 project-local opt-in으로 한정한다.
+- orchestrator-specific hook integration은 도입 시에도 global 설정을 변경하지 않는다.
+
+## 향후 확장 시 고려 사항
+
+이후 자동화 도구가 추가될 때에도 본 contract의 path와 file 이름은 default로 유지되어야 한다. 즉,
+
+- 새 wrapper는 `log/chatlog/current/resume.md`, `summary.md` 등을 만들거나 읽는 형태로 동작한다.
+- 새 schema가 도입되어도 이 manual convention과 모순되지 않도록 한다.
+- 새 retention 정책은 `<session-id>` 단위 prune이 자연스럽게 가능하도록 설계한다.
