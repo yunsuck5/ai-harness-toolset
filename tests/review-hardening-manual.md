@@ -11,7 +11,13 @@ All scratch artifacts are written under:
 log/evidence/review-hardening/<case>/
 ```
 
-That path is gitignored via the existing `log/` rule.
+That path is gitignored via the existing `log/` rule. The path follows the
+`<ProjectRoot>/log/evidence/<scope>/<case>/` convention defined in
+`docs/EVIDENCE_CONTRACT.md`, where `review-hardening` is the `<scope>` and each
+`AC*` directory is the `<case>` workspace. This procedure uses each case
+directory primarily as a fixture workspace; the contract's recommended
+`command.txt` / `exit-code.txt` files are not required by this manual run, but
+may be added per case if a runner wants to record execution facts.
 
 ## Conventions
 

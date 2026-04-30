@@ -14,3 +14,5 @@
 - no Claude Code project init
 - no Codex project init
 - v2 bootstrap packet remains archival/reference
+- new human-facing docs are Korean by default (technical identifiers stay English)
+- evidence capture is a manual convention first (`docs/EVIDENCE_CONTRACT.md`) — no script, wrapper, or schema enforcement in MVP

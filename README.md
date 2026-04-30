@@ -27,7 +27,7 @@ Project-local deterministic toolset for Claude / Codex workflows.
 Generated at runtime under `<project-root>/log/`:
 
 - `log/chatlog/` — session chat logs
-- `log/evidence/` — evidence captures
+- `log/evidence/` — evidence captures (see `docs/EVIDENCE_CONTRACT.md`)
 - `log/review/<run-id>/` — review packets
 
 ## Documentation
