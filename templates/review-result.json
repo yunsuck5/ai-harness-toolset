@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "runId": "",
+  "createdAtUtc": "",
+  "reviewer": "",
+  "verdict": "yes | no | yes with risk",
+  "targetPath": "",
+  "targetSha256": "",
+  "sourceHead": null,
+  "stage": "",
+  "purpose": "",
+  "inputSha256": "",
+  "resultMarkdownSha256": "",
+  "notes": []
+}

@@ -28,7 +28,7 @@ Generated at runtime under `<project-root>/log/`:
 
 - `log/chatlog/` — session chat logs (see `docs/CHATLOG_CONTRACT.md`)
 - `log/evidence/` — evidence captures (see `docs/EVIDENCE_CONTRACT.md`)
-- `log/review/<run-id>/` — review packets
+- `log/review/<run-id>/` — review packets and review records (see `docs/REVIEW_RESULT_CONTRACT.md`)
 
 ## Documentation
 

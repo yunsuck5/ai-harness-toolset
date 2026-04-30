@@ -20,3 +20,5 @@
 - raw transcript retention is optional
 - handoff.md is an external Web/session handoff artifact, not a repo source artifact
 - context-pressure trigger / pre-compact capture is a future optional candidate, not MVP implementation
+- review result artifacts are manual convention first (`docs/REVIEW_RESULT_CONTRACT.md`)
+- completed review records use `result.md` plus `result.json`; missing result artifacts are not a default `review-verify` failure in MVP
