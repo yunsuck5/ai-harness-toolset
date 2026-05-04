@@ -409,9 +409,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.p
 # log/review/<id>/, copying the verdict / Target / Input binding sections from
 # templates/review-result.md and templates/review-result.json. Populate:
 #   - meta.runId          -> result.runId
+#   - meta.targetPath     -> result.targetPath
 #   - meta.targetSha256   -> result.targetSha256
 #   - SHA256(input.md)    -> result.inputSha256
 #   - SHA256(result.md)   -> result.resultMarkdownSha256  (compute AFTER result.md is final)
+#   - createdAtUtc        -> result.createdAtUtc as yyyy-MM-ddTHH:mm:ss.fffffffZ
 #   - verdict             -> 'yes' | 'no' | 'yes with risk' (exact value, no normalization)
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 `
   -RunId <id> -RequireResult

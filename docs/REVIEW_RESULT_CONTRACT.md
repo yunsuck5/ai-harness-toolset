@@ -120,20 +120,22 @@ reviewer가 AI인 경우, AI 출력 본문을 정리해 result.md에 붙인다. 
 ```json
 {
   "schemaVersion": 1,
-  "runId": "",
-  "createdAtUtc": "",
-  "reviewer": "",
+  "runId": "<run-id>",
+  "createdAtUtc": "yyyy-MM-ddTHH:mm:ss.fffffffZ",
+  "reviewer": "<reviewer>",
   "verdict": "yes | no | yes with risk",
-  "targetPath": "",
-  "targetSha256": "",
+  "targetPath": "<absolute-target-path>",
+  "targetSha256": "<target-sha256>",
   "sourceHead": null,
-  "stage": "",
-  "purpose": "",
-  "inputSha256": "",
-  "resultMarkdownSha256": "",
+  "stage": "design | implementation | test | review | release",
+  "purpose": "<purpose>",
+  "inputSha256": "<input-md-sha256>",
+  "resultMarkdownSha256": "<result-md-sha256>",
   "notes": []
 }
 ```
+
+`templates/review-result.json`의 angle-bracket 값과 format string은 guide placeholder이며, completed `result.json` 작성 시 실제 값으로 교체해야 한다.
 
 값 채우기 규칙:
 
