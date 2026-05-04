@@ -328,22 +328,22 @@ Describe 'review-verify -RequireResult mode' {
         $result.Output | Should -Match 'review-verify: PASS'
     }
 
-    It 'AC22: fails when result.json createdAtUtc is not parseable' {
+    It 'AC22: fails when result.json createdAtUtc has exact shape but calendar-invalid value' {
         $packet = script:Initialize-FreshPacket -CaseName 'ac22-unparseable'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride 'not-a-real-date'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-02-30T07:12:34.1234567Z'
 
         $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
         $result.ExitCode | Should -Not -Be 0
         $result.Output | Should -Match 'FAIL result\.json createdAtUtc not parseable'
     }
 
-    It 'AC22b: fails when result.json createdAtUtc has a non-UTC offset' {
+    It 'AC22b: fails when createdAtUtc uses a non-Z offset shape' {
         $packet = script:Initialize-FreshPacket -CaseName 'ac22-nonutc'
         script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T12:00:00+09:00'
 
         $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
         $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not UTC offset'
+        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
     }
 
     It 'AC22c: fails when result.json createdAtUtc is empty' {
@@ -353,6 +353,51 @@ Describe 'review-verify -RequireResult mode' {
         $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
         $result.ExitCode | Should -Not -Be 0
         $result.Output | Should -Match 'FAIL result\.json createdAtUtc missing or empty'
+    }
+
+    It 'AC25: passes when createdAtUtc uses exact yyyy-MM-ddTHH:mm:ss.fffffffZ shape' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac25'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T07:12:34.1234567Z'
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -Match 'review-verify: PASS'
+    }
+
+    It 'AC26: fails when createdAtUtc has no fractional seconds' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac26'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T07:12:34Z'
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
+    }
+
+    It 'AC27: fails when createdAtUtc uses +00:00 instead of Z' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac27'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T07:12:34.1234567+00:00'
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
+    }
+
+    It 'AC28: fails when createdAtUtc is a parseable UTC string in non-contract shape' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac28'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride 'Thu, 30 Apr 2026 07:12:34 GMT'
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
+    }
+
+    It 'AC29: fails when createdAtUtc uses lowercase z' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac29'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T07:12:34.1234567z'
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
     }
 
     It 'AC23: fails when both meta.sourceHead and result.sourceHead are non-empty and mismatch' {

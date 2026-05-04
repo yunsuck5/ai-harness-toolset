@@ -196,7 +196,7 @@ prepared packet의 freshness를 검증한다.
 - `result.json.resultMarkdownSha256`과 실제 `result.md` SHA-256 일치 검증
 - `result.json.verdict`이 정확히 `yes` / `no` / `yes with risk` 중 하나인지 검증
 - `result.json.targetPath` 존재 / 비어있지 않음 검증, 그리고 `meta.json.targetPath`와 normalized full-path 비교 (`[System.IO.Path]::GetFullPath` 후 OrdinalIgnoreCase). source repo / target payload 모드 모두 절대경로 기준이며, 이번 batch에서는 repo-relative 표기는 지원하지 않는다.
-- `result.json.createdAtUtc` 존재 / 비어있지 않음 검증, `DateTimeOffset` parse 가능 여부 검증, 그리고 parsed offset이 `TimeSpan.Zero` (UTC) 인지 검증. 현재 wall clock과의 비교나 `meta.json.createdAtUtc`와의 시간 순서 검증은 하지 않는다.
+- `result.json.createdAtUtc` 존재 / 비어있지 않음 검증, 그리고 정확한 string shape `yyyy-MM-ddTHH:mm:ss.fffffffZ` (예: `2026-04-30T07:12:34.1234567Z`) 인지 검증. 이어서 동일 값이 `DateTimeOffset` parse 가능 여부와 parsed offset이 `TimeSpan.Zero` (UTC) 인지 추가 검증. `+00:00` 표기, 분수 초가 없는 `Z` 표기, RFC 1123 (`Thu, 30 Apr 2026 07:12:34 GMT`) 등 parseable한 UTC 표현이라도 정확한 contract shape이 아니면 거부한다. 현재 wall clock과의 비교나 `meta.json.createdAtUtc`와의 시간 순서 검증은 하지 않는다.
 - `meta.json.sourceHead`와 `result.json.sourceHead`가 **둘 다 non-empty** 인 경우에만 정확히 일치하는지 검증. meta 쪽이 null/empty이면 result 쪽 sourceHead는 null/empty / absent 모두 허용한다. short-hash prefix matching은 하지 않는다.
 
 `-RequireResult` mode가 여전히 검증하지 **않는** 것:
@@ -251,7 +251,7 @@ prepared packet의 freshness를 검증한다.
 이번 v1 metadata hardening으로 future candidate에서 빠진 항목:
 
 - `result.json.targetPath` 존재 + `meta.json.targetPath`와 normalized full-path match.
-- `result.json.createdAtUtc` 존재 + parseable + UTC offset.
+- `result.json.createdAtUtc` 존재 + 정확한 string shape `yyyy-MM-ddTHH:mm:ss.fffffffZ` + parseable + UTC offset.
 - `result.json.sourceHead` conditional exact match (meta / result 양쪽 모두 non-empty인 경우에 한해).
 
 ## 향후 확장 시 고려 사항

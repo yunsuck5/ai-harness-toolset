@@ -221,6 +221,11 @@ if ($RequireResult) {
         Write-Host 'review-verify: FAIL result.json createdAtUtc missing or empty'
         exit 1
     }
+    $strictUtcShape = '^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{7}Z$'
+    if ($resultCreatedAt -cnotmatch $strictUtcShape) {
+        Write-Host ('review-verify: FAIL result.json createdAtUtc not exact UTC shape: {0}' -f $resultCreatedAt)
+        exit 1
+    }
     $parsedCreatedAt = [System.DateTimeOffset]::MinValue
     $invariantCulture = [System.Globalization.CultureInfo]::InvariantCulture
     $createdAtStyles = [System.Globalization.DateTimeStyles]::None
