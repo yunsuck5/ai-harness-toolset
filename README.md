@@ -157,12 +157,36 @@ Two files are the minimum bar:
 
 ## Snippets for CLAUDE.md / AGENTS.md
 
-The toolset does not modify any `CLAUDE.md` or `AGENTS.md`, global or project-local. It only ships text snippets the user may choose to paste manually:
+ai-harness-toolset does not overwrite global or project-local `CLAUDE.md` / `AGENTS.md`. It only ships AI-facing English payloads the user may choose to adopt manually:
 
-- `snippets/CLAUDE_SNIPPET.md`
-- `snippets/AGENTS_SNIPPET.md`
+- `snippets/CLAUDE_SNIPPET.md` — payload for Claude Code root `CLAUDE.md`.
+- `snippets/AGENTS_SNIPPET.md` — payload for Codex / generic agent root `AGENTS.md`.
 
-Pasting is a deliberate user action. Nothing in this toolset auto-updates either file, and the snippets explicitly forbid auto-mutation when copied.
+Adoption is a deliberate user action: append the matching snippet into the root instruction file inside a managed block delimited by these markers.
+
+For `CLAUDE.md`:
+
+````markdown
+<!-- BEGIN ai-harness-toolset:CLAUDE_SNIPPET.md -->
+<contents of snippets/CLAUDE_SNIPPET.md>
+<!-- END ai-harness-toolset:CLAUDE_SNIPPET.md -->
+````
+
+For `AGENTS.md`:
+
+````markdown
+<!-- BEGIN ai-harness-toolset:AGENTS_SNIPPET.md -->
+<contents of snippets/AGENTS_SNIPPET.md>
+<!-- END ai-harness-toolset:AGENTS_SNIPPET.md -->
+````
+
+Adoption rules:
+
+- The managed block body is copied from the source snippet as-is. No ad-hoc summary, translation, or rewrite during adoption.
+- Updating means replacing only the matching managed block.
+- Removing means deleting only the matching managed block.
+- Content outside the managed block must not be changed.
+- Whole-file overwrite of root `CLAUDE.md` / `AGENTS.md` is forbidden.
 
 ## review / evidence / chatlog boundary
 

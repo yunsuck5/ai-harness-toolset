@@ -1,34 +1,55 @@
-# AGENTS.md snippet (manual copy)
+# ai-harness-toolset instructions for Codex / generic agents
 
-This snippet may be manually copied into a project's AGENTS.md by the user.
+This is a manually adopted AI instruction payload for Codex CLI and other agent-style assistants. The user has copied it into the project root `AGENTS.md` inside a managed block delimited by `<!-- BEGIN ai-harness-toolset:AGENTS_SNIPPET.md -->` and `<!-- END ai-harness-toolset:AGENTS_SNIPPET.md -->`. Treat its content as authoritative for ai-harness workflows in this project.
 
-- Do not auto-mutate the root AGENTS.md.
-- Review packets must live under `<project-root>/log/review/<run-id>/`.
-- A stale review must fail.
-- Do not use a root `codex-review-input.md`.
-- A reviewer verdict does not approve commit, push, or publish.
-- Reviewer config comes from `<project-root>/.ai-harness/config/reviewer.json` when deployed.
+## Adoption rules
 
-## Manual reviewer invocation
+- This payload is inserted only inside the managed block in root `AGENTS.md`.
+- Whole-file overwrite of root `AGENTS.md` is forbidden.
+- Project-specific instructions outside the managed block must be preserved verbatim.
+- Updating means replacing only the managed block content; removing means deleting only the managed block.
 
-This is a manual recipe, not a project-local adapter. Treat it as the recommended example only after confirming local `codex exec --help` once.
+## Project layout
 
-- The current MVP has no `run-codex-review.ps1` adapter and no `review-run` wrapper. Reviewer execution occurs outside the toolset after `review-prepare`.
-- `codex exec` is the non-interactive Codex subcommand. Interactive `codex` requires a TTY and is not appropriate for non-interactive Claude Code shells.
-- PowerShell / Claude Code shell example to produce `log/review/<run-id>/result.md`:
+- `.ai-harness/` is the project-local, copy-only payload. No global files are modified.
+- Runtime output root is `<project-root>/log/`.
+- Keep `log/review/`, `log/evidence/`, and `log/chatlog/` separate.
+- Review packets live under `log/review/<run-id>/`.
+- Reviewer config comes from `.ai-harness/config/reviewer.json`.
 
-  ```
-  $runId = "<run-id>"
-  $model = "<model-from-config>"
-  Get-Content -Raw -LiteralPath "log/review/$runId/input.md" |
-    codex --ask-for-approval never exec --sandbox read-only --model $model -c web_search=disabled --output-last-message "log/review/$runId/result.md" -
-  ```
+## Review flow
 
-- `--output-last-message` writes the reviewer's final message to `result.md`; avoid stdout redirection as the default. If only `-o` is supported on the installed CLI, substitute `-o "log/review/$runId/result.md"` based on local `codex exec --help`.
-- `--ask-for-approval never` is a top-level Codex flag and must appear **before** the `exec` subcommand. Codex CLI 0.125.0's `exec` parser rejects `codex exec --ask-for-approval ...` as an unexpected argument. If the installed Codex CLI accepts the flag in no position, stop and use a real terminal or an approved fallback.
-- `<model-from-config>` is taken from `<project-root>/.ai-harness/config/reviewer.json` when deployed. In the source `ai-harness-toolset` repo, the equivalent source config is `config/reviewer.json`. Use another model only when the user explicitly overrides it.
-- Do not introduce root `codex-review-input.md` or root `codex-review-result*.json` files.
-- The canonical machine-readable result is `log/review/<run-id>/result.json`, hand-authored per `docs/REVIEW_RESULT_CONTRACT.md` after `result.md` exists.
-- `scripts/review-verify.ps1 -RequireResult` is the binding check, and is run only after both `result.md` and `result.json` are present.
-- A reviewer verdict does not approve commit, push, publish, merge, or release.
-- For robust Windows/PowerShell automation, a future post-MVP adapter should follow the legacy `-File` wrapper pattern. Do not use `-Command` for such a wrapper. A project-local Codex adapter is a post-MVP candidate, not part of the current MVP.
+- Prepare a packet with `.ai-harness/scripts/review-prepare.ps1`.
+- Verify with `.ai-harness/scripts/review-verify.ps1`. Stale review packets (target SHA-256 changed since prepare) must fail.
+- Do not create a root `codex-review-input.md` or root `codex-review-result*.json`. Reviewer artifacts live only under `log/review/<run-id>/`.
+- `run-codex-review.ps1` and `review-run` are post-MVP and must not be invented in the target project.
+
+## Manual Codex reviewer recipe
+
+Reviewer execution happens outside the toolset after `review-prepare`:
+
+```
+$runId = "<run-id>"
+$model = "<model-from-reviewer.json>"
+Get-Content -Raw -LiteralPath "log/review/$runId/input.md" |
+  codex --ask-for-approval never exec --sandbox read-only --model $model -c web_search=disabled --output-last-message "log/review/$runId/result.md" -
+```
+
+- `--ask-for-approval never` is a top-level Codex flag and must appear **before** the `exec` subcommand.
+- `--output-last-message` writes the final reviewer message to `log/review/<run-id>/result.md`.
+- After `result.md`, create `log/review/<run-id>/result.json` using `.ai-harness/templates/review-result.json` as the shape, then run `.ai-harness/scripts/review-verify.ps1 -RunId <run-id> -RequireResult`.
+
+## Result verdict vocabulary
+
+The only valid final verdict values for this toolset are exactly:
+
+- `yes`
+- `no`
+- `yes with risk`
+
+A reviewer verdict does not approve commit, push, publish, merge, or release.
+
+## Other rules
+
+- Commit and push require explicit user approval.
+- `.ps1` files must be UTF-8 with BOM + CRLF.
