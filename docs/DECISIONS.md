@@ -23,5 +23,6 @@
 - review result artifacts are manual convention first (`docs/REVIEW_RESULT_CONTRACT.md`)
 - completed review records use `result.md` plus `result.json`; missing result artifacts are not a default `review-verify` failure in MVP
 - review-verify gains an optional `-RequireResult` mode for completed review records; default mode behavior, messages, and exit codes remain unchanged
-- result.json `targetPath` / `sourceHead` / `createdAtUtc` strict validation remains a future candidate; SHA-256 binding is the MVP authority for completed-record binding
-- Pester remains a future regression milestone after `-RequireResult` policy and implementation are stable
+- `review-verify -RequireResult` now performs completed-record binding beyond SHA-256: normalized `targetPath` match, `createdAtUtc` exact `yyyy-MM-ddTHH:mm:ss.fffffffZ` shape with ASCII-digit-only policy and parseable UTC offset, and conditional `sourceHead` exact match when both meta and result `sourceHead` are non-empty
+- broader review result policies remain future candidates: full JSON schema validation, `createdAtUtc` wall-clock / ordering checks, unconditional `sourceHead` requirement, `review-run` wrapper, and CI integration
+- minimal Pester regression tests now cover `review-verify` default and `-RequireResult` paths; broader CI integration and wrapper-driven gates remain future candidates
