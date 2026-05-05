@@ -67,6 +67,62 @@
 - source snapshot에는 `log/`를 포함하지 않는다.
 - `log/evidence/`는 gitignored runtime artifact로 유지한다 (`.gitignore`의 `log/` 규칙).
 
+## Manual capture recipe
+
+이 recipe는 evidence를 실제로 어떻게 남기는지에 대한 **사람이 손으로 따라가는 절차**다. wrapper, runner, schema validator를 추가하지 않는다. evidence runner를 도입하기 전 단계에서, 같은 입력에 대해 같은 흔적이 남도록 절차를 통일하는 데 목적이 있다.
+
+### 사전 결정
+
+1. `<scope>`를 정한다. 한 묶음의 evidence가 모이는 단위 (예: `review-verify`, `path-resolution`).
+2. `<case>`를 정한다. 그 scope 안의 한 실행 단위 (예: `ac30-non-ascii-createdAtUtc`, `repro-001`).
+3. case workspace 경로:
+
+   ```
+   <ProjectRoot>/log/evidence/<scope>/<case>/
+   ```
+
+`<scope>` / `<case>` 이름은 manual convention이다. schema 강제나 자동 검증은 없다.
+
+### 절차
+
+1. case directory를 만든다.
+2. 실행할 command를 `command.txt`에 그대로 적는다 (multi-line 가능). 가능하면 **실행 전**에 적어둔다.
+3. command를 실행하면서 stdout / stderr를 분리해 캡처한다. 분리가 필요 없으면 `stdout.txt` 한 곳에만 둬도 된다.
+4. process exit code를 `exit-code.txt`에 한 줄로 적는다 (예: `0`).
+5. 사람이 해석한 요약, 관찰, 한계, 재현 조건을 `notes.md`에 적는다.
+6. 입력 / 출력 file snapshot이 필요하면 `files/` 하위에 둔다 (선택).
+
+### PowerShell reference snippet
+
+아래 snippet은 사람이 손으로 따라 가도 되는 reference이다. evidence runner / wrapper / schema validator로 발전시키지 않는다. file IO는 `scripts/lib/encoding.ps1`의 helper만 사용하며, `Set-Content -Encoding UTF8`, `Out-File` 등은 `docs/POWERSHELL_POLICY.md`에 따라 사용하지 않는다.
+
+```powershell
+. ./scripts/lib/encoding.ps1
+
+$scope = 'review-verify'
+$case  = 'ac30-non-ascii-createdAtUtc'
+$caseDir = Join-Path 'log/evidence' "$scope/$case"
+$null = New-Item -ItemType Directory -Force -Path $caseDir
+
+$command = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Invoke-Pester -Path tests/review-verify.Tests.ps1"'
+Write-Utf8NoBom -Path (Join-Path $caseDir 'command.txt') -Content ($command + "`n")
+
+# 실행은 직접 하고, stdout / stderr는 caseDir 안 파일로 캡처해 둔다.
+# 실행 결과를 본 뒤 exit code를 한 줄로 기록한다:
+Write-Utf8NoBom -Path (Join-Path $caseDir 'exit-code.txt') -Content "0`n"
+
+Write-Utf8NoBom -Path (Join-Path $caseDir 'notes.md') -Content "# Notes`n- Expected: 24 / 24 PASS.`n- Observed: ...`n- Limits: ...`n- Repro: ...`n"
+```
+
+이 snippet은 PowerShell이 강제는 아니다. bash, cmd, 또는 사람이 직접 손으로 파일을 만들어도 된다. 같은 file 이름과 같은 case directory 위치만 지키면 된다.
+
+### 이 recipe가 명시적으로 하지 않는 것
+
+- script / wrapper / runner를 추가하지 않는다.
+- schema validator를 추가하지 않는다.
+- review subsystem freshness 판단(`scripts/review-verify.ps1`)과 evidence capture를 자동으로 연결하지 않는다. evidence는 review packet을 freshness-pass / fail로 판정하지 않으며, review-verify는 이 recipe를 호출하지 않는다.
+- `log/evidence/<scope>/<case>/`는 `log/`의 일부로 gitignored runtime artifact이며 source snapshot / commit / handoff packet에 포함하지 않는다.
+
 ## review subsystem과의 경계
 
 review subsystem은 별도 경로를 사용한다:
