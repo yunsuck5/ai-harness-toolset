@@ -400,6 +400,27 @@ Describe 'review-verify -RequireResult mode' {
         $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
     }
 
+    It 'AC30: fails when createdAtUtc uses non-ASCII decimal digits' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac30'
+        $arabicIndicBase = 0x0660
+        $sb = New-Object System.Text.StringBuilder
+        foreach ($ch in '2026-04-30T07:12:34.1234567Z'.ToCharArray()) {
+            if ($ch -ge '0' -and $ch -le '9') {
+                $offset = [int][char]$ch - [int][char]'0'
+                [void]$sb.Append([char]($arabicIndicBase + $offset))
+            }
+            else {
+                [void]$sb.Append($ch)
+            }
+        }
+        $arabicIndicTimestamp = $sb.ToString()
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride $arabicIndicTimestamp
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
+    }
+
     It 'AC23: fails when both meta.sourceHead and result.sourceHead are non-empty and mismatch' {
         $packet = script:Initialize-FreshPacket -CaseName 'ac23' -MetaSourceHead 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
         script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -SourceHead 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'

@@ -137,6 +137,8 @@ reviewer가 AI인 경우, AI 출력 본문을 정리해 result.md에 붙인다. 
 
 `templates/review-result.json`의 angle-bracket 값과 format string은 guide placeholder이며, completed `result.json` 작성 시 실제 값으로 교체해야 한다.
 
+`createdAtUtc`는 ASCII digit `0-9`만 사용한다. Arabic-Indic digit (예: `٠`–`٩`) 등 다른 Unicode decimal digit은 거부된다. 7자리 fractional second는 canonical machine-readable contract의 일부이며, 시스템 시계가 100ns 단위 의미 있는 정밀도를 제공한다는 주장은 아니다.
+
 값 채우기 규칙:
 
 - `schemaVersion`은 정수 `1`로 시작한다.
