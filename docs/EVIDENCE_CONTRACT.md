@@ -87,16 +87,19 @@
 
 1. case directory를 만든다.
 2. 실행할 command를 `command.txt`에 그대로 적는다 (multi-line 가능). 가능하면 **실행 전**에 적어둔다.
-3. command를 실행하면서 stdout / stderr를 분리해 캡처한다. 분리가 필요 없으면 `stdout.txt` 한 곳에만 둬도 된다.
-4. process exit code를 `exit-code.txt`에 한 줄로 적는다 (예: `0`).
-5. 사람이 해석한 요약, 관찰, 한계, 재현 조건을 `notes.md`에 적는다.
+3. command를 실행하면서 stdout / stderr를 분리해 캡처한다. PowerShell `1>` / `2>` redirect를 쓰는 경우 `stderr.txt`가 비어 있어도 **0-byte file로 그대로 남기는 것을 권장**한다. "stderr가 비었다"는 사실 자체가 evidence이며, file 부재와 구분되어야 한다. 분리가 필요 없으면 `stdout.txt` 한 곳에만 둬도 된다.
+4. process exit code를 `exit-code.txt`에 기록한다. PowerShell에서는 command 실행 **직후 즉시** `$LASTEXITCODE`를 변수(예: `$exitCode`)에 보존한 뒤 file에 쓴다. 그 사이에 다른 명령이 끼면 `$LASTEXITCODE`가 덮인다. file 내용은 exit code 한 줄과 trailing newline (예: `0\n`)으로 한다.
+5. 사람이 해석한 요약, 관찰, 한계, 재현 조건을 `notes.md`에 적는다. environment fingerprint (PowerShell edition, OS build, repo HEAD commit 등)은 필요하면 `notes.md`에 자유서술로 함께 적는다. 이번 MVP에서는 environment fingerprint를 위한 별도 표준 file (`env.txt`, `manifest.json` 등)을 추가하지 않는다.
 6. 입력 / 출력 file snapshot이 필요하면 `files/` 하위에 둔다 (선택).
 
 ### PowerShell reference snippet
 
-아래 snippet은 사람이 손으로 따라 가도 되는 reference이다. evidence runner / wrapper / schema validator로 발전시키지 않는다. file IO는 `scripts/lib/encoding.ps1`의 helper만 사용하며, `Set-Content -Encoding UTF8`, `Out-File` 등은 `docs/POWERSHELL_POLICY.md`에 따라 사용하지 않는다.
+아래 snippet은 사람이 손으로 따라 가도 되는 reference이다. evidence runner / wrapper / schema validator로 발전시키지 않는다. file IO는 `scripts/lib/encoding.ps1`의 helper(`Write-Utf8NoBom`, `Read-Utf8` 등)만 사용하며, `Set-Content -Encoding UTF8`, `Out-File` 등은 `docs/POWERSHELL_POLICY.md`에 따라 사용하지 않는다.
+
+따라서 snippet의 첫 줄 `. ./scripts/lib/encoding.ps1`은 **선행 조건**이다. 이 dot-source를 빠뜨리면 `Write-Utf8NoBom`이 정의되지 않아 file IO가 실패한다.
 
 ```powershell
+# Precondition: dot-source the encoding helper before any Write-Utf8NoBom call.
 . ./scripts/lib/encoding.ps1
 
 $scope = 'review-verify'
@@ -107,9 +110,15 @@ $null = New-Item -ItemType Directory -Force -Path $caseDir
 $command = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Invoke-Pester -Path tests/review-verify.Tests.ps1"'
 Write-Utf8NoBom -Path (Join-Path $caseDir 'command.txt') -Content ($command + "`n")
 
-# 실행은 직접 하고, stdout / stderr는 caseDir 안 파일로 캡처해 둔다.
-# 실행 결과를 본 뒤 exit code를 한 줄로 기록한다:
-Write-Utf8NoBom -Path (Join-Path $caseDir 'exit-code.txt') -Content "0`n"
+$stdoutPath = Join-Path $caseDir 'stdout.txt'
+$stderrPath = Join-Path $caseDir 'stderr.txt'
+
+# 1> / 2> redirect는 stderr가 비어도 stderr.txt를 0-byte file로 남긴다 (권장).
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -Command 'Invoke-Pester -Path tests/review-verify.Tests.ps1' 1> $stdoutPath 2> $stderrPath
+
+# Capture $LASTEXITCODE immediately. Any intervening command overwrites it.
+$exitCode = $LASTEXITCODE
+Write-Utf8NoBom -Path (Join-Path $caseDir 'exit-code.txt') -Content ([string]$exitCode + "`n")
 
 Write-Utf8NoBom -Path (Join-Path $caseDir 'notes.md') -Content "# Notes`n- Expected: 24 / 24 PASS.`n- Observed: ...`n- Limits: ...`n- Repro: ...`n"
 ```
