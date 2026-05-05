@@ -186,6 +186,8 @@ prepared packet의 freshness를 검증한다.
 
 기본 mode에서는 missing `result.md` / missing `result.json`을 실패 조건으로 만들지 않는다.
 
+기본 mode `review-verify`의 PASS는 reviewer 승인 완료를 의미하지 않는다. target artifact freshness / hash 검증 통과만을 의미한다. `result.md` / `result.json`이 없는 채로 PASS가 보고되더라도 reviewer 판단이 이루어졌다는 뜻은 아니다.
+
 ### `-RequireResult` mode (completed review record 검증)
 
 기본 mode 검증을 모두 통과한 뒤, completed review record의 binding을 추가 검증한다.

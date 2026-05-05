@@ -26,3 +26,7 @@
 - `review-verify -RequireResult` now performs completed-record binding beyond SHA-256: normalized `targetPath` match, `createdAtUtc` exact `yyyy-MM-ddTHH:mm:ss.fffffffZ` shape with ASCII-digit-only policy and parseable UTC offset, and conditional `sourceHead` exact match when both meta and result `sourceHead` are non-empty
 - broader review result policies remain future candidates: full JSON schema validation, `createdAtUtc` wall-clock / ordering checks, unconditional `sourceHead` requirement, `review-run` wrapper, and CI integration
 - minimal Pester regression tests now cover `review-verify` default and `-RequireResult` paths; broader CI integration and wrapper-driven gates remain future candidates
+- 첫 real target adoption은 payload 적용, log-init, review-prepare / review-verify default-mode dry run, stale detection, restore PASS, legacy workflow cleanup, source untouched 검증을 통과해도 adoption smoke test로만 분류한다
+- reviewer가 input.md를 읽고 `result.md` / `result.json`을 작성하지 않았다면 actual reviewer workflow test가 아니다
+- 실제 개발 변경 1건을 review / evidence / chatlog 반복 cycle로 처리하지 않았다면 actual development workflow usage test가 아니다
+- actual reviewer workflow test와 actual development workflow usage test는 separate future milestones로 둔다
