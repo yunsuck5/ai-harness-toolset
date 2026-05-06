@@ -1,5 +1,7 @@
 # Legacy Knowledge Transfer
 
+> Historical reference. This records the v0.x → v1 migration boundary and is not the source-of-truth for current tool behavior. For active behavior, use `README.md` and the active operational docs under `docs/`.
+
 | legacy source | migration type | v1 destination | note |
 |---|---|---|---|
 | `.gitattributes` | KEEP with minor extension | `.gitattributes` | line endings |

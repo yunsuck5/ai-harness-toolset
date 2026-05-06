@@ -225,6 +225,25 @@ The first time the toolset is adopted into a real target project, validate it ma
 
 There is no dry-run script, and one is not planned. The dry run is the manual flow itself, executed by the user against a real project.
 
-## Documentation
+## Documentation map
 
-See `docs/` for scope, environment assumptions, tooling position, PowerShell policy, reviewer config policy, evidence contract, chatlog contract, review result contract, legacy knowledge transfer, decisions, and migration inventory summary.
+Each file under `docs/` has a fixed role. Tags:
+
+- `active operational` — current source-of-truth for tool behavior, contracts, or policy.
+- `active reference` — current but advisory or boundary-only; not a binding rule by itself.
+- `mixed decision log` — active and historical decisions are interleaved; read each entry on its own merits.
+- `historical reference` — migration-era record; not a source-of-truth for current behavior.
+
+| File | Role | One-line role |
+|---|---|---|
+| `docs/AI_HARNESS_TOOLSET_SCOPE.md` | active operational | Project nature, in/out of scope, source-vs-target payload mapping. |
+| `docs/CHATLOG_CONTRACT.md` | active operational | Recommended `log/chatlog/` layout and `summary.md` / `resume.md` canonical headings. |
+| `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md` | active reference | External CLI / MCP tooling that may exist but is not depended on. |
+| `docs/DECISIONS.md` | mixed decision log | Bootstrap-era and active policy decisions are interleaved. |
+| `docs/EVIDENCE_CONTRACT.md` | active operational | `log/evidence/<scope>/<case>/` minimal capture contract and manual recipe. |
+| `docs/LEGACY_KNOWLEDGE_TRANSFER.md` | historical reference | Legacy `ai-harness` → v1 migration mapping table. |
+| `docs/MIGRATION_INVENTORY_SUMMARY.md` | historical reference | Frozen migration inventory counts from the legacy `ai-harness.zip` source. |
+| `docs/POWERSHELL_POLICY.md` | active operational | Encoding, line-ending, file IO, and collection return rules. |
+| `docs/REVIEWER_CONFIG_POLICY.md` | active operational | Reviewer config location, precedence, defaults, MVP boundary, and manual Codex recipe. |
+| `docs/REVIEW_RESULT_CONTRACT.md` | active operational | `result.md` / `result.json` minimum fields and `review-verify -RequireResult` binding rules. |
+| `docs/TOOLING_POSITION.md` | active reference | Position statements for adjacent tools (Superpowers, Serena, Sequential Thinking, Codex CLI, ChatGPT Web). |
