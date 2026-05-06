@@ -4,6 +4,10 @@
 
 이 파일은 `summary.md`와 함께 chatlog session 디렉터리(`log/chatlog/current/` 또는 `log/chatlog/<session-id>/`) 아래에 둔다. 자세한 규약은 `docs/CHATLOG_CONTRACT.md`를 참고한다.
 
+`resume.md`는 chatlog의 **첫 진입점**이다. 다음 사람이 가장 먼저 열어 상황을 파악하는 자리이며, AI agent가 새 session을 시작하거나 context를 잃은 뒤 복원할 때에도 이 파일을 첫 번째로 읽는다. read 순서는 `resume.md` → `summary.md` → `decisions.md` → `raw-transcript.md` 순이다.
+
+이 파일은 **AI-authored brief 자리**다. 사용자 원문을 길게 옮기지 않는다. 인용이 꼭 필요하면 짧은 verbatim excerpt와 reference link만 두고, 원문 전문은 `raw-transcript.md` 또는 별도 `User original input` 파일을 가리킨다. 사용자 원문을 resume 안에서 summarize, compress, rephrase, translate, interpret 하지 않는다.
+
 아래 heading은 canonical이다. 임의의 새 top-level heading을 만들지 않는다. ad-hoc 정보는 canonical heading 아래 bullet 또는 subsection으로 흡수한다 (mapping 표는 `docs/CHATLOG_CONTRACT.md`의 `canonical heading 정책과 ad-hoc heading mapping` 절을 참고).
 
 `> optional` 표시가 붙은 section은 필요할 때만 채운다. 표시가 없는 section은 required다. 내용이 없는 required section은 `none`으로 채워 둔다.

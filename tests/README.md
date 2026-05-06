@@ -25,3 +25,9 @@ Local-first test fixtures for ai-harness-toolset.
   ```
 
 - Generated runtime test artifacts live under `log/` and are not source artifacts.
+
+## Manual acceptance criteria
+
+Manual AC documents are read-only checklists; they describe what to verify by hand, not scripts to run.
+
+- `tests/chatlog-contract-manual.md` — chatlog MVP contract invariants (`docs/CHATLOG_CONTRACT.md`, `templates/`, `snippets/` 의 핵심 항목).

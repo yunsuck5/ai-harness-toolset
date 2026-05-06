@@ -2,6 +2,8 @@
 
 session 한 묶음의 결론, 결정, 변경 범위를 사람이 읽는 형태로 남긴다. 자세한 규약은 `docs/CHATLOG_CONTRACT.md`를 참고한다.
 
+이 파일은 **AI-authored summary 자리**다. 사용자 원문(verbatim)을 이 파일에 옮겨 적지 않는다. 사용자 원문이 필요하면 `raw-transcript.md` 또는 별도 `User original input` section / 파일에 둔다. 사용자 원문을 summary 안에서 summarize, compress, rephrase, translate, interpret 하지 않는다 (자세한 규약은 `docs/CHATLOG_CONTRACT.md`의 `사용자 원문과 AI 작성물의 분리` 절 참고).
+
 아래 heading은 canonical이다. 임의의 새 top-level heading을 만들지 않는다. ad-hoc 정보는 canonical heading 아래 bullet 또는 subsection으로 흡수한다 (mapping 표는 `docs/CHATLOG_CONTRACT.md`의 `canonical heading 정책과 ad-hoc heading mapping` 절을 참고).
 
 `> optional` 표시가 붙은 section은 필요할 때만 채운다. 표시가 없는 section은 required다. 내용이 없는 required section은 `none`으로 채워 둔다.

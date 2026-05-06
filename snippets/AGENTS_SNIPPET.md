@@ -49,6 +49,16 @@ The only valid final verdict values for this toolset are exactly:
 
 A reviewer verdict does not approve commit, push, publish, merge, or release.
 
+## Chatlog session protocol
+
+Chatlog is a first-class subsystem of ai-harness-toolset. It is not a reviewer byproduct.
+
+- Before resuming meaningful work, read `log/chatlog/current/resume.md` first. If absent, read `summary.md`, then `decisions.md`, then `raw-transcript.md` only when source wording matters.
+- Treat chatlog as human-first. Write it so a human can resume the project before an AI reconstructs context.
+- Do not mix user-original text with AI-authored summaries, judgments, decisions, or change summaries. Keep them in separate sections or separate files.
+- Do not summarize, compress, rephrase, translate, or interpret user-original text when preserving it as original. Keep verbatim quotes short and place AI judgment on a separate line.
+- After meaningful work changes session state, update `log/chatlog/current/summary.md` and `resume.md` before handoff. Read-only exploration that did not change session state does not require an update.
+
 ## Other rules
 
 - Commit and push require explicit user approval.

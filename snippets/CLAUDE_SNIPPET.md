@@ -49,6 +49,17 @@ The only valid final verdict values for this toolset are exactly:
 
 A reviewer verdict does not approve commit, push, publish, merge, or release.
 
+## Chatlog session protocol
+
+Chatlog is a first-class subsystem of ai-harness-toolset. It is not a reviewer byproduct. Claude Code is the secondary reader; the primary reader is the human who picks up the project next.
+
+- Before resuming meaningful work, read `log/chatlog/current/resume.md` first. If absent, read `summary.md`, then `decisions.md`, then `raw-transcript.md` only when source wording matters.
+- Treat chatlog as human-first. Write it so a human can resume the project before an AI (including Claude Code itself in a future session) reconstructs context.
+- Do not mix user-original text with AI-authored summaries, judgments, decisions, or change summaries. Keep them in separate sections or separate files.
+- Do not summarize, compress, rephrase, translate, or interpret user-original text when preserving it as original. If the user wrote in Korean, keep the Korean verbatim — do not paraphrase into English (or vice versa). Keep verbatim quotes short and place AI judgment on a separate line.
+- After meaningful work changes session state, update `log/chatlog/current/summary.md` and `resume.md` before handoff. Read-only exploration that did not change session state does not require an update.
+- Do not write chatlog content into auto-memory. Memory persists across projects; chatlog is project-local under `log/chatlog/`.
+
 ## Other rules
 
 - Commit and push require explicit user approval.
