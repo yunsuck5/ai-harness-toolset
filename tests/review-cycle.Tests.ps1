@@ -1,0 +1,284 @@
+﻿Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+BeforeAll {
+    $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+    $script:CycleScript = Join-Path $script:RepoRoot 'scripts/review-cycle.ps1'
+    $script:FixtureRoot = Join-Path $script:RepoRoot 'log/review'
+    $script:StubDir = Join-Path $script:FixtureRoot 'pester-review-cycle-stubs'
+
+    function script:Write-Utf8NoBomFile {
+        param([string] $Path, [string] $Content)
+        $parent = Split-Path -LiteralPath $Path
+        if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
+            $null = New-Item -ItemType Directory -Path $parent -Force
+        }
+        $resolved = [System.IO.Path]::GetFullPath($Path)
+        $encoding = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($resolved, $Content, $encoding)
+    }
+
+    function script:Write-Utf8BomCrlfFile {
+        param([string] $Path, [string] $Content)
+        $parent = Split-Path -LiteralPath $Path
+        if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
+            $null = New-Item -ItemType Directory -Path $parent -Force
+        }
+        $resolved = [System.IO.Path]::GetFullPath($Path)
+        $normalized = $Content -replace "`r`n", "`n"
+        $normalized = $normalized -replace "`r", "`n"
+        $normalized = $normalized -replace "`n", "`r`n"
+        $encoding = New-Object System.Text.UTF8Encoding($true)
+        [System.IO.File]::WriteAllText($resolved, $normalized, $encoding)
+    }
+
+    function script:New-CycleCase {
+        param([string] $CaseName)
+        $caseRoot = Join-Path $script:FixtureRoot ('pester-review-cycle-' + $CaseName)
+        if (Test-Path -LiteralPath $caseRoot) {
+            Remove-Item -LiteralPath $caseRoot -Recurse -Force
+        }
+        $null = New-Item -ItemType Directory -Path $caseRoot -Force
+        return ([System.IO.Path]::GetFullPath($caseRoot))
+    }
+
+    function script:Write-CodexStub {
+        param(
+            [string] $StubName,
+            [string] $Mode = 'verdict-yes'
+        )
+        if (-not (Test-Path -LiteralPath $script:StubDir -PathType Container)) {
+            $null = New-Item -ItemType Directory -Path $script:StubDir -Force
+        }
+        $stubPath = Join-Path $script:StubDir ($StubName + '.ps1')
+
+        $body = @()
+        $body += '[CmdletBinding()]'
+        $body += 'param('
+        $body += '    [Parameter(Mandatory = $true)]'
+        $body += '    [string] $CodexArgsFile'
+        $body += ')'
+        $body += 'Set-StrictMode -Version Latest'
+        $body += '$ErrorActionPreference = ''Stop'''
+        $body += 'if (-not (Test-Path -LiteralPath $CodexArgsFile -PathType Leaf)) {'
+        $body += '    Write-Host ''codex-stub: FAIL CodexArgsFile not found''; exit 90'
+        $body += '}'
+        $body += '$enc = New-Object System.Text.UTF8Encoding($false)'
+        $body += '$jsonText = [System.IO.File]::ReadAllText($CodexArgsFile, $enc)'
+        $body += '$argsObj = $jsonText | ConvertFrom-Json'
+        $body += '$argv = @($argsObj.argv)'
+        $body += '$out = '''''
+        $body += '$model = '''''
+        $body += '$hasExec = $false'
+        $body += '$hasStdinMarker = $false'
+        $body += '$hasWebSearchDisabled = $false'
+        $body += '$hasReadOnly = $false'
+        $body += '$hasApprovalNever = $false'
+        $body += 'for ($i = 0; $i -lt $argv.Count; $i++) {'
+        $body += '    $a = [string]$argv[$i]'
+        $body += '    if ($a -ceq ''exec'') { $hasExec = $true }'
+        $body += '    elseif ($a -ceq ''-'') { if ($i -eq $argv.Count - 1) { $hasStdinMarker = $true } }'
+        $body += '    elseif ($a -ceq ''--ask-for-approval'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''never'') { $hasApprovalNever = $true } }'
+        $body += '    elseif ($a -ceq ''--sandbox'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''read-only'') { $hasReadOnly = $true } }'
+        $body += '    elseif ($a -ceq ''-c'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''web_search=disabled'') { $hasWebSearchDisabled = $true } }'
+        $body += '    elseif ($a -ceq ''--model'') { if ($i + 1 -lt $argv.Count) { $model = [string]$argv[$i+1] } }'
+        $body += '    elseif ($a -ceq ''--output-last-message'') { if ($i + 1 -lt $argv.Count) { $out = [string]$argv[$i+1] } }'
+        $body += '}'
+        $body += 'if (-not $hasApprovalNever) { Write-Host ''codex-stub: FAIL --ask-for-approval never missing''; exit 91 }'
+        $body += 'if (-not $hasExec) { Write-Host ''codex-stub: FAIL exec missing''; exit 92 }'
+        $body += 'if (-not $hasReadOnly) { Write-Host ''codex-stub: FAIL --sandbox read-only missing''; exit 93 }'
+        $body += 'if ([string]::IsNullOrEmpty($model)) { Write-Host ''codex-stub: FAIL --model missing''; exit 94 }'
+        $body += 'if (-not $hasWebSearchDisabled) { Write-Host ''codex-stub: FAIL -c web_search=disabled missing''; exit 95 }'
+        $body += 'if ([string]::IsNullOrEmpty($out)) { Write-Host ''codex-stub: FAIL --output-last-message missing''; exit 96 }'
+        $body += 'if (-not $hasStdinMarker) { Write-Host ''codex-stub: FAIL stdin marker - missing''; exit 97 }'
+        $body += '[System.IO.File]::WriteAllText(($out + ''.argv.txt''), ($argv -join "`n"), $enc)'
+
+        switch ($Mode) {
+            'verdict-yes' {
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 0'
+            }
+            'verdict-yes-with-risk' {
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes with risk`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 0'
+            }
+            'no-verdict' {
+                $body += '$content = "# Review Result`r`n`r`nNo Verdict heading present.`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 0'
+            }
+            'fail' {
+                $body += '$content = "# Review Result`r`nstub forced failure`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 7'
+            }
+            default {
+                throw "Unknown stub mode: $Mode"
+            }
+        }
+
+        $text = ($body -join "`r`n") + "`r`n"
+        script:Write-Utf8BomCrlfFile -Path $stubPath -Content $text
+        return $stubPath
+    }
+
+    function script:Invoke-ReviewCycle {
+        param(
+            [string] $ProjectRoot,
+            [string] $Stage = 'implementation',
+            [string] $Purpose = 'pester cycle',
+            [string[]] $TargetFiles,
+            [string] $RunId,
+            [string] $StubPath,
+            [string] $Context = 'pester context line.',
+            [string] $RequiredInspectionPaths = 'pester inspection path.',
+            [string] $ReviewQuestions = 'pester review question.',
+            [string] $Constraints = 'pester constraint.'
+        )
+
+        $procArgs = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', $script:CycleScript,
+            '-Stage', $Stage,
+            '-Purpose', $Purpose,
+            '-ProjectRoot', $ProjectRoot,
+            '-ToolRoot', $script:RepoRoot,
+            '-RunId', $RunId,
+            '-Reviewer', 'codex',
+            '-Context', $Context,
+            '-RequiredInspectionPaths', $RequiredInspectionPaths,
+            '-ReviewQuestions', $ReviewQuestions,
+            '-Constraints', $Constraints
+        )
+        if ($null -ne $TargetFiles -and $TargetFiles.Count -gt 0) {
+            if (-not (Test-Path -LiteralPath $script:StubDir -PathType Container)) {
+                $null = New-Item -ItemType Directory -Path $script:StubDir -Force
+            }
+            $listPath = Join-Path $script:StubDir ('cycle-targets-' + ([guid]::NewGuid().ToString('N')) + '.list')
+            $listContent = ($TargetFiles -join "`n") + "`n"
+            $enc = New-Object System.Text.UTF8Encoding($false)
+            [System.IO.File]::WriteAllText($listPath, $listContent, $enc)
+            $procArgs += @('-TargetFilesPath', $listPath)
+        }
+
+        $previousEnv = $env:AI_HARNESS_CODEX_COMMAND
+        $env:AI_HARNESS_CODEX_COMMAND = $StubPath
+        try {
+            $combined = & powershell.exe @procArgs 2>&1
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            $env:AI_HARNESS_CODEX_COMMAND = $previousEnv
+        }
+
+        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        return [pscustomobject]@{
+            ExitCode = $exitCode
+            Output   = $text
+        }
+    }
+}
+
+Describe 'review-cycle' {
+    It 'AC-CY1: happy path with stub verdict yes generates result.json and PASS' {
+        $project = script:New-CycleCase -CaseName 'cy1'
+        $target = Join-Path $project 'a.txt'
+        script:Write-Utf8NoBomFile -Path $target -Content "cy1 body`n"
+        $stub = script:Write-CodexStub -StubName 'cy1-yes' -Mode 'verdict-yes'
+
+        $runId = '20260506-120000-cy1aaa'
+        $r = script:Invoke-ReviewCycle -ProjectRoot $project -TargetFiles @($target) -RunId $runId -StubPath $stub
+        $r.ExitCode | Should -Be 0
+        $r.Output | Should -Match 'review-cycle: PASS'
+        $r.Output | Should -Match 'verdict: yes'
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        Test-Path -LiteralPath (Join-Path $runDir 'result.md')   -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeTrue
+
+        $resultJson = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
+        $resultJson.verdict | Should -Be 'yes'
+        $resultJson.runId | Should -Be $runId
+    }
+
+    It 'AC-CY2: Codex non-zero exit fails review-cycle and does not create result.json' {
+        $project = script:New-CycleCase -CaseName 'cy2'
+        $target = Join-Path $project 'a.txt'
+        script:Write-Utf8NoBomFile -Path $target -Content "cy2 body`n"
+        $stub = script:Write-CodexStub -StubName 'cy2-fail' -Mode 'fail'
+
+        $runId = '20260506-120000-cy2aaa'
+        $r = script:Invoke-ReviewCycle -ProjectRoot $project -TargetFiles @($target) -RunId $runId -StubPath $stub
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL Codex CLI exit'
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeFalse
+    }
+
+    It 'AC-CY3: verdict parse failure fails review-cycle and does not create result.json' {
+        $project = script:New-CycleCase -CaseName 'cy3'
+        $target = Join-Path $project 'a.txt'
+        script:Write-Utf8NoBomFile -Path $target -Content "cy3 body`n"
+        $stub = script:Write-CodexStub -StubName 'cy3-noverdict' -Mode 'no-verdict'
+
+        $runId = '20260506-120000-cy3aaa'
+        $r = script:Invoke-ReviewCycle -ProjectRoot $project -TargetFiles @($target) -RunId $runId -StubPath $stub
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL verdict not parseable'
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        Test-Path -LiteralPath (Join-Path $runDir 'result.md')   -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeFalse
+    }
+
+    It 'AC-CY4: stub receives full Codex CLI argument contract (B1 boundary regression)' {
+        $project = script:New-CycleCase -CaseName 'cy4'
+        $target = Join-Path $project 'a.txt'
+        script:Write-Utf8NoBomFile -Path $target -Content "cy4 body`n"
+        $stub = script:Write-CodexStub -StubName 'cy4-yes' -Mode 'verdict-yes'
+
+        $runId = '20260506-120000-cy4aaa'
+        $r = script:Invoke-ReviewCycle -ProjectRoot $project -TargetFiles @($target) -RunId $runId -StubPath $stub
+        $r.ExitCode | Should -Be 0
+
+        $argvDump = Join-Path $project ('log/review/' + $runId + '/result.md.argv.txt')
+        Test-Path -LiteralPath $argvDump -PathType Leaf | Should -BeTrue
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $argvText = [System.IO.File]::ReadAllText($argvDump, $enc)
+        $argvLines = $argvText -split "`n"
+
+        $argvLines | Should -Contain '--ask-for-approval'
+        $argvLines | Should -Contain 'never'
+        $argvLines | Should -Contain 'exec'
+        $argvLines | Should -Contain '--sandbox'
+        $argvLines | Should -Contain 'read-only'
+        $argvLines | Should -Contain '-c'
+        $argvLines | Should -Contain 'web_search=disabled'
+        $argvLines | Should -Contain '--model'
+        $argvLines | Should -Contain '--output-last-message'
+        $argvLines[$argvLines.Count - 1] | Should -Be '-'
+    }
+
+    It 'AC-CY5: comma in target path is preserved end-to-end through cycle (B2 regression)' {
+        $project = script:New-CycleCase -CaseName 'cy5'
+        $sub = Join-Path $project 'docs'
+        $null = New-Item -ItemType Directory -Path $sub -Force
+        $commaPath = Join-Path $sub 'a,b.md'
+        script:Write-Utf8NoBomFile -Path $commaPath -Content "cy5 comma body`n"
+        $stub = script:Write-CodexStub -StubName 'cy5-yes' -Mode 'verdict-yes'
+
+        $runId = '20260506-120000-cy5aaa'
+        $r = script:Invoke-ReviewCycle -ProjectRoot $project -TargetFiles @($commaPath) -RunId $runId -StubPath $stub
+        $r.ExitCode | Should -Be 0
+
+        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
+        $files = @($meta.targetFiles)
+        $files.Count | Should -Be 1
+        $files[0].path | Should -Be 'docs/a,b.md'
+    }
+}

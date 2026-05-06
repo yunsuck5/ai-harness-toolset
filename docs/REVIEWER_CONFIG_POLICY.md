@@ -35,18 +35,22 @@ A root `codex-review-input.md` or `codex-review-result*.json` is forbidden.
 
 ## MVP reviewer boundary
 
-현재 MVP는 reviewer 자동 실행 wrapper를 제공하지 않는다.
+현재 MVP는 단일 진입 CLI `scripts/review-cycle.ps1` 을 제공한다. user-triggered single-shot 명령이며, productization wrapper 가 아니다.
 
-- `run-codex-review.ps1` adapter는 **존재하지 않는다.**
-- `review-run` wrapper는 **존재하지 않는다.**
-- `review-prepare.ps1` 실행 직후의 packet은 **prepared 상태**이며, reviewer 실행은 toolset 밖에서 수동으로 한다.
-- 자동 reviewer 실행 / commit gating은 post-MVP 후보로만 남긴다.
+- `review-cycle.ps1` 은 user 가 명시적으로 호출하는 single-shot CLI 다. 같은 cycle 안에서 `review-prepare` → `review-input-verify` → Codex CLI 1회 실행 → `result.md` verdict parsing → `result.json` 작성 → `review-verify` (default + `-RequireResult`) 까지 닫는다.
+- `review-cycle.ps1` 은 watcher / git hook / daemon / workflow engine 이 아니다. background 실행, 자동 trigger, retry loop, auto-fix loop 모두 없다.
+- Codex CLI 실행은 1회만이다. fallback model, 다른 reviewer adapter, retry, network 사용 (`web_search`) 모두 비활성이다.
+- verdict 가 parsing 되지 않으면 `result.json` 을 만들지 않는다. result.md 는 디스크에 보존되며, human 이 manual recipe (아래 절) 로 보정해 cycle 을 닫는다.
+- commit / push / publish / merge / release / deployment 승인은 절대 자동화하지 않는다. verdict 는 그 승인을 의미하지 않는다.
+- `review-prepare.ps1` 단독 실행은 component path 로 그대로 지원된다. cycle 외부에서 packet 만 만들고 싶을 때 사용한다.
+- `run-codex-review.ps1` adapter, `review-run` productization wrapper 는 **여전히 존재하지 않는다.** 그것들은 post-MVP scope 다.
+- 자동 commit gating / CI integration 은 post-MVP 후보로 남는다.
 
-## Manual Codex reviewer recipe
+## Manual Codex reviewer recipe (fallback)
 
-이 절은 manual recipe만 제공한다. project-local adapter가 아니다. 아래 명령은 local `codex exec --help` 로 옵션 호환성을 한 번 직접 확인한 뒤에만 권장 예시로 사용한다.
+이 절은 manual recipe다. `review-cycle.ps1` 이 verdict parsing 실패, Codex CLI 미설치, sandbox 실행 환경 차이 등의 이유로 cycle 을 끝내지 못했을 때 사용하는 escape hatch 이며, 동시에 cycle 내부 호출 형태의 reference 이기도 하다. project-local adapter 가 아니다. 아래 명령은 local `codex exec --help` 로 옵션 호환성을 한 번 직접 확인한 뒤에만 권장 예시로 사용한다.
 
-`review-prepare.ps1` 실행 후 `log/review/<run-id>/`에 `meta.json` + `input.md` 가 생성된 상태에서, Codex CLI를 사람이 직접 호출해 `result.md`를 만든다.
+`review-prepare.ps1` 또는 `review-cycle.ps1` 의 prepare 단계 직후 `log/review/<run-id>/` 에 `meta.json` + `input.md` 가 생성된 상태에서, Codex CLI 를 사람이 직접 호출해 `result.md` 를 만든다.
 
 ### 호출 형태 (PowerShell / Claude Code shell)
 
@@ -69,11 +73,11 @@ Get-Content -Raw -LiteralPath "log/review/$runId/input.md" |
 
 ### Post-MVP adapter 시 권고
 
-robust 한 Windows / PowerShell automation 이 필요하면 post-MVP adapter 로 분리한다. 그 adapter 는 legacy `-File` wrapper pattern 을 따른다. `powershell.exe -Command` 는 exit code 전달이 부정확해 wrapper 모드로 사용하지 않는다. 이 권고는 wrapper 가 만들어질 때 적용되며, 이번 MVP 의 manual recipe 자체에 영향을 주지 않는다.
+`review-cycle.ps1` 외에 별도 reviewer adapter / productization wrapper 가 추가될 경우, 그 adapter 는 legacy `-File` wrapper pattern 을 따른다. `powershell.exe -Command` 는 exit code 전달이 부정확해 wrapper 모드로 사용하지 않는다. 이 권고는 그런 wrapper 가 만들어질 때 적용되며, 이번 MVP 의 `review-cycle.ps1` 동작이나 manual recipe 자체에는 영향을 주지 않는다. `fallbackModel`, retry, multi-reviewer orchestration 은 그러한 post-MVP adapter 의 옵션 surface 가 검토될 때만 다시 논의한다.
 
 ### result.md 이후
 
-`result.md` 가 생기면 `docs/REVIEW_RESULT_CONTRACT.md` 를 참고해 같은 디렉터리에 `result.json` 을 사람이 작성한다. 값 출처:
+`review-cycle.ps1` 경로에서는 verdict parsing 이 성공한 경우 cycle 이 직접 `result.json` 을 작성하고 `review-verify -RequireResult` 까지 호출한다. 아래 절차는 manual recipe (fallback) 에서 사람이 직접 작성할 때의 값 출처다:
 
 - `runId`, `targetPath`, `targetSha256`, `sourceHead` — `meta.json` 에서 옮긴다.
 - `inputSha256` — 동일 디렉터리 `input.md` 의 실제 SHA-256.

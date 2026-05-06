@@ -2,7 +2,7 @@
 
 `log/review/<run-id>/` 아래에 reviewer 실행이 끝난 뒤 어떤 최소 형식으로 결과를 남길지 정의한다.
 
-이 문서는 **manual convention first** 문서다. 기본 mode는 prepared packet freshness 검증을 유지하고, completed review record enforcement는 명시적 `-RequireResult` mode에서만 수행한다. review-run wrapper, Codex 자동 실행, DB-backed history, retention automation은 포함하지 않는다.
+이 문서는 **manual convention first** 문서다. 기본 mode는 prepared packet freshness 검증을 유지하고, completed review record enforcement는 명시적 `-RequireResult` mode에서만 수행한다. MVP에서는 single-shot CLI `scripts/review-cycle.ps1` 이 verdict parsing 성공 시 result.json을 자동으로 작성하지만, parsing 실패 시 result.json은 만들어지지 않으며 사람이 manual convention에 따라 작성해야 cycle 이 닫힌다. review-run productization wrapper, watcher, hook, daemon, DB-backed history, retention automation은 포함하지 않는다.
 
 ## 목적
 
@@ -23,13 +23,16 @@
 
 이 contract는 다음을 규정하지 **않는다**:
 
-- reviewer 자동 실행 wrapper
+- reviewer productization wrapper, watcher, git hook, daemon, workflow engine
+- multi-reviewer orchestration
 - review history DB 또는 index
 - review result schema 강제 검증
 - review result retention 정책
 - default review-verify mode에서 result.md / result.json을 실패 조건으로 만드는 것
 - evidence subsystem과의 cross-tree 보장
 - chatlog subsystem과의 cross-tree 보장
+
+`review-cycle.ps1` 은 single-shot CLI이며 위 productization wrapper 범주에 들어가지 않는다. cycle 이 result.json 을 작성하더라도 contract 의 minimum field set, verdict vocabulary, hash binding 의미는 그대로다.
 
 ## review / evidence / chatlog subsystem 경계
 
@@ -51,7 +54,7 @@ review result가 evidence file이나 chatlog summary를 **참조**하는 것은 
 
 같은 `log/review/<run-id>/` 디렉터리는 시간에 따라 두 단계 상태를 가진다.
 
-**Prepared review packet** — `review-prepare.ps1` 실행 직후 상태:
+**Prepared review packet** — `review-prepare.ps1` 또는 `review-cycle.ps1` 의 prepare 단계 직후 상태:
 
 - `meta.json` required
 - `input.md` required
@@ -65,7 +68,12 @@ review result가 evidence file이나 chatlog summary를 **참조**하는 것은 
 - `result.md` required
 - `result.json` required
 
-prepared 상태에서 completed 상태로 전환하는 것은 사람이 결정한다. 자동 trigger는 두지 않는다.
+prepared 상태에서 completed 상태로 전환하는 경로는 두 가지다.
+
+1. `review-cycle.ps1` single-shot path — verdict parsing 성공 시 cycle 이 같은 run-id 디렉터리에 `result.md` (Codex CLI 가 작성) 와 `result.json` (cycle 이 작성) 을 두고 `review-verify -RequireResult` 까지 호출한다. 이 자동 작성은 user-triggered single-shot 안에서 일어난다. background trigger 가 아니다.
+2. Manual fallback — `review-cycle.ps1` 이 parsing 실패로 종료했거나 component path 만 사용한 경우, 사람이 `result.md` 를 손으로 보정하고 `result.json` 을 작성한 뒤 `review-verify -RequireResult` 를 직접 실행한다.
+
+어느 경로든 review-record 의 minimum field set 과 검증 surface 는 동일하다.
 
 ## 권장 layout
 
@@ -149,7 +157,7 @@ reviewer가 AI인 경우, AI 출력 본문을 정리해 result.md에 붙인다. 
 - `sourceHead`는 작성 시점의 git HEAD를 옮기되, repo 외부에서 작성된 결과라면 `null`을 둘 수 있다.
 - `notes`는 자유형 string 배열이다.
 
-이번 scope에서는 위 SHA-256 값을 **자동 계산하는 script를 추가하지 않는다.** 사람이 직접 또는 별도 helper로 계산해 채운다.
+`review-cycle.ps1` single-shot path 에서는 `inputSha256`, `resultMarkdownSha256`, `createdAtUtc`, `runId`, `targetPath`, `targetSha256`, `sourceHead`, `stage`, `purpose`, `reviewer` 를 cycle 이 자동으로 채워 넣고 verdict 만 result.md parsing 결과로 채운다. manual fallback path 에서는 사람이 직접 또는 별도 helper로 SHA-256 값을 계산해 채운다. 어느 경로든 작성된 result.json 의 hash binding 의미는 동일하다.
 
 ## verdict 값
 
@@ -163,11 +171,12 @@ result.md와 result.json 모두 다음 세 값만 사용한다:
 
 ## reviewer input freshness와 result artifact의 관계
 
-- `meta.json.targetSha256`은 packet 생성 시점의 target file SHA-256이다.
-- `review-verify.ps1`은 현재 target SHA-256과 `meta.json.targetSha256`이 일치하는지 검증한다 (`freshnessPolicy.type = "target-sha256-match"`).
-- 이 freshness 검증은 **reviewer 입력의 정합성**에 대한 것이다. result artifact의 정합성에 대한 것이 아니다.
+- `meta.json.targetSha256`은 packet 생성 시점의 primary target file SHA-256이다.
+- `meta.json.targetFiles[]`는 multi-file change-set review 시 전체 reviewed 파일 set 을 repo-relative path + lowercase SHA-256 으로 기록한다. 단일 파일 review 시 primary entry 1개만 포함될 수 있다.
+- `review-verify.ps1` default mode 는 primary target (`targetSha256`) 일치 검증 후, `targetFiles[]` 가 비어있지 않으면 각 entry 의 현재 SHA-256 을 다시 계산해 일치하는지 검증한다. 첫 stale entry path 가 메시지에 포함된다 (`freshnessPolicy.type = "target-sha256-match"`).
+- 이 freshness 검증은 **reviewer 입력의 정합성**에 대한 것이다. result artifact 의 정합성에 대한 것이 아니다.
 - `result.json.inputSha256`은 result가 어떤 input.md를 보고 작성되었는지 묶기 위한 값이다.
-- `result.json.targetSha256`은 result 작성 시점에 사람이 `meta.json.targetSha256`에서 그대로 옮긴 값이다. `meta.json`의 값과 일치한다는 사실은 result가 **같은 prepared review input에 묶였다**는 binding 정보일 뿐이며, 현재 target file이 그 SHA-256과 같다는 보장은 아니다. 현재 target file의 freshness는 여전히 `scripts/review-verify.ps1`로 확인해야 한다. result artifact 자체는 current target freshness를 자동으로 보장하지 않는다.
+- `result.json.targetSha256` 은 result 작성 시점에 cycle 또는 사람이 `meta.json.targetSha256` 에서 그대로 옮긴 primary target binding 값이다. `meta.json` 의 값과 일치한다는 사실은 result 가 **같은 prepared review input 에 묶였다** 는 binding 정보일 뿐이며, 현재 target file 들이 그 SHA-256 과 같다는 보장은 아니다. multi-file freshness 는 `result.json` 이 mirror 하지 않으며, current target file freshness 는 여전히 `scripts/review-verify.ps1` default mode 로 확인해야 한다. result artifact 자체는 current target freshness 를 자동으로 보장하지 않는다.
 
 ## review-verify의 현재 책임과 한계
 
@@ -179,8 +188,9 @@ prepared packet의 freshness를 검증한다.
 
 - run directory와 `meta.json` 존재 여부 검증
 - `meta.json.projectRoot`, `meta.json.projectLogRoot`가 현재 실행 환경과 일치하는지 검증
-- target file 존재와 ProjectRoot 내부 여부 검증
-- `meta.json.targetSha256`과 현재 target SHA-256 일치 검증
+- primary target file 존재와 ProjectRoot 내부 여부 검증
+- `meta.json.targetSha256`과 현재 primary target SHA-256 일치 검증
+- `meta.json.targetFiles[]`가 비어있지 않으면 각 entry 에 대해: repo-relative path 를 ProjectRoot 기준 절대 경로로 해석, ProjectRoot 외부 escape 거부, missing file 거부, 현재 SHA-256 과 entry SHA-256 일치 검증. 첫 stale path 가 실패 메시지에 포함됨
 - `result.md` 존재는 informational 출력만 한다. 실패 조건이 아니다.
 - `result.json` 존재 자체를 보지 않는다.
 
@@ -228,17 +238,20 @@ prepared packet의 freshness를 검증한다.
 
 이 contract가 다루지 않는 것:
 
-- reviewer 자동 실행 wrapper (예: `review-run`)
-- Codex 자동 실행
+- review-run productization wrapper, watcher, git hook, daemon, workflow engine
+- multi-reviewer orchestration, fallback model use, retry loop, auto-fix loop
+- auto-commit, auto-push, auto-publish, auto-merge, auto-release, auto-deployment
 - review history DB 또는 index
 - review record 자동 retention 정책
 - result schema 자동 validator
 - default review-verify mode에서 result.md / result.json을 실패 조건으로 만드는 것
 - evidence subsystem과의 cross-tree 보장
 - chatlog subsystem과의 cross-tree 보장
-- CI integration
+- CI integration, 스케쥴 기반 자동 실행
 - 다른 toolset과의 review result format 상호운용
 - public release packaging
+
+`review-cycle.ps1` single-shot user-triggered CLI 는 위 항목들과 분리된다. cycle 이 Codex 를 1회 실행하고 result.json 을 작성하는 행위는 단일 user 호출 안에서만 일어나며, 위 productization 범주로 확장되지 않는다.
 
 ## Future candidate
 
@@ -249,10 +262,12 @@ prepared packet의 freshness를 검증한다.
 - `result.json.createdAtUtc` 시간 순서 / 현재 시각 비교.
 - `result.json.stage` / `purpose` / `reviewer` / `schemaVersion` strict 비교.
 - `result.json.notes[]` schema enforcement.
-- `inputSha256` / `resultMarkdownSha256` 자동 계산 helper.
-- `result.json.verdict`을 읽어 후속 단계 (commit gate 등)를 막는 wrapper.
+- `result.json.targetFiles[]` mirror (현재 multi-file freshness 는 meta.json + review-verify default mode 단독 책임이며 result.json 은 primary target 만 미러).
+- `result.json.verdict` 을 읽어 후속 단계 (commit gate, push gate 등) 를 막는 productization wrapper.
 - review history aggregation.
 - review record retention 정책.
+- `fix` 등 추가 stage enum.
+- `-Reviewer codex` 외 reviewer adapter.
 
 이번 v1 metadata hardening으로 future candidate에서 빠진 항목:
 

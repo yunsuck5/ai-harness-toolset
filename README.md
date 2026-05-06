@@ -71,9 +71,36 @@ This creates:
 
 `log/` is a runtime artifact root. It is not source payload. It is gitignored by default and is not part of any source snapshot.
 
-## Prepare and verify a review packet
+## Single-shot review cycle
 
-The review subsystem is the quality-control gate. It is built around two scripts.
+The default user-facing entrypoint for `코덱스 리뷰 진행해` is `review-cycle.ps1`. It runs one full cycle in a single command: prepare a packet, fill the input sections, verify input readiness, invoke Codex CLI once, parse the verdict, write `result.json`, and run both modes of `review-verify`.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-cycle.ps1 `
+    -Stage <design|implementation|test|review|release> `
+    -Purpose '<short purpose string>' `
+    -TargetFiles file1,file2 `
+    -Context '<context>' `
+    -RequiredInspectionPaths '<paths>' `
+    -ReviewQuestions '<questions>' `
+    -Constraints '<constraints>'
+```
+
+From a deployed target project, replace `scripts/review-cycle.ps1` with `.ai-harness/scripts/review-cycle.ps1`.
+
+Boundaries:
+
+- Single-shot only. Not a watcher, hook, daemon, workflow engine, or productized `review-run`.
+- One Codex CLI execution. No retry, no fallback model use, no auto-fix loop.
+- Never auto-commits, auto-pushes, or auto-publishes. Verdict is not commit/push/publish/merge/release approval.
+- Only `-Reviewer codex` is supported in MVP. Other reviewers fail explicitly.
+- `result.md` verdict must be exactly one of `yes`, `no`, `yes with risk`. On parse failure, `review-cycle.ps1` exits non-zero and does not create `result.json`; the human resolves it via the manual recipe below.
+
+If `-TargetFiles` is omitted, `review-cycle.ps1` resolves tracked changed files from `git status`. Untracked files outside `log/` cause an explicit failure that requests an explicit `-TargetFiles` list.
+
+## Prepare and verify a review packet (component view)
+
+The component scripts under `review-cycle.ps1` are still callable directly. This is the manual / debug path used when `review-cycle.ps1` cannot run end to end (for example, when verdict parsing fails and the human completes `result.md` and `result.json` by hand).
 
 `review-prepare.ps1` creates a fresh review packet:
 
@@ -84,6 +111,17 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 `
     -Purpose '<short purpose string>'
 ```
 
+For a multi-file change-set, pass `-TargetFiles` instead of (or in addition to) `-TargetPath`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 `
+    -TargetFiles file1,file2,file3 `
+    -Stage implementation `
+    -Purpose '<short purpose string>'
+```
+
+The first `-TargetFiles` entry becomes the primary target unless `-TargetPath` is also supplied. All entries are recorded under `meta.targetFiles[]` as repo-relative forward-slash paths with lowercase SHA-256.
+
 This generates a new `<run-id>` and writes:
 
 ```
@@ -91,7 +129,7 @@ This generates a new `<run-id>` and writes:
 <project-root>/log/review/<run-id>/input.md
 ```
 
-`meta.json` records the target file SHA-256, the source repo HEAD, the reviewer config (resolved from `<tool-root>/config/reviewer.json` if present), and a freshness policy. `input.md` is rendered from `templates/review-input.md` and is the file a reviewer reads.
+`meta.json` records the primary target file SHA-256, the reviewed change-set under `targetFiles[]` (each entry has a repo-relative `path` and a lowercase `sha256`), the source repo HEAD, the reviewer config (resolved from `<tool-root>/config/reviewer.json` if present), and a freshness policy. `input.md` is rendered from `templates/review-input.md` and is the file a reviewer reads.
 
 `review-verify.ps1` checks an existing run.
 
@@ -101,7 +139,7 @@ Default mode verifies that the prepared packet is still bound to the current tar
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 -RunId <run-id>
 ```
 
-A target whose SHA-256 has changed since the packet was prepared fails verification (stale packet).
+A target whose SHA-256 has changed since the packet was prepared fails verification (stale packet). When `meta.targetFiles[]` is non-empty, `review-verify.ps1` rehashes every entry in addition to the primary target; the first stale path is reported.
 
 `-RequireResult` mode additionally enforces a completed review record (`result.md` + `result.json` written by a human after the reviewer judgment is in):
 
@@ -204,12 +242,14 @@ A chatlog summary may reference an evidence path or a review run-id, but cross-t
 - No automatic global rollback or uninstall flow.
 - No automatic mutation of any global `CLAUDE.md` or global `AGENTS.md`.
 - No automatic mutation of project-root `CLAUDE.md` or `AGENTS.md`. Snippets are pasted manually by the user.
-- No review-run wrapper. The reviewer (Codex CLI, ChatGPT Web, a human, or another tool) is invoked outside this toolset.
+- No review-run productization wrapper, watcher, hook, daemon, or workflow engine. `review-cycle.ps1` is a single-shot user-triggered CLI; it is not productized into a long-running runner.
+- No auto-fix loop, auto-commit, or auto-push. `review-cycle.ps1` runs Codex once and stops; commit/push remain explicit user actions.
+- No multi-reviewer orchestration. Only `-Reviewer codex` is supported in MVP.
 - No evidence runner, wrapper, or schema validator.
 - No chatlog hook, parser, browser automation, DB, or retention automation.
-- No CI integration, handoff generator, or workflow engine.
+- No CI integration, handoff generator, or scheduled runner.
 - No source snapshot zip or changed-files snapshot zip generation built into the toolset.
-- Commits and pushes always require explicit user approval. Reviewer verdicts do not approve commits, pushes, or publishes.
+- Commits and pushes always require explicit user approval. Reviewer verdicts do not approve commits, pushes, publishes, merges, releases, or deployments.
 
 ## Suggested first target-project dry run
 
@@ -217,11 +257,12 @@ The first time the toolset is adopted into a real target project, validate it ma
 
 1. Copy the four source folders into `<project-root>/.ai-harness/`.
 2. Run `.ai-harness/scripts/log-init.ps1` and confirm `log/chatlog/`, `log/evidence/`, `log/review/` exist.
-3. Run `.ai-harness/scripts/review-prepare.ps1` against a real file in the target project and confirm `meta.json` and `input.md` appear under `log/review/<run-id>/`.
-4. Run `.ai-harness/scripts/review-verify.ps1 -RunId <run-id>` and confirm a default-mode `PASS`.
-5. Modify the target file and re-run verify; confirm a stale-packet failure.
-6. Capture one evidence case under `log/evidence/<scope>/<case>/` by hand following the source repo's `docs/EVIDENCE_CONTRACT.md`.
-7. Write a minimal `log/chatlog/current/summary.md` and `resume.md` by hand following the source repo's `docs/CHATLOG_CONTRACT.md`.
+3. Run `.ai-harness/scripts/review-cycle.ps1 -Stage implementation -Purpose 'adoption smoke' -TargetFiles <file> -Context ... -RequiredInspectionPaths ... -ReviewQuestions ... -Constraints ...` against a real file and confirm `review-cycle: PASS` plus `result.json` under `log/review/<run-id>/`. (If Codex CLI is unavailable, skip to step 4 and exercise the components individually.)
+4. Run `.ai-harness/scripts/review-prepare.ps1` against a real file in the target project and confirm `meta.json` and `input.md` appear under `log/review/<run-id>/`.
+5. Run `.ai-harness/scripts/review-verify.ps1 -RunId <run-id>` and confirm a default-mode `PASS`.
+6. Modify the target file and re-run verify; confirm a stale-packet failure.
+7. Capture one evidence case under `log/evidence/<scope>/<case>/` by hand following the source repo's `docs/EVIDENCE_CONTRACT.md`.
+8. Write a minimal `log/chatlog/current/summary.md` and `resume.md` by hand following the source repo's `docs/CHATLOG_CONTRACT.md`.
 
 There is no dry-run script, and one is not planned. The dry run is the manual flow itself, executed by the user against a real project.
 

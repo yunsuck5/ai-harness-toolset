@@ -41,9 +41,14 @@ BeforeAll {
             [string] $RunId,
             [string] $TargetPath,
             [string] $TargetSha256,
-            $SourceHead = $null
+            $SourceHead = $null,
+            $TargetFiles = $null
         )
         $logRoot = [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot 'log'))
+        $tfArray = @()
+        if ($null -ne $TargetFiles) {
+            $tfArray = @($TargetFiles)
+        }
         return [ordered]@{
             schemaVersion      = 1
             runId              = $RunId
@@ -54,6 +59,7 @@ BeforeAll {
             targetPath         = $TargetPath
             targetRelativePath = 'target.txt'
             targetSha256       = $TargetSha256
+            targetFiles        = $tfArray
             stage              = 'design'
             purpose            = 'pester regression'
             reviewer           = 'codex'
@@ -447,5 +453,93 @@ Describe 'review-verify -RequireResult mode' {
         $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
         $result.ExitCode | Should -Be 0
         $result.Output | Should -Match 'review-verify: PASS'
+    }
+}
+
+Describe 'review-verify default mode targetFiles[]' {
+    It 'AC31: passes when all targetFiles[] entries are fresh' {
+        $projectRoot = script:New-PesterTestCaseRoot -CaseName 'ac31'
+
+        $primaryPath = Join-Path $projectRoot 'target.txt'
+        script:Write-Utf8NoBomFile -Path $primaryPath -Content "primary body`n"
+        $primaryFull = [System.IO.Path]::GetFullPath($primaryPath)
+        $primarySha = script:Get-Sha256Lower -Path $primaryFull
+
+        $sub = Join-Path $projectRoot 'src'
+        $null = New-Item -ItemType Directory -Path $sub -Force
+        $extraPath = Join-Path $sub 'extra.txt'
+        script:Write-Utf8NoBomFile -Path $extraPath -Content "extra body`n"
+        $extraSha = script:Get-Sha256Lower -Path ([System.IO.Path]::GetFullPath($extraPath))
+
+        $runId = '20260506-200000-ac31aa'
+        $runDir = Join-Path $projectRoot ('log/review/' + $runId)
+        $null = New-Item -ItemType Directory -Path $runDir -Force
+
+        $tf = @(
+            [ordered]@{ path = 'target.txt';     sha256 = $primarySha }
+            [ordered]@{ path = 'src/extra.txt';  sha256 = $extraSha }
+        )
+
+        $meta = script:New-MetaPayload `
+            -ProjectRoot $projectRoot `
+            -RunId $runId `
+            -TargetPath $primaryFull `
+            -TargetSha256 $primarySha `
+            -TargetFiles $tf
+
+        $metaPath = Join-Path $runDir 'meta.json'
+        $metaJson = $meta | ConvertTo-Json -Depth 32
+        script:Write-Utf8NoBomFile -Path $metaPath -Content $metaJson
+
+        $inputPath = Join-Path $runDir 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content "# Review Input`n"
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $projectRoot -RunId $runId
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -Match 'review-verify: PASS'
+    }
+
+    It 'AC32: fails when one targetFiles[] entry is stale and reports the stale path' {
+        $projectRoot = script:New-PesterTestCaseRoot -CaseName 'ac32'
+
+        $primaryPath = Join-Path $projectRoot 'target.txt'
+        script:Write-Utf8NoBomFile -Path $primaryPath -Content "primary body`n"
+        $primaryFull = [System.IO.Path]::GetFullPath($primaryPath)
+        $primarySha = script:Get-Sha256Lower -Path $primaryFull
+
+        $sub = Join-Path $projectRoot 'src'
+        $null = New-Item -ItemType Directory -Path $sub -Force
+        $extraPath = Join-Path $sub 'extra.txt'
+        script:Write-Utf8NoBomFile -Path $extraPath -Content "extra body`n"
+        $extraSha = script:Get-Sha256Lower -Path ([System.IO.Path]::GetFullPath($extraPath))
+
+        $runId = '20260506-200000-ac32aa'
+        $runDir = Join-Path $projectRoot ('log/review/' + $runId)
+        $null = New-Item -ItemType Directory -Path $runDir -Force
+
+        $tf = @(
+            [ordered]@{ path = 'target.txt';    sha256 = $primarySha }
+            [ordered]@{ path = 'src/extra.txt'; sha256 = $extraSha }
+        )
+
+        $meta = script:New-MetaPayload `
+            -ProjectRoot $projectRoot `
+            -RunId $runId `
+            -TargetPath $primaryFull `
+            -TargetSha256 $primarySha `
+            -TargetFiles $tf
+
+        $metaPath = Join-Path $runDir 'meta.json'
+        $metaJson = $meta | ConvertTo-Json -Depth 32
+        script:Write-Utf8NoBomFile -Path $metaPath -Content $metaJson
+
+        $inputPath = Join-Path $runDir 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content "# Review Input`n"
+
+        script:Write-Utf8NoBomFile -Path $extraPath -Content "extra body MUTATED`n"
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $projectRoot -RunId $runId
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL targetFiles stale: src/extra\.txt'
     }
 }

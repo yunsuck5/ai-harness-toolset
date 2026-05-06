@@ -104,6 +104,51 @@ if ($expectedSha -ne $actualSha) {
     exit 1
 }
 
+if ($null -ne $meta.PSObject.Properties['targetFiles']) {
+    $targetFilesArr = @($meta.targetFiles)
+    if ($targetFilesArr.Count -gt 0) {
+        foreach ($entry in $targetFilesArr) {
+            $entryPath = ''
+            if ($null -ne $entry.PSObject.Properties['path']) {
+                $entryPath = [string]$entry.path
+            }
+            $entrySha = ''
+            if ($null -ne $entry.PSObject.Properties['sha256']) {
+                $entrySha = [string]$entry.sha256
+            }
+            if ([string]::IsNullOrEmpty($entryPath)) {
+                Write-Host 'review-verify: FAIL targetFiles entry missing path'
+                exit 1
+            }
+            if ([string]::IsNullOrEmpty($entrySha)) {
+                Write-Host ('review-verify: FAIL targetFiles entry missing sha256: {0}' -f $entryPath)
+                exit 1
+            }
+            $resolvedEntry = $entryPath
+            if (-not [System.IO.Path]::IsPathRooted($resolvedEntry)) {
+                $resolvedEntry = Join-Path -Path $project -ChildPath $resolvedEntry
+            }
+            $resolvedEntry = [System.IO.Path]::GetFullPath($resolvedEntry)
+            try {
+                [void] (Assert-InProjectRoot -Path $resolvedEntry -ProjectRoot $project)
+            }
+            catch {
+                Write-Host ('review-verify: FAIL targetFiles path escapes ProjectRoot: {0}' -f $entryPath)
+                exit 1
+            }
+            if (-not (Test-Path -LiteralPath $resolvedEntry -PathType Leaf)) {
+                Write-Host ('review-verify: FAIL targetFiles file missing: {0}' -f $entryPath)
+                exit 1
+            }
+            $entryActual = Get-FileSha256 -Path $resolvedEntry
+            if ($entryActual -ne $entrySha) {
+                Write-Host ('review-verify: FAIL targetFiles stale: {0} expected={1} actual={2}' -f $entryPath, $entrySha, $entryActual)
+                exit 1
+            }
+        }
+    }
+}
+
 $resultPath = Join-Path -Path $runDir -ChildPath 'result.md'
 if (Test-Path -LiteralPath $resultPath -PathType Leaf) {
     Write-Host 'review-verify: result.md present (informational)'

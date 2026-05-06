@@ -1,7 +1,10 @@
 ﻿[CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
     [string] $TargetPath,
+
+    [string[]] $TargetFiles,
+
+    [string] $TargetFilesPath,
 
     [Parameter(Mandatory = $true)]
     [ValidateSet('design', 'implementation', 'test', 'review', 'release')]
@@ -31,6 +34,36 @@ $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 $tool    = Get-ToolRoot -ToolRoot $ToolRoot -ProjectRoot $project
 $logRoot = Get-ProjectLogRoot -ProjectRoot $project
 
+if (-not [string]::IsNullOrEmpty($TargetFilesPath)) {
+    if (-not (Test-Path -LiteralPath $TargetFilesPath -PathType Leaf)) {
+        throw "review-prepare: TargetFilesPath not found: $TargetFilesPath"
+    }
+    $listText = Read-Utf8 -Path $TargetFilesPath
+    foreach ($ln in ($listText -split "`r?`n")) {
+        $trim = $ln.Trim()
+        if (-not [string]::IsNullOrEmpty($trim)) {
+            if ($null -eq $TargetFiles) { $TargetFiles = @() }
+            $TargetFiles = $TargetFiles + $trim
+        }
+    }
+}
+
+$reviewedFiles = @()
+if ($null -ne $TargetFiles -and $TargetFiles.Count -gt 0) {
+    foreach ($tf in $TargetFiles) {
+        if (-not [string]::IsNullOrEmpty($tf)) {
+            $reviewedFiles += $tf
+        }
+    }
+}
+
+if ([string]::IsNullOrEmpty($TargetPath)) {
+    if ($reviewedFiles.Count -eq 0) {
+        throw 'review-prepare: at least one of -TargetPath or -TargetFiles is required.'
+    }
+    $TargetPath = $reviewedFiles[0]
+}
+
 if (-not [System.IO.Path]::IsPathRooted($TargetPath)) {
     $TargetPath = Join-Path -Path $project -ChildPath $TargetPath
 }
@@ -41,6 +74,49 @@ if (-not (Test-Path -LiteralPath $TargetPath -PathType Leaf)) {
 }
 
 [void] (Assert-InProjectRoot -Path $TargetPath -ProjectRoot $project)
+
+function Resolve-TargetEntry {
+    param(
+        [string] $Path,
+        [string] $ProjectRoot
+    )
+    $resolved = $Path
+    if (-not [System.IO.Path]::IsPathRooted($resolved)) {
+        $resolved = Join-Path -Path $ProjectRoot -ChildPath $resolved
+    }
+    $resolved = [System.IO.Path]::GetFullPath($resolved)
+    if (-not (Test-Path -LiteralPath $resolved -PathType Leaf)) {
+        throw "review-prepare: target file not found: $resolved"
+    }
+    [void] (Assert-InProjectRoot -Path $resolved -ProjectRoot $ProjectRoot)
+    $rel = (Resolve-ProjectRelativePath -Path $resolved -ProjectRoot $ProjectRoot) -replace '\\', '/'
+    $sha = Get-FileSha256 -Path $resolved
+    return [pscustomobject]@{
+        FullPath = $resolved
+        RelPath  = $rel
+        Sha256   = $sha
+    }
+}
+
+$primaryEntry = Resolve-TargetEntry -Path $TargetPath -ProjectRoot $project
+
+$targetFilesEntries = New-Object System.Collections.Generic.List[object]
+$seen = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+$null = $seen.Add($primaryEntry.RelPath)
+$targetFilesEntries.Add([ordered]@{
+    path   = $primaryEntry.RelPath
+    sha256 = $primaryEntry.Sha256
+})
+
+foreach ($tf in $reviewedFiles) {
+    $entry = Resolve-TargetEntry -Path $tf -ProjectRoot $project
+    if ($seen.Add($entry.RelPath)) {
+        $targetFilesEntries.Add([ordered]@{
+            path   = $entry.RelPath
+            sha256 = $entry.Sha256
+        })
+    }
+}
 
 $builtInDefault = [ordered]@{
     provider        = 'openai'
@@ -108,8 +184,8 @@ if (-not (Test-Path -LiteralPath $runDir -PathType Container)) {
     $null = New-Item -ItemType Directory -Path $runDir -Force
 }
 
-$targetSha  = Get-FileSha256 -Path $TargetPath
-$targetRel  = Resolve-ProjectRelativePath -Path $TargetPath -ProjectRoot $project
+$targetSha  = $primaryEntry.Sha256
+$targetRel  = $primaryEntry.RelPath
 $sourceHead = Get-GitHead -WorkingDirectory $project
 
 $effReviewer = 'codex'
@@ -127,6 +203,7 @@ $meta = [ordered]@{
     targetPath         = $TargetPath
     targetRelativePath = $targetRel
     targetSha256       = $targetSha
+    targetFiles        = $targetFilesEntries.ToArray()
     stage              = $Stage
     purpose            = $Purpose
     reviewer           = $effReviewer

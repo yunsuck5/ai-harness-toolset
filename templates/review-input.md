@@ -12,14 +12,22 @@
 
 ## Context
 
-(Provide context here.)
+(Replace this placeholder with review context.)
+
+## Required inspection paths
+
+(Replace this placeholder with paths the reviewer must inspect.)
 
 ## Review questions
 
-(Provide review questions here.)
+(Replace this placeholder with review questions.)
+
+## Constraints
+
+(Replace this placeholder with explicit constraints.)
 
 ## Final verdict
 
 yes / no / yes with risk
 
-Do not approve commit, push, publish, or release unless explicitly scoped.
+Do not approve commit, push, publish, merge, release, or deployment unless explicitly scoped.

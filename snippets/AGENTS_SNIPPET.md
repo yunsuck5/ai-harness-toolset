@@ -19,14 +19,15 @@ This is a manually adopted AI instruction payload for Codex CLI and other agent-
 
 ## Review flow
 
-- Prepare a packet with `.ai-harness/scripts/review-prepare.ps1`.
-- Verify with `.ai-harness/scripts/review-verify.ps1`. Stale review packets (target SHA-256 changed since prepare) must fail.
+- Default user-facing entrypoint is the single-shot CLI `.ai-harness/scripts/review-cycle.ps1`. Run it once per user-triggered review request.
+- `review-cycle.ps1` is single-shot and user-triggered. It is not a watcher, git hook, daemon, workflow engine, or productized `review-run`. It runs Codex CLI exactly once and stops; it never auto-commits, auto-pushes, auto-merges, auto-publishes, or auto-deploys.
+- The component scripts `.ai-harness/scripts/review-prepare.ps1` and `.ai-harness/scripts/review-verify.ps1` remain available for manual / debug paths. Stale review packets (any `targetFiles[]` entry whose SHA-256 changed since prepare) must fail.
 - Do not create a root `codex-review-input.md` or root `codex-review-result*.json`. Reviewer artifacts live only under `log/review/<run-id>/`.
-- `run-codex-review.ps1` and `review-run` are post-MVP and must not be invented in the target project.
+- `run-codex-review.ps1`, `review-run` productization wrappers, and CI integration are post-MVP and must not be invented in the target project. Only `review-cycle.ps1` (single-shot, user-triggered) is in MVP scope.
 
-## Manual Codex reviewer recipe
+## Manual Codex reviewer recipe (fallback)
 
-Reviewer execution happens outside the toolset after `review-prepare`:
+`review-cycle.ps1` is the default path. The recipe below is the fallback used when `review-cycle.ps1` cannot finish (for example, when verdict parsing fails) or when the human deliberately runs the components by hand.
 
 ```
 $runId = "<run-id>"
