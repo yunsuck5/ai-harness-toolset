@@ -12,35 +12,17 @@ This is a manually adopted AI instruction payload for Codex CLI and other agent-
 ## Project layout
 
 - `.ai-harness/` is the project-local, copy-only payload. No global files are modified.
-- Runtime output root is `<project-root>/log/`. `log/` is project-local runtime artifact and must not be committed.
-- Ensure the target project's own `.gitignore` includes `log/`. The toolset never auto-edits `.gitignore`.
-- There is no automatic retention or pruning for `log/review/<run-id>/`. Manual cleanup is per-`<run-id>` directory deletion.
+- Runtime output root is `<project-root>/log/`. `log/` must not be committed; ensure the target project's `.gitignore` includes it.
+- Review records live at `log/review/<run-id>/`. Inspect them and report the verdict.
 - Keep `log/review/`, `log/evidence/`, and `log/chatlog/` separate.
-- Review packets live under `log/review/<run-id>/`.
 - Reviewer config comes from `.ai-harness/config/reviewer.json`.
 
 ## Review flow
 
 - Default user-facing entrypoint is the single-shot CLI `.ai-harness/scripts/review-cycle.ps1`. Run it once per user-triggered review request.
-- `review-cycle.ps1` is single-shot and user-triggered. It is not a watcher, git hook, daemon, workflow engine, or productized `review-run`. It runs Codex CLI exactly once and stops; it never auto-commits, auto-pushes, auto-merges, auto-publishes, or auto-deploys.
-- The component scripts `.ai-harness/scripts/review-prepare.ps1` and `.ai-harness/scripts/review-verify.ps1` remain available for manual / debug paths. Stale review packets (any `targetFiles[]` entry whose SHA-256 changed since prepare) must fail.
-- Do not create a root `codex-review-input.md` or root `codex-review-result*.json`. Reviewer artifacts live only under `log/review/<run-id>/`.
-- `run-codex-review.ps1`, `review-run` productization wrappers, and CI integration are post-MVP and must not be invented in the target project. Only `review-cycle.ps1` (single-shot, user-triggered) is in MVP scope.
-
-## Manual Codex reviewer recipe (fallback)
-
-`review-cycle.ps1` is the default path. The recipe below is the fallback used when `review-cycle.ps1` cannot finish (for example, when verdict parsing fails) or when the human deliberately runs the components by hand.
-
-```
-$runId = "<run-id>"
-$model = "<model-from-reviewer.json>"
-Get-Content -Raw -LiteralPath "log/review/$runId/input.md" |
-  codex --ask-for-approval never exec --sandbox read-only --model $model -c web_search=disabled --output-last-message "log/review/$runId/result.md" -
-```
-
-- `--ask-for-approval never` is a top-level Codex flag and must appear **before** the `exec` subcommand.
-- `--output-last-message` writes the final reviewer message to `log/review/<run-id>/result.md`.
-- After `result.md`, create `log/review/<run-id>/result.json` using `.ai-harness/templates/review-result.json` as the shape, then run `.ai-harness/scripts/review-verify.ps1 -RunId <run-id> -RequireResult`.
+- `review-cycle.ps1` runs Codex CLI exactly once per call and stops.
+- The component scripts `.ai-harness/scripts/review-prepare.ps1` and `.ai-harness/scripts/review-verify.ps1` are available for explicit, deliberate use (preparing a packet without immediately running Codex, or verifying an existing run). Stale review packets (any `targetFiles[]` entry whose SHA-256 changed since prepare) must fail.
+- Reviewer artifacts live only under `log/review/<run-id>/`. Do not create a root `codex-review-input.md` or root `codex-review-result*.json`.
 
 ## Result verdict vocabulary
 

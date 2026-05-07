@@ -318,7 +318,7 @@ $verifyInputArgs = @(
 & powershell.exe @verifyInputArgs
 $verifyInputExit = $LASTEXITCODE
 if ($verifyInputExit -ne 0) {
-    Write-Host ('review-cycle: FAIL input.md not ready (review-input-verify exit {0}). Edit {1} and rerun with a fresh run-id.' -f $verifyInputExit, $inputPath)
+    Write-Host ('review-cycle: FAIL input.md not ready (review-input-verify exit {0}). Start a new review run with corrected CLI arguments.' -f $verifyInputExit)
     exit 1
 }
 
@@ -352,7 +352,7 @@ if (-not (Test-Path -LiteralPath $resultMdPath -PathType Leaf)) {
 
 $verdict = Get-VerdictFromResultMd -Path $resultMdPath
 if ([string]::IsNullOrEmpty($verdict)) {
-    Write-Host ('review-cycle: FAIL verdict not parseable from result.md. Edit {0} so the line after "## Verdict" is exactly one of [yes, no, yes with risk] and resume manually with review-verify.' -f $resultMdPath)
+    Write-Host ('review-cycle: FAIL. Could not parse verdict from {0}. result.json was not created. The failed run is preserved for inspection; start a new review run after fixing the reviewer output, prompt/tooling, or source issue.' -f $resultMdPath)
     exit 1
 }
 

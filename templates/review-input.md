@@ -44,4 +44,4 @@ Your final response is captured by Codex `--output-last-message` and saved as `r
 - Do not use inline forms such as `Verdict: yes`, `Final verdict: yes`, or prose-only verdicts. The parser rejects them.
 - Do not add adjectives, qualifiers, punctuation, or trailing text on the verdict line itself.
 
-If the result.md shape is invalid, `review-cycle` fails and `result.json` is not produced automatically. A human can complete the review record by manual fallback (edit `result.md` to match this contract, then run `review-verify -RequireResult` directly), but you should produce a contract-compliant `result.md` so manual fallback is unnecessary.
+If the result.md shape is invalid, `review-cycle` fails and `result.json` is not produced. Produce a contract-compliant `result.md`.

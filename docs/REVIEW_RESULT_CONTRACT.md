@@ -1,16 +1,18 @@
 # Review Result Artifact Contract
 
-`log/review/<run-id>/` 아래에 reviewer 실행이 끝난 뒤 어떤 최소 형식으로 결과를 남길지 정의한다.
+`log/review/<run-id>/` 아래에 reviewer 실행이 끝난 뒤 어떤 최소 형식으로 결과가 남는지 정의한다.
 
-이 문서는 **manual convention first** 문서다. 기본 mode는 prepared packet freshness 검증을 유지하고, completed review record enforcement는 명시적 `-RequireResult` mode에서만 수행한다. MVP에서는 single-shot CLI `scripts/review-cycle.ps1` 이 verdict parsing 성공 시 result.json을 자동으로 작성하지만, parsing 실패 시 result.json은 만들어지지 않으며 사람이 manual convention에 따라 작성해야 cycle 이 닫힌다. review-run productization wrapper, watcher, hook, daemon, DB-backed history, retention automation은 포함하지 않는다.
+이 문서는 **generated read-only record** 계약 문서다. `log/review/<run-id>/`의 4개 artifact (`meta.json`, `input.md`, `result.md`, `result.json`)는 모두 tooling 또는 호환되는 reviewer pipeline이 생성한 read-only 기록이다. 사람은 record를 inspect하고 다음 행동을 결정하지만, 그 안의 내용을 손으로 수정/보정/완성하지 않는다.
+
+기본 mode는 prepared packet freshness 검증을 유지하고, completed review record enforcement는 명시적 `-RequireResult` mode에서만 수행한다. MVP에서는 single-shot CLI `scripts/review-cycle.ps1`이 verdict parsing 성공 시 `result.json`을 자동으로 작성한다. parsing이 실패하면 `result.json`은 만들어지지 않고, 그 run은 failed/incomplete record로 디스크에 보존된다. 복구는 fresh run-id 재실행, reviewer prompt/tooling 수정, 또는 scoped fix 후 새 review로 수행하며, 기존 `<run-id>` 안의 artifact를 사람이 손으로 보정해 cycle을 닫지 않는다. review-run productization wrapper, watcher, hook, daemon, DB-backed history, retention automation은 포함하지 않는다.
 
 ## 목적
 
-- reviewer (사람 또는 AI)가 내린 최종 판단을 사람이 읽는 file 형태로 보존한다.
-- 어떤 input을 기준으로 판단했는지, 어떤 target을 검토했는지 추적 가능하게 한다.
-- 자동화 schema 강제 없이도 사람이 읽고 쓸 수 있는 형식을 유지한다.
+- reviewer (Codex CLI 또는 호환되는 reviewer pipeline)이 내린 최종 판단을 generated read-only record로 보존한다.
+- 어떤 input을 기준으로 판단했는지, 어떤 target을 검토했는지 hash binding으로 추적 가능하게 한다.
+- 사람이 읽고 판단할 수 있는 형식을 유지하되, 사람이 직접 작성해 채워 넣는 양식이 아니다.
 
-이 contract는 review result가 무엇을 보장하는가가 아니라, result 파일을 **어디에**, **어떤 이름으로**, **어떤 최소 필드로** 남길지에 관한 합의다.
+이 contract는 review result가 무엇을 보장하는가가 아니라, result 파일이 **어디에**, **어떤 이름으로**, **어떤 최소 필드로** 생성되는지에 관한 합의다.
 
 ## 범위
 
@@ -40,7 +42,7 @@
 
 | 트리 | 책임 | 검증 주체 |
 |---|---|---|
-| `log/review/<run-id>/` | review packet과 freshness 검증, review result 보존 | `scripts/review-prepare.ps1`, `scripts/review-verify.ps1` (freshness; optional `-RequireResult` binding verification), 사람 (result 작성) |
+| `log/review/<run-id>/` | review packet과 freshness 검증, review result 보존 | `scripts/review-prepare.ps1`, `scripts/review-verify.ps1` (freshness; optional `-RequireResult` binding verification), 사람 (record inspection) |
 | `log/evidence/` | command 실행 사실, output, 재현 단서 보존 | 사람 (manual convention, `docs/EVIDENCE_CONTRACT.md`) |
 | `log/chatlog/` | session 작업 기록과 resume brief 보존 | 사람 (manual convention, `docs/CHATLOG_CONTRACT.md`) |
 
@@ -54,26 +56,23 @@ review result가 evidence file이나 chatlog summary를 **참조**하는 것은 
 
 같은 `log/review/<run-id>/` 디렉터리는 시간에 따라 두 단계 상태를 가진다.
 
-**Prepared review packet** — `review-prepare.ps1` 또는 `review-cycle.ps1` 의 prepare 단계 직후 상태:
+**Prepared review packet** — `review-prepare.ps1` 또는 `review-cycle.ps1`의 prepare 단계 직후 상태:
 
 - `meta.json` required
 - `input.md` required
 - `result.md` absent 가능
 - `result.json` absent 가능
 
-**Completed review record** — reviewer 실행이 끝나고 사람이 결과를 정리한 뒤 상태:
+**Completed review record** — reviewer 실행과 cycle의 자동 작성이 모두 끝난 뒤 상태:
 
 - `meta.json` required
 - `input.md` required
 - `result.md` required
 - `result.json` required
 
-prepared 상태에서 completed 상태로 전환하는 경로는 두 가지다.
+정상 경로는 `review-cycle.ps1` single-shot path다. verdict parsing 성공 시 cycle이 같은 run-id 디렉터리에 `result.md`(Codex CLI가 작성)와 `result.json`(cycle이 작성)을 두고 `review-verify -RequireResult`까지 호출한다. 이 자동 작성은 user-triggered single-shot 안에서 일어난다.
 
-1. `review-cycle.ps1` single-shot path — verdict parsing 성공 시 cycle 이 같은 run-id 디렉터리에 `result.md` (Codex CLI 가 작성) 와 `result.json` (cycle 이 작성) 을 두고 `review-verify -RequireResult` 까지 호출한다. 이 자동 작성은 user-triggered single-shot 안에서 일어난다. background trigger 가 아니다.
-2. Manual fallback — `review-cycle.ps1` 이 parsing 실패로 종료했거나 component path 만 사용한 경우, 사람이 `result.md` 를 손으로 보정하고 `result.json` 을 작성한 뒤 `review-verify -RequireResult` 를 직접 실행한다.
-
-어느 경로든 review-record 의 minimum field set 과 검증 surface 는 동일하다.
+parsing 실패 또는 Codex 실패 시 그 `<run-id>`는 failed/incomplete record로 보존되며, 새 run-id로 다시 실행해 보완한다.
 
 ## 권장 layout
 
@@ -99,29 +98,28 @@ prepared 상태에서 completed 상태로 전환하는 경로는 두 가지다.
 
 ### result.md
 
-reviewer가 내린 최종 판단을 사람이 읽기 위한 markdown. 권장 template은 `templates/review-result.md`다.
+작성자: Codex CLI (`--output-last-message`로 `log/review/<run-id>/result.md`에 직접 기록). 출력 shape 참조용 template은 `templates/review-result.md`다.
+
+`result.md`에 들어가는 정보:
 
 - verdict (`yes` / `no` / `yes with risk`)
 - 어떤 target을 보았는가 (path, SHA-256, run-id)
 - 어떤 input.md에 묶이는가 (input SHA-256)
 - findings, risks, required changes, notes
 
-reviewer가 AI인 경우, AI 출력 본문을 정리해 result.md에 붙인다. reviewer가 사람인 경우, 사람이 직접 작성한다.
-
 ### result.json
 
-같은 review record의 machine-readable 최종 판단. 권장 template은 `templates/review-result.json`다.
+작성자: `review-cycle.ps1` (verdict parsing 성공 시). 출력 shape 참조용 template은 `templates/review-result.json`이다.
 
 - `verdict`은 machine-readable 최종 판단이다. 값: `yes` / `no` / `yes with risk`.
 - `inputSha256`은 어떤 input.md를 기준으로 판단했는지 묶기 위한 값이다.
 - `resultMarkdownSha256`은 result.md와 result.json을 묶기 위한 값이다.
-- `targetPath`, `targetSha256`, `runId`, `stage`, `purpose`, `reviewer` 등은 meta.json과 일치해야 한다 (사람이 채운다).
+- `targetPath`, `targetSha256`, `runId`, `stage`, `purpose`, `reviewer`는 cycle이 `meta.json`에서 옮겨 채운다.
 
 자동 일치 검증의 범위는 mode에 따라 다르다.
 
 - 기본 mode (`-RequireResult` 미지정): result artifact 자체를 요구하지 않으며 result.json 필드의 일치를 검증하지 않는다.
-- `-RequireResult` mode: 아래 "review-verify의 현재 책임과 한계" 절에 열거된 부분 집합 (`runId`, `targetSha256`, `inputSha256`, `resultMarkdownSha256`, `verdict`, `targetPath`, `createdAtUtc`, conditional `sourceHead`) 만 자동 검증한다.
-- 위 부분 집합에 들어 있지 않은 필드 (`stage`, `purpose`, `reviewer`, `schemaVersion`, `notes` 등) 는 여전히 manual convention 영역이며 사람이 직접 맞춘다.
+- `-RequireResult` mode: 아래 "review-verify의 현재 책임과 한계" 절에 열거된 부분 집합 (`runId`, `targetSha256`, `inputSha256`, `resultMarkdownSha256`, `verdict`, `targetPath`, `createdAtUtc`, conditional `sourceHead`) 만 자동 검증한다. 그 외 필드 (`stage`, `purpose`, `reviewer`, `schemaVersion`, `notes` 등) 는 검증하지 않는다.
 
 ## result.json 최소 필드
 
@@ -143,21 +141,19 @@ reviewer가 AI인 경우, AI 출력 본문을 정리해 result.md에 붙인다. 
 }
 ```
 
-`templates/review-result.json`의 angle-bracket 값과 format string은 guide placeholder이며, completed `result.json` 작성 시 실제 값으로 교체해야 한다.
+`templates/review-result.json`의 angle-bracket 값과 format string은 shape reference placeholder다. 실제 `result.json`은 `review-cycle.ps1`이 채워 생성한다.
 
 `createdAtUtc`는 ASCII digit `0-9`만 사용한다. Arabic-Indic digit (예: `٠`–`٩`) 등 다른 Unicode decimal digit은 거부된다. 7자리 fractional second는 canonical machine-readable contract의 일부이며, 시스템 시계가 100ns 단위 의미 있는 정밀도를 제공한다는 주장은 아니다.
 
-값 채우기 규칙:
+값 생성 규칙 (cycle이 자동 적용):
 
 - `schemaVersion`은 정수 `1`로 시작한다.
-- `verdict`은 위 세 값 중 하나만 사용한다.
-- `runId`, `targetPath`, `targetSha256`, `stage`, `purpose`, `reviewer`는 같은 디렉터리의 `meta.json`과 일치하도록 수동으로 옮긴다.
-- `inputSha256`은 같은 디렉터리의 `input.md` SHA-256다.
-- `resultMarkdownSha256`은 같은 디렉터리의 `result.md` SHA-256다.
-- `sourceHead`는 작성 시점의 git HEAD를 옮기되, repo 외부에서 작성된 결과라면 `null`을 둘 수 있다.
+- `verdict`은 `result.md`의 strict parser 결과 (위 세 값 중 하나).
+- `runId`, `targetPath`, `targetSha256`, `stage`, `purpose`, `reviewer`는 같은 디렉터리 `meta.json`에서 옮겨진다.
+- `inputSha256`은 같은 디렉터리 `input.md`의 실측 SHA-256.
+- `resultMarkdownSha256`은 같은 디렉터리 `result.md`의 실측 SHA-256.
+- `sourceHead`는 작성 시점의 git HEAD를 옮기되, Git이 없거나 HEAD를 알 수 없으면 `null`이다.
 - `notes`는 자유형 string 배열이다.
-
-`review-cycle.ps1` single-shot path 에서는 `inputSha256`, `resultMarkdownSha256`, `createdAtUtc`, `runId`, `targetPath`, `targetSha256`, `sourceHead`, `stage`, `purpose`, `reviewer` 를 cycle 이 자동으로 채워 넣고 verdict 만 result.md parsing 결과로 채운다. manual fallback path 에서는 사람이 직접 또는 별도 helper로 SHA-256 값을 계산해 채운다. 어느 경로든 작성된 result.json 의 hash binding 의미는 동일하다.
 
 ## verdict 값
 
@@ -179,9 +175,8 @@ result.md와 result.json 모두 다음 세 값만 사용한다:
   - `no`
   - `yes with risk`
 - 비교는 `ToLowerInvariant` 후 정확 일치다. inline 형식 (`Verdict: yes`, `Final verdict: yes`), prose 안의 verdict, heading 다음 줄에 verdict 와 다른 토큰을 함께 배치한 형태 등은 모두 거부된다.
-- parsing 이 성공하지 못하면 `review-cycle.ps1` 은 non-zero exit 로 실패하고 `result.json` 을 자동으로 작성하지 않는다.
-- fuzzy / natural-language verdict extraction, inline form 수용, retry / auto-rewrite / auto-fix loop 은 도입하지 않는다.
-- shape 위반으로 cycle 이 실패한 경우, manual fallback path (사람이 result.md 를 contract 에 맞게 보정한 뒤 `result.json` 을 직접 작성하고 `scripts/review-verify.ps1 -RequireResult` 로 검증) 는 그대로 사용 가능하다. 즉 strict parser 가 manual fallback 을 제거하지 않는다.
+- parsing이 성공하지 못하면 `review-cycle.ps1`은 non-zero exit로 실패하고 `result.json`을 자동으로 작성하지 않는다. 실패한 `<run-id>`는 evidence로 보존되며 새 run-id로 재실행해 보완한다.
+- fuzzy / natural-language verdict extraction, inline form 수용, retry / auto-rewrite / auto-fix loop은 도입하지 않는다.
 
 reviewer-facing prompt 에 이 contract 를 명시적으로 노출하기 위해 `templates/review-input.md` 의 `## Final verdict` 섹션에 동일 규칙을 안내한다. template 안내가 본 contract 보다 우선한다는 의미가 아니며, 본 문서가 source-of-truth 이고 template 은 이를 mirror 한다.
 
@@ -192,7 +187,7 @@ reviewer-facing prompt 에 이 contract 를 명시적으로 노출하기 위해 
 - `review-verify.ps1` default mode 는 primary target (`targetSha256`) 일치 검증 후, `targetFiles[]` 가 비어있지 않으면 각 entry 의 현재 SHA-256 을 다시 계산해 일치하는지 검증한다. 첫 stale entry path 가 메시지에 포함된다 (`freshnessPolicy.type = "target-sha256-match"`).
 - 이 freshness 검증은 **reviewer 입력의 정합성**에 대한 것이다. result artifact 의 정합성에 대한 것이 아니다.
 - `result.json.inputSha256`은 result가 어떤 input.md를 보고 작성되었는지 묶기 위한 값이다.
-- `result.json.targetSha256` 은 result 작성 시점에 cycle 또는 사람이 `meta.json.targetSha256` 에서 그대로 옮긴 primary target binding 값이다. `meta.json` 의 값과 일치한다는 사실은 result 가 **같은 prepared review input 에 묶였다** 는 binding 정보일 뿐이며, 현재 target file 들이 그 SHA-256 과 같다는 보장은 아니다. multi-file freshness 는 `result.json` 이 mirror 하지 않으며, current target file freshness 는 여전히 `scripts/review-verify.ps1` default mode 로 확인해야 한다. result artifact 자체는 current target freshness 를 자동으로 보장하지 않는다.
+- `result.json.targetSha256` 은 result 작성 시점에 cycle이 `meta.json.targetSha256` 에서 그대로 옮긴 primary target binding 값이다. `meta.json` 의 값과 일치한다는 사실은 result 가 **같은 prepared review input 에 묶였다** 는 binding 정보일 뿐이며, 현재 target file 들이 그 SHA-256 과 같다는 보장은 아니다. multi-file freshness 는 `result.json` 이 mirror 하지 않으며, current target file freshness 는 여전히 `scripts/review-verify.ps1` default mode 로 확인해야 한다. result artifact 자체는 current target freshness 를 자동으로 보장하지 않는다.
 
 ## review-verify의 현재 책임과 한계
 
@@ -252,14 +247,12 @@ prepared packet의 freshness를 검증한다.
 
 ## Retention policy
 
-`log/review/<run-id>/` 의 retention 은 사람이 직접 관리한다. 본 toolset 은 review record 의 자동 prune / rotate / expire / delete 를 수행하지 않는다.
+`log/review/<run-id>/`의 retention 단위는 `<run-id>` 디렉터리 전체다. 사용자는 더 이상 필요하지 않은 run-id 디렉터리를 손으로 삭제한다. failed/incomplete record (parse 실패로 `result.json`이 없는 run 등)는 evidence로 보존되며, 보완은 새 run-id로 재실행해 만든다.
 
-- 각 `log/review/<run-id>/` 디렉터리는 자기 완결적인 review record 다.
-- toolset 은 review record 를 자동으로 prune / rotate / expire / delete 하지 않는다. daemon, watcher, git hook, scheduled cleanup 도 제공하지 않는다.
-- 수동 정리 단위는 `<run-id>` 디렉터리 전체다. 사용자는 audit / handoff / debugging 에 더 이상 필요하지 않은 run-id 디렉터리를 손으로 삭제한다. 부분 파일 단위 삭제 (`result.json` 만 삭제 등) 는 record 의 자기 완결성을 깨뜨리므로 권장되지 않는다.
-- source snapshot 은 `log/` 를 항상 제외한다 (위 절 참조).
-- 본 source repo 의 `.gitignore` 는 `log/` 를 이미 무시한다. 하지만 target project 는 이 `.gitignore` 를 자동으로 상속하지 않는다. **target adopter 는 target project 의 `.gitignore` 가 `log/` 를 포함하도록 직접 보장해야 한다.**
-- toolset 은 target project 의 `.gitignore` 를 자동으로 수정하지 않는다. 어떤 script 도 target `.gitignore` 를 만들거나 편집하지 않는다.
+- 각 `log/review/<run-id>/` 디렉터리는 자기 완결적인 review record다.
+- toolset은 자동 prune / rotate / expire / delete를 수행하지 않는다. daemon, watcher, git hook, scheduled cleanup도 제공하지 않는다.
+- source snapshot은 `log/`를 항상 제외한다 (위 절 참조).
+- 본 source repo의 `.gitignore`는 `log/`를 이미 무시한다. target project는 이 `.gitignore`를 자동으로 상속하지 않으므로, **target adopter는 target project의 `.gitignore`가 `log/`를 포함하도록 직접 보장해야 한다.** toolset은 target `.gitignore`를 만들거나 편집하지 않는다.
 
 ## non-goals
 

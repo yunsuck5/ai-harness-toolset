@@ -218,7 +218,7 @@ Describe 'review-cycle' {
         Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeFalse
     }
 
-    It 'AC-CY3: verdict parse failure fails review-cycle and does not create result.json' {
+    It 'AC-CY3: verdict parse failure fails review-cycle, does not create result.json, and emits the new contract message' {
         $project = script:New-CycleCase -CaseName 'cy3'
         $target = Join-Path $project 'a.txt'
         script:Write-Utf8NoBomFile -Path $target -Content "cy3 body`n"
@@ -227,11 +227,19 @@ Describe 'review-cycle' {
         $runId = '20260506-120000-cy3aaa'
         $r = script:Invoke-ReviewCycle -ProjectRoot $project -TargetFiles @($target) -RunId $runId -StubPath $stub
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'FAIL verdict not parseable'
+
+        $r.Output | Should -Match 'Could not parse verdict'
+        $r.Output | Should -Match 'result\.json was not created'
+        $r.Output | Should -Match 'failed run is preserved for inspection'
+
+        $r.Output | Should -Not -Match '[Ee]dit .*result\.md'
+        $r.Output | Should -Not -Match 'resume manually'
+        $r.Output | Should -Not -Match 'review-verify'
 
         $runDir = Join-Path $project ('log/review/' + $runId)
-        Test-Path -LiteralPath (Join-Path $runDir 'result.md')   -PathType Leaf | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath $runDir                              -PathType Container | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $runDir 'result.md')      -PathType Leaf      | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $runDir 'result.json')    -PathType Leaf      | Should -BeFalse
     }
 
     It 'AC-CY4: stub receives full Codex CLI argument contract (B1 boundary regression)' {
@@ -307,6 +315,44 @@ Describe 'review-cycle' {
 
         $runDir = Join-Path $project ('log/review/' + $runId)
         Test-Path -LiteralPath $runDir -PathType Container | Should -BeFalse
+    }
+
+    It 'AC-CY6: input-readiness failure preserves run, does not run Codex, and emits the new contract message' {
+        $project = script:New-CycleCase -CaseName 'cy6'
+        $target = Join-Path $project 'a.txt'
+        script:Write-Utf8NoBomFile -Path $target -Content "cy6 body`n"
+
+        $runId = '20260506-120000-cy6aaa'
+        $procArgs = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', $script:CycleScript,
+            '-Stage', 'implementation',
+            '-Purpose', 'pester input-not-ready',
+            '-ProjectRoot', $project,
+            '-ToolRoot', $script:RepoRoot,
+            '-RunId', $runId,
+            '-Reviewer', 'codex',
+            '-RequiredInspectionPaths', 'pester inspection path.',
+            '-ReviewQuestions', 'pester review question.',
+            '-Constraints', 'pester constraint.',
+            '-TargetFiles', $target
+        )
+
+        $combined = & powershell.exe @procArgs 2>&1
+        $exitCode = $LASTEXITCODE
+        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+
+        $exitCode | Should -Not -Be 0
+        $text | Should -Match 'FAIL input\.md not ready'
+        $text | Should -Match 'Start a new review run'
+        $text | Should -Not -Match '[Ee]dit .*input\.md'
+        $text | Should -Not -Match 'resume manually'
+        $text | Should -Not -Match 'review-verify'
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        Test-Path -LiteralPath $runDir                           -PathType Container | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $runDir 'result.md')   -PathType Leaf      | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf      | Should -BeFalse
     }
 
     It 'AC-CY5: comma in target path is preserved end-to-end through cycle (B2 regression)' {

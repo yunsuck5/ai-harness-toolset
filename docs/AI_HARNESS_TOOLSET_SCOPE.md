@@ -41,6 +41,12 @@ These are generated artifacts. They are not part of the toolset payload.
 - `ToolRoot` — the root of the ai-harness-toolset files. In the source repo this is the repo root; after deployment it is `<project-root>/.ai-harness/`.
 - `ProjectLogRoot` — `<ProjectRoot>/log`.
 
+## Cross-cutting boundaries
+
+- CLI/runtime dependency boundary is canonical in `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`.
+- `<project-root>/log/` is the runtime factual record root. Generated records are preserved for inspection and traceability; later corrections are captured as new records under the relevant subsystem contract.
+- Review record contract is canonical in `docs/REVIEW_RESULT_CONTRACT.md`.
+
 ## Out of scope
 
 The following are explicitly out of scope for this toolset:
