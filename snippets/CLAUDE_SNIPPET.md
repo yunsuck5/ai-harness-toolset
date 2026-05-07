@@ -12,7 +12,9 @@ This is a manually adopted AI instruction payload for Claude Code. The user has 
 ## Project layout
 
 - `.ai-harness/` is the project-local, copy-only payload. No global files are modified.
-- Runtime output root is `<project-root>/log/`.
+- Runtime output root is `<project-root>/log/`. `log/` is project-local runtime artifact and must not be committed.
+- Ensure the target project's own `.gitignore` includes `log/`. The toolset never auto-edits `.gitignore`.
+- There is no automatic retention or pruning for `log/review/<run-id>/`. Manual cleanup is per-`<run-id>` directory deletion.
 - Keep `log/review/`, `log/evidence/`, and `log/chatlog/` separate.
 - Review packets live under `log/review/<run-id>/`.
 - Reviewer config comes from `.ai-harness/config/reviewer.json`.

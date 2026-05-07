@@ -27,7 +27,7 @@
 - multi-reviewer orchestration
 - review history DB 또는 index
 - review result schema 강제 검증
-- review result retention 정책
+- 자동 review result retention 정책 (auto-prune / rotate / expire / delete 등). Manual per-run-id retention 은 본 contract 의 `## Retention policy` 절에서 규정한다.
 - default review-verify mode에서 result.md / result.json을 실패 조건으로 만드는 것
 - evidence subsystem과의 cross-tree 보장
 - chatlog subsystem과의 cross-tree 보장
@@ -250,6 +250,17 @@ prepared packet의 freshness를 검증한다.
 - review record가 참조하는 fixture는 `log/review/<run-id>/` 또는 `log/evidence/<scope>/<case>/` 안에서만 생성한다.
 - public release packaging이 도입되어도 `log/`는 항상 제외한다.
 
+## Retention policy
+
+`log/review/<run-id>/` 의 retention 은 사람이 직접 관리한다. 본 toolset 은 review record 의 자동 prune / rotate / expire / delete 를 수행하지 않는다.
+
+- 각 `log/review/<run-id>/` 디렉터리는 자기 완결적인 review record 다.
+- toolset 은 review record 를 자동으로 prune / rotate / expire / delete 하지 않는다. daemon, watcher, git hook, scheduled cleanup 도 제공하지 않는다.
+- 수동 정리 단위는 `<run-id>` 디렉터리 전체다. 사용자는 audit / handoff / debugging 에 더 이상 필요하지 않은 run-id 디렉터리를 손으로 삭제한다. 부분 파일 단위 삭제 (`result.json` 만 삭제 등) 는 record 의 자기 완결성을 깨뜨리므로 권장되지 않는다.
+- source snapshot 은 `log/` 를 항상 제외한다 (위 절 참조).
+- 본 source repo 의 `.gitignore` 는 `log/` 를 이미 무시한다. 하지만 target project 는 이 `.gitignore` 를 자동으로 상속하지 않는다. **target adopter 는 target project 의 `.gitignore` 가 `log/` 를 포함하도록 직접 보장해야 한다.**
+- toolset 은 target project 의 `.gitignore` 를 자동으로 수정하지 않는다. 어떤 script 도 target `.gitignore` 를 만들거나 편집하지 않는다.
+
 ## non-goals
 
 이 contract가 다루지 않는 것:
@@ -281,7 +292,7 @@ prepared packet의 freshness를 검증한다.
 - `result.json.targetFiles[]` mirror (현재 multi-file freshness 는 meta.json + review-verify default mode 단독 책임이며 result.json 은 primary target 만 미러).
 - `result.json.verdict` 을 읽어 후속 단계 (commit gate, push gate 등) 를 막는 productization wrapper.
 - review history aggregation.
-- review record retention 정책.
+- 자동 review record retention 정책 (auto-prune, rotate, age cap, run-count cap, expire 등). 현재 retention 은 manual per-run-id deletion 으로 고정되어 있다.
 - `fix` 등 추가 stage enum.
 - `-Reviewer codex` 외 reviewer adapter.
 

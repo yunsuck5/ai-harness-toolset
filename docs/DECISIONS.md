@@ -38,3 +38,4 @@
 - reviewer가 input.md를 읽고 `result.md` / `result.json`을 작성하지 않았다면 actual reviewer workflow test가 아니다
 - 실제 개발 변경 1건을 review / evidence / chatlog 반복 cycle로 처리하지 않았다면 actual development workflow usage test가 아니다
 - actual reviewer workflow test와 actual development workflow usage test는 separate future milestones로 둔다
+- `log/review/<run-id>/` retention 은 human-managed 이며 cleanup 단위는 `<run-id>` 디렉터리 전체 수동 삭제다; toolset 은 auto-prune / rotate / age-cap / run-count-cap / expire / delete 동작을 두지 않는다; target project 는 `log/` 를 자체 `.gitignore` 에 직접 추가하며 toolset 은 어떤 경로로도 target `.gitignore` 를 생성하거나 편집하지 않는다

@@ -69,7 +69,11 @@ This creates:
 <project-root>/log/review/
 ```
 
-`log/` is a runtime artifact root. It is not source payload. It is gitignored by default and is not part of any source snapshot.
+`log/` is a runtime artifact root. It is not source payload. It is not part of any source snapshot.
+
+This source repo already gitignores `log/`. Target projects do not inherit that `.gitignore` automatically. Target adopters must manually ensure the target project's own `.gitignore` contains `log/`. The toolset never edits a target project `.gitignore`, and no script in this toolset creates or modifies one.
+
+There is no automatic retention or pruning for `log/review/<run-id>/`. Each `<run-id>` directory is a self-contained review record. Cleanup is manual: delete an entire `<run-id>` directory when it is no longer needed for audit, handoff, or debugging. The full retention policy lives in `docs/REVIEW_RESULT_CONTRACT.md`.
 
 ## Single-shot review cycle
 
