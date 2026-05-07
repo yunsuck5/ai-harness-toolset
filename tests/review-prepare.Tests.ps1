@@ -4,7 +4,6 @@ $ErrorActionPreference = 'Stop'
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
     $script:ReviewPrepareScript = Join-Path $script:RepoRoot 'scripts/review-prepare.ps1'
-    $script:FixtureRoot = Join-Path $script:RepoRoot 'log/review'
 
     function script:Write-Utf8NoBomFile {
         param(
@@ -22,7 +21,7 @@ BeforeAll {
 
     function script:New-PrepareCaseRoot {
         param([string] $CaseName)
-        $caseRoot = Join-Path $script:FixtureRoot ('pester-review-prepare-' + $CaseName)
+        $caseRoot = Join-Path $TestDrive ('pester-review-prepare-' + $CaseName)
         if (Test-Path -LiteralPath $caseRoot) {
             Remove-Item -LiteralPath $caseRoot -Recurse -Force
         }

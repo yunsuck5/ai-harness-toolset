@@ -4,7 +4,6 @@ $ErrorActionPreference = 'Stop'
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
     $script:ReviewVerifyScript = Join-Path $script:RepoRoot 'scripts/review-verify.ps1'
-    $script:FixtureRoot = Join-Path $script:RepoRoot 'log/review'
 
     function script:Get-Sha256Lower {
         param([string] $Path)
@@ -27,7 +26,7 @@ BeforeAll {
 
     function script:New-PesterTestCaseRoot {
         param([string] $CaseName)
-        $caseRoot = Join-Path $script:FixtureRoot ('pester-review-verify-' + $CaseName)
+        $caseRoot = Join-Path $TestDrive ('pester-review-verify-' + $CaseName)
         if (Test-Path -LiteralPath $caseRoot) {
             Remove-Item -LiteralPath $caseRoot -Recurse -Force
         }

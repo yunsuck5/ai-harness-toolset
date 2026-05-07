@@ -4,8 +4,6 @@ $ErrorActionPreference = 'Stop'
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
     $script:CycleScript = Join-Path $script:RepoRoot 'scripts/review-cycle.ps1'
-    $script:FixtureRoot = Join-Path $script:RepoRoot 'log/review'
-    $script:StubDir = Join-Path $script:FixtureRoot 'pester-review-cycle-stubs'
 
     function script:Write-Utf8NoBomFile {
         param([string] $Path, [string] $Content)
@@ -34,7 +32,7 @@ BeforeAll {
 
     function script:New-CycleCase {
         param([string] $CaseName)
-        $caseRoot = Join-Path $script:FixtureRoot ('pester-review-cycle-' + $CaseName)
+        $caseRoot = Join-Path $TestDrive ('pester-review-cycle-' + $CaseName)
         if (Test-Path -LiteralPath $caseRoot) {
             Remove-Item -LiteralPath $caseRoot -Recurse -Force
         }
@@ -47,10 +45,11 @@ BeforeAll {
             [string] $StubName,
             [string] $Mode = 'verdict-yes'
         )
-        if (-not (Test-Path -LiteralPath $script:StubDir -PathType Container)) {
-            $null = New-Item -ItemType Directory -Path $script:StubDir -Force
+        $stubDir = Join-Path $TestDrive 'pester-review-cycle-stubs'
+        if (-not (Test-Path -LiteralPath $stubDir -PathType Container)) {
+            $null = New-Item -ItemType Directory -Path $stubDir -Force
         }
-        $stubPath = Join-Path $script:StubDir ($StubName + '.ps1')
+        $stubPath = Join-Path $stubDir ($StubName + '.ps1')
 
         $body = @()
         $body += '[CmdletBinding()]'
