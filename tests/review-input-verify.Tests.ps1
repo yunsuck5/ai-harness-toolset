@@ -154,3 +154,19 @@ Describe 'review-input-verify' {
         $r.Output | Should -Match 'FAIL placeholder remains in ## Final verdict'
     }
 }
+
+Describe 'templates/review-input.md output contract regression' {
+    It 'AC-IV-OC1: template includes strict result.md output contract phrases' {
+        $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+        $templatePath = Join-Path $repoRoot 'templates/review-input.md'
+        Test-Path -LiteralPath $templatePath -PathType Leaf | Should -BeTrue
+
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $content = [System.IO.File]::ReadAllText($templatePath, $enc)
+
+        $content | Should -Match '## Verdict'
+        $content | Should -Match 'result\.md'
+        $content | Should -Match 'yes with risk'
+        $content | Should -Match 'inline'
+    }
+}

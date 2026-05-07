@@ -169,6 +169,22 @@ result.md와 result.json 모두 다음 세 값만 사용한다:
 
 이 세 값은 `templates/review-input.md`의 final verdict 표기와 정렬되어 있다.
 
+## review-cycle 파서가 강제하는 result.md shape
+
+`scripts/review-cycle.ps1` 의 `Get-VerdictFromResultMd` 는 result.md 본문을 다음 규칙으로 strict 하게 parsing 한다. 이 규칙은 의도된 결정이며 deterministic review binding 을 보존하기 위함이다.
+
+- result.md 본문에 정확히 1개의 top-level `## Verdict` heading 이 있어야 한다. 0개 또는 2개 이상이면 verdict parsing 실패다.
+- 그 heading 다음의 첫 비어있지 않은 줄 (whitespace `Trim` 후) 이 정확히 다음 셋 중 하나여야 한다:
+  - `yes`
+  - `no`
+  - `yes with risk`
+- 비교는 `ToLowerInvariant` 후 정확 일치다. inline 형식 (`Verdict: yes`, `Final verdict: yes`), prose 안의 verdict, heading 다음 줄에 verdict 와 다른 토큰을 함께 배치한 형태 등은 모두 거부된다.
+- parsing 이 성공하지 못하면 `review-cycle.ps1` 은 non-zero exit 로 실패하고 `result.json` 을 자동으로 작성하지 않는다.
+- fuzzy / natural-language verdict extraction, inline form 수용, retry / auto-rewrite / auto-fix loop 은 도입하지 않는다.
+- shape 위반으로 cycle 이 실패한 경우, manual fallback path (사람이 result.md 를 contract 에 맞게 보정한 뒤 `result.json` 을 직접 작성하고 `scripts/review-verify.ps1 -RequireResult` 로 검증) 는 그대로 사용 가능하다. 즉 strict parser 가 manual fallback 을 제거하지 않는다.
+
+reviewer-facing prompt 에 이 contract 를 명시적으로 노출하기 위해 `templates/review-input.md` 의 `## Final verdict` 섹션에 동일 규칙을 안내한다. template 안내가 본 contract 보다 우선한다는 의미가 아니며, 본 문서가 source-of-truth 이고 template 은 이를 mirror 한다.
+
 ## reviewer input freshness와 result artifact의 관계
 
 - `meta.json.targetSha256`은 packet 생성 시점의 primary target file SHA-256이다.
