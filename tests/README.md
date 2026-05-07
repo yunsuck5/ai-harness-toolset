@@ -28,8 +28,8 @@ Local-first test fixtures for ai-harness-toolset.
   - `tests/review-verify.Tests.ps1` — `review-verify` default and `-RequireResult` paths, plus `targetFiles[]` freshness regression.
   - `tests/review-prepare.Tests.ps1` — `review-prepare` single `-TargetPath` back-compat and multi-file `-TargetFiles` recording.
   - `tests/review-input-verify.Tests.ps1` — five-section readiness gate: filled-PASS, missing-heading FAIL, placeholder-remains FAIL.
-  - `tests/review-cycle.Tests.ps1` — single-shot CLI `review-cycle.ps1` driven by a Codex stub: happy path, Codex non-zero, verdict parse failure. The stub is generated under `log/review/pester-review-cycle-stubs/` at test time and never invokes the real Codex CLI.
-- Generated runtime test artifacts live under `log/` and are not source artifacts.
+  - `tests/review-cycle.Tests.ps1` — single-shot CLI `review-cycle.ps1` driven by a Codex stub: happy path, Codex non-zero, verdict parse failure. The stub is generated under Pester's `$TestDrive` physical path at test time and never invokes the real Codex CLI.
+- Pester test fixtures live under Pester's `$TestDrive` physical path, not under the repo's `log/`. Real review-cycle runtime artifacts still live under `<project-root>/log/review/<run-id>/` when the script is invoked outside tests.
 
 ## Manual acceptance criteria
 
