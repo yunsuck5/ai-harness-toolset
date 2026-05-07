@@ -212,6 +212,32 @@ Describe 'review-prepare targetFiles' {
         }
     }
 
+    It 'AC-PR-WRITEONCE-1: pre-existing run directory is rejected and seeded meta.json is not overwritten' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-writeonce-1'
+        $target = Join-Path $project 'a.txt'
+        script:Write-Utf8NoBomFile -Path $target -Content "writeonce body`n"
+
+        $runId = '20260506-110000-pwo1aa'
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        $null = New-Item -ItemType Directory -Path $runDir -Force
+
+        $sentinelMeta = Join-Path $runDir 'meta.json'
+        $sentinelContent = '{"sentinel":"untouched"}'
+        script:Write-Utf8NoBomFile -Path $sentinelMeta -Content $sentinelContent
+
+        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetPath $target -RunId $runId -Stage 'design'
+
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'run directory already exists'
+        $result.Output | Should -Match 'fresh run-id'
+
+        $afterText = [System.IO.File]::ReadAllText($sentinelMeta, (New-Object System.Text.UTF8Encoding($false)))
+        $afterText | Should -Be $sentinelContent
+
+        $inputPath = Join-Path $runDir 'input.md'
+        Test-Path -LiteralPath $inputPath -PathType Leaf | Should -BeFalse
+    }
+
     It 'AC-PR3: comma in target path is preserved as a single entry (B2 regression)' {
         $project = script:New-PrepareCaseRoot -CaseName 'pr3'
         $sub = Join-Path $project 'docs'

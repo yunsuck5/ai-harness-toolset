@@ -186,9 +186,10 @@ if ([string]::IsNullOrEmpty($RunId)) {
 
 $runDir = Join-Path -Path $logRoot -ChildPath ('review/' + $RunId)
 [void] (Assert-InReviewRunRoot -Path $runDir -ProjectLogRoot $logRoot)
-if (-not (Test-Path -LiteralPath $runDir -PathType Container)) {
-    $null = New-Item -ItemType Directory -Path $runDir -Force
+if (Test-Path -LiteralPath $runDir -PathType Container) {
+    throw "review-prepare: run directory already exists: $runDir. Use a fresh run-id."
 }
+$null = New-Item -ItemType Directory -Path $runDir -Force
 
 $targetSha  = $primaryEntry.Sha256
 $targetRel  = $primaryEntry.RelPath
