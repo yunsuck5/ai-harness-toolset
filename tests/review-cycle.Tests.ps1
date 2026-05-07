@@ -153,10 +153,11 @@ BeforeAll {
             '-Constraints', $Constraints
         )
         if ($null -ne $TargetFiles -and $TargetFiles.Count -gt 0) {
-            if (-not (Test-Path -LiteralPath $script:StubDir -PathType Container)) {
-                $null = New-Item -ItemType Directory -Path $script:StubDir -Force
+            $listDir = Join-Path $ProjectRoot 'log/staging'
+            if (-not (Test-Path -LiteralPath $listDir -PathType Container)) {
+                $null = New-Item -ItemType Directory -Path $listDir -Force
             }
-            $listPath = Join-Path $script:StubDir ('cycle-targets-' + ([guid]::NewGuid().ToString('N')) + '.list')
+            $listPath = Join-Path $listDir ('cycle-targets-' + ([guid]::NewGuid().ToString('N')) + '.list')
             $listContent = ($TargetFiles -join "`n") + "`n"
             $enc = New-Object System.Text.UTF8Encoding($false)
             [System.IO.File]::WriteAllText($listPath, $listContent, $enc)
@@ -260,6 +261,53 @@ Describe 'review-cycle' {
         $argvLines | Should -Contain '--model'
         $argvLines | Should -Contain '--output-last-message'
         $argvLines[$argvLines.Count - 1] | Should -Be '-'
+    }
+
+    It 'AC-CY-CONTAINMENT-1: -TargetFilesPath outside ProjectLogRoot is rejected before list is read' {
+        $project = script:New-CycleCase -CaseName 'cy-containment-1'
+        $target = Join-Path $project 'a.txt'
+        script:Write-Utf8NoBomFile -Path $target -Content "cy containment body`n"
+        $stub = script:Write-CodexStub -StubName 'cy-containment-1-yes' -Mode 'verdict-yes'
+
+        $scriptsDir = Join-Path $project 'scripts'
+        $null = New-Item -ItemType Directory -Path $scriptsDir -Force
+        $badList = Join-Path $scriptsDir 'foo.list'
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($badList, ($target + "`n"), $enc)
+
+        $runId = '20260506-120000-cyc1aa'
+        $procArgs = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', $script:CycleScript,
+            '-Stage', 'implementation',
+            '-Purpose', 'pester containment cycle',
+            '-ProjectRoot', $project,
+            '-ToolRoot', $script:RepoRoot,
+            '-RunId', $runId,
+            '-Reviewer', 'codex',
+            '-Context', 'pester context line.',
+            '-RequiredInspectionPaths', 'pester inspection path.',
+            '-ReviewQuestions', 'pester review question.',
+            '-Constraints', 'pester constraint.',
+            '-TargetFilesPath', $badList
+        )
+
+        $previousEnv = $env:AI_HARNESS_CODEX_COMMAND
+        $env:AI_HARNESS_CODEX_COMMAND = $stub
+        try {
+            $combined = & powershell.exe @procArgs 2>&1
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            $env:AI_HARNESS_CODEX_COMMAND = $previousEnv
+        }
+        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+
+        $exitCode | Should -Not -Be 0
+        $text | Should -Match 'TargetFilesPath outside ProjectLogRoot'
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        Test-Path -LiteralPath $runDir -PathType Container | Should -BeFalse
     }
 
     It 'AC-CY5: comma in target path is preserved end-to-end through cycle (B2 regression)' {

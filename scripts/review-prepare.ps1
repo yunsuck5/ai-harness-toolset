@@ -38,6 +38,12 @@ if (-not [string]::IsNullOrEmpty($TargetFilesPath)) {
     if (-not (Test-Path -LiteralPath $TargetFilesPath -PathType Leaf)) {
         throw "review-prepare: TargetFilesPath not found: $TargetFilesPath"
     }
+    try {
+        [void] (Assert-InProjectLogRoot -Path $TargetFilesPath -ProjectLogRoot $logRoot)
+    }
+    catch {
+        throw "review-prepare: TargetFilesPath outside ProjectLogRoot: $($_.Exception.Message)"
+    }
     $listText = Read-Utf8 -Path $TargetFilesPath
     foreach ($ln in ($listText -split "`r?`n")) {
         $trim = $ln.Trim()

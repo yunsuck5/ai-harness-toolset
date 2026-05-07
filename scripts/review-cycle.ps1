@@ -203,6 +203,13 @@ if (-not [string]::IsNullOrEmpty($TargetFilesPath)) {
         Write-Host ('review-cycle: FAIL TargetFilesPath not found: {0}' -f $TargetFilesPath)
         exit 1
     }
+    try {
+        [void] (Assert-InProjectLogRoot -Path $TargetFilesPath -ProjectLogRoot $logRoot)
+    }
+    catch {
+        Write-Host ('review-cycle: FAIL TargetFilesPath outside ProjectLogRoot: {0}' -f $_.Exception.Message)
+        exit 1
+    }
     $listText = Read-Utf8 -Path $TargetFilesPath
     foreach ($ln in ($listText -split "`r?`n")) {
         $trim = $ln.Trim()
