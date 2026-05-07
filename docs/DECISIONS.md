@@ -28,6 +28,7 @@
 - review result record contract is canonical in `docs/REVIEW_RESULT_CONTRACT.md`
 - `review-cycle.ps1` is the MVP user-facing review entrypoint
 - `review-cycle.ps1` uses strict verdict parsing; failed parse preserves the run as evidence
+- `review-prepare.ps1` is write-once per `<run-id>`: a pre-existing run directory is rejected and the seeded `meta.json` is never overwritten; recovery is a fresh run-id
 - `review-verify -RequireResult` validates completed-record binding
 - review record retention is human-managed at `<run-id>` directory granularity
 - adoption smoke test, actual reviewer workflow test, and actual development workflow usage test are separate milestones

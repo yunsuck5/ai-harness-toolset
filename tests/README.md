@@ -30,6 +30,7 @@ Local-first test fixtures for ai-harness-toolset.
   - `tests/review-input-verify.Tests.ps1` — five-section readiness gate: filled-PASS, missing-heading FAIL, placeholder-remains FAIL.
   - `tests/review-cycle.Tests.ps1` — single-shot CLI `review-cycle.ps1` driven by a Codex stub: happy path, Codex non-zero, verdict parse failure. The stub is generated under Pester's `$TestDrive` physical path at test time and never invokes the real Codex CLI.
 - Pester test fixtures live under Pester's `$TestDrive` physical path, not under the repo's `log/`. Real review-cycle runtime artifacts still live under `<project-root>/log/review/<run-id>/` when the script is invoked outside tests.
+- Interruption behavior: Pester fixtures never write into the repo's `log/`, so Ctrl+C, parent process kill, or other mid-run interruptions cannot leave residue under `<repo>/log/`. On normal `Invoke-Pester` completion the `$TestDrive` directory is cleaned up by Pester itself. On interruption, the OS temp copy of `$TestDrive` may remain until the next normal Pester run or until OS-level temp cleanup; that is an OS temp housekeeping concern, not repo `log/` pollution. The toolset does not ship a cleanup script, watcher, daemon, hook, or installer for this case.
 
 ## Manual acceptance criteria
 

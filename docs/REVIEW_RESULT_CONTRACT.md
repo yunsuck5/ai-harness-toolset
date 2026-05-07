@@ -72,6 +72,8 @@ review result가 evidence file이나 chatlog summary를 **참조**하는 것은 
 
 정상 경로는 `review-cycle.ps1` single-shot path다. verdict parsing 성공 시 cycle이 같은 run-id 디렉터리에 `result.md`(Codex CLI가 작성)와 `result.json`(cycle이 작성)을 두고 `review-verify -RequireResult`까지 호출한다. 이 자동 작성은 user-triggered single-shot 안에서 일어난다.
 
+`review-prepare.ps1`은 `<run-id>` 단위로 write-once다. 같은 `<run-id>` 디렉터리가 이미 존재하면 prepare는 거부하고 seed된 `meta.json` / `input.md`를 덮어쓰지 않는다. 보완은 새 run-id로 재실행해서 한다.
+
 parsing 실패 또는 Codex 실패 시 그 `<run-id>`는 failed/incomplete record로 보존되며, 새 run-id로 다시 실행해 보완한다.
 
 ## 권장 layout
