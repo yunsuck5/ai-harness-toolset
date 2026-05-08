@@ -102,7 +102,9 @@ Behavior, field set, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`.
 ## Evidence and chatlog
 
 - `log/evidence/<scope>/<case>/` captures command, test, and execution facts. Contract: `docs/EVIDENCE_CONTRACT.md`.
-- `log/chatlog/current/` captures session `summary.md` and `resume.md`. Contract: `docs/CHATLOG_CONTRACT.md`.
+- `log/chatlog/current/` is split into BF and CL. `log/chatlog/current/resume.md` is the current BF (Brief) restore point — the canonical session restore / handoff / phase-transition state. `log/chatlog/current/summary.md` is its compact companion. Cumulative work history (CL) is concept-boundary only in MVP; full CL automation is post-MVP. Contract: `docs/CHATLOG_CONTRACT.md`.
+- BF stays compact and references CL / review / evidence artifacts by path only. Do not inline full review results, evidence payloads, or cumulative CL content into BF.
+- `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` define the natural-language BF save and restore-offer protocol that activates only when the user has manually adopted those snippets into root `CLAUDE.md` / `AGENTS.md`. There is no automatic global install, no hook, no auto-injection, no automatic transcript or prompt capture, no transcript JSONL parser, no Claude JSONL parser, and no `BF_STATE.json` or other separate state-machine file.
 
 ## Snippets for CLAUDE.md / AGENTS.md
 

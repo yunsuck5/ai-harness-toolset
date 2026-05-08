@@ -184,6 +184,62 @@ raw 명령을 그대로 외워서 매번 입력하는 것은 권장하지 않는
 
 ---
 
+## 7b. Chatlog BF Level 2 UX — 자연어 의도
+
+`ai-harness-toolset` 의 chatlog 운용도 일상에서는 사용자가 raw PowerShell 명령을 직접 입력하지 않는다. 사용자는 Claude Code 안에서 자연어 의도를 표현하고, Claude Code 가 BF (Brief) 영역인 `log/chatlog/current/resume.md` 와 companion `summary.md` 를 직접 갱신한다.
+
+이 절은 chatlog 의 두 책임 영역 중 BF 의 Level 2 UX 만 다룬다. CL (Chat Log — 누적 work history / portfolio / audit) 영역의 fuller automation 은 MVP scope 밖이며 본 가이드는 BF 만 운용 대상으로 본다. 자세한 책임 분리는 `docs/CHATLOG_CONTRACT.md` 의 BF / CL 책임 분리 절을 본다.
+
+### BF 저장 (사용자 발화)
+
+다음 형태의 사용자 발화는 모두 BF 저장 / checkpoint 의도로 해석된다.
+
+```text
+현재 진행 지점을 복구 시점으로 저장해
+BF 저장해
+복구 지점 저장해
+handoff 지점 만들어줘
+다음 세션에서 이어갈 수 있게 정리해
+현재 phase checkpoint 남겨줘
+```
+
+이 의도가 감지되면 Claude Code 는 다음 절차를 따른다.
+
+1. repo 상태 확인 (`pwd`, git top-level, branch, HEAD, origin/main, status).
+2. 현재 상태 / 마지막 완료 action / 다음 단일 action / do-not-do / pending user decision 을 정리.
+3. `log/chatlog/current/resume.md` 갱신 (BF canonical current).
+4. `log/chatlog/current/summary.md` 갱신 (BF compact companion).
+5. 관련 review / evidence / CL artifact 는 path / link 로만 참조 — 본문 인라인 금지.
+6. BF 는 짧게 유지. 상세 내용이 필요하면 path 만 가리킨다.
+7. 갱신된 파일과 남은 risk 를 사용자에게 보고.
+
+이 절차에서 Claude Code 는 사용자가 어떤 raw PowerShell 명령도 직접 입력하지 않도록 한다. 사용자가 명시적으로 "직접 PowerShell 로 갱신하겠다" 라고 의사를 밝히지 않는 한 자연어 발화 한 줄로 BF 저장이 완료되어야 한다.
+
+### 새 Claude Code 세션 진입 시 — restore-offer
+
+사용자가 같은 프로젝트에서 새 Claude Code 세션을 열면 Level 2 동작은 다음과 같다.
+
+1. Claude Code 가 `log/chatlog/current/resume.md` 존재 여부를 확인.
+2. 존재하면 그 파일을 읽고, 한국어로 현재 상태 / 다음 단일 action / do-not-do / pending user decision 을 요약 보고.
+3. 사용자에게 `이 복구 지점에서 이어서 진행할까요?` 라고 묻는다.
+4. 사용자 확인 전에는 의미 있는 작업을 실행하지 않는다.
+
+`resume.md` 가 없으면 `summary.md` 로 fallback 하고 BF 가 비어있거나 미흡함을 보고한다. raw transcript / 누적 CL 본문을 읽어 BF 를 임의로 재구성하지 않는다.
+
+### Level 2 의 의미와 자동화 경계
+
+본 절은 Level 2 MVP 동작이다. 사용자가 자연어로 BF 를 저장 / 복원하는 협업 contract 이지, 자동화된 hook / installer 가 아니다.
+
+- 본 MVP 는 hook, session-start automation, on-stop hook, on-prompt-submit hook, watcher, daemon, scheduler 를 포함하지 않는다.
+- 사용자 prompt 자동 capture, assistant 응답 자동 capture, transcript JSONL parser, `BF_STATE.json` 같은 별도 state machine 은 본 MVP scope 밖이다.
+- `~/.claude/settings.json` 또는 글로벌 `CLAUDE.md` / `AGENTS.md` 의 mutation 은 본 MVP 가 절대 수행하지 않는다. 모든 chatlog payload 는 project-local 이다.
+- CL (Chat Log) 영역의 fuller implementation — 누적 work history 자동화, 자체 schema, retention, browse UI, RND-style `CHAT_LOG + REPORT + BRIEF` heavy workflow — 는 본 MVP 가 다루지 않는다.
+- Claude Code snippet 자체는 자동 install 되지 않는다. 사용자가 의도적으로 root `CLAUDE.md` / `AGENTS.md` 의 managed block 에 붙여 넣은 경우에만 활성화된다.
+
+이 절의 UX 는 `snippets/CLAUDE_SNIPPET.md` 와 `snippets/AGENTS_SNIPPET.md` 의 `Chatlog session protocol` / `Restore-offer behavior` / `BF save / checkpoint protocol` 와 substance 가 동일해야 한다. 둘 사이에 의미가 충돌하면 contract 위반이다.
+
+---
+
 ## 8. Optional skill adoption path
 
 `snippets/claude-skills/ai-harness-review/SKILL.md` 는 자동 주입되지 않는 optional payload 다. 다른 snippet 들과 마찬가지로 사용자가 의도적으로 채택한다.

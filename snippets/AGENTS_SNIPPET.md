@@ -34,15 +34,41 @@ The only valid final verdict values for this toolset are exactly:
 
 A reviewer verdict does not approve commit, push, publish, merge, or release.
 
-## Chatlog session protocol
+## Chatlog (BF and CL)
 
-Chatlog is a first-class subsystem of ai-harness-toolset. It is not a reviewer byproduct.
+- Use `log/chatlog/current/resume.md` as the current BF restore point.
+- Use `log/chatlog/current/summary.md` as its compact companion.
+- Treat other files under `log/chatlog/` as CL / history context, referenced only when needed.
+- Keep BF compact and reference review / evidence / CL details by path only.
 
-- Before resuming meaningful work, read `log/chatlog/current/resume.md` first. If absent, read `summary.md`, then `decisions.md`, then `raw-transcript.md` only when source wording matters.
-- Treat chatlog as human-first. Write it so a human can resume the project before an AI reconstructs context.
-- Do not mix user-original text with AI-authored summaries, judgments, decisions, or change summaries. Keep them in separate sections or separate files.
-- Do not summarize, compress, rephrase, translate, or interpret user-original text when preserving it as original. Keep verbatim quotes short and place AI judgment on a separate line.
-- After meaningful work changes session state, update `log/chatlog/current/summary.md` and `resume.md` before handoff. Read-only exploration that did not change session state does not require an update.
+## New session restore-offer
+
+At the start of meaningful work:
+
+1. Read `log/chatlog/current/resume.md` if it exists.
+2. Summarize the restore point in Korean, covering current state, next single action, do-not-do, and pending user decision. The summary must be in Korean so the human reader can pick up immediately; agent-internal reasoning may be in any language.
+3. Ask the user whether to resume from that point.
+4. Proceed only after the user confirms.
+5. If `resume.md` is missing, fall back to `summary.md` and report the gap.
+
+## BF save / checkpoint protocol
+
+Treat any of the following user phrases as BF save intent (Korean, verbatim):
+
+- `현재 진행 지점을 복구 시점으로 저장해`
+- `BF 저장해`
+- `복구 지점 저장해`
+- `handoff 지점 만들어줘`
+- `다음 세션에서 이어갈 수 있게 정리해`
+- `현재 phase checkpoint 남겨줘`
+
+When detected:
+
+1. Inspect repo state.
+2. Update `log/chatlog/current/resume.md` with current state, last completed action, next single action, do-not-do, pending user decision.
+3. Update `log/chatlog/current/summary.md` as its compact companion.
+4. Keep BF compact and reference review / evidence / CL details by path only.
+5. Report the updated files and any remaining risks.
 
 ## Other rules
 
