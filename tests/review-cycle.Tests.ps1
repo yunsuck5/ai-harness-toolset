@@ -374,4 +374,25 @@ Describe 'review-cycle' {
         $files.Count | Should -Be 1
         $files[0].path | Should -Be 'docs/a,b.md'
     }
+
+    It 'AC-CY-NOGIT-1: explicit -TargetFiles + non-Git ProjectRoot does not invoke git status and records meta.sourceHead = null' {
+        $project = script:New-CycleCase -CaseName 'cy-nogit-1'
+        $target = Join-Path $project 'a.txt'
+        script:Write-Utf8NoBomFile -Path $target -Content "cy nogit body`n"
+        $stub = script:Write-CodexStub -StubName 'cy-nogit-1-yes' -Mode 'verdict-yes'
+
+        $runId = '20260506-120000-cyn1aa'
+        $r = script:Invoke-ReviewCycle -ProjectRoot $project -TargetFiles @($target) -RunId $runId -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'review-cycle: PASS'
+        $r.Output | Should -Not -Match 'git status failed'
+        $r.Output | Should -Not -Match 'no tracked changes detected'
+
+        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
+
+        $meta.PSObject.Properties['sourceHead'] | Should -Not -BeNullOrEmpty
+        $meta.sourceHead | Should -Be $null
+    }
 }

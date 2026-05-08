@@ -24,7 +24,16 @@ function Invoke-GitCapture {
         if (-not [string]::IsNullOrEmpty($WorkingDirectory)) {
             $startParams['WorkingDirectory'] = $WorkingDirectory
         }
-        $proc = Start-Process @startParams
+        try {
+            $proc = Start-Process @startParams
+        }
+        catch {
+            return [pscustomobject]@{
+                ExitCode = -1
+                StdOut   = ''
+                StdErr   = ('git invocation failed: ' + $_.Exception.Message)
+            }
+        }
         $stdout = [System.IO.File]::ReadAllText($stdoutFile)
         $stderr = [System.IO.File]::ReadAllText($stderrFile)
         return [pscustomobject]@{

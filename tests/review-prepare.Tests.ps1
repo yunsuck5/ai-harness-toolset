@@ -259,4 +259,71 @@ Describe 'review-prepare targetFiles' {
         $files[0].path | Should -Be 'docs/a,b.md'
         $files[0].sha256 | Should -Be $expectedSha
     }
+
+    It 'AC-PR-NOGIT-1: non-Git ProjectRoot + explicit -TargetFiles records meta.sourceHead = null' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-nogit-1'
+        $targetPath = Join-Path $project 'target.txt'
+        script:Write-Utf8NoBomFile -Path $targetPath -Content "nogit body 1`n"
+
+        $runId = '20260506-110000-pn1aaa'
+        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetFiles @($targetPath) -RunId $runId -Stage 'design'
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+
+        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
+        Test-Path -LiteralPath $metaPath -PathType Leaf | Should -BeTrue
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
+
+        $meta.PSObject.Properties['sourceHead'] | Should -Not -BeNullOrEmpty
+        $meta.sourceHead | Should -Be $null
+    }
+
+    It 'AC-PR-NOGIT-2: git executable unavailable -> review-prepare succeeds with sourceHead = null' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-nogit-2'
+        $targetPath = Join-Path $project 'target.txt'
+        script:Write-Utf8NoBomFile -Path $targetPath -Content "nogit body 2`n"
+
+        $listDir = Join-Path $project 'log/staging'
+        if (-not (Test-Path -LiteralPath $listDir -PathType Container)) {
+            $null = New-Item -ItemType Directory -Path $listDir -Force
+        }
+        $listPath = Join-Path $listDir ('pester-prepare-targets-nogit-' + ([guid]::NewGuid().ToString('N')) + '.list')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($listPath, ($targetPath + "`n"), $enc)
+
+        $runId = '20260506-110000-pn2aaa'
+        $psExe = (Get-Command powershell.exe -ErrorAction Stop).Source
+        $sanitizedPath = Join-Path $env:SystemRoot 'System32'
+
+        $procArgs = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', $script:ReviewPrepareScript,
+            '-Stage', 'design',
+            '-Purpose', 'pester nogit',
+            '-ProjectRoot', $project,
+            '-ToolRoot', $script:RepoRoot,
+            '-RunId', $runId,
+            '-TargetFilesPath', $listPath
+        )
+
+        $previousPath = $env:PATH
+        try {
+            $env:PATH = $sanitizedPath
+            $combined = & $psExe @procArgs 2>&1
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            $env:PATH = $previousPath
+        }
+
+        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        $exitCode | Should -Be 0 -Because $text
+
+        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
+        Test-Path -LiteralPath $metaPath -PathType Leaf | Should -BeTrue
+        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
+
+        $meta.PSObject.Properties['sourceHead'] | Should -Not -BeNullOrEmpty
+        $meta.sourceHead | Should -Be $null
+    }
 }
