@@ -81,9 +81,11 @@ The user must not be asked for these. Synthesize them from the conversation, the
 
 - `-Stage` — choose one of `design`, `implementation`, `test`, `review`, `release` based on what the current change actually is. Default to `implementation` for ordinary code changes.
 - `-Purpose` — one short line describing what the change is, in the user's working language. Quote a concrete artifact name when possible (e.g., `'review socket library implementation in scripts/server-sockets.ps1'`).
-- `-TargetFiles` — comma-separated list from step 2.
+- `-TargetFiles` / `-TargetFilesPath` — pick the shape based on the count from step 2:
+  - **Exactly one file:** pass the single repo-relative path with `-TargetFiles <path>`. A literal filename containing comma is allowed in this single-file shape (the script tolerates it as long as the path resolves to an existing file).
+  - **Two or more files:** write a newline-separated list file under `<ProjectLogRoot>/log/` (for example `log/review-targets/<purpose-or-timestamp>.list`) using repo-relative paths with forward slashes, then pass it with `-TargetFilesPath <list-file>`. Do **not** join multiple files into a single comma-separated `-TargetFiles` value — `review-cycle.ps1` rejects that shape with a `FAIL TargetFiles appears to be a comma-separated single string` diagnostic before any reviewer runs.
 - `-Context` — short paragraph of background the reviewer needs. If you ran a Claude self-review, include your own findings here in compressed form.
-- `-RequiredInspectionPaths` — paths Codex must read; usually the same as `-TargetFiles`, plus any directly coupled file the diff implies.
+- `-RequiredInspectionPaths` — paths Codex must read; usually the same as the chosen TargetFiles set, plus any directly coupled file the diff implies.
 - `-ReviewQuestions` — concrete questions you want Codex to answer. If you ran a Claude self-review, prioritize the open questions or doubts you could not resolve.
 - `-Constraints` — explicit constraints the reviewer must respect (project conventions, encoding rules, public API stability, etc.).
 
@@ -91,13 +93,28 @@ Do not invent runtime details (no fake commit hashes, no fake reviewer model nam
 
 ### 4. Run review-cycle.ps1 exactly once
 
-Invoke the script in `-File` mode, never `-Command`:
+Invoke the script in `-File` mode, never `-Command`. Use the shape that matches the TargetFiles count from step 3.
+
+Single-file invocation:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script-root>/review-cycle.ps1 `
     -Stage <stage> `
     -Purpose '<purpose>' `
-    -TargetFiles <file1>,<file2> `
+    -TargetFiles <single-file> `
+    -Context '<context>' `
+    -RequiredInspectionPaths '<paths>' `
+    -ReviewQuestions '<questions>' `
+    -Constraints '<constraints>'
+```
+
+Multi-file invocation (write a newline-separated list file under `<ProjectLogRoot>/log/` first, then point the script at it):
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script-root>/review-cycle.ps1 `
+    -Stage <stage> `
+    -Purpose '<purpose>' `
+    -TargetFilesPath log/review-targets/<purpose-or-timestamp>.list `
     -Context '<context>' `
     -RequiredInspectionPaths '<paths>' `
     -ReviewQuestions '<questions>' `
@@ -109,8 +126,13 @@ Hard rules:
 - One invocation per user request. No retry on failure. No fallback model. No auto-fix loop.
 - Do not reuse an existing `<run-id>`. Let `review-cycle.ps1` allocate a fresh one.
 - Do not bypass `review-input-verify` or `review-verify`.
+- Never join multiple file paths into a single `-TargetFiles` value with commas. For two or more files, always go through `-TargetFilesPath`.
 
-If the script exits non-zero, stop and report the exit and the last `review-cycle:` line. Do not re-run.
+Retry discipline on non-zero exit:
+
+- Stop immediately. Do not silently retry, even by adjusting the argument shape (for example, switching `-TargetFiles` to `-TargetFilesPath` after a wrapper-level failure).
+- Report the wrapper/invocation error: the exit code and the last `review-cycle:` line printed. If a `<run-id>` was allocated, report whether `result.md` and `result.json` exist for that run.
+- Treat any retry as a separate, scoped user decision. Surface the proposed corrected invocation to the user and wait for explicit go-ahead before re-invoking. A previous user approval to "run the review" does not authorize a retry after a wrapper failure.
 
 ### 5. Inspect result.md and result.json
 
@@ -147,11 +169,15 @@ For intent 2 (Claude self-review + Codex), produce a single merged final verdict
 - If either side is `yes with risk`, the merged verdict is `yes with risk`. Carry the named risks forward.
 - Only if both sides are `yes` is the merged verdict `yes`.
 
-Always include in the report:
+Always include in the report, kept visually distinct (separate sections or labeled lines — never collapsed into one verdict line):
 
-- `<run-id>`
-- path to `result.json`
-- the Codex verdict verbatim
+1. **Wrapper / invocation error** — none, or the exit code plus the last `review-cycle:` line. Include whether a `<run-id>` was allocated and whether `result.md` / `result.json` exist for it.
+2. **Retry decision** — none, or what was retried, why, and whether explicit scoped re-approval was sought before the retry.
+3. **Final reviewer result** — `<run-id>`, path to `result.json`, and the Codex verdict verbatim from `result.json.verdict`.
+4. **review-verify outcome** — pass/fail of both default and `-RequireResult` modes (clean `review-cycle.ps1` exit 0 implies both passed, but state it explicitly).
+
+Then add:
+
 - if intent 2: your own self-review summary in 3–6 lines and the merged final verdict
 - the user's next decision points (the verdict does not approve commit, push, publish, merge, or release)
 
@@ -163,7 +189,8 @@ If the user asks you to commit or push *after* seeing the verdict, that is a sep
 
 ## Failure handling
 
-- `review-cycle.ps1` non-zero exit: report the exit code and the last `review-cycle:` line printed. Do not retry.
+- `review-cycle.ps1` non-zero exit: report the exit code and the last `review-cycle:` line printed. Do not retry without explicit scoped user approval — and even then, present the corrected invocation first and wait for go-ahead. This applies to every flavor of non-zero exit (CLI input shape, input-readiness, prepare error, Codex error, parse error, verify error).
+- Wrapper-level argument-shape failures (for example, `FAIL TargetFiles appears to be a comma-separated single string`): treat as a wrapper/invocation error. Do not silently re-invoke with a different argument shape; surface the failure and the corrected proposed invocation to the user, and wait for approval.
 - Codex CLI not installed or not on PATH: report that the CLI environment is not ready and point to `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`. Do not attempt to install anything.
 - Verdict parse failure: the failed `<run-id>` is preserved on disk. Report the path and stop. Do not edit files inside that `<run-id>` directory.
 - Stale review packet (a `targetFiles[]` SHA changed since prepare): report it as a stale-binding failure. Do not re-fabricate the packet.

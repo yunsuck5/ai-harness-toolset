@@ -413,6 +413,45 @@ Describe 'review-cycle' {
         Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf      | Should -BeFalse
     }
 
+    It 'AC-CY-TARGETFILES-COMMA-1: comma-joined single TargetFiles is rejected with explicit diagnostic' {
+        $project = script:New-CycleCase -CaseName 'cy-targetfiles-comma-1'
+        $a = Join-Path $project 'a.txt'
+        $b = Join-Path $project 'b.txt'
+        script:Write-Utf8NoBomFile -Path $a -Content "cy comma a body`n"
+        script:Write-Utf8NoBomFile -Path $b -Content "cy comma b body`n"
+
+        $runId = '20260508-120000-cytfc1'
+        $procArgs = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', $script:CycleScript,
+            '-Stage', 'implementation',
+            '-Purpose', 'pester comma-joined targetfiles',
+            '-ProjectRoot', $project,
+            '-ToolRoot', $script:RepoRoot,
+            '-RunId', $runId,
+            '-Reviewer', 'codex',
+            '-Context', 'pester context line.',
+            '-RequiredInspectionPaths', 'pester inspection path.',
+            '-ReviewQuestions', 'pester review question.',
+            '-Constraints', 'pester constraint.',
+            '-TargetFiles', 'a.txt,b.txt'
+        )
+
+        $combined = & powershell.exe @procArgs 2>&1
+        $exitCode = $LASTEXITCODE
+        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+
+        $exitCode | Should -Not -Be 0
+        $text | Should -Match 'review-cycle: FAIL TargetFiles appears to be a comma-separated single string'
+        $text | Should -Match '-TargetFilesPath'
+        $text | Should -Not -Match 'TargetPath not found'
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        Test-Path -LiteralPath $runDir                              -PathType Container | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $runDir 'result.md')      -PathType Leaf      | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $runDir 'result.json')    -PathType Leaf      | Should -BeFalse
+    }
+
     It 'AC-CY5: comma in target path is preserved end-to-end through cycle (B2 regression)' {
         $project = script:New-CycleCase -CaseName 'cy5'
         $sub = Join-Path $project 'docs'

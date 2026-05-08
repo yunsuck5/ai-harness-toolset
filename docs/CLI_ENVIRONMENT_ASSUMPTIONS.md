@@ -29,6 +29,12 @@ Git은 본 toolset의 기능적 prerequisite가 아니다. 두 가지 보조 역
 
 Explicit `-TargetFiles`가 제공되면 비-Git 프로젝트에서도 first-class로 동작한다.
 
+### Multi-file CLI invocation shape
+
+Raw CLI에서 다중 파일 리뷰를 돌릴 때는 `-TargetFilesPath`를 사용한다. list 파일은 `<project-root>/log/` 아래에 두고, 한 줄에 한 경로씩, repo-relative path와 forward slash를 사용한다. 콤마로 결합한 단일 `-TargetFiles "a.txt,b.txt"` 값은 `review-cycle.ps1`이 reviewer 호출 전에 명시적으로 거부한다 (`FAIL TargetFiles appears to be a comma-separated single string`). `-TargetFiles`는 단일 파일 인자이며, 콤마를 포함하는 실제 단일 파일명 (예: `docs/a,b.md`)은 그대로 허용된다.
+
+`review-cycle.ps1`이 0이 아닌 코드로 종료되면 자동 재실행하지 않는다. wrapper failure를 보고하고 별도의 scoped 사용자 승인을 받은 뒤에만 다시 invocation 한다. 자연어 운용 경로에서는 `snippets/claude-skills/ai-harness-review/SKILL.md`의 retry discipline 절을 따른다.
+
 ## Tier 4 — External operator ecosystem
 
 External operator tools may exist in the user's environment but are not invoked by this toolset and are not installed/configured/PATH-modified by this toolset.

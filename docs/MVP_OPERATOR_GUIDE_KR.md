@@ -244,18 +244,40 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .ai-harness/scripts/log-init
 
 # 3. <project-root>/.gitignore 에 log/ 포함 확인 (사용자 책임)
 
-# 4. 단일 review cycle 실행
+# 4a. 단일 파일 review cycle 실행
 powershell -NoProfile -ExecutionPolicy Bypass -File .ai-harness/scripts/review-cycle.ps1 `
     -Stage implementation `
     -Purpose '<purpose>' `
-    -TargetFiles <relative-file-1>,<relative-file-2> `
+    -TargetFiles <single-relative-file> `
+    -Context '<context>' `
+    -RequiredInspectionPaths '<paths>' `
+    -ReviewQuestions '<questions>' `
+    -Constraints '<constraints>'
+
+# 4b. 다중 파일 review cycle 실행 — 라인당 한 경로씩 list 파일을 만들고 -TargetFilesPath 로 넘긴다
+#     list 파일은 반드시 <project-root>/log/ 아래에 둔다. log-init.ps1 은 log/review-targets/ 를
+#     자동 생성하지 않으므로, list 디렉터리는 사용자가 직접 만든다.
+New-Item -ItemType Directory -Force -Path log/review-targets | Out-Null
+@'
+relative/path/one.ps1
+relative/path/two.md
+'@ | Out-File -FilePath log/review-targets/example.list -Encoding utf8
+
+powershell -NoProfile -ExecutionPolicy Bypass -File .ai-harness/scripts/review-cycle.ps1 `
+    -Stage implementation `
+    -Purpose '<purpose>' `
+    -TargetFilesPath log/review-targets/example.list `
     -Context '<context>' `
     -RequiredInspectionPaths '<paths>' `
     -ReviewQuestions '<questions>' `
     -Constraints '<constraints>'
 ```
 
-`-TargetFiles` 를 생략하면 git status 의 tracked 변경 파일이 자동 사용된다. untracked 파일이 있으면 실패한다. 결정적 동작이 필요하면 `-TargetFiles` 를 명시한다.
+`-TargetFiles` 를 생략하면 git status 의 tracked 변경 파일이 자동 사용된다. untracked 파일이 있으면 실패한다. 결정적 동작이 필요하면 `-TargetFiles` (단일 파일) 또는 `-TargetFilesPath` (다중 파일 list) 를 명시한다.
+
+다중 파일 review 의 정식 입력 shape 은 `-TargetFilesPath` 다. 콤마로 결합된 단일 `-TargetFiles "a.txt,b.txt"` 값은 `review-cycle.ps1` 가 reviewer 호출 전에 거부한다 (`FAIL TargetFiles appears to be a comma-separated single string`). `-TargetFiles` 는 단일 파일만 지정하는 인자이며, 콤마를 포함하는 실제 단일 파일명 (예: `docs/a,b.md`) 은 그대로 허용된다. `review-cycle.ps1` 가 0 이 아닌 코드로 종료되면 자동 재실행하지 않는다. wrapper failure 를 보고하고 별도 scoped 승인을 받은 뒤에만 다시 실행한다. retry discipline 의 정식 출처는 `snippets/claude-skills/ai-harness-review/SKILL.md` 다.
+
+PowerShell 에서 위 here-string 을 `Out-File -Encoding utf8` 로 쓰면 PS 5.1 에서는 기본적으로 BOM 이 붙는다. `review-cycle.ps1` 는 BOM 유무와 무관하게 list 파일을 읽는다. 더 엄격히 BOM 없이 만들고 싶으면 PS 7 이상에서 `-Encoding utf8NoBOM` 을 쓰거나, `[System.IO.File]::WriteAllText($path, $text, (New-Object System.Text.UTF8Encoding($false)))` 를 직접 사용한다.
 
 ---
 

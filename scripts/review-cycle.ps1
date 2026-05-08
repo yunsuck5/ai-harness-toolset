@@ -230,6 +230,22 @@ if ($null -ne $TargetFiles -and $TargetFiles.Count -gt 0) {
     }
 }
 
+# Reject the bad multi-file CLI shape `-TargetFiles "a.txt,b.txt"` early, before run-id allocation
+# or any review-prepare invocation, while leaving real comma-containing single paths intact (AC-CY5).
+if ($resolvedTargets.Count -eq 1 -and $resolvedTargets[0].Contains(',')) {
+    $candidate = $resolvedTargets[0]
+    if ([System.IO.Path]::IsPathRooted($candidate)) {
+        $literalCandidate = $candidate
+    }
+    else {
+        $literalCandidate = Join-Path -Path $project -ChildPath $candidate
+    }
+    if (-not (Test-Path -LiteralPath $literalCandidate -PathType Leaf)) {
+        Write-Host 'review-cycle: FAIL TargetFiles appears to be a comma-separated single string. Use -TargetFilesPath with one target path per line for multi-file reviews.'
+        exit 1
+    }
+}
+
 if ($resolvedTargets.Count -eq 0) {
     $detection = Get-TrackedChangedFiles -WorkingDirectory $project
     if ($detection.Failed) {
