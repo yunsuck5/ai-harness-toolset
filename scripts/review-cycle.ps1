@@ -52,7 +52,8 @@ function Invoke-CodexExec {
         '-'
     )
 
-    if ($codexCmd -match '\.ps1$') {
+    # Stub-args-file protocol is Pester-only opt-in; selecting it by .ps1 suffix misclassifies the npm Windows codex.ps1 shim, which is a real CLI and must take the stdin-pipe branch.
+    if ($env:AI_HARNESS_CODEX_ARGS_FILE_STUB -eq '1') {
         $argsTempPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), ('codex-stub-argv-' + [guid]::NewGuid().ToString('N') + '.json'))
         $argsObj = [ordered]@{ argv = $codexArgs }
         $argsJson = ($argsObj | ConvertTo-Json -Depth 8) -replace "`r`n", "`n"
