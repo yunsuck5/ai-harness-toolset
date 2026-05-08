@@ -48,11 +48,26 @@ Review record retention is human-managed at `<run-id>` directory granularity. Fu
 
 The default user-facing entrypoint for `코덱스 리뷰 진행해` is `review-cycle.ps1`. It runs one full cycle in a single command: prepare a packet, fill the input sections, verify input readiness, invoke Codex CLI once, parse the verdict, write `result.json`, and run both modes of `review-verify`.
 
+Single-file target — pass the one repo-relative path directly with `-TargetFiles`:
+
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-cycle.ps1 `
     -Stage <design|implementation|test|review|release> `
     -Purpose '<short purpose string>' `
-    -TargetFiles file1,file2 `
+    -TargetFiles <single-relative-file> `
+    -Context '<context>' `
+    -RequiredInspectionPaths '<paths>' `
+    -ReviewQuestions '<questions>' `
+    -Constraints '<constraints>'
+```
+
+Two or more target files — write a newline-separated list file under `<project-root>/log/review-targets/` (one repo-relative path per line, forward slashes), then pass it with `-TargetFilesPath`:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-cycle.ps1 `
+    -Stage <design|implementation|test|review|release> `
+    -Purpose '<short purpose string>' `
+    -TargetFilesPath log/review-targets/<purpose-or-timestamp>.list `
     -Context '<context>' `
     -RequiredInspectionPaths '<paths>' `
     -ReviewQuestions '<questions>' `
@@ -63,16 +78,21 @@ From a deployed target project, replace `scripts/review-cycle.ps1` with `.ai-har
 
 - Single-shot, user-triggered. One Codex CLI execution per call. No retry, no fallback model use, no auto-fix loop.
 - Verdict (`yes` / `no` / `yes with risk`) does not approve commit, push, publish, merge, or release.
-- Provide `-TargetFiles` for deterministic target selection.
+- Provide `-TargetFiles` (single file) or `-TargetFilesPath` (multi-file list) for deterministic target selection. Joining multiple paths into a single comma-separated `-TargetFiles` value (for example `-TargetFiles "a.txt,b.txt"`) is rejected before any reviewer runs (`FAIL TargetFiles appears to be a comma-separated single string`); use `-TargetFilesPath` for two or more files. A literal filename containing a comma is allowed in the single-file shape.
 
-Cycle/result mechanics, parse failure semantics, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`. CLI/runtime dependency boundary: `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`.
+Cycle/result mechanics, parse failure semantics, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`. CLI/runtime dependency boundary: `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`. Multi-file list-file build steps: `docs/MVP_OPERATOR_GUIDE_KR.md` §9.
 
 ## Component scripts
 
 `review-prepare.ps1` creates a review packet without invoking Codex; `review-verify.ps1` checks an existing run.
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 -TargetFiles file1,file2 -Stage <stage> -Purpose '<purpose>'
+# review-prepare, single-file target
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 -TargetFiles <single-relative-file> -Stage <stage> -Purpose '<purpose>'
+
+# review-prepare, multi-file target via list file under log/review-targets/
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 -TargetFilesPath log/review-targets/<purpose-or-timestamp>.list -Stage <stage> -Purpose '<purpose>'
+
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 -RunId <run-id>
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 -RunId <run-id> -RequireResult
 ```
