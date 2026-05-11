@@ -36,6 +36,8 @@
 
 `review-cycle.ps1` 은 single-shot CLI이며 위 productization wrapper 범주에 들어가지 않는다. cycle 이 result.json 을 작성하더라도 contract 의 minimum field set, verdict vocabulary, hash binding 의미는 그대로다.
 
+`scripts/review-run.ps1` 도 user-triggered single-shot CLI 이며 같은 범주다. run 은 prepared `log/review/<run-id>/` 의 reviewer 실행 + result 작성 + verify 만 담당하고 `meta.json` / `input.md` 를 mutate 하지 않는다. result.md / result.json 작성과 -RequireResult binding 검증은 본 contract 와 동일하게 따른다.
+
 ## review / evidence / chatlog subsystem 경계
 
 `log/` 아래에는 세 종류의 트리가 공존한다. 책임이 서로 다르다.
@@ -111,7 +113,7 @@ parsing 실패 또는 Codex 실패 시 그 `<run-id>`는 failed/incomplete recor
 
 ### result.json
 
-작성자: `review-cycle.ps1` (verdict parsing 성공 시). 출력 shape 참조용 template은 `templates/review-result.json`이다.
+작성자: `review-cycle.ps1` 또는 `review-run.ps1` (verdict parsing 성공 시). 출력 shape 참조용 template은 `templates/review-result.json`이다. 두 script 모두 동일 schema/binding 으로 작성하며, run 은 prepared run-id 의 `meta.json` 값을 그대로 옮긴다.
 
 - `verdict`은 machine-readable 최종 판단이다. 값: `yes` / `no` / `yes with risk`.
 - `inputSha256`은 어떤 input.md를 기준으로 판단했는지 묶기 위한 값이다.

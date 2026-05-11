@@ -337,6 +337,51 @@ PowerShell 에서 위 here-string 을 `Out-File -Encoding utf8` 로 쓰면 PS 5.
 
 ---
 
+## 9a. 이미 준비된 run-id 에 대해 reviewer 만 실행하는 경우
+
+`scripts/review-run.ps1` 은 이미 prepare 된 `log/review/<run-id>/` 에 대해 reviewer 만 실행하는 보조 경로다. 일반 운용은 `scripts/review-cycle.ps1` 한 번으로 끝나므로, 다음과 같은 좁은 상황에서만 사용한다.
+
+- prepare 와 input.md 채움까지는 별도로 완료해 둔 상태에서 reviewer 만 다시 실행하고 싶을 때.
+- `scripts/review-prepare.ps1` 로 `<run-id>` 를 만들고 input.md 를 직접 편집한 뒤 reviewer 호출만 분리해서 수행하고 싶을 때.
+
+소스 repo 모드 예시:
+
+```powershell
+# 1. 이미 prepare + input.md 채움이 끝난 <run-id> 가 있다고 가정.
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-run.ps1 -RunId <run-id>
+
+# 2. 이전 reviewer 실행 결과를 명시적으로 덮어쓰며 재실행.
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-run.ps1 -RunId <run-id> -Force
+```
+
+target payload 모드에서는 `scripts/review-run.ps1` 을 `.ai-harness/scripts/review-run.ps1` 로 치환해 같은 인자로 실행한다.
+
+동작 contract (요약):
+
+- `review-run.ps1` 은 reviewer 실행 직전에 `review-input-verify.ps1` 을 내부적으로 호출한다. 사용자가 별도로 먼저 실행할 필요는 없다. 사용자가 미리 수동으로 `review-input-verify.ps1 -InputPath <run-id>/input.md` 를 실행해도 무방하다.
+- `review-input-verify` 가 실패하면 (placeholder 잔존, heading 누락, `{{TOKEN}}` 잔존 등) `review-run` 은 Codex 를 호출하지 않고 FAIL 하며 `result.md` / `result.json` 을 만들지 않는다.
+- `review-run` 은 새 `<run-id>` 를 만들지 않는다. 기존 prepare 된 `<run-id>` 위에서만 동작하며 존재하지 않으면 FAIL.
+- `meta.json` 과 `input.md` 는 mutate 하지 않는다. write-once 원칙을 지킨다.
+- `result.md` / `result.json` 이 이미 존재하면 기본적으로 FAIL 하며 사용자가 `-Force` 를 명시할 때에만 두 파일을 제거하고 재실행한다. 기존 verdict 무음 덮어쓰기는 없다.
+- reviewer 실행 후 `review-verify.ps1` 의 default mode 와 `-RequireResult` mode 를 모두 호출하며 두 검증이 모두 PASS 일 때에만 `review-run: PASS` 로 종결한다.
+- `log/chatlog/`, `log/evidence/`, source / target repo 의 글로벌 파일 (`~/.claude/`, root `CLAUDE.md`, root `AGENTS.md`) 은 어떤 경우에도 만들거나 수정하지 않는다.
+- verdict (`yes` / `no` / `yes with risk`) 는 commit / push / publish / merge / release / deployment 를 자동 승인하지 않는다. 사용자가 별도로 결정하고 직접 실행한다.
+
+`review-cycle.ps1` 과의 차이를 정리하면 다음과 같다.
+
+| 항목 | `review-cycle.ps1` | `review-run.ps1` |
+|---|---|---|
+| 책임 | prepare + reviewer 실행 + verify 를 1회로 묶음 | 이미 prepare 된 `<run-id>` 에서 reviewer 실행 + verify 만 수행 |
+| 새 `<run-id>` 생성 | 함 (없으면 자동 할당) | 안 함. 기존 prepared `<run-id>` 가 반드시 있어야 함 |
+| `meta.json` 작성 | 함 (prepare 단계) | 안 함. 기존 값을 그대로 읽기만 함 |
+| `input.md` 작성 / 치환 | 함 (placeholder 치환 포함) | 안 함. 사용자가 채운 그대로 사용 |
+| `result.md` / `result.json` overwrite 정책 | 새 `<run-id>` 라 충돌 없음 | 이미 있으면 FAIL. `-Force` 명시 시에만 덮어씀 |
+| BF / chatlog / evidence 영향 | 없음 | 없음 |
+
+`review-run` 이 0 이 아닌 코드로 종료되면 자동 재실행하지 않는다. 실패 사유 (`review-input-verify` 실패, Codex 실패, verdict parse 실패, `review-verify` 실패) 를 보고하고, 보완 후 별도 scoped 승인을 받아 다시 실행한다. 같은 `<run-id>` 안의 file 을 사람이 직접 보정해 cycle 을 닫지 않는다 — 새 run-id 로 prepare 부터 다시 시작하는 것이 정식 복구 경로다.
+
+---
+
 ## 10. review artifact 역할
 
 `log/review/<run-id>/` 아래 4개 파일은 모두 generated read-only record 다. 사람이 손으로 수정하지 않는다.

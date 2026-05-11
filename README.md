@@ -84,7 +84,9 @@ Cycle/result mechanics, parse failure semantics, and binding rules: `docs/REVIEW
 
 ## Component scripts
 
-`review-prepare.ps1` creates a review packet without invoking Codex; `review-verify.ps1` checks an existing run.
+`review-prepare.ps1` creates a review packet without invoking Codex; `review-run.ps1` runs the reviewer for an already-prepared `log/review/<run-id>/` packet; `review-verify.ps1` checks an existing run.
+
+`review-cycle.ps1` is the one-shot path: prepare + run + verify in a single call. `review-run.ps1` is the run-only path for an existing prepared packet — use it when `log/review/<run-id>/input.md` is already seeded and edited (no new run-id is created and `meta.json` / `input.md` are not mutated). Compatible with the same result-binding contract as `review-cycle.ps1`.
 
 ```powershell
 # review-prepare, single-file target
@@ -93,9 +95,15 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 -
 # review-prepare, multi-file target via list file under log/review-targets/
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 -TargetFilesPath log/review-targets/<purpose-or-timestamp>.list -Stage <stage> -Purpose '<purpose>'
 
+# review-run, for an already-prepared run-id
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-run.ps1 -RunId <run-id>
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-run.ps1 -RunId <run-id> -Force
+
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 -RunId <run-id>
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 -RunId <run-id> -RequireResult
 ```
+
+`review-run.ps1` requires `meta.json` and `input.md` to exist under `log/review/<run-id>/`, calls `review-input-verify.ps1` before invoking Codex, executes Codex once in read-only sandbox, writes `result.md` / `result.json`, and runs `review-verify.ps1` in both default and `-RequireResult` modes. Existing `result.md` / `result.json` cause FAIL by default; pass `-Force` to overwrite. It does not mutate `meta.json` or `input.md`, does not touch `log/chatlog/` or `log/evidence/`, and does not approve commit, push, publish, merge, or release.
 
 Behavior, field set, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`.
 
