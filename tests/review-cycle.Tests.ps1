@@ -256,6 +256,24 @@ Describe 'review-cycle' {
         $resultJson = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
         $resultJson.verdict | Should -Be 'yes'
         $resultJson.runId | Should -Be $runId
+
+        $meta = [System.IO.File]::ReadAllText((Join-Path $runDir 'meta.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
+        $expectedTargetSha   = (Get-FileHash -LiteralPath $target                            -Algorithm SHA256).Hash.ToLowerInvariant()
+        $expectedInputSha    = (Get-FileHash -LiteralPath (Join-Path $runDir 'input.md')    -Algorithm SHA256).Hash.ToLowerInvariant()
+        $expectedResultMdSha = (Get-FileHash -LiteralPath (Join-Path $runDir 'result.md')   -Algorithm SHA256).Hash.ToLowerInvariant()
+
+        $resultJson.schemaVersion                   | Should -Be 1
+        $resultJson.stage                           | Should -Be ([string]$meta.stage)
+        $resultJson.purpose                         | Should -Be ([string]$meta.purpose)
+        $resultJson.reviewer                        | Should -Be ([string]$meta.reviewer)
+        ($resultJson.targetPath -replace '\\', '/') | Should -Be ($meta.targetPath -replace '\\', '/')
+        $resultJson.targetSha256                    | Should -Be $expectedTargetSha
+        $resultJson.targetSha256                    | Should -Be ([string]$meta.targetSha256)
+        $resultJson.inputSha256                     | Should -Be $expectedInputSha
+        $resultJson.resultMarkdownSha256            | Should -Be $expectedResultMdSha
+        $resultJson.createdAtUtc                    | Should -Match '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}Z$'
+        $resultJson.sourceHead                      | Should -Be $meta.sourceHead
+        $resultJson.PSObject.Properties.Name        | Should -Contain 'notes'
     }
 
     It 'AC-CY2: Codex non-zero exit fails review-cycle and does not create result.json' {
@@ -491,6 +509,29 @@ Describe 'review-cycle' {
 
         $meta.PSObject.Properties['sourceHead'] | Should -Not -BeNullOrEmpty
         $meta.sourceHead | Should -Be $null
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeTrue
+        $resultJson = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.json'), $enc) | ConvertFrom-Json
+
+        $expectedTargetSha   = (Get-FileHash -LiteralPath $target                            -Algorithm SHA256).Hash.ToLowerInvariant()
+        $expectedInputSha    = (Get-FileHash -LiteralPath (Join-Path $runDir 'input.md')    -Algorithm SHA256).Hash.ToLowerInvariant()
+        $expectedResultMdSha = (Get-FileHash -LiteralPath (Join-Path $runDir 'result.md')   -Algorithm SHA256).Hash.ToLowerInvariant()
+
+        $resultJson.schemaVersion                   | Should -Be 1
+        $resultJson.runId                           | Should -Be $runId
+        $resultJson.verdict                         | Should -Be 'yes'
+        $resultJson.stage                           | Should -Be ([string]$meta.stage)
+        $resultJson.purpose                         | Should -Be ([string]$meta.purpose)
+        $resultJson.reviewer                        | Should -Be ([string]$meta.reviewer)
+        ($resultJson.targetPath -replace '\\', '/') | Should -Be ($meta.targetPath -replace '\\', '/')
+        $resultJson.targetSha256                    | Should -Be $expectedTargetSha
+        $resultJson.targetSha256                    | Should -Be ([string]$meta.targetSha256)
+        $resultJson.inputSha256                     | Should -Be $expectedInputSha
+        $resultJson.resultMarkdownSha256            | Should -Be $expectedResultMdSha
+        $resultJson.createdAtUtc                    | Should -Match '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}Z$'
+        $resultJson.sourceHead                      | Should -Be $null
+        $resultJson.PSObject.Properties.Name        | Should -Contain 'notes'
     }
 
     It 'AC-CY-NPM-SHIM-1: .ps1 codex shim takes the stdin-pipe branch when AI_HARNESS_CODEX_ARGS_FILE_STUB is unset' {

@@ -228,6 +228,24 @@ Describe 'review-run' {
         $resultJson = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
         $resultJson.verdict | Should -Be 'yes'
         $resultJson.runId | Should -Be $runId
+
+        $meta = [System.IO.File]::ReadAllText((Join-Path $runDir 'meta.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
+        $expectedTargetSha   = (Get-FileHash -LiteralPath $target                            -Algorithm SHA256).Hash.ToLowerInvariant()
+        $expectedInputSha    = (Get-FileHash -LiteralPath $inputPath                         -Algorithm SHA256).Hash.ToLowerInvariant()
+        $expectedResultMdSha = (Get-FileHash -LiteralPath (Join-Path $runDir 'result.md')   -Algorithm SHA256).Hash.ToLowerInvariant()
+
+        $resultJson.schemaVersion                   | Should -Be 1
+        $resultJson.stage                           | Should -Be ([string]$meta.stage)
+        $resultJson.purpose                         | Should -Be ([string]$meta.purpose)
+        $resultJson.reviewer                        | Should -Be ([string]$meta.reviewer)
+        ($resultJson.targetPath -replace '\\', '/') | Should -Be ($meta.targetPath -replace '\\', '/')
+        $resultJson.targetSha256                    | Should -Be $expectedTargetSha
+        $resultJson.targetSha256                    | Should -Be ([string]$meta.targetSha256)
+        $resultJson.inputSha256                     | Should -Be $expectedInputSha
+        $resultJson.resultMarkdownSha256            | Should -Be $expectedResultMdSha
+        $resultJson.createdAtUtc                    | Should -Match '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}Z$'
+        $resultJson.sourceHead                      | Should -Be $meta.sourceHead
+        $resultJson.PSObject.Properties.Name        | Should -Contain 'notes'
     }
 
     It 'AC-RR2: missing run directory fails before Codex and produces no result artifact' {
@@ -372,6 +390,25 @@ Describe 'review-run' {
         $runDir = Join-Path $project ('log/review/' + $runId)
         $resultJson = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
         $resultJson.verdict | Should -Be 'no'
+
+        $meta = [System.IO.File]::ReadAllText((Join-Path $runDir 'meta.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
+        $expectedTargetSha   = (Get-FileHash -LiteralPath $target                            -Algorithm SHA256).Hash.ToLowerInvariant()
+        $expectedInputSha    = (Get-FileHash -LiteralPath $inputPath                         -Algorithm SHA256).Hash.ToLowerInvariant()
+        $expectedResultMdSha = (Get-FileHash -LiteralPath (Join-Path $runDir 'result.md')   -Algorithm SHA256).Hash.ToLowerInvariant()
+
+        $resultJson.schemaVersion                   | Should -Be 1
+        $resultJson.runId                           | Should -Be $runId
+        $resultJson.stage                           | Should -Be ([string]$meta.stage)
+        $resultJson.purpose                         | Should -Be ([string]$meta.purpose)
+        $resultJson.reviewer                        | Should -Be ([string]$meta.reviewer)
+        ($resultJson.targetPath -replace '\\', '/') | Should -Be ($meta.targetPath -replace '\\', '/')
+        $resultJson.targetSha256                    | Should -Be $expectedTargetSha
+        $resultJson.targetSha256                    | Should -Be ([string]$meta.targetSha256)
+        $resultJson.inputSha256                     | Should -Be $expectedInputSha
+        $resultJson.resultMarkdownSha256            | Should -Be $expectedResultMdSha
+        $resultJson.createdAtUtc                    | Should -Match '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}Z$'
+        $resultJson.sourceHead                      | Should -Be $meta.sourceHead
+        $resultJson.PSObject.Properties.Name        | Should -Contain 'notes'
     }
 
     It 'AC-RR8: verdict parse failure does not create result.json and preserves the failed run' {
