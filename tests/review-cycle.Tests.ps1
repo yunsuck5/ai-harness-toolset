@@ -490,6 +490,43 @@ Describe 'review-cycle' {
         $files[0].path | Should -Be 'docs/a,b.md'
     }
 
+    It 'AC-CY-TARGETLIST-SNAPSHOT-1: multi-file cycle writes target-files.list snapshot matching meta.targetFiles[].path' {
+        $project = script:New-CycleCase -CaseName 'cy-snap-1'
+        $sub = Join-Path $project 'src'
+        $null = New-Item -ItemType Directory -Path $sub -Force
+        $a = Join-Path $project 'a.txt'
+        $b = Join-Path $sub 'b.txt'
+        script:Write-Utf8NoBomFile -Path $a -Content "cy snap a`n"
+        script:Write-Utf8NoBomFile -Path $b -Content "cy snap b`n"
+        $stub = script:Write-CodexStub -StubName 'cy-snap-1-yes' -Mode 'verdict-yes'
+
+        $runId = '20260506-120000-cys1aa'
+        $r = script:Invoke-ReviewCycle -ProjectRoot $project -TargetFiles @($a, $b) -RunId $runId -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        $snapshotPath = Join-Path $runDir 'target-files.list'
+        Test-Path -LiteralPath $snapshotPath -PathType Leaf | Should -BeTrue
+
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $snapshotText = [System.IO.File]::ReadAllText($snapshotPath, $enc)
+        $snapshotText | Should -Be "a.txt`nsrc/b.txt`n"
+
+        $metaPath = Join-Path $runDir 'meta.json'
+        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
+        $metaPaths = @(@($meta.targetFiles) | ForEach-Object { [string]$_.path })
+        $metaPaths.Count | Should -Be 2
+        $snapshotLines = @($snapshotText -split "`n" | Where-Object { -not [string]::IsNullOrEmpty($_) })
+        $snapshotLines.Count | Should -Be $metaPaths.Count
+        for ($i = 0; $i -lt $metaPaths.Count; $i++) {
+            $snapshotLines[$i] | Should -Be $metaPaths[$i]
+        }
+
+        # cycle's transient list under log/ must still be cleaned up; only the run-dir snapshot persists.
+        $transient = Join-Path $project ('log/review-cycle-targets-' + $runId + '.list')
+        Test-Path -LiteralPath $transient -PathType Leaf | Should -BeFalse
+    }
+
     It 'AC-CY-NOGIT-1: explicit -TargetFiles + non-Git ProjectRoot does not invoke git status and records meta.sourceHead = null' {
         $project = script:New-CycleCase -CaseName 'cy-nogit-1'
         $target = Join-Path $project 'a.txt'

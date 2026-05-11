@@ -86,9 +86,10 @@ parsing 실패 또는 Codex 실패 시 그 `<run-id>`는 failed/incomplete recor
   input.md
   result.md
   result.json
+  target-files.list   informational snapshot of reviewed paths (mirrors meta.targetFiles[].path; not part of binding)
 ```
 
-같은 `<run-id>` 디렉터리 아래에 네 파일이 모두 존재할 때 그 review record는 completed로 본다.
+같은 `<run-id>` 디렉터리 아래에 네 파일 (`meta.json`, `input.md`, `result.md`, `result.json`) 이 모두 존재할 때 그 review record는 completed로 본다. `target-files.list` 는 informational snapshot 이므로 completed 판단에 포함되지 않으며 `review-verify` 가 검증하지 않는다. 권위 source-of-truth 는 여전히 `meta.json.targetFiles[]` 이다. 이 snapshot 의 존재 덕분에 사용자는 외부 입력 `log/review-targets/<slug>.list` 를 prepare 직후 안전하게 삭제할 수 있다.
 
 ## 파일 역할
 

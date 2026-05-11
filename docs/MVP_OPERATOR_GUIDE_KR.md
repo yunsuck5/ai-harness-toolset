@@ -331,6 +331,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .ai-harness/scripts/review-c
 
 `-TargetFiles` 를 생략하면 git status 의 tracked 변경 파일이 자동 사용된다. untracked 파일이 있으면 실패한다. 결정적 동작이 필요하면 `-TargetFiles` (단일 파일) 또는 `-TargetFilesPath` (다중 파일 list) 를 명시한다.
 
+prepare 가 성공하면 입력 파일 목록은 `log/review/<run-id>/target-files.list` 에 informational snapshot 으로 보존된다. 따라서 외부 입력 `log/review-targets/<slug>.list` 는 prepare 직후 안전하게 삭제할 수 있고, 보존해도 무해하다. snapshot 은 freshness 검증 대상이 아니며 권위 source-of-truth 는 여전히 `meta.json.targetFiles[]` 다.
+
 다중 파일 review 의 정식 입력 shape 은 `-TargetFilesPath` 다. 콤마로 결합된 단일 `-TargetFiles "a.txt,b.txt"` 값은 `review-cycle.ps1` 가 reviewer 호출 전에 거부한다 (`FAIL TargetFiles appears to be a comma-separated single string`). `-TargetFiles` 는 단일 파일만 지정하는 인자이며, 콤마를 포함하는 실제 단일 파일명 (예: `docs/a,b.md`) 은 그대로 허용된다. `review-cycle.ps1` 가 0 이 아닌 코드로 종료되면 자동 재실행하지 않는다. wrapper failure 를 보고하고 별도 scoped 승인을 받은 뒤에만 다시 실행한다. retry discipline 의 정식 출처는 `snippets/claude-skills/ai-harness-review/SKILL.md` 다.
 
 PowerShell 에서 위 here-string 을 `Out-File -Encoding utf8` 로 쓰면 PS 5.1 에서는 기본적으로 BOM 이 붙는다. `review-cycle.ps1` 는 BOM 유무와 무관하게 list 파일을 읽는다. 더 엄격히 BOM 없이 만들고 싶으면 PS 7 이상에서 `-Encoding utf8NoBOM` 을 쓰거나, `[System.IO.File]::WriteAllText($path, $text, (New-Object System.Text.UTF8Encoding($false)))` 를 직접 사용한다.

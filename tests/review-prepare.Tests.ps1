@@ -278,6 +278,71 @@ Describe 'review-prepare targetFiles' {
         $meta.sourceHead | Should -Be $null
     }
 
+    It 'AC-PR-TARGETLIST-SNAPSHOT-1: single -TargetPath writes target-files.list snapshot matching meta.targetFiles[].path' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-snap-1'
+        $targetPath = Join-Path $project 'target.txt'
+        script:Write-Utf8NoBomFile -Path $targetPath -Content "snapshot single body`n"
+
+        $runId = '20260506-110000-prs1aa'
+        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetPath $targetPath -RunId $runId -Stage 'design'
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        $snapshotPath = Join-Path $runDir 'target-files.list'
+        Test-Path -LiteralPath $snapshotPath -PathType Leaf | Should -BeTrue
+
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $bytes = [System.IO.File]::ReadAllBytes($snapshotPath)
+        $bytes.Length | Should -BeGreaterThan 0
+        ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should -BeFalse
+
+        $snapshotText = [System.IO.File]::ReadAllText($snapshotPath, $enc)
+        $snapshotText | Should -Be "target.txt`n"
+
+        $metaPath = Join-Path $runDir 'meta.json'
+        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
+        $metaPaths = @(@($meta.targetFiles) | ForEach-Object { [string]$_.path })
+        $snapshotLines = @($snapshotText -split "`n" | Where-Object { -not [string]::IsNullOrEmpty($_) })
+        $snapshotLines.Count | Should -Be $metaPaths.Count
+        for ($i = 0; $i -lt $metaPaths.Count; $i++) {
+            $snapshotLines[$i] | Should -Be $metaPaths[$i]
+        }
+    }
+
+    It 'AC-PR-TARGETLIST-SNAPSHOT-2: multi -TargetFilesPath writes target-files.list snapshot in meta order' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-snap-2'
+        $sub = Join-Path $project 'src'
+        $null = New-Item -ItemType Directory -Path $sub -Force
+        $a = Join-Path $project 'a.txt'
+        $b = Join-Path $sub 'b.txt'
+        $c = Join-Path $sub 'c.txt'
+        script:Write-Utf8NoBomFile -Path $a -Content "snap a`n"
+        script:Write-Utf8NoBomFile -Path $b -Content "snap b`n"
+        script:Write-Utf8NoBomFile -Path $c -Content "snap c`n"
+
+        $runId = '20260506-110000-prs2aa'
+        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetFiles @($a, $b, $c) -RunId $runId -Stage 'implementation'
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+
+        $runDir = Join-Path $project ('log/review/' + $runId)
+        $snapshotPath = Join-Path $runDir 'target-files.list'
+        Test-Path -LiteralPath $snapshotPath -PathType Leaf | Should -BeTrue
+
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $snapshotText = [System.IO.File]::ReadAllText($snapshotPath, $enc)
+        $snapshotText | Should -Be "a.txt`nsrc/b.txt`nsrc/c.txt`n"
+
+        $metaPath = Join-Path $runDir 'meta.json'
+        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
+        $metaPaths = @(@($meta.targetFiles) | ForEach-Object { [string]$_.path })
+        $metaPaths.Count | Should -Be 3
+        $snapshotLines = @($snapshotText -split "`n" | Where-Object { -not [string]::IsNullOrEmpty($_) })
+        $snapshotLines.Count | Should -Be $metaPaths.Count
+        for ($i = 0; $i -lt $metaPaths.Count; $i++) {
+            $snapshotLines[$i] | Should -Be $metaPaths[$i]
+        }
+    }
+
     It 'AC-PR-NOGIT-2: git executable unavailable -> review-prepare succeeds with sourceHead = null' {
         $project = script:New-PrepareCaseRoot -CaseName 'pr-nogit-2'
         $targetPath = Join-Path $project 'target.txt'

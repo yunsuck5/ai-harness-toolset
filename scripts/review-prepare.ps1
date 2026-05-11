@@ -232,6 +232,14 @@ $meta = [ordered]@{
 $metaPath = Join-Path -Path $runDir -ChildPath 'meta.json'
 Write-JsonFile -Path $metaPath -Value $meta
 
+$snapshotLines = @()
+foreach ($e in $targetFilesEntries) {
+    $snapshotLines += [string]$e['path']
+}
+$snapshotContent = (($snapshotLines) -join "`n") + "`n"
+$snapshotPath = Join-Path -Path $runDir -ChildPath 'target-files.list'
+Write-Utf8NoBom -Path $snapshotPath -Content $snapshotContent
+
 $templatePath = Join-Path -Path $tool -ChildPath 'templates/review-input.md'
 if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
     throw "review-prepare: required template not found at '$templatePath'. ToolRoot='$tool'. Ensure templates/review-input.md exists under ToolRoot."
