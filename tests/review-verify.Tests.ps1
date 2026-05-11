@@ -286,6 +286,48 @@ Describe 'review-verify -RequireResult mode' {
         $result.Output | Should -Match 'FAIL result\.json targetSha256 mismatch'
     }
 
+    It 'AC18b: fails when result.json inputSha256 does not match disk-recomputed input.md SHA' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac18b'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes'
+
+        # Mutate input.md after result.json is bound so the on-disk SHA diverges
+        # from the inputSha256 stored in result.json.
+        script:Write-Utf8NoBomFile -Path $packet.InputPath -Content "# Review Input`n- Run ID: $($packet.RunId)`nmutated after binding`n"
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json inputSha256 mismatch'
+    }
+
+    It 'AC18c: fails when result.json resultMarkdownSha256 does not match disk-recomputed result.md SHA' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac18c'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes'
+
+        # Mutate result.md after result.json is bound so the on-disk SHA diverges
+        # from the resultMarkdownSha256 stored in result.json.
+        $resultMdPath = Join-Path $packet.RunDir 'result.md'
+        script:Write-Utf8NoBomFile -Path $resultMdPath -Content "# Review Result`nVerdict: yes`nmutated after binding`n"
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json resultMarkdownSha256 mismatch'
+    }
+
+    It 'AC18d: fails when result.json is present but contains malformed JSON' {
+        $packet = script:Initialize-FreshPacket -CaseName 'ac18d'
+        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes'
+
+        # Overwrite the bound result.json with an intentionally malformed payload.
+        # result.md and input.md remain bound; only the JSON is corrupted.
+        $resultJsonPath = Join-Path $packet.RunDir 'result.json'
+        Test-Path -LiteralPath $resultJsonPath -PathType Leaf | Should -BeTrue
+        script:Write-Utf8NoBomFile -Path $resultJsonPath -Content "{ this is not valid json"
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL result\.json invalid JSON'
+    }
+
     It 'AC19: fails when result.json verdict is not in the allowed set' {
         $packet = script:Initialize-FreshPacket -CaseName 'ac19'
         script:Add-ResultArtifacts -Packet $packet -Verdict 'maybe'
