@@ -33,3 +33,9 @@
 - review record retention is human-managed at `<run-id>` directory granularity
 - adoption smoke test, actual reviewer workflow test, and actual development workflow usage test are separate milestones
 - broader review result policies remain future candidates (`docs/REVIEW_RESULT_CONTRACT.md`)
+
+## MVP closeout
+
+- CLI-only MVP is closed. Closeout does not approve post-MVP implementation, scope expansion, or commit/push/release.
+- Codex review subsystem moves to maintenance mode after closeout; new features require separate scoped approval.
+- Post-MVP decisions (Brief system as post-MVP core, Chatlog system not yet implemented, BF Level 3 boundary, packaging via `package-toolset.ps1`, GJMNet adoption deferred) are recorded in `docs/roadmap/POST_MVP_PLAN.md`. That document is a record, not an implementation authorization.
