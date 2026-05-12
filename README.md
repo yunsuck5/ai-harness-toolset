@@ -161,6 +161,7 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 | File | Role | One-line role |
 |---|---|---|
 | `docs/AI_HARNESS_TOOLSET_SCOPE.md` | active operational | Project nature, in/out of scope, source-vs-target payload mapping. |
+| `docs/BRIEF_CONTRACT.md` | active operational | Brief / BF Level 3 contract for target-repo `<ProjectRoot>/brief/BRIEF.md` and the `brief-init.ps1` / `brief-check.ps1` responsibility boundary. |
 | `docs/CHATLOG_CONTRACT.md` | active operational | `log/chatlog/` layout and `summary.md` / `resume.md` canonical headings. |
 | `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md` | active operational | Canonical CLI/runtime dependency boundary. |
 | `docs/DECISIONS.md` | mixed decision log | Bootstrap-era and active policy decisions. |
