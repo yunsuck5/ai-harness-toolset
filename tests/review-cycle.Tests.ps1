@@ -641,3 +641,102 @@ Describe 'review-cycle' {
         ([System.IO.File]::ReadAllText($stdinFlag, $enc)).Trim() | Should -Be 'True'
     }
 }
+
+Describe 'review-cycle D7 untracked exclusion' {
+    BeforeAll {
+        function script:Initialize-CycleGitRepo {
+            param([string] $CaseName)
+            $project = script:New-CycleCase -CaseName $CaseName
+            $null = & git -C $project init --quiet 2>&1
+            return $project
+        }
+
+        function script:Invoke-ReviewCycleNoTargets {
+            param([string] $ProjectRoot)
+            $procArgs = @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                '-File', $script:CycleScript,
+                '-Stage', 'implementation',
+                '-Purpose', 'pester d7 untracked',
+                '-ProjectRoot', $ProjectRoot,
+                '-ToolRoot', $script:RepoRoot,
+                '-RunId', '20260513-110000-d7test',
+                '-Reviewer', 'codex',
+                '-Context', 'pester d7',
+                '-RequiredInspectionPaths', 'pester d7',
+                '-ReviewQuestions', 'pester d7',
+                '-Constraints', 'pester d7'
+            )
+            $combined = & powershell.exe @procArgs 2>&1
+            $exitCode = $LASTEXITCODE
+            $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+            return [pscustomobject]@{
+                ExitCode = $exitCode
+                Output   = $text
+            }
+        }
+    }
+
+    It 'AC-CY-D7-LOG-DIR-EXCLUDED: untracked log/ child is excluded (regression)' {
+        $project = script:Initialize-CycleGitRepo -CaseName 'd7-log-dir'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'log/foo.txt') -Content "x`n"
+
+        $r = script:Invoke-ReviewCycleNoTargets -ProjectRoot $project
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL no tracked changes detected'
+        $r.Output | Should -Not -Match 'FAIL untracked files outside'
+    }
+
+    It 'AC-CY-D7-AIHARNESS-EXACT-FILE-EXCLUDED: untracked regular file named .ai-harness exercises the $rest -eq exact-eq branch' {
+        $project = script:Initialize-CycleGitRepo -CaseName 'd7-ah-exact-file'
+        # A regular file at the repo root named .ai-harness is reported by
+        # `git status --porcelain=v1` as `?? .ai-harness` (no trailing slash),
+        # so it hits the exact-eq alternative rather than the StartsWith branches.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project '.ai-harness') -Content "x`n"
+
+        $r = script:Invoke-ReviewCycleNoTargets -ProjectRoot $project
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL no tracked changes detected'
+        $r.Output | Should -Not -Match 'FAIL untracked files outside'
+    }
+
+    It 'AC-CY-D7-AIHARNESS-DEEP-CHILD-EXCLUDED: untracked .ai-harness deep child is excluded' {
+        $project = script:Initialize-CycleGitRepo -CaseName 'd7-ah-deep'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project '.ai-harness/sub/deep.txt') -Content "x`n"
+
+        $r = script:Invoke-ReviewCycleNoTargets -ProjectRoot $project
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL no tracked changes detected'
+        $r.Output | Should -Not -Match 'FAIL untracked files outside'
+    }
+
+    It 'AC-CY-D7-AIHARNESS-BACKUP-NOT-EXCLUDED: .ai-harness-backup sibling is NOT excluded' {
+        $project = script:Initialize-CycleGitRepo -CaseName 'd7-ah-backup'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project '.ai-harness-backup/foo.txt') -Content "x`n"
+
+        $r = script:Invoke-ReviewCycleNoTargets -ProjectRoot $project
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL untracked files outside'
+        $r.Output | Should -Match '\.ai-harness-backup'
+    }
+
+    It 'AC-CY-D7-AIHARNESS-ZIP-NOT-EXCLUDED: .ai-harness.zip sibling file is NOT excluded' {
+        $project = script:Initialize-CycleGitRepo -CaseName 'd7-ah-zip'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project '.ai-harness.zip') -Content "x`n"
+
+        $r = script:Invoke-ReviewCycleNoTargets -ProjectRoot $project
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL untracked files outside'
+        $r.Output | Should -Match '\.ai-harness\.zip'
+    }
+
+    It 'AC-CY-D7-LOG-OLD-NOT-EXCLUDED: log-old sibling is NOT excluded (regression)' {
+        $project = script:Initialize-CycleGitRepo -CaseName 'd7-log-old'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'log-old/foo.txt') -Content "x`n"
+
+        $r = script:Invoke-ReviewCycleNoTargets -ProjectRoot $project
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL untracked files outside'
+        $r.Output | Should -Match 'log-old'
+    }
+}

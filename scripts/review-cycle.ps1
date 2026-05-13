@@ -148,6 +148,9 @@ function Get-TrackedChangedFiles {
             if ($rest -eq 'log' -or $rest.StartsWith('log/') -or $rest.StartsWith('log\')) {
                 continue
             }
+            if ($rest -eq '.ai-harness' -or $rest.StartsWith('.ai-harness/') -or $rest.StartsWith('.ai-harness\')) {
+                continue
+            }
             $untracked.Add($rest) | Out-Null
             continue
         }
