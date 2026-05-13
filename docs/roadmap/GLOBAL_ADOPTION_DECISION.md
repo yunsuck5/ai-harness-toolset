@@ -1,0 +1,325 @@
+# Global Adoption Decision
+
+본 문서는 `ai-harness-toolset` 의 운영 계층 전환 방향을 추적 가능한 형태로 보존한다. **결정의 기록이며, implementation 승인이 아니다.**
+
+본 문서가 존재한다는 사실만으로 어떤 implementation, scoped work, scheduling, release 도 자동 승인되지 않는다. 각 항목은 별도 scoped 승인을 거친 뒤에만 작업이 시작된다.
+
+이 문서는 `docs/roadmap/POST_MVP_PLAN.md` 의 closeout 진술과 충돌하지 않는다. MVP closeout 은 그대로 유효하며, 본 문서는 그 이후 단계의 전환 방향만 기록한다.
+
+---
+
+## 1. Decision summary
+
+- `ai-harness-toolset` 을 **global/common AI development operating layer** 로 전환하는 방향을 문서화한다.
+- target project 의 `CLAUDE.md` / `AGENTS.md` 는 **project-specific layer** 로 본다.
+- 두 계층은 책임이 다르며, 한쪽이 다른 쪽을 대체하지 않는다.
+- copy-only / project-local MVP 방식은 MVP 검증 단계에서는 유효했다. 다만 다중 프로젝트 운용에서는 배포 / 업데이트 / 정합성 유지 비용이 누적되므로, 동일 방식을 계속 확장하는 것은 본 방향이 아니다.
+- 본 결정은 legacy `ai-harness` 의 installer-first 설계로 회귀하는 것이 아니다. legacy 의 global install 아이디어 자체는 틀린 것이 아니었고, 문제는 core functionality 보다 installer / rollback / global mutation 에 먼저 집중한 sequencing 이었다.
+
+---
+
+## 2. Background
+
+- legacy `ai-harness` 단계.
+  - global 도구화 의도 자체는 본 toolset 의 현재 방향과 정합적이다.
+  - 단, core functionality 검증 이전에 installer / rollback / global mutation 을 먼저 productize 하려 한 sequencing 이 문제였다.
+- `ai-harness-toolset` MVP 단계.
+  - copy-only / CLI-only / project-local 방식으로 핵심 기능을 먼저 검증하기 위해 유효한 선택이었다.
+  - MVP closeout 이후, core functionality (review subsystem, brief primitive, BF Level 3 protocol) 는 운영 가능 상태에 도달했다 (`POST_MVP_PLAN.md` §1, §2, §3 참조).
+- 다중 프로젝트 운용 관점.
+  - 동일 운영 규칙을 N 개의 target repo 에 각각 복제 / 동기화 하는 cost 가 누적된다.
+  - shared/global 방식이 더 자연스러운 단계에 도달했다.
+
+본 단계는 따라서 "MVP 가 끝났으니 installer 를 만들자" 가 아니라, "core 가 검증되었으니 운영 계층의 위치를 다시 정한다" 의 단계다.
+
+---
+
+## 3. Layer model
+
+두 계층은 책임이 다르다. 본 문서는 분리 자체를 결정 사항으로 기록한다.
+
+### Global/common layer
+
+`ai-harness-toolset` 이 책임지는 범위.
+
+- common AI development operating rules
+- review / brief / evidence / chatlog protocols
+- Codex reviewer discipline
+- verdict handling
+- commit / push approval separation
+- BF save / restore-offer discipline
+- global/shared toolset usage
+
+### Project-specific layer
+
+target project 의 `CLAUDE.md` / `AGENTS.md` 가 책임지는 범위.
+
+- project architecture
+- build / test commands
+- coding conventions
+- domain constraints
+- repo-specific workflows
+- phase / backlog state
+- project-specific AI tools
+
+### Boundary rule — global layer
+
+Global layer 는 project-specific 사실을 포함하지 않는다. 다음은 명시적 금지 항목이다.
+
+- 특정 project 의 architecture 설명
+- 특정 project 의 현재 phase / backlog state
+- per-repo run-id 또는 target-specific identifier
+- target-specific build / test command (단, generic example 로 명시되어 있다면 예외)
+
+### Boundary rule — project layer
+
+Project-local layer 는 `ai-harness-toolset` 의 core safety contract 를 별도 승인 없이 재정의하지 않는다.
+
+- review verdict handling
+- commit / push approval separation
+- BF / review / evidence 책임 분리
+- explicit scoped approval rules
+
+target project 가 위 contract 를 보강 / 강화하는 것은 가능하다. 약화 / 우회 / 무효화는 별도 scoped 승인이 필요하다.
+
+---
+
+## 4. Adoption direction
+
+본 절은 방향만 기록한다. 구체적인 invocation 형식, script signature, error handling, fallback 동작은 별도 audit (§8) 와 별도 scoped 승인을 거친 뒤에 결정한다.
+
+### Preferred direction
+
+- `ai-harness-toolset` 의 source of truth 는 본 git repo 로 유지한다.
+- update flow 는 `git clone` / `git pull` 을 기본으로 본다.
+- `scripts/`, `config/`, `templates/`, `snippets/`, Claude skill 자산은 shared/global candidate 다.
+- target project 는 기본적으로 `.ai-harness/` 같은 copied tool 폴더를 포함하지 않는 것이 선호 형태다.
+
+### Target-local state / result boundary
+
+target project 안에 남아야 하는 runtime artifact 는 다음 트리로 제한한다.
+
+- `brief/`
+- `log/chatlog/`
+- `log/evidence/`
+- `log/review/`
+
+위 4 개 트리는 target 별 state / result 이고, shared/global mode 에서도 target repo 안에 그대로 남는다.
+
+### Preferred target repo shape
+
+- `.ai-harness/` 없음 (default).
+- scripts / templates / config / snippets 복사본 없음 (default).
+- target-local state / result artifact 만 target repo 에 남는다.
+
+### Fallback candidate
+
+- 직접 shared script invocation 의 변경 폭이 너무 크다고 판단되는 시점이 오면, symlink / junction / link mode 가 후속 후보로 고려될 수 있다.
+- 본 fallback 도 별도 scoped 승인이 필요하며, 본 문서가 자동 승인하지 않는다.
+
+---
+
+## 5. AI-guided adoption / update
+
+adoption / update 의 preferred operator 는 AI 다. installer-first productization 이 아니다.
+
+- 본 단계에서 `install.ps1` 같은 productized installer 를 서둘러 만들지 않는다.
+- Claude Code 가 adoption / update 의 operator 역할을 한다.
+- 절차는 inspectable, diff-based, approval-based 여야 한다.
+
+기대되는 AI 절차 (개념 수준 기술).
+
+1. 기존 global / target 파일 상태를 inspect 한다.
+2. 충돌 / 이미 존재하는 marker block / 누락 항목을 detect 한다.
+3. merge 또는 replacement 후보를 사용자에게 제안한다.
+4. 사용자 승인을 명시적으로 받는다.
+5. 승인된 변경만 적용한다.
+6. 적용 후 verify 한다.
+
+deterministic helper script (예: inspect-only, check-only) 는 후속 단계에서 추가될 수 있다. 단, 본 단계의 핵심은 installer-first productization 이 아니다.
+
+사용자 측에서 예상되는 자연어 요청 예시 (예시일 뿐 contract 가 아니다).
+
+- "ai-harness-toolset global adoption 진행해줘"
+- "ai-harness-toolset 설치해줘"
+- "ai-harness-toolset 업데이트해줘"
+
+이 trigger 는 항상 §7 의 explicit approval 규칙을 따른다. 즉, global mutation, snippet 적용, skill install / update 등은 trigger 하나로 모두 자동 실행되지 않는다.
+
+---
+
+## 6. Managed block marker policy
+
+본 절은 향후 source snippet 및 global 파일 update 에 적용할 marker 정책을 **방향 결정** 으로 기록한다. 다만 본 문서 자체에는 marker 가 적용되지 않으며, `snippets/CLAUDE_SNIPPET.md`, `snippets/AGENTS_SNIPPET.md` 에 실제 marker 를 삽입하는 작업은 본 문서 합의 이후의 별도 scoped 작업으로 남긴다.
+
+### Recommended marker
+
+```
+<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->
+...
+<!-- END AI_HARNESS_TOOLSET_GLOBAL -->
+```
+
+### Update policy — global CLAUDE.md / AGENTS.md
+
+destination 의 marker pair 상태에 따라 동작이 다르다.
+
+- destination 에 matching marker pair 가 **0 개** 인 경우.
+  - 삽입 지점을 사용자에게 제안한다.
+  - 사용자 승인을 받는다.
+  - source snippet 전체 (marker 포함) 를 삽입한다.
+- destination 에 matching marker pair 가 **정확히 1 개** 인 경우.
+  - diff 를 사용자에게 보여준다.
+  - 사용자 승인을 받는다.
+  - marker-bounded block 전체를 source snippet (marker 포함) 으로 교체한다.
+- destination 에 marker pair 가 **여러 개**, **malformed**, **nested** 인 경우.
+  - 동작을 중단한다.
+  - 충돌을 보고한다.
+  - 파일을 편집하지 않는다.
+- marker-bounded block **바깥** 의 텍스트는 어떤 경우에도 편집하지 않는다.
+
+### Important sequencing
+
+- 본 작업에서는 `snippets/CLAUDE_SNIPPET.md`, `snippets/AGENTS_SNIPPET.md` 에 marker 를 적용하지 **않는다**.
+- snippet marker 적용은 본 문서가 합의된 뒤의 후속 작업이다 (§9 의 추천 순서 참조).
+
+---
+
+## 7. Global default does not mean automatic action
+
+본 절은 본 문서에서 가장 오해되기 쉬운 경계를 명시적으로 기록한다.
+
+```
+global default rules: yes
+automatic state-changing actions: no
+```
+
+### Always-applicable global operating rules
+
+다음은 trigger 없이 항상 적용되는 운영 규칙이다.
+
+- review verdict 는 commit / push 승인이 아니다.
+- "no" verdict 는 scoped fix plan 을 제안하고 승인을 기다린다.
+- "yes with risk" verdict 는 risk 를 설명하고 go / no-go 를 받는다.
+- BF / review / evidence / chatlog 의 책임은 분리되어 있다.
+- global mutation 은 explicit approval 이 필요하다.
+- commit / push / publish 는 explicit approval 이 필요하다.
+- state-changing 작업 전에 repo root / branch / status 를 확인한다.
+- review / evidence / chatlog runtime artifact 는 target-local `log/` 아래로 들어가며, brief artifact 는 target-local `brief/` 아래로 들어간다.
+
+### Explicit trigger / approval required
+
+다음 행위는 default 가 아니라, 사용자 명시 trigger 와 scoped 승인을 거친 뒤에만 실행된다.
+
+- review-cycle execution
+- brief-init execution
+- brief-check execution
+- BF save
+- global `CLAUDE.md` / `AGENTS.md` 의 managed block update
+- Claude skill install / update
+- script / config / template update
+- commit
+- push
+- release / publish / deploy
+
+"global default" 는 운영 규칙이 항상 적용된다는 의미이지, 어떤 행위가 자동 실행된다는 의미가 아니다.
+
+---
+
+## 8. ToolRoot / ProjectRoot audit requirement
+
+shared/global mode 로 전환하기 전에 path handling audit 가 선행되어야 한다. 본 절은 audit 자체의 요구 사항을 기록한다.
+
+### Conceptual split
+
+- `ToolRoot` — `H:/Work/ai-harness-toolset/ai-harness-toolset`
+- `ProjectRoot` — current target repo root
+- `LogRoot` — `<ProjectRoot>/log`
+- `BriefRoot` — `<ProjectRoot>/brief`
+- `ConfigRoot` — `<ToolRoot>/config`
+- `TemplateRoot` — `<ToolRoot>/templates`
+- `ScriptRoot` — `<ToolRoot>/scripts`
+
+### Potential future invocation example
+
+본 형식은 contract 가 아니라 audit 단계의 검토 대상 예시다.
+
+```
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File H:/Work/ai-harness-toolset/ai-harness-toolset/scripts/review-cycle.ps1 `
+  -ProjectRoot . `
+  -Stage implementation
+```
+
+### Audit targets
+
+- `scripts/review-cycle.ps1`
+- `scripts/review-prepare.ps1`
+- `scripts/review-run.ps1`
+- `scripts/review-verify.ps1`
+- `scripts/review-input-verify.ps1`
+- `scripts/log-init.ps1`
+- `scripts/brief-init.ps1`
+- `scripts/brief-check.ps1`
+- `config/reviewer.json`
+- `templates/**`
+- `snippets/claude-skills/**`
+
+### Core audit question
+
+```
+Can scripts run from global/shared ToolRoot while writing all runtime/state artifacts to target ProjectRoot?
+```
+
+### Sequencing
+
+- audit 가 완료되고, 그 결과가 별도 scoped 승인을 받은 뒤에 shared/global script 동작을 implementation 한다.
+- **본 audit 이전에 shared/global script behavior 를 implementation 하지 않는다.**
+
+---
+
+## 9. Deferred work / roadmap implication
+
+`clean target smoke test criteria` 작업은 본 문서로 인해 **연기** 된다.
+
+### Reason
+
+- `clean target smoke test criteria` 는 adoption mode 에 의존한다.
+- target 이 `.ai-harness/` 를 포함하지 않는 형태로 결정되면, smoke test 기준 자체가 달라진다.
+- 따라서 adoption 방향 결정이 먼저다.
+
+### Recommended next order
+
+본 순서는 추천이며, 각 항목은 별도 scoped 승인이 필요하다.
+
+1. 본 문서 (`GLOBAL_ADOPTION_DECISION.md`) 에 대한 Codex review.
+2. `POST_MVP_PLAN.md` 의 remaining order update.
+3. `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 에 marker 적용.
+4. Claude skill 의 global adoption / update 절차 문서화.
+5. ToolRoot / ProjectRoot path handling audit (§8).
+6. shared / global mode implementation (별도 승인 시에만).
+7. clean target smoke test criteria.
+8. clean target smoke test.
+9. GJMNet clean adoption.
+
+본 문서는 위 순서 중 어떤 단계도 자동 승인하지 않는다.
+
+---
+
+## 10. Explicit non-goals
+
+본 결정은 다음 항목들을 **포함하지 않는다**. 본 문서가 존재한다는 사실만으로 아래 항목이 승인 / 실행되었다고 해석하지 않는다.
+
+- automatic global mutation.
+- 사용자 diff / 승인 없이 진행되는 global `CLAUDE.md` / `AGENTS.md` 재작성.
+- 사용자 diff / 승인 없이 진행되는 기존 skill overwrite.
+- installer-first productization.
+- rollback framework.
+- registry / project list / target inventory.
+- daemon / watcher / scheduler.
+- automatic target project update.
+- automatic commit / push / release.
+- 본 단계에서의 path handling implementation.
+- 본 단계에서의 clean target smoke test 실행.
+
+위 항목은 별도 scoped 승인 없이 실행 / implementation 되지 않는다.
