@@ -169,12 +169,13 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 에 `AI_HARNESS_TOOLSET_GLOBAL` managed block marker 적용 완료 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6).
 - Claude skill 의 global adoption / update / removal 절차 문서화 완료 (`docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §5).
 - ToolRoot / ProjectRoot path handling audit 문서화 완료 (`docs/roadmap/TOOLROOT_PROJECTROOT_AUDIT.md`, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8). self-target / dogfooding path collision sub-scope 포함.
+- shared / global mode invocation contract design 문서화 완료 (`docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md`). audit §8 의 D1–D9 결정 및 implementation split 포함.
 
 ### Deferred (separate scoped approval required)
 
 - GJMNet clean adoption (§7).
 - `package-toolset.ps1` implementation (§6).
-- shared / global mode implementation. 위 audit 결과 (`docs/roadmap/TOOLROOT_PROJECTROOT_AUDIT.md` §6–§8) 에 대한 사용자 결정 및 별도 scoped 승인 뒤에만 시작한다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §4, §8).
+- shared / global mode implementation. 위 design 문서 (`docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §6) 의 분할 단위마다 별도 scoped 승인 뒤에만 시작한다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §4, §8).
 - clean target smoke test criteria 정의. adoption mode / path handling 결정 정합화 뒤로 밀린 항목 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9).
 - Chatlog system 의 CL 영역 fuller implementation (§4).
 - docs taxonomy 의 실제 path migration. docs taxonomy 자체는 별도로 논의되었으며 향후 잊지 않는다 — 다만 실제 path migration 은 path reference scan 과 별도 scoped 승인이 모두 필요한 deferred 항목이다 (§8).
@@ -183,7 +184,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 - 기존 GJMNet 안의 ai-harness-toolset application state 는 disposable. migration / cleanup 작업은 post-MVP 항목이 아니다 (§7).
 - GJMNet 은 post-MVP foundation 항목 (Brief system / BF Level 3 / packaging) 이 ready 된 뒤 clean git repo 로 재생성한다. 그 이후의 운용은 CLI-only (§7).
-- 설치 / adoption mode 의 방향 결정은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §1, §4 에 기록되었다. `copy / link / pinned-link` framing 은 §6 안 historical record 로 보존되며, implementation 세부 중 managed block marker 적용, Claude skill global / update / removal 절차 문서화, ToolRoot / ProjectRoot path handling audit 문서화는 완료되었고, 나머지 implementation 세부 (shared/global mode implementation) 와 clean target smoke test criteria 는 별도 scoped 승인이 필요한 상태로 남는다 (§6, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6, §8, §9, `docs/roadmap/TOOLROOT_PROJECTROOT_AUDIT.md` §6–§8).
+- 설치 / adoption mode 의 방향 결정은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §1, §4 에 기록되었다. `copy / link / pinned-link` framing 은 §6 안 historical record 로 보존되며, implementation 세부 중 managed block marker 적용, Claude skill global / update / removal 절차 문서화, ToolRoot / ProjectRoot path handling audit 문서화, shared / global mode invocation contract design 문서화는 완료되었고, 나머지 implementation 세부 (shared/global mode implementation) 와 clean target smoke test criteria 는 별도 scoped 승인이 필요한 상태로 남는다 (§6, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6, §8, §9, `docs/roadmap/TOOLROOT_PROJECTROOT_AUDIT.md` §6–§8, `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §4, §6).
 - docs taxonomy 는 planned but deferred 다. 실제 path migration 은 별도 scoped 승인이 필요하다 (§8).
 - review verdict (`yes` / `no` / `yes with risk`) 는 commit / push / release 의 자동 승인이 아니다 (§2, §8, `docs/REVIEW_RESULT_CONTRACT.md`).
 
@@ -193,13 +194,12 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 본 절은 post-MVP **잔여 항목** 의 권장 처리 순서다. completed step 들은 §10 Completed (source repo side) 에 기록되어 있고, 본 §11 은 그 이후의 remaining work 만 다룬다. **순서 자체는 자동 승인이 아니다.** 각 단계는 §8 guardrail 을 깨지 않는 범위 안에서 별도 scoped 승인을 거친다.
 
-본 순서는 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 의 권장 순서와 정합되되, 그 §9 의 step 1–4 (= `GLOBAL_ADOPTION_DECISION.md` Codex review, `POST_MVP_PLAN.md` remaining order update, snippets marker 적용, Claude skill global 절차 문서화) 와 step 5 (ToolRoot / ProjectRoot path handling audit) 는 모두 §10 에 완료로 기록되어 본 §11 에서는 제외한다. 또한 `POST_MVP_PLAN.md` 는 내부 roadmap closeout 판단을 보존하기 위해 GJMNet clean adoption 직전에 post-MVP closeout 결정을 별도 step 으로 유지한다. 즉, 본 순서는 snippets / scripts / config / templates 의 추가 변경, global `CLAUDE.md` / `AGENTS.md` mutation, shared/global path handling implementation, commit, push 중 어느 것도 자동 승인하지 않는다.
+본 순서는 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 의 권장 순서와 정합되되, 그 §9 의 step 1–4 (= `GLOBAL_ADOPTION_DECISION.md` Codex review, `POST_MVP_PLAN.md` remaining order update, snippets marker 적용, Claude skill global 절차 문서화), step 5 (ToolRoot / ProjectRoot path handling audit), 그리고 shared / global mode invocation contract design 은 모두 §10 에 완료로 기록되어 본 §11 에서는 제외한다. 또한 `POST_MVP_PLAN.md` 는 내부 roadmap closeout 판단을 보존하기 위해 GJMNet clean adoption 직전에 post-MVP closeout 결정을 별도 step 으로 유지한다. 즉, 본 순서는 snippets / scripts / config / templates 의 추가 변경, global `CLAUDE.md` / `AGENTS.md` mutation, shared/global path handling implementation, commit, push 중 어느 것도 자동 승인하지 않는다.
 
-1. shared / global mode implementation 의 decision 및 design. `docs/roadmap/TOOLROOT_PROJECTROOT_AUDIT.md` §6–§8 의 gap / blocker / required decisions (D1–D9) 를 input 으로 한다. 본 단계의 산출물은 design 문서이며, scripts / config / templates / snippets 의 수정은 포함하지 않는다.
-2. shared / global mode implementation. 위 design 문서에 대한 별도 scoped 승인 뒤에만 시작한다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §4, §8).
-3. clean target smoke test criteria 정의. adoption mode 결정 및 path handling audit 정합화 뒤로 밀린 항목 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 reason 참조).
-4. clean target smoke test 실행.
-5. post-MVP closeout 결정.
-6. new GJMNet repo 의 clean adoption.
+1. shared / global mode implementation. `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §6 의 분할 단위 (path resolution, component script fallback, snippet body, SKILL.md, review-verify binding, untracked exclusion, self-target enforcement, ProjectRoot CWD advisory) 마다 별도 scoped 승인 뒤에만 시작한다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §4, §8).
+2. clean target smoke test criteria 정의. adoption mode 결정 및 path handling audit 정합화 뒤로 밀린 항목 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 reason 참조).
+3. clean target smoke test 실행.
+4. post-MVP closeout 결정.
+5. new GJMNet repo 의 clean adoption.
 
 순서 변경, 항목 추가, 또는 항목 삭제는 별도 scoped 승인이 필요하다.
