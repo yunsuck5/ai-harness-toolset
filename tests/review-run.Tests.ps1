@@ -456,6 +456,7 @@ Describe 'review-run' {
             '-File', $script:VerifyScript,
             '-RunId', $runId,
             '-ProjectRoot', $project,
+            '-ToolRoot', $script:RepoRoot,
             '-RequireResult'
         )
         $combined = & powershell.exe @verifyArgs 2>&1

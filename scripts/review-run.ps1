@@ -269,7 +269,8 @@ $verifyDefaultArgs = @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass',
     '-File', $verifyScript,
     '-RunId', $RunId,
-    '-ProjectRoot', $project
+    '-ProjectRoot', $project,
+    '-ToolRoot', $tool
 )
 & powershell.exe @verifyDefaultArgs
 $verifyDefaultExit = $LASTEXITCODE
@@ -283,6 +284,7 @@ $verifyRequireArgs = @(
     '-File', $verifyScript,
     '-RunId', $RunId,
     '-ProjectRoot', $project,
+    '-ToolRoot', $tool,
     '-RequireResult'
 )
 & powershell.exe @verifyRequireArgs

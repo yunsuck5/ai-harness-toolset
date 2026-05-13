@@ -5,6 +5,8 @@ param(
 
     [string] $ProjectRoot,
 
+    [string] $ToolRoot,
+
     [switch] $RequireResult
 )
 
@@ -80,6 +82,31 @@ if (-not [string]::Equals($metaProjectFull, $projectNorm, $cmp)) {
 }
 if (-not [string]::Equals($metaLogFull, $logRootNorm, $cmp)) {
     Write-Host ('review-verify: FAIL projectLogRoot mismatch. meta={0} runtime={1}' -f $metaLogFull, $logRootNorm)
+    exit 1
+}
+
+$metaToolRoot = ''
+if ($null -ne $meta.PSObject.Properties['toolRoot']) {
+    $metaToolRoot = [string]$meta.toolRoot
+}
+if ([string]::IsNullOrEmpty($metaToolRoot)) {
+    Write-Host 'review-verify: FAIL meta.toolRoot missing'
+    exit 1
+}
+
+$runtimeTool = ''
+try {
+    $runtimeTool = Get-ToolRoot -ToolRoot $ToolRoot -ProjectRoot $project
+}
+catch {
+    Write-Host ('review-verify: FAIL toolRoot binding could not be re-resolved at runtime: {0}' -f $_.Exception.Message)
+    exit 1
+}
+
+$metaToolFull    = ([System.IO.Path]::GetFullPath($metaToolRoot)).TrimEnd($sep)
+$runtimeToolFull = ([System.IO.Path]::GetFullPath($runtimeTool)).TrimEnd($sep)
+if (-not [string]::Equals($metaToolFull, $runtimeToolFull, $cmp)) {
+    Write-Host ('review-verify: FAIL toolRoot mismatch. meta={0} runtime={1}' -f $metaToolFull, $runtimeToolFull)
     exit 1
 }
 

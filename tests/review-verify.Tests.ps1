@@ -198,6 +198,8 @@ BeforeAll {
         param(
             [string] $ProjectRoot,
             [string] $RunId,
+            [string] $ToolRoot,
+            [switch] $OmitToolRoot,
             [switch] $RequireResult
         )
         $procArgs = @(
@@ -207,6 +209,14 @@ BeforeAll {
             '-RunId', $RunId,
             '-ProjectRoot', $ProjectRoot
         )
+        if (-not $OmitToolRoot) {
+            if ([string]::IsNullOrEmpty($ToolRoot)) {
+                # Default to ProjectRoot so meta.toolRoot fixture (which sets
+                # toolRoot = ProjectRoot) matches at runtime under the D6 binding check.
+                $ToolRoot = $ProjectRoot
+            }
+            $procArgs += @('-ToolRoot', $ToolRoot)
+        }
         if ($RequireResult) { $procArgs += '-RequireResult' }
 
         $combined = & powershell.exe @procArgs 2>&1
@@ -582,5 +592,60 @@ Describe 'review-verify default mode targetFiles[]' {
         $result = script:Invoke-ReviewVerify -ProjectRoot $projectRoot -RunId $runId
         $result.ExitCode | Should -Not -Be 0
         $result.Output | Should -Match 'FAIL targetFiles stale: src/extra\.txt'
+    }
+}
+
+Describe 'review-verify D6 toolRoot binding' {
+    It 'AC-VF-TR-MATCH: passes when -ToolRoot matches meta.toolRoot' {
+        $packet = script:Initialize-FreshPacket -CaseName 'tr-match'
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -ToolRoot $packet.ProjectRoot
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'review-verify: PASS'
+    }
+
+    It 'AC-VF-TR-MISMATCH: fails when -ToolRoot points elsewhere than meta.toolRoot' {
+        $packet = script:Initialize-FreshPacket -CaseName 'tr-mismatch'
+        $otherTool = Join-Path $TestDrive 'pester-review-verify-tr-mismatch-other-tool'
+        $null = New-Item -ItemType Directory -Path $otherTool -Force
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -ToolRoot ([System.IO.Path]::GetFullPath($otherTool))
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL toolRoot mismatch'
+    }
+
+    It 'AC-VF-TR-META-MISSING: fails when meta.json is missing the toolRoot field' {
+        $packet = script:Initialize-FreshPacket -CaseName 'tr-meta-missing'
+
+        # Rewrite meta.json without the toolRoot field.
+        $meta = script:New-MetaPayload `
+            -ProjectRoot $packet.ProjectRoot `
+            -RunId $packet.RunId `
+            -TargetPath $packet.TargetPath `
+            -TargetSha256 $packet.TargetSha
+        $hash = @{}
+        foreach ($prop in $meta.GetEnumerator()) {
+            if ($prop.Key -ne 'toolRoot') { $hash[$prop.Key] = $prop.Value }
+        }
+        $metaJson = $hash | ConvertTo-Json -Depth 32
+        script:Write-Utf8NoBomFile -Path $packet.MetaPath -Content $metaJson
+
+        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -ToolRoot $packet.ProjectRoot
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL meta\.toolRoot missing'
+    }
+
+    It 'AC-VF-TR-RUNTIME-FAIL: fails when no ToolRoot channel resolves at runtime' {
+        $packet = script:Initialize-FreshPacket -CaseName 'tr-runtime-fail'
+
+        $savedEnv = $env:AI_HARNESS_TOOL_ROOT
+        $env:AI_HARNESS_TOOL_ROOT = $null
+        try {
+            # No -ToolRoot, no env, no dogfooding markers, no legacy .ai-harness/ -> channel 5 throw -> FAIL.
+            $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -OmitToolRoot
+        }
+        finally {
+            $env:AI_HARNESS_TOOL_ROOT = $savedEnv
+        }
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'FAIL toolRoot binding could not be re-resolved at runtime'
     }
 }
