@@ -7,7 +7,7 @@ description: Run an ai-harness-toolset review cycle on the user's current in-pro
 
 This skill runs the ai-harness-toolset single-shot review cycle (`review-cycle.ps1`) on the user's currently in-progress work. It is the natural-language entrypoint for the toolset's review flow. The user is not expected to type raw PowerShell arguments.
 
-This skill is the optional, copied counterpart to `snippets/CLAUDE_SNIPPET.md`. Adoption path: copy this file to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (or `~/.claude/skills/ai-harness-review/SKILL.md` for personal use). Do not create global files automatically.
+This skill is the optional, copied counterpart to `snippets/CLAUDE_SNIPPET.md`. Adoption path: copy this file to `<ProjectRoot>/.claude/skills/ai-harness-review/SKILL.md` (or `~/.claude/skills/ai-harness-review/SKILL.md` for personal use). Do not create global files automatically. The AI-guided adoption / update / removal procedure is defined in `docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`.
 
 ## Two supported intents
 
@@ -35,10 +35,15 @@ Do not abandon the conversation's working state. Do not restart, rebase, switch 
 ### 1. Inspect repo state
 
 - Run `git status --porcelain=v1` and `git diff` to see what is changed and untracked.
-- Identify the active script root:
-  - If `<project-root>/.ai-harness/scripts/review-cycle.ps1` exists, that is the script root (target payload mode).
-  - Otherwise, if running inside the `ai-harness-toolset` source repo itself, use `<repo-root>/scripts/review-cycle.ps1` (source repo mode).
-- If neither exists, stop and tell the user the toolset payload has not been copied to this project. Do not attempt to install it.
+- `<ProjectRoot>` is the target project repo root — the directory where `git status` is being run. Target-owned project files (such as `<ProjectRoot>/brief/BRIEF.md`, which is expected to be tracked) and runtime artifacts (such as the `<ProjectRoot>/log/` tree, which is gitignored) both live under `<ProjectRoot>`.
+- Resolve `<ToolRoot>` — the location of the toolset's `scripts/`, `config/`, `templates/`, and `snippets/` — using this priority order. The first match wins.
+
+  1. **Shared / global mode (preferred / default direction).** If the `AI_HARNESS_TOOL_ROOT` environment variable is set and `scripts/review-cycle.ps1` exists at that path, that path is `<ToolRoot>`. The target project does not need to carry a copy of the toolset payload.
+  2. **Self-target / dogfooding mode (source repo operators only).** Otherwise, if `<ProjectRoot>` itself satisfies the ai-harness-toolset source repo multi-marker check — presence of all three of `scripts/verify-ps1.ps1`, `templates/review-input.md`, and `config/reviewer.json` — then `<ToolRoot>` equals `<ProjectRoot>`. Target consumers do not use this mode.
+  3. **Project-local copy mode (transitional / legacy).** Otherwise, if `<ProjectRoot>/.ai-harness/scripts/review-cycle.ps1` exists, the parent `<ProjectRoot>/.ai-harness/` is `<ToolRoot>`. Still supported for backward compatibility, but not the recommended adoption shape for new projects.
+  4. **Stop, do not install.** If none of the above resolved, stop and tell the user that the toolset is not available in this environment: no `AI_HARNESS_TOOL_ROOT` env var, not a source repo, and no project-local copy. Do not attempt to install, copy, or download anything. Wait for the user to decide how to proceed (`docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md` documents the AI-guided adoption procedure that the user can explicitly trigger).
+
+- The formal `<ToolRoot>` resolution contract is `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1. Natural-language trigger phrases (`코덱스 리뷰 진행해`, `review what I just did with codex`, and the other examples listed in the SKILL frontmatter `description`) are matched by Claude Code's skill engine against the frontmatter; the body text below is what the skill executes once triggered.
 
 ### 2. Determine TargetFiles
 
@@ -83,7 +88,7 @@ The user must not be asked for these. Synthesize them from the conversation, the
 - `-Purpose` — one short line describing what the change is, in the user's working language. Quote a concrete artifact name when possible (e.g., `'review socket library implementation in scripts/server-sockets.ps1'`).
 - `-TargetFiles` / `-TargetFilesPath` — pick the shape based on the count from step 2:
   - **Exactly one file:** pass the single repo-relative path with `-TargetFiles <path>`. A literal filename containing comma is allowed in this single-file shape (the script tolerates it as long as the path resolves to an existing file).
-  - **Two or more files:** write a newline-separated list file under `<ProjectLogRoot>/log/` (for example `log/review-targets/<purpose-or-timestamp>.list`) using repo-relative paths with forward slashes, then pass it with `-TargetFilesPath <list-file>`. Do **not** join multiple files into a single comma-separated `-TargetFiles` value — `review-cycle.ps1` rejects that shape with a `FAIL TargetFiles appears to be a comma-separated single string` diagnostic before any reviewer runs.
+  - **Two or more files:** write a newline-separated list file under `<ProjectRoot>/log/` (for example `log/review-targets/<purpose-or-timestamp>.list`) using repo-relative paths with forward slashes, then pass it with `-TargetFilesPath <list-file>`. Do **not** join multiple files into a single comma-separated `-TargetFiles` value — `review-cycle.ps1` rejects that shape with a `FAIL TargetFiles appears to be a comma-separated single string` diagnostic before any reviewer runs.
 - `-Context` — short paragraph of background the reviewer needs. If you ran a Claude self-review, include your own findings here in compressed form.
 - `-RequiredInspectionPaths` — paths Codex must read; usually the same as the chosen TargetFiles set, plus any directly coupled file the diff implies.
 - `-ReviewQuestions` — concrete questions you want Codex to answer. If you ran a Claude self-review, prioritize the open questions or doubts you could not resolve.
@@ -98,7 +103,7 @@ Invoke the script in `-File` mode, never `-Command`. Use the shape that matches 
 Single-file invocation:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script-root>/review-cycle.ps1 `
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File <ToolRoot>/scripts/review-cycle.ps1 `
     -Stage <stage> `
     -Purpose '<purpose>' `
     -TargetFiles <single-file> `
@@ -108,10 +113,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script-root>/review-cyc
     -Constraints '<constraints>'
 ```
 
-Multi-file invocation (write a newline-separated list file under `<ProjectLogRoot>/log/` first, then point the script at it):
+Multi-file invocation (write a newline-separated list file under `<ProjectRoot>/log/` first, then point the script at it):
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script-root>/review-cycle.ps1 `
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File <ToolRoot>/scripts/review-cycle.ps1 `
     -Stage <stage> `
     -Purpose '<purpose>' `
     -TargetFilesPath log/review-targets/<purpose-or-timestamp>.list `
@@ -148,7 +153,7 @@ If `result.json.verdict` is missing or any other value, treat the run as failed 
 `review-cycle.ps1` already runs both modes of `review-verify` before exiting 0, so a clean exit is sufficient. If you want to re-confirm explicitly, run:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File <script-root>/review-verify.ps1 -RunId <run-id> -RequireResult
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File <ToolRoot>/scripts/review-verify.ps1 -RunId <run-id> -RequireResult
 ```
 
 A non-zero exit here means the binding is broken; report it and stop.
