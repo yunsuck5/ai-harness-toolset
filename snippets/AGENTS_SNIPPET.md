@@ -12,18 +12,50 @@ This is a manually adopted AI instruction payload for Codex CLI and other agent-
 
 ## Project layout
 
-- `.ai-harness/` is the project-local, copy-only payload. No global files are modified.
-- Runtime output root is `<project-root>/log/`. `log/` must not be committed; ensure the target project's `.gitignore` includes it.
-- Review records live at `log/review/<run-id>/`. Inspect them and report the verdict.
+Path layout uses two conceptual roots: `<ToolRoot>` is where the toolset's own
+`scripts/`, `config/`, `templates/`, and `snippets/` live, and `<ProjectRoot>`
+is the target project repo root. Toolset-owned source/config/template/snippet
+files live under `<ToolRoot>`. Target-owned project files and runtime artifacts
+live under `<ProjectRoot>`.
+
+The toolset supports three modes. They differ only in where `<ToolRoot>` resolves
+to.
+
+- **Shared / global mode** — preferred direction. `<ToolRoot>` is independent of
+  `<ProjectRoot>` (for example, a single checkout of `ai-harness-toolset`
+  pointed at by the `AI_HARNESS_TOOL_ROOT` environment variable). The target
+  project does not carry a copy of the toolset payload.
+- **Project-local copy mode** — transitional / legacy. `<ToolRoot>` is
+  `<ProjectRoot>/.ai-harness/`, a copied payload sitting alongside the
+  target's own source. Still supported for backward compatibility but not the
+  recommended adoption shape for new projects.
+- **Self-target / dogfooding mode** — source repo operators only. `<ToolRoot>`
+  and `<ProjectRoot>` are the same path (the `ai-harness-toolset` source repo
+  itself). Target consumers do not use this mode.
+
+`<ToolRoot>` is resolved per invocation in this channel order (see
+`docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` for the formal contract):
+explicit `-ToolRoot` argument → `AI_HARNESS_TOOL_ROOT` env var → dogfooding
+multi-marker on `<ProjectRoot>` → legacy `<ProjectRoot>/.ai-harness/` →
+explicit error. For the AI-guided adoption / update procedure, see
+`docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`.
+
+Runtime artifact paths under `<ProjectRoot>`:
+
+- `<ProjectRoot>/log/` — runtime output root. `log/` must not be committed;
+  ensure the target project's `.gitignore` includes it.
+- `<ProjectRoot>/log/review/<run-id>/` — review records. Inspect them and
+  report the verdict.
 - Keep `log/review/`, `log/evidence/`, and `log/chatlog/` separate.
-- Reviewer config comes from `.ai-harness/config/reviewer.json`.
+
+Reviewer config lives at `<ToolRoot>/config/reviewer.json`.
 
 ## Review flow
 
-- Default user-facing entrypoint is the single-shot CLI `.ai-harness/scripts/review-cycle.ps1`. Run it once per user-triggered review request.
+- Default user-facing entrypoint is the single-shot CLI `<ToolRoot>/scripts/review-cycle.ps1`. Run it once per user-triggered review request.
 - `review-cycle.ps1` runs Codex CLI exactly once per call and stops.
-- The component scripts `.ai-harness/scripts/review-prepare.ps1` and `.ai-harness/scripts/review-verify.ps1` are available for explicit, deliberate use (preparing a packet without immediately running Codex, or verifying an existing run). Stale review packets (any `targetFiles[]` entry whose SHA-256 changed since prepare) must fail.
-- Reviewer artifacts live only under `log/review/<run-id>/`. Do not create a root `codex-review-input.md` or root `codex-review-result*.json`.
+- The component scripts `<ToolRoot>/scripts/review-prepare.ps1` and `<ToolRoot>/scripts/review-verify.ps1` are available for explicit, deliberate use (preparing a packet without immediately running Codex, or verifying an existing run). Stale review packets (any `targetFiles[]` entry whose SHA-256 changed since prepare) must fail.
+- Reviewer artifacts live only under `<ProjectRoot>/log/review/<run-id>/`. Do not create a root `codex-review-input.md` or root `codex-review-result*.json`.
 
 ## Result verdict vocabulary
 
@@ -37,31 +69,31 @@ A reviewer verdict does not approve commit, push, publish, merge, release, uploa
 
 ## Brief (BF Level 3)
 
-- `<project-root>/brief/BRIEF.md` is the **durable project restore file** (BF Level 3). A new collaborator or a new agent reads it first to understand the project.
-- `log/chatlog/current/resume.md` is the **volatile current-session restore file** (BF Level 1/2). It lives at a different time scale than BRIEF.
+- `<ProjectRoot>/brief/BRIEF.md` is the **durable project restore file** (BF Level 3). A new collaborator or a new AI agent reads it first to understand the project.
+- `<ProjectRoot>/log/chatlog/current/resume.md` is the **volatile current-session restore file** (BF Level 1/2). It lives at a different time scale than BRIEF.
 - Both coexist. The toolset does not mirror between them. A human decides which side to update.
-- `.ai-harness/templates/brief/BRIEF.md` is the source-side template. `.ai-harness/scripts/brief-init.ps1` seeds `<project-root>/brief/BRIEF.md` one-shot and refuses to overwrite an existing file. `.ai-harness/scripts/brief-check.ps1` validates BRIEF shape only (required heading set, no unfilled placeholders).
+- `<ToolRoot>/templates/brief/BRIEF.md` is the source-side template. `<ToolRoot>/scripts/brief-init.ps1` seeds `<ProjectRoot>/brief/BRIEF.md` one-shot and refuses to overwrite an existing file. `<ToolRoot>/scripts/brief-check.ps1` validates BRIEF shape only (required heading set, no unfilled placeholders).
 - `brief-check.ps1` PASS or FAIL is **not** a reviewer verdict. It does not approve or block commit, push, publish, merge, release, upload, or adoption.
 - BRIEF is not a review input or a review output. It is not a commit gate, push gate, or release gate.
 - BF Level 1/2 save triggers (see below) update `resume.md` / `summary.md` only. They do not auto-write `brief/BRIEF.md`. BF Level 3 is human-edited or seeded by an explicit `brief-init.ps1` call.
-- `<project-root>/brief/BRIEF.md` is expected to be **tracked by default** in the target repo so a fresh clone has the durable restore file available.
+- `<ProjectRoot>/brief/BRIEF.md` is expected to be **tracked by default** in the target repo so a fresh clone has the durable restore file available.
 - The toolset does **not** automatically mutate the target project's `.gitignore`. The adopter decides tracked-vs-ignored.
 - If a target repo currently ignores `brief/`, treat that as a target adoption policy decision and report it as such. Do not classify it as a `brief-init.ps1` or `brief-check.ps1` failure.
 
 ## Chatlog (BF Level 1/2 and CL)
 
-- Use `log/chatlog/current/resume.md` as the current BF Level 1/2 restore point.
-- Use `log/chatlog/current/summary.md` as its compact companion.
-- Treat other files under `log/chatlog/` as CL / history context, referenced only when needed.
+- Use `<ProjectRoot>/log/chatlog/current/resume.md` as the current BF Level 1/2 restore point.
+- Use `<ProjectRoot>/log/chatlog/current/summary.md` as its compact companion.
+- Treat other files under `<ProjectRoot>/log/chatlog/` as CL / history context, referenced only when needed.
 - Keep BF Level 1/2 compact and reference review / evidence / CL details by path only.
 
 ## New session restore-offer
 
 At the start of meaningful work, read in this order:
 
-1. `<project-root>/brief/BRIEF.md` — durable project restore (BF Level 3).
-2. `log/chatlog/current/resume.md` — current-session restore (BF Level 1/2).
-3. `log/chatlog/current/summary.md` — compact companion / fallback.
+1. `<ProjectRoot>/brief/BRIEF.md` — durable project restore (BF Level 3).
+2. `<ProjectRoot>/log/chatlog/current/resume.md` — current-session restore (BF Level 1/2).
+3. `<ProjectRoot>/log/chatlog/current/summary.md` — compact companion / fallback.
 4. Referenced review / evidence / CL artifacts only when BRIEF or `resume.md` points to them.
 
 Then:
@@ -90,8 +122,8 @@ Treat any of the following user phrases as BF Level 1/2 save intent (Korean, ver
 When detected:
 
 1. Inspect repo state.
-2. Update `log/chatlog/current/resume.md` with current state, last completed action, next single action, do-not-do, pending user decision.
-3. Update `log/chatlog/current/summary.md` as its compact companion.
+2. Update `<ProjectRoot>/log/chatlog/current/resume.md` with current state, last completed action, next single action, do-not-do, pending user decision.
+3. Update `<ProjectRoot>/log/chatlog/current/summary.md` as its compact companion.
 4. Keep BF Level 1/2 compact and reference review / evidence / CL details by path only.
 5. Report the updated files and any remaining risks.
 
