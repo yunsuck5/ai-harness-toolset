@@ -50,3 +50,54 @@ latest related commit: `8234bf1 Align snippets with shared global layout`.
 - daemon / watcher / background automation / implicit multi-run behavior 는 도입하지 않는다.
 - 본 backlog 항목 자체는 어떤 구현도 자동 승인하지 않는다.
 - `ReviewProfile` 구현이 미래에 채택되더라도, 그 implementation 은 별도 scoped 승인과 별도 review subsystem 변경 (`docs/roadmap/REVIEW_EFFORT_GUIDE.md` §4 의 review-required 항목) 을 거친다.
+
+---
+
+## Review-cycle file-backed request input
+
+- **Status**: candidate
+
+### Context
+
+D5 commit `df09bf5 Align review skill with shared global ToolRoot resolution` 진행 중, pass 2 reader-risk re-review 의 첫 시도가 PowerShell argument tokenization 오류로 실패했다.
+
+- 호출자: 본 toolset 의 `review-cycle.ps1`. inline `-Context`, `-ReviewQuestions`, `-Constraints` 인자에 quote-heavy + 체크리스트 + Korean/English 혼합 본문을 직접 전달.
+- 오류 메시지: `A positional parameter cannot be found that accepts argument 'always'.`
+- 원인 후보: quote-heavy / checklist-heavy 본문을 inline PowerShell argument 로 전달하는 과정에서, 호출 문자열 구성 또는 PowerShell tokenization / binding layer 가 `"always"` 를 문자열 일부가 아니라 positional argument 로 해석했다. PowerShell argument escape contract 의 fragility 가 노출되었다.
+- 회복: context 본문 wording 을 단순화 (강한 단어 제거 + 일부 구절 재작성) 한 뒤 re-invocation. run-id `20260513-131210-b7c802` 로 정상 수행. 회복된 re-review 는 `yes / findings none` 으로 마무리되었다.
+
+이 회복 경로는 시간 비용을 발생시키고, 더 중요하게는 **reviewer 가 실제로 받는 input 텍스트가 운영자 quote-discipline 에 좌우** 된다. 동일 의미의 입력이 wording 에 따라 PowerShell tokenizer 에서 다르게 처리될 수 있고, 그 결과 reviewer 의 판정에 microscopic 영향이 누적될 risk 가 있다. operator 의 "quote 잘 써라" 가이드만으로는 root-cause 가 해결되지 않는다.
+
+### Problem
+
+- Inline PowerShell 인자 (`-Context`, `-ReviewQuestions`, `-Constraints`) 는 quote-heavy / 체크리스트 / multilingual review prompt 에 fragile 하다.
+- D5 incident 가 이 fragility 의 첫 documented evidence 다.
+- "operator 가 quote 를 잘 써라" 같은 discipline 권고는 root-cause 가 아니라 mitigation 이다. root-cause hardening (호출 layer 의 tokenization 의존도를 줄이는 것) 과는 구분되어야 한다.
+
+### Candidate direction
+
+- `review-cycle.ps1` 에 명시적 file-backed request input 채널을 추가한다. 후보 이름: `-ReviewRequestPath <path>`.
+- request 파일 포맷: 결정론적 local UTF-8 파일. JSON 권장. 최소 fields: `context`, `reviewQuestions`, `constraints`. 위치는 `<ProjectRoot>/log/review-requests/<purpose-or-timestamp>.json` 같은 곳 (현재 `<ProjectRoot>/log/review-targets/` 의 list 파일 규약과 평행).
+- 기존 `-Context` / `-ReviewQuestions` / `-Constraints` 는 backward-compatible 로 유지한다. 새 `-ReviewRequestPath` 가 명시되면 그 파일의 fields 가 우선한다. 두 채널을 동시에 명시하는 경우의 우선순위 / 충돌 처리 규칙은 implementation 단계에서 결정한다.
+- `review-prepare.ps1` 는 resolved request 텍스트를 generated review packet 안에 그대로 기록해서 freshness / binding 검증에 포함되도록 한다 (예: `log/review/<run-id>/input.md` 또는 `meta.json` 의 추가 field). reviewer 가 실제로 본 텍스트가 read-only record 로 보존되어야 한다.
+
+### Tests considerations
+
+구현 단계에서 다음 input 케이스를 cover 한다.
+
+- Single quote, double quote, backtick 을 포함한 본문.
+- Comma 가 본문에 들어 있는 경우.
+- Markdown bullet (예: `-`, `*`, 번호 list) 와 줄바꿈이 본문에 들어 있는 경우.
+- Korean + ASCII 혼합 본문.
+- D5 incident 와 같은 강한 단어 — `"always"`, `"only"`, `"default"`, `"source"`, `"runtime"`, `"global"`, `"local"` — 가 본문에 들어 있는 경우.
+- 빈 fields, 누락 fields, 잘못된 JSON shape, 잘못된 UTF-8 인코딩에 대한 명시적 error.
+
+### Non-goals
+
+- 본 항목은 backlog candidate 다. 본 backlog 항목 자체는 어떤 구현도 자동 승인하지 않는다.
+- daemon / watcher / background automation 도입하지 않는다.
+- implicit retry behavior 도입하지 않는다.
+- reviewer model 변경 아니다.
+- verdict / result binding semantics 변경 아니다.
+- 광범위한 review subsystem redesign 아니다.
+- 본 항목의 implementation 이 미래에 채택되더라도, 그 implementation 은 별도 scoped 승인과 별도 review subsystem 변경 (`docs/roadmap/REVIEW_EFFORT_GUIDE.md` §4 의 review-required 항목) 을 거친다.
