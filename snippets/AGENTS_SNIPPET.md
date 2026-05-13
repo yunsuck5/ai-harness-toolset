@@ -1,6 +1,7 @@
+<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->
 # ai-harness-toolset instructions for Codex / generic agents
 
-This is a manually adopted AI instruction payload for Codex CLI and other agent-style assistants. The user has copied it into the project root `AGENTS.md` inside a managed block delimited by `<!-- BEGIN ai-harness-toolset:AGENTS_SNIPPET.md -->` and `<!-- END ai-harness-toolset:AGENTS_SNIPPET.md -->`. Treat its content as authoritative for ai-harness workflows in this project.
+This is a manually adopted AI instruction payload for Codex CLI and other agent-style assistants. The user has copied it into the destination `AGENTS.md` (project root or global) inside a managed block delimited by `<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->` and `<!-- END AI_HARNESS_TOOLSET_GLOBAL -->`. Treat its content as authoritative for ai-harness workflows in this project.
 
 ## Adoption rules
 
@@ -112,3 +113,4 @@ These triggers update BF Level 1/2 only. They do **not** auto-write `brief/BRIEF
 
 - Commit and push require explicit user approval.
 - `.ps1` files must be UTF-8 with BOM + CRLF.
+<!-- END AI_HARNESS_TOOLSET_GLOBAL -->

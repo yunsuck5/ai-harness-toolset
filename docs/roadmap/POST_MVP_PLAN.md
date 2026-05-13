@@ -166,13 +166,13 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - target payload 측 BF Level 3 smoke test 완료 (§3, §5).
 - post-MVP review effort / cost 운영 권고 문서 `docs/roadmap/REVIEW_EFFORT_GUIDE.md` 추가 완료 (§2).
 - global adoption operating layer 방향 결정 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` 기록 완료 (§6, §11).
+- `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 에 `AI_HARNESS_TOOLSET_GLOBAL` managed block marker 적용 완료 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6).
+- Claude skill 의 global adoption / update / removal 절차 문서화 완료 (`docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §5).
 
 ### Deferred (separate scoped approval required)
 
 - GJMNet clean adoption (§7).
 - `package-toolset.ps1` implementation (§6).
-- `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 에 managed block marker 적용 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6).
-- Claude skill 의 global adoption / update 절차 문서화 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §5).
 - ToolRoot / ProjectRoot path handling audit (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8). self-target / dogfooding path collision audit 가 본 audit 의 mandatory sub-scope 다 (§11 step 4 참조).
 - shared / global mode implementation. 위 audit 결과에 대한 별도 scoped 승인 뒤에만 시작한다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §4, §8).
 - clean target smoke test criteria 정의. adoption mode / path handling 결정 정합화 뒤로 밀린 항목 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9).
@@ -183,7 +183,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 - 기존 GJMNet 안의 ai-harness-toolset application state 는 disposable. migration / cleanup 작업은 post-MVP 항목이 아니다 (§7).
 - GJMNet 은 post-MVP foundation 항목 (Brief system / BF Level 3 / packaging) 이 ready 된 뒤 clean git repo 로 재생성한다. 그 이후의 운용은 CLI-only (§7).
-- 설치 / adoption mode 의 방향 결정은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §1, §4 에 기록되었다. `copy / link / pinned-link` framing 은 §6 안 historical record 로 보존되며, implementation 세부 (managed block marker 적용, Claude skill global 절차 문서화, ToolRoot / ProjectRoot path handling audit, shared/global mode implementation) 와 clean target smoke test criteria 는 별도 scoped 승인이 필요한 상태로 남는다 (§6, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6, §8, §9).
+- 설치 / adoption mode 의 방향 결정은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §1, §4 에 기록되었다. `copy / link / pinned-link` framing 은 §6 안 historical record 로 보존되며, implementation 세부 중 managed block marker 적용과 Claude skill global / update / removal 절차 문서화는 완료되었고, 나머지 implementation 세부 (ToolRoot / ProjectRoot path handling audit, shared/global mode implementation) 와 clean target smoke test criteria 는 별도 scoped 승인이 필요한 상태로 남는다 (§6, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6, §8, §9).
 - docs taxonomy 는 planned but deferred 다. 실제 path migration 은 별도 scoped 승인이 필요하다 (§8).
 - review verdict (`yes` / `no` / `yes with risk`) 는 commit / push / release 의 자동 승인이 아니다 (§2, §8, `docs/REVIEW_RESULT_CONTRACT.md`).
 
