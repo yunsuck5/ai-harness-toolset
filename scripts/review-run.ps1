@@ -16,6 +16,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib/path.ps1')
 . (Join-Path $PSScriptRoot 'lib/hash.ps1')
 . (Join-Path $PSScriptRoot 'lib/json.ps1')
+. (Join-Path $PSScriptRoot 'lib/resolve-script.ps1')
 
 function Invoke-CodexExec {
     param(
@@ -102,23 +103,6 @@ function Get-VerdictFromResultMd {
     return ''
 }
 
-function Resolve-RunScript {
-    param(
-        [string] $Tool,
-        [string] $RelativePath,
-        [string] $LocalDir
-    )
-    $candidate = Join-Path -Path $Tool -ChildPath $RelativePath
-    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-        return $candidate
-    }
-    $local = Join-Path -Path $LocalDir -ChildPath (Split-Path -Leaf $RelativePath)
-    if (Test-Path -LiteralPath $local -PathType Leaf) {
-        return $local
-    }
-    throw ('review-run: required script not found: ' + $RelativePath)
-}
-
 if ($Reviewer -ne 'codex') {
     Write-Host ('review-run: FAIL only -Reviewer codex is supported in MVP; got {0}' -f $Reviewer)
     exit 1
@@ -200,8 +184,9 @@ if ($Force) {
     }
 }
 
-$verifyInputScript = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-input-verify.ps1' -LocalDir $PSScriptRoot
-$verifyScript      = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-verify.ps1'       -LocalDir $PSScriptRoot
+$toolRootSource = Get-ToolRootSource -ToolRoot $ToolRoot
+$verifyInputScript = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-input-verify.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
+$verifyScript      = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-verify.ps1'       -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
 
 $verifyInputArgs = @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass',

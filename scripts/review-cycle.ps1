@@ -27,6 +27,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib/hash.ps1')
 . (Join-Path $PSScriptRoot 'lib/git.ps1')
 . (Join-Path $PSScriptRoot 'lib/json.ps1')
+. (Join-Path $PSScriptRoot 'lib/resolve-script.ps1')
 
 function Invoke-CodexExec {
     param(
@@ -111,23 +112,6 @@ function Get-VerdictFromResultMd {
         return ''
     }
     return ''
-}
-
-function Resolve-CycleScript {
-    param(
-        [string] $Tool,
-        [string] $RelativePath,
-        [string] $LocalDir
-    )
-    $candidate = Join-Path -Path $Tool -ChildPath $RelativePath
-    if (Test-Path -LiteralPath $candidate -PathType Leaf) {
-        return $candidate
-    }
-    $local = Join-Path -Path $LocalDir -ChildPath (Split-Path -Leaf $RelativePath)
-    if (Test-Path -LiteralPath $local -PathType Leaf) {
-        return $local
-    }
-    throw ('review-cycle: required script not found: ' + $RelativePath)
 }
 
 function Get-TrackedChangedFiles {
@@ -276,9 +260,10 @@ if (Test-Path -LiteralPath $runDir -PathType Container) {
     exit 1
 }
 
-$prepareScript = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/review-prepare.ps1' -LocalDir $PSScriptRoot
-$verifyInputScript = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/review-input-verify.ps1' -LocalDir $PSScriptRoot
-$verifyScript = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/review-verify.ps1' -LocalDir $PSScriptRoot
+$toolRootSource = Get-ToolRootSource -ToolRoot $ToolRoot
+$prepareScript = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/review-prepare.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
+$verifyInputScript = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/review-input-verify.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
+$verifyScript = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/review-verify.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
 
 $targetListPath = Join-Path -Path $logRoot -ChildPath ('review-cycle-targets-' + $RunId + '.list')
 $targetListContent = ($resolvedTargets -join "`n") + "`n"
