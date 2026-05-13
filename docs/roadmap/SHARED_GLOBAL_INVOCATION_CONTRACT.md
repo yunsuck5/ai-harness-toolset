@@ -287,8 +287,11 @@ D9 에 따라 CWD default 를 유지하되, advisory warning 추가.
 Get-ProjectRoot(-ProjectRoot $p)
   if $p is empty:
     $p = (Get-Location).ProviderPath
-    if -not Test-Path (Join-Path $p '.git') -PathType Container:
-      Write-Host "WARN ProjectRoot resolved to CWD without a .git directory: <p>"
+    # .git can be either a directory (standard repo) or a file pointer
+    # (git worktree / submodule); both count as valid git evidence.
+    if -not (Test-Path (Join-Path $p '.git') -PathType Container)
+       and -not (Test-Path (Join-Path $p '.git') -PathType Leaf):
+      Write-Host "WARN ProjectRoot resolved to CWD without a .git entry: <p>"
   if -not Test-Path $p -PathType Container: throw
   return GetFullPath($p)
 ```
