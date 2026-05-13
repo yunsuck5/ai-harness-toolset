@@ -9,6 +9,10 @@ function Get-ProjectRoot {
 
     if ([string]::IsNullOrEmpty($ProjectRoot)) {
         $ProjectRoot = (Get-Location).ProviderPath
+        $gitDir = Join-Path -Path $ProjectRoot -ChildPath '.git'
+        if (-not (Test-Path -LiteralPath $gitDir -PathType Container)) {
+            Write-Host ('Get-ProjectRoot: WARN ProjectRoot resolved to CWD without a .git directory: {0}' -f $ProjectRoot)
+        }
     }
     if (-not (Test-Path -LiteralPath $ProjectRoot -PathType Container)) {
         throw "Get-ProjectRoot: directory not found: $ProjectRoot"

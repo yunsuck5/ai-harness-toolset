@@ -265,3 +265,68 @@ Describe 'Get-ToolRoot caller contract (callsite consumption)' {
         Test-Path -LiteralPath $joined -PathType Leaf | Should -BeTrue
     }
 }
+
+Describe 'Get-ProjectRoot D9 CWD advisory' {
+    It 'AC-PATH-D9-EXPLICIT-NO-WARN: no warning when -ProjectRoot is explicit (even without .git/)' {
+        $project = script:New-CaseDir -Name 'd9-explicit-no-git'
+        # No .git/ inside, but explicit -ProjectRoot path should suppress the advisory.
+        $informational = (& {
+            Get-ProjectRoot -ProjectRoot $project 6>&1
+        } | Out-String -Width 8192)
+        $flat = ($informational -replace "`r?`n", ' ')
+        $flat | Should -Not -Match 'WARN ProjectRoot resolved to CWD'
+    }
+
+    It 'AC-PATH-D9-CWD-WITH-GIT-NO-WARN: no warning when CWD default and .git/ container exists' {
+        $project = script:New-CaseDir -Name 'd9-cwd-with-git'
+        $null = New-Item -ItemType Directory -Path (Join-Path $project '.git') -Force
+        Push-Location -LiteralPath $project
+        try {
+            $informational = (& {
+                Get-ProjectRoot 6>&1
+            } | Out-String -Width 8192)
+        }
+        finally {
+            Pop-Location
+        }
+        $flat = ($informational -replace "`r?`n", ' ')
+        $flat | Should -Not -Match 'WARN ProjectRoot resolved to CWD'
+    }
+
+    It 'AC-PATH-D9-CWD-NO-GIT-WARN: warning when CWD default and .git/ missing; resolution still succeeds' {
+        $project = script:New-CaseDir -Name 'd9-cwd-no-git'
+        Push-Location -LiteralPath $project
+        try {
+            $informational = (& {
+                Get-ProjectRoot 6>&1
+            } | Out-String -Width 8192)
+            $result = Get-ProjectRoot
+        }
+        finally {
+            Pop-Location
+        }
+        $flat = ($informational -replace "`r?`n", ' ')
+        $flat | Should -Match 'Get-ProjectRoot: WARN ProjectRoot resolved to CWD without a \.git directory'
+        $flat | Should -Match ([regex]::Escape($project))
+        # Resolution still succeeds and returns the project full path.
+        $result | Should -BeOfType [string]
+        ([System.IO.Path]::GetFullPath($result)).TrimEnd('/','\') | Should -Be ($project.TrimEnd('/','\'))
+    }
+
+    It 'AC-PATH-D9-CWD-WITH-GIT-FILE-WARN: warning when .git is a file (e.g., submodule pointer) and not a container' {
+        # The advisory checks for a container; a .git file (rare submodule shape) should still warn.
+        $project = script:New-CaseDir -Name 'd9-cwd-git-file'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project '.git') -Content "gitdir: ../somewhere/.git`n"
+        Push-Location -LiteralPath $project
+        try {
+            $informational = (& {
+                Get-ProjectRoot 6>&1
+            } | Out-String -Width 8192)
+        }
+        finally {
+            Pop-Location
+        }
+        $flat = ($informational -replace "`r?`n", ' ')
+        $flat | Should -Match 'Get-ProjectRoot: WARN ProjectRoot resolved to CWD without a \.git directory'
+    }
+}
