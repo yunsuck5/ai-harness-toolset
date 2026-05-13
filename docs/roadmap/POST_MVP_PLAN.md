@@ -98,6 +98,12 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
   - 현재 active default 는 README 가 명시한 copy-only adoption 이다 (`docs/AI_HARNESS_TOOLSET_SCOPE.md` source-vs-target 경계).
   - link / pinned-link adoption mode 의 도입 여부와 책임 경계는 별도 scoped 승인이 필요한 deferred decision 이다.
   - 본 결정은 packaging (`package-toolset.ps1`) 결정과 sibling 관계이며, 두 결정의 boundary 가 일관성 있게 정해진 뒤에야 implementation 단계로 넘어간다.
+  - 본 항목의 framing 은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §1, §4 의 결정에 의해 reframed 되었다. 위 historical enumeration (copy / link / pinned-link) 은 historical record 로 그대로 보존하되, 현 시점의 preferred direction 은 다음과 같이 갱신되었다.
+    - global / common AI development operating layer 가 preferred direction 이다.
+    - target 안의 `.ai-harness/` copied tool folder 는 default preferred shape 이 아니다.
+    - symlink / junction / link 는 direct shared/global invocation 의 변경 폭이 너무 클 때만 검토되는 fallback candidate 다.
+    - installer-first productization 은 본 단계에서 out of scope 다.
+  - 따라서 본 §6 의 `copy / link / pinned-link` enumeration 이 여전히 primary direction decision 이라고 해석하지 않는다. primary direction 의 source-of-truth 는 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` 다.
 
 ---
 
@@ -159,12 +165,17 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 의 BF Level 3 protocol 정합성 정렬 완료 (§3, §5).
 - target payload 측 BF Level 3 smoke test 완료 (§3, §5).
 - post-MVP review effort / cost 운영 권고 문서 `docs/roadmap/REVIEW_EFFORT_GUIDE.md` 추가 완료 (§2).
+- global adoption operating layer 방향 결정 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` 기록 완료 (§6, §11).
 
 ### Deferred (separate scoped approval required)
 
 - GJMNet clean adoption (§7).
 - `package-toolset.ps1` implementation (§6).
-- link / pinned-link adoption mode 결정 (§6).
+- `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 에 managed block marker 적용 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6).
+- Claude skill 의 global adoption / update 절차 문서화 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §5).
+- ToolRoot / ProjectRoot path handling audit (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8). self-target / dogfooding path collision audit 가 본 audit 의 mandatory sub-scope 다 (§11 step 4 참조).
+- shared / global mode implementation. 위 audit 결과에 대한 별도 scoped 승인 뒤에만 시작한다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §4, §8).
+- clean target smoke test criteria 정의. adoption mode / path handling 결정 정합화 뒤로 밀린 항목 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9).
 - Chatlog system 의 CL 영역 fuller implementation (§4).
 - docs taxonomy 의 실제 path migration. docs taxonomy 자체는 별도로 논의되었으며 향후 잊지 않는다 — 다만 실제 path migration 은 path reference scan 과 별도 scoped 승인이 모두 필요한 deferred 항목이다 (§8).
 
@@ -172,7 +183,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 - 기존 GJMNet 안의 ai-harness-toolset application state 는 disposable. migration / cleanup 작업은 post-MVP 항목이 아니다 (§7).
 - GJMNet 은 post-MVP foundation 항목 (Brief system / BF Level 3 / packaging) 이 ready 된 뒤 clean git repo 로 재생성한다. 그 이후의 운용은 CLI-only (§7).
-- 설치 / adoption mode 결정 (copy / link / pinned-link) 은 post-MVP foundation docs / check 가 정리된 뒤로 미룬다 (§6).
+- 설치 / adoption mode 의 방향 결정은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §1, §4 에 기록되었다. `copy / link / pinned-link` framing 은 §6 안 historical record 로 보존되며, implementation 세부 (managed block marker 적용, Claude skill global 절차 문서화, ToolRoot / ProjectRoot path handling audit, shared/global mode implementation) 와 clean target smoke test criteria 는 별도 scoped 승인이 필요한 상태로 남는다 (§6, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6, §8, §9).
 - docs taxonomy 는 planned but deferred 다. 실제 path migration 은 별도 scoped 승인이 필요하다 (§8).
 - review verdict (`yes` / `no` / `yes with risk`) 는 commit / push / release 의 자동 승인이 아니다 (§2, §8, `docs/REVIEW_RESULT_CONTRACT.md`).
 
@@ -182,12 +193,17 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 본 절은 post-MVP 잔여 항목의 권장 처리 순서다. **순서 자체는 자동 승인이 아니다.** 각 단계는 §8 guardrail 을 깨지 않는 범위 안에서 별도 scoped 승인을 거친다.
 
-1. 본 `docs/roadmap/POST_MVP_PLAN.md` status update (= 본 변경).
-2. CLI-only operator guide / operating rules 정리 (기존 `docs/MVP_OPERATOR_GUIDE_KR.md` 와의 정합성 유지가 우선).
-3. clean target smoke test criteria 정의.
-4. docs taxonomy plan 정리 (실제 path migration 은 아직 하지 않음).
-5. adoption mode 결정 (copy / link / pinned-link).
-6. package / link tooling planning.
+본 순서는 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 의 권장 순서와 정합되되, 현재 roadmap 상태에 맞춰 두 차이를 명시한다. 첫째, `GLOBAL_ADOPTION_DECISION.md` 에 대한 Codex review 는 이미 완료되었으므로 본 순서에서는 제외하고, 본 `POST_MVP_PLAN.md` remaining order update 를 현재 step 1 로 둔다. 둘째, `POST_MVP_PLAN.md` 는 내부 roadmap closeout 판단을 보존하기 위해 GJMNet clean adoption 직전에 post-MVP closeout 결정을 별도 step 으로 유지한다. 동일한 안전 원칙이 양 문서에 반복 명시된다. 즉, 본 순서는 snippets / scripts / config / templates 의 변경, global `CLAUDE.md` / `AGENTS.md` mutation, shared/global path handling implementation, commit, push 중 어느 것도 자동 승인하지 않는다.
+
+1. 본 `docs/roadmap/POST_MVP_PLAN.md` remaining order update (= 본 변경, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 step 2 에 대응).
+2. `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 에 managed block marker 적용 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6).
+3. Claude skill 의 global adoption / update 절차 문서화 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §5).
+4. ToolRoot / ProjectRoot path handling audit (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8).
+   - mandatory sub-scope: self-target / dogfooding path collision audit. `ai-harness-toolset` 자체가 global/shared ToolRoot 이면서 동시에 dogfooding / self-review 대상 ProjectRoot 로 사용되는 경우, test / log / brief / review / evidence artifact path 가 source-managed file, runtime artifact, gitignored output 을 혼동하지 않는지 검증한다.
+   - 본 sub-scope 의 audit 대상은 최소 다음을 포함한다: `log/`, `brief/`, `tests/`, `.ai-harness/` 의 부재 또는 존재, `log/review/` artifact, `log/evidence/` artifact, snapshot / handoff output path, script 위치를 project root 로 잘못 해석하는 모든 path assumption.
+   - 본 sub-scope 는 audit scope 의 기록일 뿐이다. 본 변경으로 path handling 을 implement 하지 않으며, self-dogfooding test 도 본 단계에서 실행하지 않는다.
+5. shared / global mode implementation. 위 audit 결과에 대한 별도 scoped 승인 뒤에만 시작한다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §4, §8).
+6. clean target smoke test criteria 정의. adoption mode 결정 및 path handling audit 정합화 뒤로 밀린 항목 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 reason 참조).
 7. clean target smoke test 실행.
 8. post-MVP closeout 결정.
 9. new GJMNet repo 의 clean adoption.
