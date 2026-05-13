@@ -61,8 +61,13 @@ BeforeAll {
             Remove-Item -LiteralPath $srcRoot -Recurse -Force
         }
         $null = New-Item -ItemType Directory -Path $srcRoot -Force
-        $marker = Join-Path $srcRoot 'scripts/verify-ps1.ps1'
-        script:Write-Utf8NoBomFile -Path $marker -Content "# fake marker for Test-IsSourceRepoRoot`n"
+        # Test-IsSourceRepoRoot now requires all three markers (D3 multi-marker)
+        $marker1 = Join-Path $srcRoot 'scripts/verify-ps1.ps1'
+        script:Write-Utf8NoBomFile -Path $marker1 -Content "# fake marker for Test-IsSourceRepoRoot`n"
+        $marker2 = Join-Path $srcRoot 'templates/review-input.md'
+        script:Write-Utf8NoBomFile -Path $marker2 -Content "# fake review-input template`n"
+        $marker3 = Join-Path $srcRoot 'config/reviewer.json'
+        script:Write-Utf8NoBomFile -Path $marker3 -Content "{}`n"
         $tmpl = Join-Path $srcRoot 'templates/brief/BRIEF.md'
         script:Write-Utf8NoBomFile -Path $tmpl -Content "# fake brief template`n"
         return ([System.IO.Path]::GetFullPath($srcRoot))

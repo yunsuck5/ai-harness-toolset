@@ -23,8 +23,18 @@ function Test-IsSourceRepoRoot {
         [string] $Path
     )
 
-    $marker = Join-Path -Path $Path -ChildPath 'scripts/verify-ps1.ps1'
-    return (Test-Path -LiteralPath $marker -PathType Leaf)
+    $markers = @(
+        'scripts/verify-ps1.ps1',
+        'templates/review-input.md',
+        'config/reviewer.json'
+    )
+    foreach ($m in $markers) {
+        $full = Join-Path -Path $Path -ChildPath $m
+        if (-not (Test-Path -LiteralPath $full -PathType Leaf)) {
+            return $false
+        }
+    }
+    return $true
 }
 
 function Get-ToolRoot {
@@ -34,21 +44,40 @@ function Get-ToolRoot {
         [string] $ProjectRoot
     )
 
+    $tried = New-Object System.Collections.Generic.List[string]
+
     if (-not [string]::IsNullOrEmpty($ToolRoot)) {
         if (-not (Test-Path -LiteralPath $ToolRoot -PathType Container)) {
-            throw "Get-ToolRoot: directory not found: $ToolRoot"
+            throw ('Get-ToolRoot: channel 1 (-ToolRoot parameter): directory not found: {0}. Provide a valid existing directory or omit -ToolRoot to fall back to env / dogfooding / legacy channels.' -f $ToolRoot)
         }
         return [System.IO.Path]::GetFullPath($ToolRoot)
     }
+    $tried.Add('channel 1 (-ToolRoot parameter): not provided') | Out-Null
+
+    $envTool = [System.Environment]::GetEnvironmentVariable('AI_HARNESS_TOOL_ROOT')
+    if (-not [string]::IsNullOrEmpty($envTool)) {
+        if (-not (Test-Path -LiteralPath $envTool -PathType Container)) {
+            throw ('Get-ToolRoot: channel 2 (env AI_HARNESS_TOOL_ROOT): directory not found: {0}. Set AI_HARNESS_TOOL_ROOT to an existing directory or unset it to fall back to dogfooding / legacy channels.' -f $envTool)
+        }
+        return [System.IO.Path]::GetFullPath($envTool)
+    }
+    $tried.Add('channel 2 (env AI_HARNESS_TOOL_ROOT): not set or empty') | Out-Null
 
     $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 
     if (Test-IsSourceRepoRoot -Path $project) {
         return $project
     }
+    $tried.Add(('channel 3 (dogfooding multi-marker on ProjectRoot={0}): markers missing' -f $project)) | Out-Null
 
-    $deployed = Join-Path -Path $project -ChildPath '.ai-harness'
-    return [System.IO.Path]::GetFullPath($deployed)
+    $legacy = Join-Path -Path $project -ChildPath '.ai-harness'
+    if (Test-Path -LiteralPath $legacy -PathType Container) {
+        return [System.IO.Path]::GetFullPath($legacy)
+    }
+    $tried.Add(('channel 4 (legacy <ProjectRoot>/.ai-harness): not present at {0}' -f $legacy)) | Out-Null
+
+    $trace = $tried -join '; '
+    throw ('Get-ToolRoot: no ToolRoot channel could be resolved. Tried: {0}. Set AI_HARNESS_TOOL_ROOT or pass -ToolRoot.' -f $trace)
 }
 
 function Get-ProjectLogRoot {
