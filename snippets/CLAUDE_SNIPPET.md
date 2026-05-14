@@ -22,9 +22,13 @@ The toolset supports three modes. They differ only in where `<ToolRoot>` resolve
 to.
 
 - **Shared / global mode** — preferred direction. `<ToolRoot>` is independent of
-  `<ProjectRoot>` (for example, a single checkout of `ai-harness-toolset`
-  pointed at by the `AI_HARNESS_TOOL_ROOT` environment variable). The target
-  project does not carry a copy of the toolset payload.
+  `<ProjectRoot>`. The default mechanism is a global stable install at
+  `%USERPROFILE%\.claude\ai-harness-toolset\current`, materialized once and
+  shared across projects. The `AI_HARNESS_TOOL_ROOT` environment variable is an
+  override of that default — for debug / development validation, for example
+  pointing at a development checkout of `ai-harness-toolset` — and is not the
+  default mechanism. In either case the target project does not carry a copy of
+  the toolset payload.
 - **Project-local copy mode** — transitional / legacy. `<ToolRoot>` is
   `<ProjectRoot>/.ai-harness/`, a copied payload sitting alongside the
   target's own source. Still supported for backward compatibility but not the
@@ -35,9 +39,12 @@ to.
 
 `<ToolRoot>` is resolved per invocation in this channel order (see
 `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` for the formal contract):
-explicit `-ToolRoot` argument → `AI_HARNESS_TOOL_ROOT` env var → dogfooding
-multi-marker on `<ProjectRoot>` → legacy `<ProjectRoot>/.ai-harness/` →
-explicit error. For the AI-guided adoption / update procedure, see
+explicit `-ToolRoot` argument → `AI_HARNESS_TOOL_ROOT` env var (override / debug
+/ development validation) → global stable install
+`%USERPROFILE%\.claude\ai-harness-toolset\current` (absent skips to the next
+channel; present but incomplete fails fast) → dogfooding multi-marker on
+`<ProjectRoot>` → legacy `<ProjectRoot>/.ai-harness/` → explicit error. For the
+AI-guided adoption / update procedure, see
 `docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`.
 
 Runtime artifact paths under `<ProjectRoot>`:
