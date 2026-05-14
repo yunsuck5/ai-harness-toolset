@@ -161,7 +161,13 @@ sequenced 운영을 채택하면 evidence 보고에 `sequenced fixture; reset st
 본 case 는 외부 Codex CLI 가용성에 의존한다. CLI 부재 환경에서는 **SC5'** (review-prepare-only) 로 대체한다.
 
 - **Pre.** A1–A6 + A7a (channel 1 또는 channel 2 중 택일; case 절에 명시). A8. §1.1 의 SC2 → SC5 또는 SC3 → SC5 reset / commit 절차 적용 (fresh fixture 면 생략).
-- **Action.** `<source-repo>/scripts/review-cycle.ps1 -Stage implementation -Purpose 'smoke' -TargetFiles <single-existing-tracked-file>` 1 회 호출. ProjectRoot / ToolRoot 인자는 채택한 channel 에 맞춰 전달.
+- **Action.** `<source-repo>/scripts/review-cycle.ps1 -Stage implementation -Purpose 'smoke' -TargetFiles <single-existing-tracked-file> -Context '<C>' -RequiredInspectionPaths '<P>' -ReviewQuestions '<Q>' -Constraints '<X>'` 1 회 호출. ProjectRoot / ToolRoot 인자는 채택한 channel 에 맞춰 전달. `<C>` / `<P>` / `<Q>` / `<X>` 는 `templates/review-input.md` 의 4 개 placeholder 섹션 (`## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`) 을 채우기 위한 non-empty 문자열이며, `review-input-verify` 가 거부하는 forbidden 토큰 (`Replace this placeholder`, `(Provide context here.)`, `(Provide review questions here.)`) 을 포함해서는 안 된다. minimum-viable 예시:
+  - `<C>`: `Clean target smoke verification of D6 verifier binding under channel-resolved ToolRoot.`
+  - `<P>`: `<single-existing-tracked-file>` 의 path (TargetFiles 와 동일 path).
+  - `<Q>`: `Is the target file syntactically intact for smoke purposes? Respond with the verdict vocabulary only.`
+  - `<X>`: `Smoke only. Do not approve commit, push, publish, merge, release, or deployment.`
+
+  위 4 개 파라미터가 미명시되면 `review-cycle.ps1` 이 `input.md` 를 substitution 없이 그대로 두고, `review-input-verify` 의 placeholder / empty-section 게이트가 fire 하여 Codex 가 호출되지 않는다. 그 경우 D6 verifier binding 의 VERIFY half (`review-verify.ps1` 의 `meta.toolRoot` ↔ runtime mismatch FAIL 검증) 가 exercise 되지 않으며 본 case 는 본 §2 의 Pass 조건을 충족할 수 없다.
 - **Pass.**
   - exit 0.
   - `<ProjectRoot>/log/review/<run-id>/meta.json` 의 `projectRoot`, `toolRoot`, `projectLogRoot` 가 runtime 값과 case-insensitive ordinal equality.
