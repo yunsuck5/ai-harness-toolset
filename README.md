@@ -4,6 +4,8 @@ Project-local deterministic toolset for Claude / Codex workflows.
 
 ai-harness-toolset is a project-local deterministic toolset. It is not an orchestrator, not an installer, and not packaged. Adoption is copy-only and CLI-only. Source folders are copied into a `.ai-harness/` payload at the target project root, and runtime output is written under `<project-root>/log/`.
 
+> **Current adoption model.** The current adoption and default direction is the **shared / global stable runtime ToolRoot** — channel 3, the global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation (see `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` and `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`). The copy-only / `.ai-harness/` quick start below describes the **legacy project-local copy mode** (channel 5) — still supported for backward compatibility, but not the recommended adoption shape for new projects. This README body has not yet been rewritten to lead with the shared/global model; that docs-hygiene pass is tracked in `docs/backlog/operations.md`.
+
 ## Quick start: copy-only target project adoption
 
 There is no installer. Manually copy four source folders from this repo into the target project:

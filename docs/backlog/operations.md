@@ -176,6 +176,8 @@ global stable runtime ToolRoot 모델로의 전환이 snippets / skill / resolut
 
 - `docs/AI_HARNESS_TOOLSET_SCOPE.md` — §"Source repo vs target project payload" 가 `config/` / `scripts/` / `snippets/` / `templates/` 를 target project root 의 `.ai-harness/` payload 로 copy 하는 구 MVP / project-local model 을 설명한다. 이는 현재 `%USERPROFILE%\.claude\ai-harness-toolset\current` (channel 3) 판단의 **primary source-of-truth 로 쓰면 안 된다**. (단, `docs/backlog/README.md` 의 탐색 규칙은 여전히 본 문서를 contract 우선순위 목록에 포함하므로, 본 항목은 그 위상 자체의 재정의가 아니라 wording 정합성 정리만 다룬다.)
 - `docs/roadmap/POST_MVP_PLAN.md` — 큰 순서 / 단계 구분은 유효하나, 현재 handoff 기준 next action 과 status 를 완전히 반영하지 못할 수 있다. status 절을 현재 handoff 와 대조 없이 단독 인용하면 stale 판단 risk 가 있다.
+- `README.md` — front-door 문서가 toolset 전체를 copy-only `.ai-harness/` adoption 으로 제시한다 (`Adoption is copy-only and CLI-only`, "Quick start: copy-only target project adoption"). **fix-now front-door pointer 대상**: 파일 상단에 current adoption = shared/global stable runtime ToolRoot (channel 3) 이고 copy-only 절은 legacy channel 5 / project-local copy mode 로 읽어야 한다는 pointer 가 추가되었다. body 전체 rewrite — copy-only quick start 표를 shared/global 우선으로 재구성 — 는 본 backlog 항목의 **defer** 범위로 남는다.
+- `docs/MVP_OPERATOR_GUIDE_KR.md` — copy-only / CLI-only 적용 절차와 `.ai-harness/` payload 구조를 live 절차로 제시한다. **superseded-note-ok / backlog tracking 대상**: 파일 상단에 shared/global 이 현행 방향이고 본 guide 는 MVP / legacy copy-only 경로라는 superseded pointer 를 다는 것으로 충분하다. 본 라운드에서는 수정하지 않았고 본 backlog 항목으로 추적한다.
 - `brief/` vs `log/brief/BRIEF.md` 관련 historical wording — 현재는 superseding note 에 의존해 reconcile 되어 있어, 해당 note 를 못 보고 본문 일부만 읽으면 brief 의 위치 / 위상 을 오해할 수 있다 (참고: `brief/` 는 repo root 에 존재하지 않고 `log/brief/` 가 runtime 자리다).
 
 ### Latest-judgment priority order
