@@ -1,6 +1,6 @@
 # chatlog contract — manual acceptance criteria
 
-`docs/CHATLOG_CONTRACT.md`, `docs/MVP_OPERATOR_GUIDE_KR.md`, `templates/session-summary.md`, `templates/session-resume.md`, `templates/decision-log.md`, `snippets/AGENTS_SNIPPET.md`, `snippets/CLAUDE_SNIPPET.md`, `README.md` 가 chatlog MVP contract 의 핵심 invariant 를 담고 있는지 확인하는 수동 검증 항목.
+`docs/CHATLOG_CONTRACT.md`, `docs/OPERATOR_GUIDE_KR.md`, `templates/session-summary.md`, `templates/session-resume.md`, `templates/decision-log.md`, `snippets/AGENTS_SNIPPET.md`, `snippets/CLAUDE_SNIPPET.md`, `README.md` 가 chatlog MVP contract 의 핵심 invariant 를 담고 있는지 확인하는 수동 검증 항목.
 
 No Pester. No Codex. No commit. No push. 검증은 사람이 해당 파일을 직접 읽어 항목별 substring / structure 존재 여부를 확인하는 방식이다.
 
@@ -109,7 +109,7 @@ Expected:
 
 ## AC-chatlog-10 — BF Level 2 restore-offer 동작이 snippets / operator guide 에 문서화
 
-새 Claude Code 세션 진입 시의 restore-offer 동작이 `snippets/CLAUDE_SNIPPET.md`, `snippets/AGENTS_SNIPPET.md`, `docs/MVP_OPERATOR_GUIDE_KR.md` 에 모두 문서화되어 있어야 한다.
+새 Claude Code 세션 진입 시의 restore-offer 동작이 `snippets/CLAUDE_SNIPPET.md`, `snippets/AGENTS_SNIPPET.md`, `docs/OPERATOR_GUIDE_KR.md` 에 모두 문서화되어 있어야 한다.
 
 Expected:
 
@@ -118,7 +118,7 @@ Expected:
 - `snippets/CLAUDE_SNIPPET.md` 에 사용자에게 묻는 단계의 한국어 ask 문구 (예: `이 복구 지점에서 이어서 진행할까요?`) 가 verbatim 으로 존재한다.
 - `snippets/AGENTS_SNIPPET.md` 는 agent-neutral 표현으로 같은 ask 단계를 갖되, 한국어 요약 요구는 명시한다.
 - 양쪽 snippet 모두 `resume.md` 가 없을 때 `summary.md` 로 fallback 하고 누락 / 미흡함을 보고한다는 positive 진술을 포함한다.
-- `docs/MVP_OPERATOR_GUIDE_KR.md` 에 같은 BF Level 2 restore-offer 절이 존재한다.
+- `docs/OPERATOR_GUIDE_KR.md` 에 같은 BF Level 2 restore-offer 절이 존재한다.
 - raw transcript / 누적 CL 을 통째로 읽어 BF 를 임의로 재구성하지 말라는 contract 차원의 directive 는 `docs/CHATLOG_CONTRACT.md` 의 `## 다음 agent의 read 순서` 절이 carrier 다. snippets 가 carrier 일 필요는 없다.
 
 ## AC-chatlog-11 — BF save natural-language protocol 문서화
@@ -143,8 +143,8 @@ Expected:
 - 두 snippet 의 trigger set 이 substance 상 동일하다 (위 6개와 같은 집합, 같은 순서일 필요는 없으나 항목 set 이 동일).
 - `snippets/CLAUDE_SNIPPET.md` 에 BF 저장 절차 (repo 상태 확인 → resume.md / summary.md 갱신 → review / evidence / CL 은 path 로만 참조 → BF compact 유지 → 보고) 가 positive runtime 형식으로 명시된다.
 - `snippets/AGENTS_SNIPPET.md` 에 동일한 BF save 절차가 agent-neutral 표현으로 존재한다.
-- `docs/MVP_OPERATOR_GUIDE_KR.md` 에 같은 BF save 자연어 protocol 절이 존재한다 (위 6개 발화 verbatim 포함 권장).
-- BF save 가 사용자 PowerShell workflow 가 아니고 자연어 protocol 임을 명시하는 contract substance 는 `docs/MVP_OPERATOR_GUIDE_KR.md` 와 `docs/CHATLOG_CONTRACT.md` 가 carrier 다. snippets 는 trigger + 절차 자체로 그 의미를 운반하므로 별도 명시 진술을 강제하지 않는다.
+- `docs/OPERATOR_GUIDE_KR.md` 에 같은 BF save 자연어 protocol 절이 존재한다 (위 6개 발화 verbatim 포함 권장).
+- BF save 가 사용자 PowerShell workflow 가 아니고 자연어 protocol 임을 명시하는 contract substance 는 `docs/OPERATOR_GUIDE_KR.md` 와 `docs/CHATLOG_CONTRACT.md` 가 carrier 다. snippets 는 trigger + 절차 자체로 그 의미를 운반하므로 별도 명시 진술을 강제하지 않는다.
 - 본 AC 는 manual acceptance 항목이며 자동 Pester 테스트로 대체하지 않는다.
 
 ## AC-chatlog-12 — MVP scope 밖 자동화 항목이 명시적으로 out-of-scope
@@ -154,7 +154,7 @@ Expected:
 Carrier 문서 (이 AC 의 진술이 모두 들어 있어야 하는 자리):
 
 - `docs/CHATLOG_CONTRACT.md` (특히 `## non-goals` 절)
-- `docs/MVP_OPERATOR_GUIDE_KR.md` (특히 `## 7b` 의 자동화 경계 절)
+- `docs/OPERATOR_GUIDE_KR.md` (특히 `## 7b` 의 자동화 경계 절)
 - `README.md` (chatlog / Snippets / What this toolset does not do 절)
 - `tests/chatlog-contract-manual.md` (본 AC 텍스트 자체)
 
