@@ -101,7 +101,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
   - copy-bundle 외의 distribution 채널 (public release packaging, registry publish 등).
 - `package-toolset.ps1` 이 source repo 에 추가되어야 한다고 본 결정이 명령하지 않는다. 필요 시 별도 scoped 승인을 받은 뒤 design / implementation 한다.
 - adoption mode (copy / link / pinned-link) 결정.
-  - 현재 active default 는 README 가 명시한 copy-only adoption 이다 (`docs/AI_HARNESS_TOOLSET_SCOPE.md` source-vs-target 경계).
+  - MVP 시점의 active default 는 README 가 명시한 copy-only adoption 이었다 (`docs/AI_HARNESS_TOOLSET_SCOPE.md` 의 legacy project-local copy payload 절). 이 enumeration 은 historical record 이며, 현행 adoption / default 는 shared / global stable runtime ToolRoot (channel 3) 다 — 아래 reframe 항목, §10 / §11, 그리고 `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` 를 따른다.
   - link / pinned-link adoption mode 의 도입 여부와 책임 경계는 별도 scoped 승인이 필요한 deferred decision 이다.
   - 본 결정은 packaging (`package-toolset.ps1`) 결정과 sibling 관계이며, 두 결정의 boundary 가 일관성 있게 정해진 뒤에야 implementation 단계로 넘어간다.
   - 본 항목의 framing 은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §1, §4 의 결정에 의해 reframed 되었다. 위 historical enumeration (copy / link / pinned-link) 은 historical record 로 그대로 보존하되, 현 시점의 preferred direction 은 다음과 같이 갱신되었다.
@@ -219,9 +219,9 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 본 순서는 `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 를 current global install / update / self-adoption 판단 기준으로 참조한다. `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 의 step 1–5, shared / global mode invocation contract design, **shared / global mode implementation (§6 의 8 개 split unit 전부)**, **clean target smoke test criteria 정의 및 full SC1–SC7 실행**, 그리고 **global install / update / self-adoption operating model 문서화** 는 모두 §10 Completed 에 기록되어 본 §11 에서는 제외한다. shared / global mode implementation 완료는 source-side path / invocation 동작이 갖춰졌다는 의미이며, 아래 step 들 (actual global activation / install / update / self-adoption) 의 수행과는 구분된다. 또한 본 순서는 내부 roadmap closeout 판단을 보존하기 위해 GJMNet clean adoption 직전에 post-MVP closeout 결정을 별도 step 으로 유지한다.
 
-본 §11 기준 **다음 실제 milestone 은 step 1 (`GLOBAL_INSTALL_UPDATE_MODEL.md` 확정)** 이다.
+본 §11 기준 step 1 (`docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 확정) 은 §10 Completed 에 기록된 대로 이미 충족되어 있다 — 해당 문서는 global install / update / self-adoption 판단의 current source-of-truth 다. 따라서 **다음 실제 milestone 은 step 2 — manual global activation / controlled global materialization 을 통한 global behavior validation** 이며, 이는 실제 global mutation 이므로 별도 scoped 승인이 필요하다.
 
-1. `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 확정. global install / update / validation / self-adoption operating model 을 current source-of-truth 로 확정한다.
+1. `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 확정 — **§10 Completed 에 기록된 대로 이미 충족됨.** global install / update / validation / self-adoption operating model 이 current source-of-truth 로 확정되어 있다. 본 step 은 이후 단계의 baseline checkpoint 로 남기며, remaining work 는 step 2 부터다.
 2. manual global activation / controlled global materialization 으로 global behavior validation. global entrypoint / ToolRoot·ProjectRoot 분리 / target footprint / runtime artifact 위치가 실제로 성립하는지 검증한다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §7). 실제 global mutation 이므로 별도 scoped 승인이 필요하다.
 3. validation result 를 기준으로 install / update implementation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5).
 4. install / update validation.

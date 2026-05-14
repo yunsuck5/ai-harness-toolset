@@ -2,53 +2,66 @@
 
 Project-local deterministic toolset for Claude / Codex workflows.
 
-ai-harness-toolset is a project-local deterministic toolset. It is not an orchestrator, not an installer, and not packaged. Adoption is copy-only and CLI-only. Source folders are copied into a `.ai-harness/` payload at the target project root, and runtime output is written under `<project-root>/log/`.
+ai-harness-toolset is a project-local deterministic toolset. It is not an orchestrator, not an installer, and not packaged. Operation is CLI-only. The current adoption model is the **shared / global stable runtime ToolRoot** (channel 3): lifecycle scripts run from a global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation, and runtime output is written under the target project's `<project-root>/log/`. A legacy project-local copy mode (channel 5), in which the source folders are copied into a `.ai-harness/` payload at the target project root, remains supported for backward compatibility but is not the recommended adoption shape for new projects.
 
-> **Current adoption model.** The current adoption and default direction is the **shared / global stable runtime ToolRoot** — channel 3, the global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation (see `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` and `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`). The copy-only / `.ai-harness/` quick start below describes the **legacy project-local copy mode** (channel 5) — still supported for backward compatibility, but not the recommended adoption shape for new projects. This README body has not yet been rewritten to lead with the shared/global model; that docs-hygiene pass is tracked in `docs/backlog/operations.md`.
+> **Current adoption model.** The current adoption and default direction is the **shared / global stable runtime ToolRoot** — channel 3, the global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation (see `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` and `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`). The **legacy project-local copy mode** (channel 5) — the `.ai-harness/` payload covered in its own subsection below — is still supported for backward compatibility, but is not the recommended adoption shape for new projects. Source-repo dogfooding resolves the ToolRoot to the repo root (channel 4), but channel 4 is only reached when no channel 3 global stable install is present; on a machine that has one, pass an explicit `-ToolRoot <repo-root>` (channel 1) so channel 3 does not shadow it. Full mode boundaries: `docs/OPERATOR_GUIDE_KR.md` §2.
 
-## Quick start: copy-only target project adoption
+## Quick start
 
-There is no installer. Manually copy four source folders from this repo into the target project:
+The current adoption model is the **shared / global stable runtime ToolRoot** (channel 3). There is no installer and no system-wide CLI: lifecycle scripts run from a global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, and every invocation resolves that path automatically — you do not pass `-ToolRoot` or set `AI_HARNESS_TOOL_ROOT`. Runtime output is always written under the target project's `<project-root>/log/`, never back into the install.
 
-| Source repo | Target payload |
+Day-to-day, the entrypoint is the Claude Code natural-language UX (`docs/OPERATOR_GUIDE_KR.md` §7); the raw PowerShell commands in the sections below are the fallback / reference shape. Materializing and updating the channel 3 install follows `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`.
+
+`docs/`, `tests/`, and `log/` are source-repo only — they are never part of the resolved ToolRoot payload. When this README references `docs/*.md` files, read those files from this source repo, not from a target project.
+
+### Legacy project-local copy mode (channel 5)
+
+The project-local copy mode is still supported for backward compatibility but is not the recommended adoption shape for new projects. It has no global install; instead, four source folders are manually copied from this repo into the target project:
+
+| Source repo | Target payload (legacy channel 5) |
 |---|---|
 | `config/` | `<project-root>/.ai-harness/config/` |
 | `scripts/` | `<project-root>/.ai-harness/scripts/` |
 | `snippets/` | `<project-root>/.ai-harness/snippets/` |
 | `templates/` | `<project-root>/.ai-harness/templates/` |
 
-Rules:
+Rules (legacy mode):
 
 - Copy only the four folders above. Do not copy `docs/`, `.git/`, `log/`, or repo-level files such as `README.md` or `.gitattributes`.
 - Do not modify any global file.
 - The `.ai-harness/` payload lives entirely inside the target project root and can be removed by deleting that directory.
-- After copying, `<project-root>/.ai-harness/scripts/` becomes the script root for that project.
-
-`docs/`, `tests/`, and `log/` are source-repo only. When this README references `docs/*.md` files, read those files from this source repo, not from the target project.
+- After copying, `<project-root>/.ai-harness/scripts/` becomes the script root (channel 5 ToolRoot) for that project.
 
 ## Initialize runtime log layout
 
-Once the payload is in place (or when working inside this source repo), create the runtime log tree.
+Create the runtime log tree once. This creates `<project-root>/log/`, `log/chatlog/`, `log/evidence/`, `log/review/`. `log/` is a runtime artifact root and must not be committed; ensure the target project's `.gitignore` includes `log/`.
 
-From the source repo root:
+Shared / global mode (channel 3) — run from inside the target project root:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+    -File "$env:USERPROFILE\.claude\ai-harness-toolset\current\scripts\log-init.ps1"
+```
+
+Source-repo dogfooding — run from the source repo root:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/log-init.ps1
 ```
 
-From a target project root:
+Legacy project-local copy mode (channel 5) — run from a target project root:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .ai-harness/scripts/log-init.ps1
 ```
-
-This creates `<project-root>/log/`, `log/chatlog/`, `log/evidence/`, `log/review/`. `log/` is a runtime artifact root and must not be committed; ensure the target project's `.gitignore` includes `log/`.
 
 Review record retention is human-managed at `<run-id>` directory granularity. Full contract: `docs/REVIEW_RESULT_CONTRACT.md`.
 
 ## Single-shot review cycle
 
 The default user-facing entrypoint for `코덱스 리뷰 진행해` is `review-cycle.ps1`. It runs one full cycle in a single command: prepare a packet, fill the input sections, verify input readiness, invoke Codex CLI once, parse the verdict, write `result.json`, and run both modes of `review-verify`.
+
+The script path depends on the resolved ToolRoot. In the current shared / global mode (channel 3) it is `$env:USERPROFILE\.claude\ai-harness-toolset\current\scripts\review-cycle.ps1`. The `scripts/review-cycle.ps1` form used in the examples below is the source-repo dogfooding path; the legacy project-local copy mode uses `.ai-harness/scripts/review-cycle.ps1`. The argument contract is identical across all three — `docs/OPERATOR_GUIDE_KR.md` §9 shows each form.
 
 Single-file target — pass the one repo-relative path directly with `-TargetFiles`:
 
@@ -75,8 +88,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-cycle.ps1 `
     -ReviewQuestions '<questions>' `
     -Constraints '<constraints>'
 ```
-
-From a deployed target project, replace `scripts/review-cycle.ps1` with `.ai-harness/scripts/review-cycle.ps1`.
 
 - Single-shot, user-triggered. One Codex CLI execution per call. No retry, no fallback model use, no auto-fix loop.
 - Verdict (`yes` / `no` / `yes with risk`) does not approve commit, push, publish, merge, or release.
@@ -149,7 +160,7 @@ Updating means replacing only the matching managed block; removing means deletin
 
 ## What this toolset does not do
 
-- No global install. No system-wide CLI, no PATH mutation, no `~/.claude/` files written.
+- No automatic or system-wide install. No system-wide CLI, no PATH mutation. (The channel 3 global stable runtime ToolRoot lives under `%USERPROFILE%\.claude\ai-harness-toolset\current`, but it is a deliberate, user-requested materialization — not an auto-install, not a PATH change, and not a system-wide CLI; see `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` and `docs/OPERATOR_GUIDE_KR.md` §15.)
 - No automatic mutation of any global or project-root `CLAUDE.md` / `AGENTS.md`.
 - No watcher, hook, daemon, workflow engine, or productized `review-run`.
 - No auto-fix loop, auto-commit, auto-push, auto-publish, auto-merge, auto-release, or auto-deployment.

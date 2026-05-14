@@ -16,9 +16,11 @@ It is not:
 
 ## Source repo vs target project payload
 
-The source repo is the development home of this toolset. When the toolset is copied into another project, only `config/`, `scripts/`, `snippets/`, and `templates/` are copied into a `.ai-harness/` payload at the target project root.
+The source repo is the development home of this toolset. The current adoption model is the **shared / global stable runtime ToolRoot** (channel 3): lifecycle scripts run from a global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation, and no payload is copied into the target project. Channel resolution and mode boundaries are canonical in `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md`; the global install / update model is canonical in `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`. The payload mapping below describes the **legacy project-local copy mode** only, and is not the primary source-of-truth for current channel-3 adoption judgment.
 
-| Source repo path | Target project path |
+In the legacy project-local copy mode (channel 5) — still supported for backward compatibility, but not the recommended adoption shape for new projects — only `config/`, `scripts/`, `snippets/`, and `templates/` are copied into a `.ai-harness/` payload at the target project root.
+
+| Source repo path | Target project path (legacy channel 5 copy mode) |
 |---|---|
 | `config/` | `<project-root>/.ai-harness/config/` |
 | `scripts/` | `<project-root>/.ai-harness/scripts/` |
@@ -38,7 +40,7 @@ These are generated artifacts. They are not part of the toolset payload.
 ## Path concepts
 
 - `ProjectRoot` — the root of the project being operated on.
-- `ToolRoot` — the root of the ai-harness-toolset files. In the source repo this is the repo root; after deployment it is `<project-root>/.ai-harness/`.
+- `ToolRoot` — the root of the ai-harness-toolset files, resolved per invocation by the channel chain in `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md`. In the current shared / global mode it is the channel 3 global stable install (`%USERPROFILE%\.claude\ai-harness-toolset\current`); in source-repo dogfooding it is the repo root; in the legacy project-local copy mode it is `<project-root>/.ai-harness/`.
 - `ProjectLogRoot` — `<ProjectRoot>/log`.
 
 ## Cross-cutting boundaries
