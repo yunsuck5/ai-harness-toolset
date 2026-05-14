@@ -1,0 +1,509 @@
+# Global Install / Update / Validation / Self-Adoption Operating Model
+
+본 문서는 `ai-harness-toolset` 의 설치 / 업데이트 / 검증 / self-adoption 운영 모델을 기록하는 **current source-of-truth** 다. 앞으로 Claude Code, ChatGPT Web, 사용자는 global install / update / self-adoption 판단 시 본 문서를 기준으로 한다. **모델의 기록이며, implementation 승인이 아니다.**
+
+본 문서가 존재한다는 사실만으로 다음 어느 것도 자동 승인되지 않는다.
+
+- 실제 global install / update 의 실행.
+- `%USERPROFILE%\.claude` (global Claude install layer) 의 변경.
+- global `CLAUDE.md` / `AGENTS.md` 의 변경.
+- target project 의 변경.
+- commit / push / publish / merge / release.
+
+본 문서는 다음 source-of-truth 문서들의 방향을 구체화하며, 그것들과 충돌하지 않는다. 본 문서가 더 구체적인 영역에서는 본 문서가 current model 이고, 본 문서가 다루지 않는 영역에서는 아래 문서들이 우선한다.
+
+- 운영 계층 결정: `docs/roadmap/GLOBAL_ADOPTION_DECISION.md`
+- Claude skill 채택 절차: `docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`
+- shared / global mode invocation contract: `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md`
+- post-MVP 결정 기록: `docs/roadmap/POST_MVP_PLAN.md`
+- clean target smoke criteria: `docs/roadmap/CLEAN_TARGET_SMOKE_CRITERIA.md`
+- 운영 backlog: `docs/backlog/operations.md`
+
+본 문서는 위 문서들을 삭제하거나 rewrite 하지 않는다.
+
+### Path notation
+
+- global Claude install layer 경로는 항상 `%USERPROFILE%\.claude` 로 표기한다. expanded example 이 필요하면 `C:\Users\<USER>\.claude` 처럼 placeholder 를 쓴다. 실제 Windows 사용자 폴더명은 본 문서에 쓰지 않는다.
+- canonical local ToolRoot 의 generalized 표현은 `<canonical-local-toolroot>` 다. 현재 system example 은 `H:\Work\ai-harness-toolset\ai-harness-toolset` 이며, example 일 뿐 강제 경로가 아니다.
+- target project root 의 generalized 표현은 `<ProjectRoot>` 다.
+
+---
+
+## 1. Executive summary
+
+`ai-harness-toolset` 의 설치 모델은 **사용자가 직접 파일을 배치하지 않고, Claude Code 가 source repo 를 기준으로 global Claude layer 를 install / update 하는 방식** 이다. 사용자는 Claude Code 에 GitHub repo URL 을 주거나 이미 clone 한 local repo 안에서 Claude Code 를 열고, "설치해" / "업데이트 받아" 라고 지시할 뿐이다. Claude Code 가 그 repo 를 canonical local ToolRoot 로 등록 / 갱신하고, 그 source 를 기준으로 global Claude install layer (`%USERPROFILE%\.claude`) 를 install / update 한다. target project 에는 `ai-harness-toolset` payload 를 설치하지 않으며, target project 에 남는 persistent footprint 는 `log/` 와 `brief/` 계열 runtime / state artifact 로 제한한다.
+
+핵심 결론 (decisions):
+
+- 사용자가 직접 hot copy / symlink / junction / `.claude` 파일 배치를 하지 않는다.
+- 설치 source 획득 방식은 두 가지다 — GitHub URL 기반(install-from-git-url), 기존 local clone 기반(install-from-local-clone). 두 방식은 source 획득만 다르고 최종 구조는 같다 (§2).
+- Claude Code 가 source repo 를 canonical local ToolRoot 로 등록 / 갱신한다.
+- Claude Code 가 source repo 를 기준으로 global Claude layer 를 install / update 한다. 업데이트는 global install metadata 기반으로 dispatch 된다 (§4, §5).
+- install / update **automation 을 먼저 구현하지 않는다.** 먼저 global behavior validation (manual global activation / controlled global materialization) 을 수행하고, 그 결과를 기준으로 automation 을 구현한다 (§7).
+- target project 에는 `ai-harness-toolset` payload 를 설치하지 않는다. target persistent footprint 는 `log/` + `brief/` 로 제한한다 (§8).
+- `ai-harness-toolset` repo 는 canonical ToolRoot 이면서 self-dogfooding ProjectRoot 인 special case 다. ProjectRoot 로 동작할 때 `log/` 와 `brief/` 를 가질 수 있으나, 그 `brief/` 는 source payload 도 install payload 도 아니다 (§9).
+
+implications:
+
+- "설치"의 의미가 target project 단위가 아니라 global Claude layer 단위로 이동한다.
+- target project 는 `ai-harness` 기능이 "설치되는 곳" 이 아니라, global Claude layer 가 실행되는 "작업 대상" 이다.
+- 다중 target project 운용 시, 각 repo 에 payload 를 복제 / 동기화하는 비용이 사라진다 (`GLOBAL_ADOPTION_DECISION.md` §1, §2 의 다중 프로젝트 cost 누적 문제와 정합).
+
+---
+
+## 2. Installation source acquisition modes
+
+설치의 source 획득 방식은 두 가지다. 두 방식은 **source 를 어떻게 얻는가** 만 다르며, 최종 구조는 동일하다 — canonical ToolRoot → global Claude layer → ProjectRoot runtime artifacts.
+
+### 2.1 install-from-git-url
+
+- 사용자가 Claude Code 에 GitHub repo URL 을 주고 "설치해" 라고 지시한다.
+- 전제: repo 가 public 이거나, local system 에 해당 repo 에 대한 Git credential 이 있어야 한다.
+- Claude Code 가 그 repo 를 canonical local ToolRoot 로 `git clone` (또는 이미 있으면 update) 한다.
+- 이후 그 ToolRoot 를 기준으로 global Claude layer 를 install 한다.
+
+### 2.2 install-from-local-clone
+
+- 사용자가 이미 clone 한 repo root 에서 Claude Code 를 열고 "현재 프로젝트를 global tool 로 설치해" 라고 지시한다.
+- 현재 system example: `H:\Work\ai-harness-toolset\ai-harness-toolset`.
+- Claude Code 가 현재 repo 를 검증 (올바른 `ai-harness-toolset` source repo 인지 확인) 하고 canonical local ToolRoot 로 등록한다.
+- 이후 그 ToolRoot 를 기준으로 global Claude layer 를 install 한다.
+
+### 2.3 두 방식의 공통 구조
+
+```
+(GitHub URL | existing local clone)
+        => canonical local ToolRoot
+        => global Claude install layer
+        => ProjectRoot runtime / state artifacts
+```
+
+차이는 source 획득 단계뿐이다. canonical ToolRoot 등록 이후의 install / update / runtime 경로는 두 방식이 같다.
+
+---
+
+## 3. Installation model — method comparison
+
+세 가지 설치 방식을 비교한다.
+
+| 방식 | 설명 | 현재 위치 |
+|---|---|---|
+| **hot copy** | source repo 의 `scripts/` `config/` `snippets/` `templates/` 를 각 target project 안으로 직접 복사 | **historical / fallback.** MVP 검증 단계에서 유효했던 방식이며, 목표 구조가 아니다. |
+| **symlink / junction** | target project 안에 source repo 를 가리키는 symlink / junction 을 배치 | **fallback candidate.** direct shared invocation 의 변경 폭이 너무 클 때만 검토되는 후보이며, 목표 구조가 아니다 (`GLOBAL_ADOPTION_DECISION.md` §4 Fallback candidate). |
+| **Claude-operated install/update + global `.claude` install layer** | Claude Code 가 source repo (git-url 또는 local-clone 으로 획득) 를 canonical local ToolRoot 로 등록 / 갱신하고, 그 source 를 기준으로 global Claude layer 를 install / update | **목표 방식.** |
+
+decision: 목표 방식은 세 번째 — **Claude-operated install/update + global `.claude` install layer** 다.
+
+추가 구분:
+
+- **installer-first productization 은 현재 범위 밖이다.** `install.ps1` 같은 productized installer 를 서둘러 만들지 않는다 (`GLOBAL_ADOPTION_DECISION.md` §5, §10; `GLOBAL_ADOPTION_PROCEDURE.md` §9). legacy `ai-harness` 의 문제는 global install 아이디어 자체가 아니라, core functionality 검증 이전에 installer / rollback / global mutation 을 먼저 productize 하려 한 sequencing 이었다.
+- **단, Claude-operated explicit install/update procedure 는 장기적으로 필요하다.** 이는 installer-first productization 과 다르다 — 자동화된 제품형 installer 가 아니라, Claude Code 가 operator 로서 inspect → detect → propose → 사용자 승인 → apply → verify 의 단계를 따르는 절차다 (`GLOBAL_ADOPTION_DECISION.md` §5, `GLOBAL_ADOPTION_PROCEDURE.md` §5–§7).
+
+---
+
+## 4. Update modes
+
+업데이트는 global install metadata 기반으로 dispatch 된다.
+
+### 4.1 metadata-dispatched update
+
+- global install layer 에 저장된 install metadata (§5) 를 읽어, `installMode` 에 따라 update source 를 결정한다.
+- 즉 사용자는 update source 를 매번 다시 지정하지 않으며, 최초 install 시 기록된 metadata 가 update 경로를 결정한다.
+
+### 4.2 git-url mode update
+
+- metadata 의 `repoUrl` / `branch` / `remote` / `toolRoot` 를 사용한다.
+- canonical ToolRoot 에서 `git fetch` / `git pull` 을 수행하거나, ToolRoot 가 사라졌으면 `repoUrl` 로 clone recovery 를 수행한다.
+- 이후 갱신된 source 를 기준으로 global Claude layer 를 갱신한다.
+
+### 4.3 local-clone mode update
+
+- metadata 의 `sourcePath` / `toolRoot` 를 사용한다.
+- 현재 local clone 을 기준으로 update 하거나, 이미 `git pull` 된 current HEAD 를 기준으로 global install layer 만 갱신한다.
+
+### 4.4 두 가지 사용자 업데이트 명령
+
+사용자가 말하는 업데이트 지시는 두 종류로 나뉜다.
+
+- **"업데이트 받아"** — source update + global install update. 즉 ToolRoot 의 source 를 먼저 최신화 (fetch/pull) 한 뒤, 그 source 를 기준으로 global install layer 를 갱신한다.
+- **"현재 최신 버전 기준으로 update 설치해"** — current local HEAD 기준 global install update only. ToolRoot 의 source 는 건드리지 않고 (이미 원하는 HEAD 에 있다고 보고), 그 HEAD 를 기준으로 global install layer 만 갱신한다.
+
+어느 경우에도 global install layer 의 실제 변경은 inspect → diff propose → 사용자 명시 승인 → apply → verify 단계를 거친다 (`GLOBAL_ADOPTION_PROCEDURE.md` §6).
+
+---
+
+## 5. Global install metadata
+
+### 5.1 위치와 성격
+
+- install metadata 는 **global install layer (`%USERPROFILE%\.claude`) 아래** 에 둔다.
+- metadata 는 **target project 에 생성하지 않는다.**
+- metadata 는 source repo 의 tracked actual state 가 **아니다.** source repo 에는 metadata 의 schema 또는 example 정도만 둘 수 있고, 실제 install metadata instance 는 global layer 에만 존재한다.
+- example 경로 (placeholder): `%USERPROFILE%\.claude\ai-harness-toolset\install-metadata.json`. 정확한 파일명 / 위치는 implementation 단계에서 확정한다.
+
+### 5.2 최소 필드 후보
+
+| 필드 | 의미 |
+|---|---|
+| `schemaVersion` | metadata schema 버전 |
+| `tool` | 도구 식별자 (예: `ai-harness-toolset`) |
+| `installMode` | `git-url` 또는 `local-clone` |
+| `repoUrl` | git-url mode 의 remote URL |
+| `sourcePath` | local-clone mode 의 source repo path |
+| `toolRoot` | canonical local ToolRoot 절대경로 |
+| `branch` | 추적 branch |
+| `remote` | git remote 이름 |
+| `installedHead` | 최초 install 시점의 source HEAD commit |
+| `lastUpdatedHead` | 마지막 update 시점의 source HEAD commit |
+| `installedAt` | 최초 install UTC 시각 |
+| `lastUpdatedAt` | 마지막 update UTC 시각 |
+| `targetFootprintPolicy` | target footprint 정책. 현재 값: `log-brief-only` |
+| `managedBy` | 관리 주체. 현재 값: `claude-code` |
+
+### 5.3 metadata example (placeholder values)
+
+```json
+{
+  "schemaVersion": 1,
+  "tool": "ai-harness-toolset",
+  "installMode": "local-clone",
+  "repoUrl": "https://github.com/yunsuck5/ai-harness-toolset",
+  "sourcePath": "H:\\Work\\ai-harness-toolset\\ai-harness-toolset",
+  "toolRoot": "H:\\Work\\ai-harness-toolset\\ai-harness-toolset",
+  "branch": "main",
+  "remote": "origin",
+  "installedHead": "<commit-sha>",
+  "lastUpdatedHead": "<commit-sha>",
+  "installedAt": "<utc-timestamp>",
+  "lastUpdatedAt": "<utc-timestamp>",
+  "targetFootprintPolicy": "log-brief-only",
+  "managedBy": "claude-code"
+}
+```
+
+위 example 의 path 는 현재 system example 이다. metadata instance 자체는 `%USERPROFILE%\.claude` 아래에 두며, 실제 Windows 사용자 폴더명은 문서에 쓰지 않는다.
+
+---
+
+## 6. Layer model
+
+본 모델은 5 개 layer 를 구분한다.
+
+### Layer 0 — GitHub remote source
+
+- `https://github.com/yunsuck5/ai-harness-toolset`
+- remote source-of-truth 이며, install-from-git-url 모드의 clone / update 원천이다.
+
+### Layer 1 — Canonical local ToolRoot
+
+- generalized: `<canonical-local-toolroot>`. 현재 system example: `H:\Work\ai-harness-toolset\ai-harness-toolset`.
+- Layer 0 GitHub repo 의 local clone (install-from-git-url) 이거나, 사용자가 이미 가지고 있던 local clone (install-from-local-clone) 이다.
+- source / update source 이며, global install layer 의 원천이다.
+- `ai-harness-toolset` 자체의 source repo 이기도 하다.
+- `SHARED_GLOBAL_INVOCATION_CONTRACT.md` 의 ToolRoot, `GLOBAL_ADOPTION_DECISION.md` §8 의 `ToolRoot` 와 동일 개념이다. `ScriptRoot` / `ConfigRoot` / `TemplateRoot` 는 이 layer 아래의 `scripts/` `config/` `templates/` 다.
+
+### Layer 2 — Global Claude install layer
+
+- `%USERPROFILE%\.claude` (expanded example: `C:\Users\<USER>\.claude`).
+- commands / skills / managed prompts / metadata / ToolRoot reference 가 생성 / 갱신되는 위치다.
+- install metadata (§5) 가 이 layer 아래에 위치한다.
+- toolset payload 전체를 target project 에 복사하지 않고, 이 global layer 를 통해 기능을 노출한다.
+- Claude skill 자산의 경우 `GLOBAL_ADOPTION_PROCEDURE.md` §3 의 `GlobalSkillRoot` (`%USERPROFILE%\.claude\skills`) 가 이 layer 안에 위치한다.
+- 이 layer 의 실제 변경은 항상 사용자 명시 승인을 요구한다 (`GLOBAL_ADOPTION_DECISION.md` §6, §7).
+
+### Layer 3 — ProjectRoot
+
+실제 작업 대상 repo 다. 본 모델에서 다루는 ProjectRoot 예시는 다음 셋이다 (현재 system example).
+
+- `H:\Work\ai-harness-toolset\ai-harness-toolset` (self-dogfooding ProjectRoot — §9 참조)
+- `H:\Work\ai-harness-toolset\ai-harness-toolset-mvp-test-acceptance`
+- `H:\Work\GJMNet\GJMNet-legacy`
+
+ProjectRoot 는 `ai-harness-toolset` payload 를 설치받는 위치가 **아니다.** global Claude layer (Layer 2) 가 실행될 때의 작업 대상일 뿐이다.
+
+### Layer 4 — Project-local runtime / state artifacts
+
+- `<ProjectRoot>\log\`
+- `<ProjectRoot>\brief\`
+- review / evidence / chatlog / brief 같은 project-local 산출물이 생성되는 위치다.
+- `GLOBAL_ADOPTION_DECISION.md` §4 의 target-local state / result boundary (`brief/`, `log/chatlog/`, `log/evidence/`, `log/review/`) 와 정합한다. `log/` 는 그 하위 `chatlog/` `evidence/` `review/` 를 포함한다.
+- global `.claude` layer (Layer 2) 와 canonical ToolRoot (Layer 1) 는 runtime evidence dump 위치가 아니다.
+- self-dogfooding ProjectRoot (Layer 1 = Layer 3) 의 경우에도 `log/` 와 `brief/` 가 project-local state 로 존재할 수 있다. 단 그 `brief/` 는 source payload / install payload 가 아니다 (§9 참조).
+- `log/brief/` 디렉터리는 어느 경우에도 만들지 않는다. `log/` 는 runtime artifact 트리이고 brief 의 자리가 아니다 (`POST_MVP_PLAN.md` §3, `BRIEF_CONTRACT.md`).
+
+---
+
+## 7. Validation before install/update implementation
+
+install / update **automation 을 먼저 구현하지 않는다.** 먼저 global behavior 가 실제로 성립하는지 검증한다.
+
+### 7.1 manual global activation / controlled global materialization
+
+- 이 초기 검증 단계를 **"manual global activation for validation"** 또는 **"controlled global materialization"** 이라 부른다.
+- 실무적으로는 기존 hot copy 와 비슷하게, 필요한 **최소** entrypoint / command / skill / metadata 를 global layer 에 **제한적으로** materialize 해보는 형태일 수 있다.
+- 단, 이것은 target project hot copy 가 **아니다.** 복사 / 생성 위치는 target project 가 아니라 `%USERPROFILE%\.claude` 다.
+- 이 단계도 실제 global mutation 이므로 별도 scoped 승인을 거친다. 본 문서가 이 단계를 자동 승인하지 않는다.
+
+### 7.2 무엇을 검증하는가
+
+manual global activation 의 목적은 다음이 실제로 성립하는지 검증하는 것이다.
+
+- global entrypoint — invocation 이 global `.claude` layer 에서 시작되는가.
+- ToolRoot / ProjectRoot 분리 — script 가 global / shared ToolRoot 에서 실행되면서 runtime artifact 는 ProjectRoot 로 쓰는가 (`GLOBAL_ADOPTION_DECISION.md` §8 core audit question 과 정합).
+- target footprint — target project 에 `log/` + `brief/` 외의 payload 가 생기지 않는가.
+- runtime artifact 위치 — runtime artifact 가 ProjectRoot-local 로만 생성되는가.
+
+### 7.3 sequencing
+
+```
+GLOBAL_INSTALL_UPDATE_MODEL.md 확정
+  => manual global activation / controlled global materialization (global behavior validation)
+  => validation 통과
+  => install / update automation 구현
+  => install / update validation
+```
+
+validation 이 통과한 뒤에 install / update automation 을 구현한다. validation 이전에 automation 을 먼저 만들지 않는다 (legacy `ai-harness` 의 sequencing 실수를 반복하지 않는다 — `GLOBAL_ADOPTION_DECISION.md` §1, §2).
+
+---
+
+## 8. Target project footprint contract
+
+target project 에 허용되는 persistent footprint 와 금지 항목을 구분한다.
+
+### Allowed (ai-harness usage 기준)
+
+- `log/`
+- `brief/`
+
+### Forbidden — ai-harness installation 목적의 생성 금지
+
+- `.ai-harness/`
+- `scripts/`
+- `config/`
+- `snippets/`
+- `templates/`
+- ai-harness 전용 `CLAUDE.md`
+- ai-harness 전용 `AGENTS.md`
+
+### target project 자체 문서와 ai-harness footprint 의 구분
+
+- target project 가 **자체 운영 문서** 로서 독립적인 `CLAUDE.md` / `AGENTS.md` 를 가지는 것은 별개의 문제다. 이는 project-specific layer 의 영역이다 (`GLOBAL_ADOPTION_DECISION.md` §3 Project-specific layer).
+- 그러나 `ai-harness-toolset` 설치를 위해 target project 안에 `CLAUDE.md` / `AGENTS.md` 를 생성하는 것은 목표 구조가 **아니다.** ai-harness 운영 규칙은 global layer (Layer 2) 가 책임진다.
+- 즉, target project 의 자체 `CLAUDE.md` / `AGENTS.md` (있을 수 있음) 와, ai-harness install footprint (없어야 함) 는 다른 것이다.
+
+implication: target project 는 ai-harness 기능이 "설치되는 곳" 이 아니라, global Claude layer 가 실행되는 작업 대상이다. target repo shape 의 default 는 `.ai-harness/` 없음, scripts / templates / config / snippets 복사본 없음이다 (`GLOBAL_ADOPTION_DECISION.md` §4 Preferred target repo shape).
+
+---
+
+## 9. Self-adoption model
+
+`ai-harness-toolset` repo 는 **special case** 다.
+
+### 9.1 fact
+
+- `<canonical-local-toolroot>` (현재 system example `H:\Work\ai-harness-toolset\ai-harness-toolset`) 는 canonical ToolRoot source repo (Layer 1) 이면서 동시에 self-dogfooding ProjectRoot (Layer 3) 다.
+- 이 repo 안에 `scripts/` `config/` `snippets/` `templates/` `docs/` 가 존재하는 것은 source repo 이기 때문에 정상이다.
+- self-dogfooding ProjectRoot 로 동작할 때, `log/` 와 `brief/` 가 project-local state 로 존재해도 된다.
+
+### 9.2 decision — source payload 와 project-local state 의 분리
+
+self repo 의 `brief/` 는 project-local state 일 뿐이며, 다음 어느 것도 **아니다.**
+
+- tool payload 가 아니다.
+- global install payload 가 아니다.
+- external target 에 복사되지 않는다.
+- package / bundle / install 대상에서 제외한다.
+
+즉 self repo 에서 `scripts/` `config/` `snippets/` `templates/` 는 **source payload** 이고, `log/` 와 `brief/` 는 **project-local state** 다. 이 둘은 문서상 명확히 분리된다 — self repo 가 ProjectRoot 로도 동작한다는 사실이, project-local state 를 source payload 로 승격시키지 않는다.
+
+### 9.3 supersedes / pending reconciliation
+
+- 본 §9 는 이전의 "source repo 는 root `brief/` 를 가지지 않는다" posture 를 **model 수준에서 supersede** 한다. 이전 posture 의 의도 (source repo 에 `brief/BRIEF.md` 를 tracked source artifact 로 commit 하지 않는다) 는 유지되지만, self repo 가 ProjectRoot 로 동작할 때의 project-local `brief/` state 는 그 금지 대상이 아니다.
+- 현재 `scripts/brief-init.ps1` 의 `Test-IsSourceRepoRoot` refuse, 그리고 `docs/BRIEF_CONTRACT.md` / `docs/roadmap/POST_MVP_PLAN.md` §3 / `docs/roadmap/TOOLROOT_PROJECTROOT_AUDIT.md` §5.2 의 literal wording 은 이전 posture 를 반영한다. 이들을 본 §9 의 clarified model 과 정합화하는 작업 (script + contract docs reconciliation) 은 **별도 scoped work** 이며, 본 문서 작성 goal 의 범위가 아니다. 본 문서는 그 reconciliation 을 자동 승인하지 않는다.
+
+### 9.4 self-adoption 검증의 의미
+
+- self-adoption 검증에서는 invocation entrypoint 가 **global `.claude` layer (Layer 2) 에서 시작되어야 한다.**
+- "source repo 안에 local scripts 가 있으니 동작한다" 와 "global install layer 를 통해 동작한다" 를 구분한다. 전자는 source repo 의 부수 효과일 뿐, 목표 모델의 검증이 아니다.
+- self-adoption 은 GJMNet 같은 external target adoption 보다 **먼저** 수행한다.
+
+self-adoption 의 목적 (검증 대상):
+
+- primary repo 가 ChatGPT Web 주도 유지보수에 계속 묶이지 않는지 확인한다.
+- Claude Code local operator + Codex CLI review loop 중심으로 운영 가능한지 확인한다.
+- ToolRoot / ProjectRoot 분리가 실제로 유지되는지 확인한다 (`SHARED_GLOBAL_INVOCATION_CONTRACT.md`, `CLEAN_TARGET_SMOKE_CRITERIA.md` 의 SC7 cross-tree write isolation invariant 와 정합).
+- runtime artifact 가 ProjectRoot-local (`log/`, `brief/`) 로만 생성되는지 확인한다.
+- target footprint = `log/` + `brief/` only 원칙이 외부 target 에 적용 가능한지 확인한다.
+
+### 9.5 separate state root — not default
+
+- `ai-harness-toolset-log` 같은 **별도 state root** (self repo 의 project-local state 를 source repo 바깥의 평행 디렉터리로 분리) 는 **기본값이 아니다.**
+- 이는 AI 혼동 (source payload 와 project-local state 를 혼동) 이나 packaging 혼선 (project-local state 가 bundle 에 섞임) 이 반복될 때에만 검토하는 **risk mitigation candidate** 다.
+- 본 문서는 이 separate state root 를 도입하지 않으며, 도입을 자동 승인하지도 않는다.
+
+---
+
+## 10. Diagrams
+
+### 10.1 Overall topology
+
+```mermaid
+graph TD
+    L0["Layer 0: GitHub remote<br/>github.com/yunsuck5/ai-harness-toolset"]
+    L1["Layer 1: Canonical local ToolRoot<br/>(canonical-local-toolroot)"]
+    L2["Layer 2: Global Claude install layer<br/>%USERPROFILE%\.claude"]
+    P1["Layer 3: ProjectRoot (self-dogfooding)<br/>= Layer 1 source repo"]
+    P2["Layer 3: ProjectRoot (external target)"]
+    P3["Layer 3: ProjectRoot (external target)"]
+    R1["Layer 4: project-local log/ + brief/<br/>(self project state, not tool payload)"]
+    R2["Layer 4: project-local log/ + brief/"]
+    R3["Layer 4: project-local log/ + brief/"]
+    L0 -->|"git clone / pull (install-from-git-url)"| L1
+    L1 -->|"install / update source"| L2
+    L2 -->|"invocation entrypoint"| P1
+    L2 -->|"invocation entrypoint"| P2
+    L2 -->|"invocation entrypoint"| P3
+    P1 -->|"runtime / state output"| R1
+    P2 -->|"runtime output"| R2
+    P3 -->|"runtime output"| R3
+```
+
+### 10.2 Install flow
+
+```mermaid
+graph TD
+    A1["User: GitHub repo URL + '설치해'"]
+    A2["User: 기존 local clone 에서 '현재 프로젝트를 global tool 로 설치해'"]
+    B["Claude Code: operator 로 진입"]
+    C1["install-from-git-url:<br/>git clone / update => canonical local ToolRoot"]
+    C2["install-from-local-clone:<br/>현재 repo 검증 => canonical local ToolRoot 등록"]
+    D["Inspect: 기존 global .claude 상태 / marker / 누락 항목 detect"]
+    E["Propose: global .claude install 후보 + install metadata 를 사용자에게 제시"]
+    F{"사용자 명시 승인?"}
+    G["Apply: 승인된 변경만 Layer 2 에 적용 + install metadata 기록"]
+    H["Verify + report"]
+    I["중단 — 변경 없음"]
+    A1 --> B
+    A2 --> B
+    B --> C1
+    B --> C2
+    C1 --> D
+    C2 --> D
+    D --> E --> F
+    F -->|"yes"| G --> H
+    F -->|"no / 모호"| I
+```
+
+### 10.3 Update propagation sequence
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant CC as Claude Code
+    participant MD as install metadata
+    participant L1 as Layer 1 ToolRoot
+    participant L2 as Layer 2 global .claude
+    participant PR as Layer 3 ProjectRoot
+    User->>CC: "업데이트 받아" 또는 "현재 최신 버전 기준으로 update 설치해"
+    CC->>MD: install metadata 읽기 (installMode dispatch)
+    alt installMode = git-url
+        CC->>L1: git fetch / pull (또는 clone recovery)
+    else installMode = local-clone
+        CC->>L1: current local HEAD 확인
+    end
+    Note over CC,L1: "업데이트 받아" = source update + global update<br/>"현재 최신 버전 기준" = global update only
+    CC->>CC: source vs global diff 산출
+    CC->>User: diff propose
+    User->>CC: 명시 승인
+    CC->>L2: 승인된 global layer 갱신 + install metadata 갱신 + verify
+    CC->>User: 결과 보고
+    Note over PR: target project 는 별도 refresh 없이<br/>다음 invocation 부터 최신 기능 사용
+```
+
+### 10.4 Target project footprint
+
+```mermaid
+graph TD
+    PR["Layer 3: ProjectRoot"]
+    subgraph allowed["Allowed (ai-harness usage)"]
+        A1["log/"]
+        A2["brief/"]
+    end
+    subgraph forbidden["Forbidden — ai-harness install footprint"]
+        F1[".ai-harness/"]
+        F2["scripts/ , config/"]
+        F3["snippets/ , templates/"]
+        F4["ai-harness-specific CLAUDE.md / AGENTS.md"]
+    end
+    PR --> allowed
+    PR -.->|"생성 금지"| forbidden
+```
+
+### 10.5 Self-adoption special case
+
+```mermaid
+graph TD
+    L2["Layer 2: Global Claude install layer<br/>%USERPROFILE%\.claude"]
+    SELF["ai-harness-toolset repo<br/>= Layer 1 canonical ToolRoot<br/>= Layer 3 self-dogfooding ProjectRoot"]
+    PAYLOAD["source payload:<br/>scripts/ config/ snippets/ templates/"]
+    STATE["project-local state:<br/>log/ + brief/<br/>(NOT tool payload, NOT install payload,<br/>NOT copied to external targets)"]
+    L2 -->|"invocation entrypoint<br/>(global layer 에서 시작, source repo local scripts 가 아니라)"| SELF
+    SELF --- PAYLOAD
+    SELF -->|"runtime / state output"| STATE
+```
+
+### 10.6 Install metadata / update dispatch flow
+
+```mermaid
+graph TD
+    U["User update 지시"]
+    M["install metadata 읽기<br/>(%USERPROFILE%\.claude 아래)"]
+    D{"installMode?"}
+    G["git-url mode:<br/>repoUrl / branch / remote / toolRoot<br/>=> fetch/pull 또는 clone recovery"]
+    L["local-clone mode:<br/>sourcePath / toolRoot<br/>=> current local clone 기준 update"]
+    S["source 결정"]
+    P["diff propose => 사용자 승인 => global layer 갱신 => metadata 갱신"]
+    U --> M --> D
+    D -->|"git-url"| G --> S
+    D -->|"local-clone"| L --> S
+    S --> P
+```
+
+---
+
+## 11. Relationship to existing docs
+
+- 이전 post-MVP decision guide 계열 문서 및 초기 운영 노트에는 **copy-only / project-local / global-install-forbidden posture** 가 있을 수 있다. 그것은 MVP 종료 직후 또는 global direction 확정 이전의 **historical MVP / post-MVP pre-global-decision context** 다. `GLOBAL_ADOPTION_DECISION.md` §1, §2 는 이미 "copy-only / project-local MVP 방식은 MVP 검증 단계에서는 유효했으나, 다중 프로젝트 운용에서는 본 방향이 아니다" 라고 기록하고 있으며, 본 문서는 그 결정을 구체적 layer / path / flow / metadata 로 풀어낸 current model 이다.
+- 현재 clarified model 은 **global-only target footprint (`log/` + `brief/`) + Claude-operated install/update + metadata-dispatched update** 다.
+- `GLOBAL_INSTALL_UPDATE_MODEL.md` (본 문서) 는 이후 global install / update / self-adoption 판단의 **current source-of-truth** 다.
+- 본 문서는 기존 historical docs 를 삭제하거나 rewrite 하지 않는다. `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md`, `CLEAN_TARGET_SMOKE_CRITERIA.md` 는 그대로 source-of-truth 로 유지된다.
+- `POST_MVP_PLAN.md` 는 본 문서를 current global install/update 판단 기준으로 참조하도록 정렬된다 (`POST_MVP_PLAN.md` §10, §11). 단, §9.3 에서 언급한 `brief/` posture reconciliation (script + contract docs) 은 본 문서와 별개의 scoped work 다.
+
+---
+
+## 12. Explicit non-goals
+
+본 문서는 다음을 **포함하지 않는다.** 본 문서가 존재한다는 사실로 아래 항목이 승인 / 실행되었다고 해석하지 않는다.
+
+- 실제 global install 의 실행.
+- `%USERPROFILE%\.claude` (global Claude install layer) 의 변경.
+- global `CLAUDE.md` / `AGENTS.md` 의 변경.
+- target project 의 변경.
+- smoke test 의 실행.
+- evidence archive 의 생성.
+- GJMNet adoption 의 시작.
+- installer-first productization.
+- auto update daemon / watcher / scheduler.
+- automatic decision-maker (사용자 승인 없이 다음 action 을 결정 / 실행하는 component).
+- scripts / tests / runtime behavior 의 변경.
+- `scripts/brief-init.ps1` / `docs/BRIEF_CONTRACT.md` 등의 `brief/` posture reconciliation (§9.3 — 별도 scoped work).
+- commit / push / publish / merge / release 의 승인.
+
+위 항목 중 어느 것이라도 진행하려면 별도 scoped 승인 (설계 → 승인 → scoped execute) 을 거친다.
+
+---
+
+## 13. Execution status note
+
+본 문서 작성 시점에 **실제 global install / update 는 수행되지 않았다.** 본 문서는 doc-only design clarification 이며, `%USERPROFILE%\.claude`, global `CLAUDE.md` / `AGENTS.md`, 어떤 target project 도 본 작업으로 변경되지 않았다. install metadata instance 도 생성되지 않았다 — §5 는 schema / example 의 기록일 뿐이다. 본 문서는 current model 의 기록이며, implementation approval 도, install / update 실행 지시도 아니다.
