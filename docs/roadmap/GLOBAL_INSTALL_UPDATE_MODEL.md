@@ -489,7 +489,7 @@ graph TD
 - 현재 clarified model 은 **global-only target footprint (`log/` + `brief/`) + Claude-operated install/update + metadata-dispatched update** 다.
 - `GLOBAL_INSTALL_UPDATE_MODEL.md` (본 문서) 는 이후 global install / update / self-adoption 판단의 **current source-of-truth** 다.
 - 본 문서는 기존 historical docs 를 삭제하거나 rewrite 하지 않는다. `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md`, `CLEAN_TARGET_SMOKE_CRITERIA.md` 는 그대로 source-of-truth 로 유지된다.
-- `POST_MVP_PLAN.md` 는 본 문서를 current global install/update 판단 기준으로 참조하도록 정렬된다 (`POST_MVP_PLAN.md` §10, §11). 단, §9.3 에서 언급한 `brief/` posture reconciliation (script + contract docs) 은 본 문서와 별개의 scoped work 다.
+- `POST_MVP_PLAN.md` 는 본 문서를 current global install/update 판단 기준으로 참조하도록 정렬된다 (`POST_MVP_PLAN.md` §10, §11). §9.3 에서 언급한 `brief/` posture reconciliation (script + contract docs) 은 본 문서와 별개의 scoped work 로 수행되어 완료되었다 (§9.3 의 reconciliation 완료 note 참조).
 
 ---
 
