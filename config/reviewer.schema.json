@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/yunsuck5/ai-harness-toolset/config/reviewer.schema.json",
+  "title": "ai-harness-toolset reviewer config",
+  "description": "Schema and key reference for config/reviewer.json. config/reviewer.json itself must stay pure JSON with no comments; this adjacent schema carries the per-key documentation. Each property description states the key's nominal meaning, where it is read, and its current runtime enforcement status (enforced / metadata-only / dead). 'metadata-only' means the value is recorded into the review run's meta.json but does not change the Codex invocation; 'dead' means no script reads it at all. Precedence for keys that resolve a setting: explicit CLI parameter > config/reviewer.json value > built-in script fallback default. All keys are optional — review-prepare.ps1 falls back to built-in defaults when a key is absent.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "description": "Version of this reviewer config schema that the file conforms to. Currently informational: scripts do not read or validate it. The meta.json schemaVersion is a separate value hardcoded by the review scripts."
+    },
+    "provider": {
+      "type": "string",
+      "description": "Reviewer provider label. Read by review-prepare.ps1 and recorded in meta.json reviewerConfig.provider. METADATA-ONLY: not passed to the Codex CLI invocation."
+    },
+    "model": {
+      "type": "string",
+      "description": "Reviewer model. Read by review-prepare.ps1 into meta.json reviewerConfig.model; review-run.ps1 and review-cycle.ps1 then read it back from meta.json and pass it to the Codex CLI as --model. ENFORCED AT RUNTIME — this is the one config key that flows through to the actual reviewer invocation. Precedence: explicit -Model CLI parameter > this value > built-in default."
+    },
+    "fallbackModel": {
+      "type": "string",
+      "description": "Fallback reviewer model. Read by review-prepare.ps1 and recorded in meta.json reviewerConfig.fallbackModel. METADATA-ONLY: kept for config-format compatibility; the current single-shot review cycle does not use it (see docs/REVIEWER_CONFIG_POLICY.md, MVP reviewer boundary)."
+    },
+    "reasoningEffort": {
+      "type": "string",
+      "description": "Reviewer reasoning effort hint. Read by review-prepare.ps1, recorded in meta.json reviewerConfig.reasoningEffort, and substituted into input.md as reviewer-visible prompt text ({{REASONING_EFFORT}}). NOT passed as a Codex CLI argument: the reviewer sees it in the prompt body but it is not a CLI-enforced flag. Precedence: explicit -ReasoningEffort CLI parameter > this value > built-in default."
+    },
+    "timeoutSeconds": {
+      "type": "integer",
+      "description": "METADATA-ONLY / UNENFORCED. Read by review-prepare.ps1 and recorded in meta.json reviewerConfig.timeoutSeconds, but no script reads it back or applies it: Invoke-CodexExec in review-run.ps1 and review-cycle.ps1 runs the Codex CLI with no process timeout. This value does NOT bound the Codex review process. It is NOT a review quality guarantee, NOT the Claude Code harness tool timeout, and NOT a background-conversion control — those are unrelated layers (see docs/REVIEWER_CONFIG_POLICY.md and docs/backlog/operations.md). Whether to enforce, demote to explicit metadata-only, or remove this key is a separate future decision tracked in docs/backlog/operations.md."
+    },
+    "sandbox": {
+      "type": "string",
+      "description": "Reviewer sandbox mode. Read by review-prepare.ps1 and recorded in meta.json reviewerConfig.sandbox. METADATA-ONLY at the config level: the Codex CLI invocation hardcodes --sandbox read-only in review-run.ps1 and review-cycle.ps1, so the effective sandbox is always read-only regardless of this value."
+    },
+    "outputFormat": {
+      "type": "string",
+      "description": "DEAD CONFIG: not read by any script and not written to meta.json. The review result artifact format is fixed by the result.md / result.json contract (docs/REVIEW_RESULT_CONTRACT.md)."
+    },
+    "resultFile": {
+      "type": "string",
+      "description": "DEAD CONFIG: not read by any script and not written to meta.json. The reviewer result filename is hardcoded as result.md under the review run directory."
+    }
+  }
+}
