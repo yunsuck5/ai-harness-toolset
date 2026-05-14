@@ -35,7 +35,7 @@ Do not abandon the conversation's working state. Do not restart, rebase, switch 
 ### 1. Inspect repo state
 
 - Run `git status --porcelain=v1` and `git diff` to see what is changed and untracked.
-- `<ProjectRoot>` is the target project repo root — the directory where `git status` is being run. Target-owned project files (such as `<ProjectRoot>/brief/BRIEF.md`, which is expected to be tracked) and runtime artifacts (such as the `<ProjectRoot>/log/` tree, which is gitignored) both live under `<ProjectRoot>`.
+- `<ProjectRoot>` is the target project repo root — the directory where `git status` is being run. Target-owned project source files and the runtime artifacts under the `<ProjectRoot>/log/` tree (gitignored operator-local state, including `log/brief/BRIEF.md`) both live under `<ProjectRoot>`.
 - Resolve `<ToolRoot>` — the location of the toolset's `scripts/`, `config/`, `templates/`, and `snippets/` — using this priority order. The first match wins.
 
   1. **Shared / global mode (preferred / default direction).** If the `AI_HARNESS_TOOL_ROOT` environment variable is set and `scripts/review-cycle.ps1` exists at that path, that path is `<ToolRoot>`. The target project does not need to carry a copy of the toolset payload.

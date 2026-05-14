@@ -26,6 +26,14 @@
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
+> **Superseded (BRIEF posture reconciliation) — BRIEF assertions only.** 본 문서의 SC2 / SC3 및 관련
+> precondition (A5 / A6) 과 BriefRoot 기대값은 BRIEF artifact 가 `<ProjectRoot>/brief/BRIEF.md` 에
+> 생성된다고 가정한다. 이후의 BRIEF posture reconciliation 으로 canonical BRIEF 위치는
+> `<ProjectRoot>/log/brief/BRIEF.md` (`log/` 아래 operator-local runtime state) 로 변경되었고, root
+> `<ProjectRoot>/brief/` 는 ai-harness 용도로 금지된다. 따라서 본 문서의 BRIEF 관련 path assertion 은
+> superseded 이며, smoke criteria 자체의 reconciliation (SC2 / SC3 재작성, A5 / A6 갱신) 은 본 reconciliation
+> 범위 밖의 **별도 scoped work** 다. canonical source-of-truth 는 `docs/BRIEF_CONTRACT.md` 다. 본문은 그대로 보존한다.
+
 ---
 
 ## Target

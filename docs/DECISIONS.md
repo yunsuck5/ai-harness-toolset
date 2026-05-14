@@ -21,6 +21,7 @@
 - new human-facing docs are Korean by default (technical identifiers stay English)
 - evidence capture is a manual convention first (`docs/EVIDENCE_CONTRACT.md`) — no script, wrapper, or schema enforcement in MVP
 - chatlog retention is summary-first and resume-first (`docs/CHATLOG_CONTRACT.md`)
+- BRIEF (BF Level 3) is operator-local runtime state at `<ProjectRoot>/log/brief/BRIEF.md`; root `<ProjectRoot>/brief/` is forbidden for ai-harness usage and the target persistent footprint is `log/` only — canonical in `docs/BRIEF_CONTRACT.md`
 - raw transcript retention is optional
 - handoff.md is an external Web/session handoff artifact, not a repo source artifact
 - context-pressure trigger / pre-compact capture is a future optional candidate, not MVP implementation

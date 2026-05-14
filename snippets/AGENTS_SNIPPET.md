@@ -69,16 +69,15 @@ A reviewer verdict does not approve commit, push, publish, merge, release, uploa
 
 ## Brief (BF Level 3)
 
-- `<ProjectRoot>/brief/BRIEF.md` is the **durable project restore file** (BF Level 3). A new collaborator or a new AI agent reads it first to understand the project.
+- `<ProjectRoot>/log/brief/BRIEF.md` is the **operator-local durable restore state** (BF Level 3). The current operator — or a new AI agent session — reads it first as a local restore entrypoint when (re)starting work. It is not a shared project source-of-truth or a human handoff document.
 - `<ProjectRoot>/log/chatlog/current/resume.md` is the **volatile current-session restore file** (BF Level 1/2). It lives at a different time scale than BRIEF.
 - Both coexist. The toolset does not mirror between them. A human decides which side to update.
-- `<ToolRoot>/templates/brief/BRIEF.md` is the source-side template. `<ToolRoot>/scripts/brief-init.ps1` seeds `<ProjectRoot>/brief/BRIEF.md` one-shot and refuses to overwrite an existing file. `<ToolRoot>/scripts/brief-check.ps1` validates BRIEF shape only (required heading set, no unfilled placeholders).
+- `<ToolRoot>/templates/brief/BRIEF.md` is the source-side template. `<ToolRoot>/scripts/brief-init.ps1` seeds `<ProjectRoot>/log/brief/BRIEF.md` one-shot and refuses to overwrite an existing file. `<ToolRoot>/scripts/brief-check.ps1` validates BRIEF shape only (required heading set, no unfilled placeholders).
 - `brief-check.ps1` PASS or FAIL is **not** a reviewer verdict. It does not approve or block commit, push, publish, merge, release, upload, or adoption.
 - BRIEF is not a review input or a review output. It is not a commit gate, push gate, or release gate.
-- BF Level 1/2 save triggers (see below) update `resume.md` / `summary.md` only. They do not auto-write `brief/BRIEF.md`. BF Level 3 is human-edited or seeded by an explicit `brief-init.ps1` call.
-- `<ProjectRoot>/brief/BRIEF.md` is expected to be **tracked by default** in the target repo so a fresh clone has the durable restore file available.
-- The toolset does **not** automatically mutate the target project's `.gitignore`. The adopter decides tracked-vs-ignored.
-- If a target repo currently ignores `brief/`, treat that as a target adoption policy decision and report it as such. Do not classify it as a `brief-init.ps1` or `brief-check.ps1` failure.
+- BF Level 1/2 save triggers (see below) update `resume.md` / `summary.md` only. They do not auto-write `log/brief/BRIEF.md`. BF Level 3 is human-edited or seeded by an explicit `brief-init.ps1` call.
+- `<ProjectRoot>/log/brief/BRIEF.md` is **operator-local runtime state** under `log/`. It is gitignored by default (via the `log/` rule) and is not a shared project source-of-truth. Root `<ProjectRoot>/brief/` is forbidden for ai-harness usage; the canonical BRIEF location is `log/brief/` only.
+- The toolset does **not** automatically mutate the project's `.gitignore`. If an operator chooses to track `log/brief/BRIEF.md` explicitly, that is their decision and their responsibility.
 
 ## Chatlog (BF Level 1/2 and CL)
 
@@ -91,7 +90,7 @@ A reviewer verdict does not approve commit, push, publish, merge, release, uploa
 
 At the start of meaningful work, read in this order:
 
-1. `<ProjectRoot>/brief/BRIEF.md` — durable project restore (BF Level 3).
+1. `<ProjectRoot>/log/brief/BRIEF.md` — operator-local durable restore state (BF Level 3).
 2. `<ProjectRoot>/log/chatlog/current/resume.md` — current-session restore (BF Level 1/2).
 3. `<ProjectRoot>/log/chatlog/current/summary.md` — compact companion / fallback.
 4. Referenced review / evidence / CL artifacts only when BRIEF or `resume.md` points to them.
@@ -104,7 +103,7 @@ Then:
 
 Missing-file handling:
 
-- If `brief/BRIEF.md` is missing, report the gap and fall back to `resume.md`.
+- If `log/brief/BRIEF.md` is missing, report the gap and fall back to `resume.md`.
 - If `resume.md` is also missing, fall back to `summary.md`.
 - If all three are missing, report no restore point and ask the user how to proceed.
 
@@ -127,18 +126,18 @@ When detected:
 4. Keep BF Level 1/2 compact and reference review / evidence / CL details by path only.
 5. Report the updated files and any remaining risks.
 
-These triggers update BF Level 1/2 only. They do **not** auto-write `brief/BRIEF.md`. BF Level 3 is human-edited; the toolset never auto-generates BRIEF content.
+These triggers update BF Level 1/2 only. They do **not** auto-write `log/brief/BRIEF.md`. BF Level 3 is human-edited; the toolset never auto-generates BRIEF content.
 
 ## Forbidden in this toolset
 
-- No source repo root `brief/` runtime state.
-- No `log/brief/`.
+- No root `<ProjectRoot>/brief/` directory for ai-harness usage; BRIEF lives only under `log/brief/`.
+- No per-user / per-operator log partitioning, operator-id, machine-id, or ownership metadata.
 - No `BF_STATE.json` or sidecar state-machine file.
 - No daemon, watcher, scheduler, hook, or background task.
 - No global `CLAUDE.md` mutation.
 - No global `AGENTS.md` mutation.
 - No `~/.claude/` mutation.
-- No automatic mirror between `brief/BRIEF.md` and `log/chatlog/current/resume.md`.
+- No automatic mirror between `log/brief/BRIEF.md` and `log/chatlog/current/resume.md`.
 - No automatic target `.gitignore` mutation.
 
 ## Other rules

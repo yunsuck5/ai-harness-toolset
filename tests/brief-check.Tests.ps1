@@ -241,7 +241,7 @@ none.
 Describe 'brief-check happy path' {
     It 'AC-BC-PASS-1: filled BRIEF with all required headings non-empty exits 0' {
         $project = script:New-CaseRoot -CaseName 'pass-1'
-        $briefPath = Join-Path $project 'brief/BRIEF.md'
+        $briefPath = Join-Path $project 'log/brief/BRIEF.md'
         script:Write-Utf8NoBomFile -Path $briefPath -Content (script:Get-FilledBriefBody)
 
         $result = script:Invoke-BriefCheck -ProjectRoot $project
@@ -253,7 +253,7 @@ Describe 'brief-check happy path' {
 Describe 'brief-check missing-file' {
     It 'AC-BC-MISSING-1: missing BRIEF.md exits non-zero with diagnostic' {
         $project = script:New-CaseRoot -CaseName 'missing-1'
-        $briefPath = Join-Path $project 'brief/BRIEF.md'
+        $briefPath = Join-Path $project 'log/brief/BRIEF.md'
         Test-Path -LiteralPath $briefPath | Should -BeFalse
 
         $result = script:Invoke-BriefCheck -ProjectRoot $project
@@ -265,7 +265,7 @@ Describe 'brief-check missing-file' {
 Describe 'brief-check sentinel-remains' {
     It 'AC-BC-SENTINEL-1: replace-me sentinel left in any required section exits non-zero' {
         $project = script:New-CaseRoot -CaseName 'sentinel-1'
-        $briefPath = Join-Path $project 'brief/BRIEF.md'
+        $briefPath = Join-Path $project 'log/brief/BRIEF.md'
         script:Write-Utf8NoBomFile -Path $briefPath -Content (script:Get-SentinelLeftBriefBody)
 
         $result = script:Invoke-BriefCheck -ProjectRoot $project
@@ -278,7 +278,7 @@ Describe 'brief-check sentinel-remains' {
 Describe 'brief-check empty-section' {
     It 'AC-BC-EMPTY-1: required section body that is whitespace only exits non-zero' {
         $project = script:New-CaseRoot -CaseName 'empty-1'
-        $briefPath = Join-Path $project 'brief/BRIEF.md'
+        $briefPath = Join-Path $project 'log/brief/BRIEF.md'
         script:Write-Utf8NoBomFile -Path $briefPath -Content (script:Get-EmptySectionBriefBody)
 
         $result = script:Invoke-BriefCheck -ProjectRoot $project
@@ -291,7 +291,7 @@ Describe 'brief-check empty-section' {
 Describe 'brief-check missing-heading' {
     It 'AC-BC-MISSING-HEADING-1: dropping a required heading exits non-zero' {
         $project = script:New-CaseRoot -CaseName 'missing-heading-1'
-        $briefPath = Join-Path $project 'brief/BRIEF.md'
+        $briefPath = Join-Path $project 'log/brief/BRIEF.md'
         script:Write-Utf8NoBomFile -Path $briefPath -Content (script:Get-MissingHeadingBriefBody)
 
         $result = script:Invoke-BriefCheck -ProjectRoot $project
@@ -304,7 +304,7 @@ Describe 'brief-check missing-heading' {
 Describe 'brief-check duplicate-heading' {
     It 'AC-BC-DUPLICATE-1: duplicate required heading exits non-zero' {
         $project = script:New-CaseRoot -CaseName 'duplicate-1'
-        $briefPath = Join-Path $project 'brief/BRIEF.md'
+        $briefPath = Join-Path $project 'log/brief/BRIEF.md'
         script:Write-Utf8NoBomFile -Path $briefPath -Content (script:Get-DuplicateHeadingBriefBody)
 
         $result = script:Invoke-BriefCheck -ProjectRoot $project
@@ -317,7 +317,7 @@ Describe 'brief-check duplicate-heading' {
 Describe 'brief-check placeholder-token' {
     It 'AC-BC-PLACEHOLDER-1: unreplaced double-curly placeholder marker exits non-zero' {
         $project = script:New-CaseRoot -CaseName 'placeholder-1'
-        $briefPath = Join-Path $project 'brief/BRIEF.md'
+        $briefPath = Join-Path $project 'log/brief/BRIEF.md'
         script:Write-Utf8NoBomFile -Path $briefPath -Content (script:Get-PlaceholderTokenBriefBody)
 
         $result = script:Invoke-BriefCheck -ProjectRoot $project

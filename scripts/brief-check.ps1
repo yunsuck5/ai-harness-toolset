@@ -13,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 
 if ([string]::IsNullOrEmpty($BriefPath)) {
-    $BriefPath = Join-Path -Path $project -ChildPath 'brief/BRIEF.md'
+    $BriefPath = Join-Path -Path $project -ChildPath 'log/brief/BRIEF.md'
 }
 elseif (-not [System.IO.Path]::IsPathRooted($BriefPath)) {
     $BriefPath = Join-Path -Path $project -ChildPath $BriefPath

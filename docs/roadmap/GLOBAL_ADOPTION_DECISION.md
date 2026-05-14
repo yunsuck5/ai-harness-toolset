@@ -6,6 +6,12 @@
 
 이 문서는 `docs/roadmap/POST_MVP_PLAN.md` 의 closeout 진술과 충돌하지 않는다. MVP closeout 은 그대로 유효하며, 본 문서는 그 이후 단계의 전환 방향만 기록한다.
 
+> **Superseded (BRIEF posture reconciliation).** 본 문서가 target-local state / footprint 를 기술할 때
+> `brief/` 를 별도 footprint 항목으로 언급하는 부분 (예: §4 의 target-local state 목록, §6 의 BriefRoot 정의)
+> 은 이후의 BRIEF posture reconciliation 으로 superseded 되었다. 현재 BRIEF 는 `<ProjectRoot>/log/brief/BRIEF.md`
+> 의 operator-local runtime state 이며, target 의 persistent footprint 는 `log/` only 다. root `<ProjectRoot>/brief/`
+> 는 ai-harness 용도로 금지된다. canonical source-of-truth 는 `docs/BRIEF_CONTRACT.md` 다. 본문은 결정 기록으로 보존한다.
+
 ---
 
 ## 1. Decision summary

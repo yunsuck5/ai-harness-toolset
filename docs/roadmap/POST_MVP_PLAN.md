@@ -35,6 +35,12 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 ## 3. Brief system — post-MVP core
 
+> **Superseded (BRIEF posture reconciliation).** 본 §3 의 canonical Brief 위치 결정 (`brief/BRIEF.md` 가 canonical,
+> `log/brief/` 디렉터리는 만들지 않는다) 은 이후의 BRIEF posture reconciliation 으로 superseded 되었다.
+> 현재 canonical BRIEF 위치는 `<ProjectRoot>/log/brief/BRIEF.md` 이며, BRIEF 는 `log/` 아래 operator-local
+> runtime state 다. root `<ProjectRoot>/brief/` 는 ai-harness 용도로 금지된다. source-of-truth 는
+> `docs/BRIEF_CONTRACT.md` 다. 아래 §3 본문은 reconciliation 이전 시점의 결정 기록으로 보존한다.
+
 - Brief system 은 post-MVP 의 core 항목이다. 단, 본 문서는 Brief system 의 implementation 시점, 우선순위, owner, deadline 을 확정하지 않는다.
 - canonical Brief 위치 결정.
   - target repo 의 canonical restore source 는 `brief/BRIEF.md` 다.

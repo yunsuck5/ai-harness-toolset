@@ -1,8 +1,7 @@
 ﻿[CmdletBinding()]
 param(
     [string] $ProjectRoot,
-    [string] $ToolRoot,
-    [switch] $AllowSourceRepoSeed
+    [string] $ToolRoot
 )
 
 Set-StrictMode -Version Latest
@@ -14,12 +13,6 @@ $ErrorActionPreference = 'Stop'
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 $tool    = Get-ToolRoot -ToolRoot $ToolRoot -ProjectRoot $project
 
-if ((Test-IsSourceRepoRoot -Path $project) -and -not $AllowSourceRepoSeed) {
-    Write-Host ('brief-init: refused. ProjectRoot resolves to the ai-harness-toolset source repo root: {0}' -f $project)
-    Write-Host 'brief-init: source repo must not contain a tracked root brief/ directory. Pass -AllowSourceRepoSeed only from $TestDrive fixtures.'
-    exit 1
-}
-
 $templatePath = Join-Path -Path $tool -ChildPath 'templates/brief/BRIEF.md'
 if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
     Write-Host ('brief-init: FAIL template not found: {0}' -f $templatePath)
@@ -27,7 +20,7 @@ if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
     exit 1
 }
 
-$briefDir  = Join-Path -Path $project -ChildPath 'brief'
+$briefDir  = Join-Path -Path $project -ChildPath 'log/brief'
 $briefPath = Join-Path -Path $briefDir -ChildPath 'BRIEF.md'
 
 [void] (Assert-InProjectRoot -Path $briefDir  -ProjectRoot $project)

@@ -54,30 +54,10 @@ BeforeAll {
         return ([System.IO.Path]::GetFullPath($toolRoot))
     }
 
-    function script:New-FakeSourceRepo {
-        param([string] $CaseName)
-        $srcRoot = Join-Path $TestDrive ('pester-brief-init-src-' + $CaseName)
-        if (Test-Path -LiteralPath $srcRoot) {
-            Remove-Item -LiteralPath $srcRoot -Recurse -Force
-        }
-        $null = New-Item -ItemType Directory -Path $srcRoot -Force
-        # Test-IsSourceRepoRoot now requires all three markers (D3 multi-marker)
-        $marker1 = Join-Path $srcRoot 'scripts/verify-ps1.ps1'
-        script:Write-Utf8NoBomFile -Path $marker1 -Content "# fake marker for Test-IsSourceRepoRoot`n"
-        $marker2 = Join-Path $srcRoot 'templates/review-input.md'
-        script:Write-Utf8NoBomFile -Path $marker2 -Content "# fake review-input template`n"
-        $marker3 = Join-Path $srcRoot 'config/reviewer.json'
-        script:Write-Utf8NoBomFile -Path $marker3 -Content "{}`n"
-        $tmpl = Join-Path $srcRoot 'templates/brief/BRIEF.md'
-        script:Write-Utf8NoBomFile -Path $tmpl -Content "# fake brief template`n"
-        return ([System.IO.Path]::GetFullPath($srcRoot))
-    }
-
     function script:Invoke-BriefInit {
         param(
             [string] $ProjectRoot,
-            [string] $ToolRoot,
-            [switch] $AllowSourceRepoSeed
+            [string] $ToolRoot
         )
         $procArgs = @(
             '-NoProfile',
@@ -87,9 +67,6 @@ BeforeAll {
         )
         if (-not [string]::IsNullOrEmpty($ToolRoot)) {
             $procArgs += @('-ToolRoot', $ToolRoot)
-        }
-        if ($AllowSourceRepoSeed) {
-            $procArgs += @('-AllowSourceRepoSeed')
         }
         $combined = & powershell.exe @procArgs 2>&1
         $exitCode = $LASTEXITCODE
@@ -102,13 +79,13 @@ BeforeAll {
 }
 
 Describe 'brief-init happy path' {
-    It 'AC-BI-HAPPY-1: seeds <project>/brief/BRIEF.md from real template and exits 0' {
+    It 'AC-BI-HAPPY-1: seeds <project>/log/brief/BRIEF.md from real template and exits 0' {
         $project = script:New-CaseRoot -CaseName 'happy-1'
 
         $result = script:Invoke-BriefInit -ProjectRoot $project -ToolRoot $script:RepoRoot
         $result.ExitCode | Should -Be 0 -Because $result.Output
 
-        $briefPath = Join-Path $project 'brief/BRIEF.md'
+        $briefPath = Join-Path $project 'log/brief/BRIEF.md'
         Test-Path -LiteralPath $briefPath -PathType Leaf | Should -BeTrue
 
         $expected = script:Read-Utf8NoBomFile -Path $script:RealTemplatePath
@@ -120,13 +97,14 @@ Describe 'brief-init happy path' {
 
         $result.Output | Should -Match 'brief-init: PASS'
 
-        $logBrief = Join-Path $project 'log/brief'
-        Test-Path -LiteralPath $logBrief | Should -BeFalse
+        # BRIEF lives only under log/brief/; root brief/ must never be created.
+        $rootBrief = Join-Path $project 'brief'
+        Test-Path -LiteralPath $rootBrief | Should -BeFalse
     }
 
-    It 'AC-BI-HAPPY-2: creates <project>/brief/ directory when missing' {
+    It 'AC-BI-HAPPY-2: creates <project>/log/brief/ directory when missing' {
         $project = script:New-CaseRoot -CaseName 'happy-2'
-        $briefDir = Join-Path $project 'brief'
+        $briefDir = Join-Path $project 'log/brief'
         Test-Path -LiteralPath $briefDir | Should -BeFalse
 
         $result = script:Invoke-BriefInit -ProjectRoot $project -ToolRoot $script:RepoRoot
@@ -139,7 +117,7 @@ Describe 'brief-init happy path' {
 Describe 'brief-init refuse-overwrite' {
     It 'AC-BI-REFUSE-OVERWRITE-1: pre-existing BRIEF.md is not overwritten and exit is non-zero' {
         $project = script:New-CaseRoot -CaseName 'refuse-1'
-        $briefDir = Join-Path $project 'brief'
+        $briefDir = Join-Path $project 'log/brief'
         $null = New-Item -ItemType Directory -Path $briefDir -Force
 
         $sentinelContent = "# sentinel BRIEF`nuser-authored content that must survive.`n"
@@ -155,26 +133,25 @@ Describe 'brief-init refuse-overwrite' {
     }
 }
 
-Describe 'brief-init source-repo guard' {
-    It 'AC-BI-GUARD-1: ProjectRoot that looks like the source repo is refused without -AllowSourceRepoSeed' {
-        $srcRoot = script:New-FakeSourceRepo -CaseName 'guard-1'
+Describe 'brief-init self-dogfooding seed' {
+    It 'AC-BI-SELF-1: a source-repo-shaped ProjectRoot seeds its own log/brief/BRIEF.md' {
+        # BRIEF moved under log/ (operator-local, gitignored), so the old
+        # source-repo refuse guard is gone: a self-dogfooding ProjectRoot that
+        # carries the source-repo markers still seeds its own operator-local BRIEF.
+        $project = script:New-CaseRoot -CaseName 'self-1'
+        # Plant the three markers Test-IsSourceRepoRoot keys on.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'scripts/verify-ps1.ps1') -Content "# fake marker`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'templates/review-input.md') -Content "# fake template`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'config/reviewer.json') -Content "{}`n"
 
-        $result = script:Invoke-BriefInit -ProjectRoot $srcRoot -ToolRoot $srcRoot
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'source repo'
-
-        $briefDir = Join-Path $srcRoot 'brief'
-        Test-Path -LiteralPath $briefDir | Should -BeFalse
-    }
-
-    It 'AC-BI-GUARD-2: -AllowSourceRepoSeed lets a source-repo-shaped ProjectRoot proceed' {
-        $srcRoot = script:New-FakeSourceRepo -CaseName 'guard-2'
-
-        $result = script:Invoke-BriefInit -ProjectRoot $srcRoot -ToolRoot $srcRoot -AllowSourceRepoSeed
+        $result = script:Invoke-BriefInit -ProjectRoot $project -ToolRoot $script:RepoRoot
         $result.ExitCode | Should -Be 0 -Because $result.Output
 
-        $briefPath = Join-Path $srcRoot 'brief/BRIEF.md'
+        $briefPath = Join-Path $project 'log/brief/BRIEF.md'
         Test-Path -LiteralPath $briefPath -PathType Leaf | Should -BeTrue
+
+        $rootBrief = Join-Path $project 'brief'
+        Test-Path -LiteralPath $rootBrief | Should -BeFalse
     }
 }
 
@@ -187,7 +164,7 @@ Describe 'brief-init missing template' {
         $result.ExitCode | Should -Not -Be 0
         $result.Output | Should -Match 'template not found'
 
-        $briefDir = Join-Path $project 'brief'
+        $briefDir = Join-Path $project 'log/brief'
         Test-Path -LiteralPath $briefDir | Should -BeFalse
     }
 }
