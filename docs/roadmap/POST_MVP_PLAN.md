@@ -178,6 +178,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - shared / global mode invocation contract design 문서화 완료 (`docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md`). audit §8 의 D1–D9 결정 및 implementation split 포함.
 - shared / global mode implementation 완료. `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §6 의 8 개 split unit 이 모두 독립 commit 으로 반영됨 — `Get-ToolRoot` channel chain (`bd0ac83`), component script fallback policy (`9130c68`), snippet mode-neutral body (`8234bf1`), SKILL.md script root 분기 (`df09bf5`), review-verify toolRoot binding (`dadff4d`), review-cycle untracked exclusion (`67430c4`), self-target enforcement check (`14ce6c9`), `Get-ProjectRoot` CWD advisory (`bebe7ab`, `043b0e0`). **단, 이 implementation 완료는 source-side 의 path / invocation 동작이 갖춰졌다는 의미이며, actual global activation / install / update / self-adoption 의 수행을 의미하지 않는다 — 후자는 §11 의 remaining order 에 별도 step 으로 남는다.**
 - clean target smoke test criteria 정의 완료 (`docs/roadmap/CLEAN_TARGET_SMOKE_CRITERIA.md`). SC1–SC7 의 pre-condition / action / observable pass / fail / required evidence 정의 포함 (`85433e5` 및 후속 정합 commit `9af5f62`, `24d2010`).
+- clean target smoke test full 실행 완료. `docs/roadmap/CLEAN_TARGET_SMOKE_CRITERIA.md` 의 SC1–SC7 suite 를 source repo 외부 clean target 에서 실행하여 전 케이스 PASS — SC5 는 full Codex CLI dependent path 로 수행되어 SC5' partial substitute 가 아닌 full coverage 다. `<SourceRepoRoot>` read-only invariant (SC7) 는 모든 case 에서 hold 했고 source repo working tree 는 무변경이다. evidence 는 `docs/EVIDENCE_CONTRACT.md` / `CLEAN_TARGET_SMOKE_CRITERIA.md` §4 의 source-repo 외부 저장 경계에 따라 **user-managed repo-external backup** 으로 보존되며 source repo 로 import 하지 않는다 (`docs/backlog/operations.md` "Smoke evidence preservation" 의 raw evidence → repo-external 경계와 정합).
 - global install / update / validation / self-adoption operating model 문서화 완료 (`docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`). 설치 source 획득 방식 2 종 (install-from-git-url, install-from-local-clone), metadata-dispatched update, global install metadata schema, validation-before-implementation (manual global activation / controlled global materialization), target footprint contract, self-adoption model 을 포함한다. 본 문서는 global install / update / self-adoption 판단의 **current source-of-truth** 다. 단, 문서화 완료가 actual global install / update 의 수행을 의미하지는 않는다.
 
 ### Deferred (separate scoped approval required)
@@ -187,16 +188,15 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - global behavior validation — manual global activation / controlled global materialization 으로 global entrypoint / ToolRoot·ProjectRoot 분리 / target footprint / runtime artifact 위치가 실제로 성립하는지 검증 (`docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` §7, §11 step 2).
 - install / update automation implementation 및 그 validation (`docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5, §11 step 3–4).
 - `ai-harness-toolset` self-adoption (`docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` §9, §11 step 5).
-- clean target smoke test 실행 — **partial / not fully repo-auditable.** SC5 / SC5' 관련 실행 evidence 는 존재하나 (`docs/backlog/operations.md` 참조), full SC1–SC7 suite 의 evidence 는 `%TEMP%` 에 흩어져 있어 repo 기준으로 complete 로 승격할 수 없다. 완전 실행 + repo-auditable evidence 확보는 별도 scoped 승인이 필요하다 (§11 step 6).
-- post-MVP closeout 결정 (§11 step 7).
-- GJMNet clean adoption (§7, §11 step 8).
+- post-MVP closeout 결정 (§11 step 6).
+- GJMNet clean adoption (§7, §11 step 7).
 - `package-toolset.ps1` implementation (§6).
 - Chatlog system 의 CL 영역 fuller implementation (§4).
 - docs taxonomy 의 실제 path migration. docs taxonomy 자체는 별도로 논의되었으며 향후 잊지 않는다 — 다만 실제 path migration 은 path reference scan 과 별도 scoped 승인이 모두 필요한 deferred 항목이다 (§8).
 
 ### Operations backlog track (parallel)
 
-`docs/backlog/operations.md` 의 3 개 항목은 §11 numbered order 와 별개의 **parallel / supporting operational track** 이다. smoke 실행 시도 과정에서 도출된 운영 품질 항목이며, 그 중 2·3 번은 §11 의 global behavior validation (step 2) / clean target smoke execution (step 6) / self-adoption validation (step 5) 을 지원하는 prerequisite 다. 각 항목의 implementation 은 별도 scoped 승인을 거친다.
+`docs/backlog/operations.md` 의 3 개 항목은 §11 numbered order 와 별개의 **parallel / supporting operational track** 이다. smoke 실행 과정에서 도출된 운영 품질 항목이며, 그 중 2·3 번은 §11 의 global behavior validation (step 2) / self-adoption validation (step 5) 을 지원하는 prerequisite 다. clean target smoke execution 자체는 §10 Completed 로 이동했으나, 그 과정에서 도출된 quoting hardening / evidence preservation convention 은 여전히 scope-defined backlog 항목으로 남는다. 각 항목의 implementation 은 별도 scoped 승인을 거친다.
 
 - **Long-lived docs commit hash hygiene** (candidate) — long-lived doc 의 literal commit hash hygiene. §11 numbered order 와 독립적인 저우선 doc hygiene 항목.
 - **PowerShell smoke invocation quoting hardening** (scope-defined) — smoke driver invocation 의 quoting fragility. 미정리 시 §11 의 validation / smoke 실행이 driver failure 로 반복 중단될 risk. 다음 implementation goal 은 (R) runbook-only / (S) helper-snippet / (W) wrapper-script 중 1 개 채택.
@@ -206,7 +206,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 - 기존 GJMNet 안의 ai-harness-toolset application state 는 disposable. migration / cleanup 작업은 post-MVP 항목이 아니다 (§7).
 - GJMNet 은 post-MVP foundation 항목 (Brief system / BF Level 3 / packaging) 이 ready 된 뒤 clean git repo 로 재생성한다. 그 이후의 운용은 CLI-only (§7).
-- 설치 / adoption mode 의 방향 결정은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §1, §4 에 기록되었고, 그 구체적 layer / path / flow / metadata 모델은 `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 가 current source-of-truth 다. `copy / link / pinned-link` framing 은 §6 안 historical record 로 보존되며, implementation 세부 중 managed block marker 적용, Claude skill global / update / removal 절차 문서화, ToolRoot / ProjectRoot path handling audit 문서화, shared / global mode invocation contract design 문서화, shared / global mode implementation (§6 의 8 개 split unit 전부), clean target smoke test criteria 정의, global install/update/self-adoption operating model 문서화는 모두 완료되었다 (§10 Completed). 잔여 항목은 global behavior validation, install / update implementation 및 validation, self-adoption, clean target smoke test 실행 등이며 (§10 Deferred, §11 의 numbered order), 모두 별도 scoped 승인이 필요하다 (§6, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6, §8, §9, `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`, `docs/roadmap/TOOLROOT_PROJECTROOT_AUDIT.md` §6–§8, `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §4, §6).
+- 설치 / adoption mode 의 방향 결정은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §1, §4 에 기록되었고, 그 구체적 layer / path / flow / metadata 모델은 `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 가 current source-of-truth 다. `copy / link / pinned-link` framing 은 §6 안 historical record 로 보존되며, implementation 세부 중 managed block marker 적용, Claude skill global / update / removal 절차 문서화, ToolRoot / ProjectRoot path handling audit 문서화, shared / global mode invocation contract design 문서화, shared / global mode implementation (§6 의 8 개 split unit 전부), clean target smoke test criteria 정의, global install/update/self-adoption operating model 문서화는 모두 완료되었다 (§10 Completed). 잔여 항목은 global behavior validation, install / update implementation 및 validation, self-adoption 등이며 (§10 Deferred, §11 의 numbered order), 모두 별도 scoped 승인이 필요하다 (§6, `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6, §8, §9, `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`, `docs/roadmap/TOOLROOT_PROJECTROOT_AUDIT.md` §6–§8, `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §4, §6).
 - shared / global mode implementation 완료와 actual global activation / install / update / self-adoption 은 구분된다. 전자는 §10 Completed 이고, 후자는 §11 의 remaining order step 2–5 로서 별도 scoped 승인이 필요하다. POST_MVP_PLAN.md 의 어떤 진술도 실제 global install / global mutation 을 자동 승인하지 않는다.
 - docs taxonomy 는 planned but deferred 다. 실제 path migration 은 별도 scoped 승인이 필요하다 (§8).
 - review verdict (`yes` / `no` / `yes with risk`) 는 commit / push / release 의 자동 승인이 아니다 (§2, §8, `docs/REVIEW_RESULT_CONTRACT.md`).
@@ -217,7 +217,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 본 절은 post-MVP **잔여 항목** 의 권장 처리 순서다. completed step 들은 §10 Completed (source repo side) 에 기록되어 있고, 본 §11 은 그 이후의 remaining work 만 다룬다. **순서 자체는 자동 승인이 아니다.** 각 단계는 §8 guardrail 을 깨지 않는 범위 안에서 별도 scoped 승인을 거친다. 특히 manual global activation 을 포함한 **모든 실제 global mutation 은 separate scoped approval 이 필요하다** — 본 절은 어떤 global mutation, snippets / scripts / config / templates 변경, global `CLAUDE.md` / `AGENTS.md` mutation, commit, push 도 자동 승인하지 않는다.
 
-본 순서는 `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 를 current global install / update / self-adoption 판단 기준으로 참조한다. `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 의 step 1–5, shared / global mode invocation contract design, **shared / global mode implementation (§6 의 8 개 split unit 전부)**, **clean target smoke test criteria 정의**, 그리고 **global install / update / self-adoption operating model 문서화** 는 모두 §10 Completed 에 기록되어 본 §11 에서는 제외한다. shared / global mode implementation 완료는 source-side path / invocation 동작이 갖춰졌다는 의미이며, 아래 step 들 (actual global activation / install / update / self-adoption) 의 수행과는 구분된다. 또한 본 순서는 내부 roadmap closeout 판단을 보존하기 위해 GJMNet clean adoption 직전에 post-MVP closeout 결정을 별도 step 으로 유지한다.
+본 순서는 `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 를 current global install / update / self-adoption 판단 기준으로 참조한다. `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §9 의 step 1–5, shared / global mode invocation contract design, **shared / global mode implementation (§6 의 8 개 split unit 전부)**, **clean target smoke test criteria 정의 및 full SC1–SC7 실행**, 그리고 **global install / update / self-adoption operating model 문서화** 는 모두 §10 Completed 에 기록되어 본 §11 에서는 제외한다. shared / global mode implementation 완료는 source-side path / invocation 동작이 갖춰졌다는 의미이며, 아래 step 들 (actual global activation / install / update / self-adoption) 의 수행과는 구분된다. 또한 본 순서는 내부 roadmap closeout 판단을 보존하기 위해 GJMNet clean adoption 직전에 post-MVP closeout 결정을 별도 step 으로 유지한다.
 
 본 §11 기준 **다음 실제 milestone 은 step 1 (`GLOBAL_INSTALL_UPDATE_MODEL.md` 확정)** 이다.
 
@@ -226,8 +226,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 3. validation result 를 기준으로 install / update implementation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5).
 4. install / update validation.
 5. `ai-harness-toolset` self-adoption (`GLOBAL_INSTALL_UPDATE_MODEL.md` §9).
-6. clean target smoke test 실행 / repo-auditable evidence 확보. `docs/roadmap/CLEAN_TARGET_SMOKE_CRITERIA.md` 의 full SC1–SC7 suite 를 실행한다. 현재는 SC5 / SC5' 부분 실행만 evidence 가 존재하며 full suite 는 미완 상태다 (§10 Deferred 참조).
-7. post-MVP closeout 결정.
-8. new GJMNet repo 의 clean adoption. self-adoption (step 5) 과 global behavior validation (step 2) 이후로 유지한다 (§7).
+6. post-MVP closeout 결정.
+7. new GJMNet repo 의 clean adoption. self-adoption (step 5) 과 global behavior validation (step 2) 이후로 유지한다 (§7).
 
-순서 변경, 항목 추가, 또는 항목 삭제는 별도 scoped 승인이 필요하다. operations backlog track (§10) 의 항목은 본 numbered order 와 병렬이며, 그 중 2·3 번 (PowerShell smoke invocation quoting hardening, Smoke evidence preservation) 은 step 2 / step 5 / step 6 을 지원하는 prerequisite 로 다룬다.
+순서 변경, 항목 추가, 또는 항목 삭제는 별도 scoped 승인이 필요하다. operations backlog track (§10) 의 항목은 본 numbered order 와 병렬이며, 그 중 2·3 번 (PowerShell smoke invocation quoting hardening, Smoke evidence preservation) 은 step 2 / step 5 를 지원하는 prerequisite 로 다룬다.
