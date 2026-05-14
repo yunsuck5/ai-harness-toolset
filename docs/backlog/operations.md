@@ -98,22 +98,67 @@ decision boundary:
 
 ## Smoke evidence preservation
 
-- **Status**: candidate
+- **Status**: scope-defined; implementation candidate decision (runbook-only / helper-script / archive manifest; §Future implementation candidates 참조) 는 별도 scoped goal 로 deferred.
+- **Classification**: smoke run 이 산출한 evidence 를 round 종료 이후에도 참조 가능하게 만드는 **repo-external archive / export convention** 의 정의. evidence *capture* convention (`docs/EVIDENCE_CONTRACT.md` — `<ProjectRoot>/log/evidence/` 트리) 의 한 layer 아래 / downstream 이며, capture contract 자체를 변경하지 않는다.
 
 ### Context
 
-본 라운드의 smoke evidence 는 `%TEMP%\ahts-smoke\<utc>\` 및 `%TEMP%\ahts-smoke-sc5\<utc>\` 아래에 저장되었다. OS / disk-cleanup utility 가 `%TEMP%` 를 정리할 경우 evidence 가 소실될 수 있다. evidence 는 본 source repo 안에 두지 않는 것이 원칙 (bulky binary, transient runtime data) 이지만, 중요 smoke run 의 evidence 가 round 이후에도 참조 가능해야 할 시점이 있다.
+본 라운드의 smoke evidence 는 `%TEMP%\ahts-smoke\<utc>\` 및 `%TEMP%\ahts-smoke-sc5\<utc>\` 아래에 저장되었다. 이는 `docs/EVIDENCE_CONTRACT.md` 가 정의하는 `<ProjectRoot>/log/evidence/` 트리도, `CLEAN_TARGET_SMOKE_CRITERIA.md` §4 가 권장하는 `<ProjectRoot>/log/evidence/clean-target-smoke/<case>/` 또는 source-repo 외부 evidence 저장소도 아닌, **OS 임시 디렉터리** 다.
 
-### Candidate direction
+### Why preservation is needed — `%TEMP%` evidence loss risk
 
-- repo-external archive convention 을 둔다. 위치 후보 — `<USERPROFILE>\ai-harness-evidence\<utc>\` 또는 평행한 외부 path. archive 포맷은 결정론적 zip / tar 등.
-- archive 시점은 운영자 명시적 trigger. 자동 archive 는 본 backlog 항목이 제안하지 않는다. CLI helper (예: `tools/archive-smoke-evidence.ps1`) 의 도입 여부 / 위치는 implementation 단계 결정.
-- bulky evidence 는 default 로 source repo 안에 두지 않는다. small per-SC summary file (예: `summary/SUITE_REPORT.md` 의 sanitized snippet) 만 별도 scoped 절차로 repo 에 인용할 수 있으되, raw transcript / run-dir 은 외부 archive 로 보관.
+- `%TEMP%` 는 OS / disk-cleanup utility / 재부팅 정리 대상이다. 정리 시점은 운영자가 통제하지 않으며 사전 통지도 없다. 따라서 `%TEMP%` 아래의 smoke evidence 는 round 종료 시점부터 silent loss risk 에 노출된다.
+- smoke evidence 의 일부는 round 종료 이후에도 참조 가치가 있다 — 예: SC5 round 1 → round 2 incident 의 재현 단서, partial coverage 분류 (`SC5' substitute`) 의 근거, ToolRoot channel resolution 의 case 별 transcript. 이들은 후속 라운드의 escalation 판단 / re-evaluation 의 input 이 될 수 있다.
+- 동시에 raw smoke evidence (transcript, run-dir, directory snapshot) 는 bulky / transient 하여 source repo 에 default 로 두면 source snapshot 을 오염시킨다 (`docs/EVIDENCE_CONTRACT.md` §source vs runtime 경계와 일관).
+- 따라서 필요한 것은: `%TEMP%` 의 transient 위치에서 **결정론적이고 운영자가 통제하는 repo-external 위치** 로 중요 evidence 를 옮기는 export 경로의 합의다.
+
+### Repo-external archive convention candidates
+
+- **저장 위치 후보** — `<USERPROFILE>\ai-harness-evidence\<utc>\` 또는 그와 평행한 source-repo 외부 절대경로. ToolRoot / ProjectRoot working tree 안에 두지 않는다. 정확한 base path 는 implementation 단계에서 확정.
+- **archive 단위** — smoke suite 1 회 실행 (`<utc>` run) 을 1 archive 단위로 본다. 한 archive 는 그 run 의 per-SC evidence 를 포함한다.
+- **archive 포맷** — 결정론적 zip / tar 등. 결정론성 (동일 입력 → 동일 archive 내용 구조) 을 만족하는 포맷이면 무엇이든 후보. 정확한 포맷은 implementation 단계 결정.
+- **path-preserving** — archive 는 relative path 구조를 보존해야 한다 (flatten 금지). archive 안에서 per-SC / per-case 디렉터리 구조가 그대로 복원 가능해야 한다.
+
+### Archive trigger model
+
+- archive 시점은 **운영자의 명시적 action** 이다. round 종료 후 운영자가 보존 가치가 있다고 판단한 run 에 대해서만 archive 한다.
+- 자동 archive / 자동 retention / 자동 cleanup 은 본 항목이 제안하지 않는다 (§Non-goals).
+- archive 대상 선택 (어느 run 을 보존할지) 도 운영자 판단이며, 본 convention 은 "보존하기로 한 run 을 어디에 / 어떤 형태로 두는지" 만 규정한다.
+
+### Source repo inclusion boundary
+
+- `log/` 는 gitignored runtime artifact 트리다 (`.gitignore` 의 `log/` 규칙, `docs/EVIDENCE_CONTRACT.md` §source vs runtime 경계). raw transcript / run-dir / directory snapshot 은 **source repo 에 commit 하지 않는다** — repo-external archive 가 그 보존 자리다.
+- source repo 안으로 들어갈 수 있는 것은 **sanitized summary / reference 뿐** 이다. 예: per-SC `SUITE_REPORT.md` 의 sanitized snippet, archive 위치를 가리키는 reference 한 줄. 이 인용도 자동이 아니라 별도 scoped 절차를 거친다.
+- 즉 경계는: **raw evidence → repo-external archive**, **sanitized summary / reference → (별도 scoped 절차로만) source repo**. 이 경계는 본 항목이 새로 만드는 것이 아니라 `docs/EVIDENCE_CONTRACT.md` 의 source/runtime 경계를 archive layer 로 연장한 것이다.
+
+### Future implementation candidates
+
+다음 implementation goal 은 아래 후보를 과확장 없이 분리하여 검토한다. 세 후보는 상호 배타가 아니다 — archive manifest 는 runbook-only 또는 helper-script 어느 쪽과도 결합 가능한 format 계층이다. 본 scope 단계에서는 어느 것도 결정하지 않는다.
+
+- **(A) runbook-only** — `docs/runbooks/` 아래 1 개 docs 파일. 운영자가 `%TEMP%` evidence 를 repo-external archive 위치로 옮기는 수동 절차 (경로 규약, naming, 결정론적 포맷, path-preserving 주의) 를 명문화. 새 .ps1 / 새 helper / 새 test 0. 비용 가장 낮음. trade-off — 매 archive 마다 운영자가 절차를 수동 재현.
+- **(B) helper-script** — 운영자가 명시적으로 호출하는 CLI helper 1 개 (예: `tools/archive-smoke-evidence.ps1` — 위치 / 이름 implementation 단계 결정). 본 helper 는 지정된 run 의 evidence 를 결정론적 archive 로 packaging 하여 repo-external 위치로 export. 운영자 명시 호출만; 자동 trigger 없음. 새 .ps1 1, Pester test 의무, CLAUDE.md MUST 트리거 (codex review 필수). 비용 가장 높음.
+- **(C) archive manifest** — archive 와 동행하는 결정론적 manifest 파일 1 개의 convention. 최소 내용 후보: archive 대상 run-id 목록, smoke 실행 시점 source repo HEAD (execution HEAD), per-SC pass / fail / skip 요약, sanitized summary 로의 pointer. format 계층이므로 (A) 또는 (B) 와 결합 가능하며 단독으로도 정의 가능. 새 .ps1 없음 (manifest 는 데이터 파일 convention).
+
+decision boundary:
+
+- 다음 implementation goal 의 책임이 "운영자가 archive 절차를 일관되게 재현하도록 문서화" 이면 (A) 로 충분하다.
+- "archive packaging 을 결정론적으로 자동 구성" 이 필요하면 (B) 가 후보이며, 새 .ps1 / test / review gate 비용을 수반한다.
+- (C) 는 (A) 또는 (B) 중 무엇을 채택하든 archive 의 self-describing 성을 위해 함께 검토할 수 있으나, 단독 goal 로 분리해도 된다.
+- 한 implementation goal 에서 (A) / (B) 중 둘을 동시에 구현하지 않는다. (C) 는 채택된 후보에 부속시키거나 별도 goal 로 분리한다.
+
+### Cross-reference
+
+- `docs/EVIDENCE_CONTRACT.md` — evidence *capture* convention (`<ProjectRoot>/log/evidence/<scope>/<case>/`, manual-convention-first, gitignored). 본 항목은 그 contract 를 변경하지 않으며, capture 이후의 *archive / export* 단계만 다룬다.
+- `docs/roadmap/CLEAN_TARGET_SMOKE_CRITERIA.md` §4 — smoke execution goal 이 보존해야 할 per-case evidence 목록과 권장 위치 (`<ProjectRoot>/log/evidence/clean-target-smoke/<case>/` 또는 source-repo 외부 저장소) 를 정의. 본 항목은 그 "source-repo 외부 저장소" 의 convention 을 구체화하는 자리다.
 
 ### Non-goals
 
+- 본 scope 단계는 runbook-only / helper-script / archive manifest 중 어느 것도 결정하지 않는다.
 - 본 backlog 항목 자체는 어떤 구현도 자동 승인하지 않는다.
-- evidence 의 자동 retention / 자동 archival / 자동 cleanup 도입하지 않는다.
+- evidence 의 자동 retention / 자동 archival / 자동 cleanup 도입 아님 — archive trigger 는 운영자 명시 action.
+- 새 daemon / watcher / scheduler / background automation 도입 아님.
 - `docs/EVIDENCE_CONTRACT.md` 의 변경 아님 (별도 scoped change).
-- bulk evidence 의 source-repo 채택 아님.
+- bulk / raw evidence 의 source-repo 채택 아님 — source repo 에 들어갈 수 있는 것은 sanitized summary / reference 뿐.
+- smoke rerun, SC5 rerun, evidence archive 생성 아님 — 본 항목은 scope definition 단계까지만.
+- review.md "Review-cycle file-backed request input" / operations.md "PowerShell smoke invocation quoting hardening" 의 scope 와 묶지 않음 (cross-reference consistency 외).
 - 본 항목 implementation 은 별도 scoped goal 을 거친다.
