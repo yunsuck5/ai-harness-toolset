@@ -162,3 +162,40 @@ decision boundary:
 - smoke rerun, SC5 rerun, evidence archive 생성 아님 — 본 항목은 scope definition 단계까지만.
 - review.md "Review-cycle file-backed request input" / operations.md "PowerShell smoke invocation quoting hardening" 의 scope 와 묶지 않음 (cross-reference consistency 외).
 - 본 항목 implementation 은 별도 scoped goal 을 거친다.
+
+---
+
+## Project-local copy model docs vs global stable runtime ToolRoot model
+
+- **Status**: candidate
+- **Classification**: long-lived docs hygiene. global runtime ToolRoot 전환 (6-channel stable resolution; latest commits `f37c91c` / `e699c07` / `e9f2a00` 계열) 이후, 일부 docs 가 아직 구 project-local `.ai-harness/` copy model 기준 wording 을 유지하고 있어 부분 독해 시 두 모델이 혼동될 수 있다.
+
+### Context
+
+global stable runtime ToolRoot 모델로의 전환이 snippets / skill / resolution docs 에는 반영되었으나, 다음 docs 는 구 project-local copy model 기준을 그대로 유지하고 있다.
+
+- `docs/AI_HARNESS_TOOLSET_SCOPE.md` — §"Source repo vs target project payload" 가 `config/` / `scripts/` / `snippets/` / `templates/` 를 target project root 의 `.ai-harness/` payload 로 copy 하는 구 MVP / project-local model 을 설명한다. 이는 현재 `%USERPROFILE%\.claude\ai-harness-toolset\current` (channel 3) 판단의 **primary source-of-truth 로 쓰면 안 된다**. (단, `docs/backlog/README.md` 의 탐색 규칙은 여전히 본 문서를 contract 우선순위 목록에 포함하므로, 본 항목은 그 위상 자체의 재정의가 아니라 wording 정합성 정리만 다룬다.)
+- `docs/roadmap/POST_MVP_PLAN.md` — 큰 순서 / 단계 구분은 유효하나, 현재 handoff 기준 next action 과 status 를 완전히 반영하지 못할 수 있다. status 절을 현재 handoff 와 대조 없이 단독 인용하면 stale 판단 risk 가 있다.
+- `brief/` vs `log/brief/BRIEF.md` 관련 historical wording — 현재는 superseding note 에 의존해 reconcile 되어 있어, 해당 note 를 못 보고 본문 일부만 읽으면 brief 의 위치 / 위상 을 오해할 수 있다 (참고: `brief/` 는 repo root 에 존재하지 않고 `log/brief/` 가 runtime 자리다).
+
+### Latest-judgment priority order
+
+아래는 본 docs-debt 항목에 한정된 reading 가이드이며, 새 global precedence contract 가 아니다. backlog 항목은 design contract 가 아니라는 `docs/backlog/README.md` 의 규칙이 그대로 적용된다. 그 전제 위에서, 위 docs 중 어느 것이라도 현재 모델과 충돌하게 읽히면 다음 순서로 해석한다.
+
+1. 현재 handoff / snapshot identity (해당 라운드의 packet)
+2. `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md`
+3. `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`
+4. `docs/roadmap/CLEAN_TARGET_SMOKE_CRITERIA.md`
+
+### Candidate direction
+
+- 위 docs 의 구 project-local copy model wording 을 현재 6-channel global stable runtime ToolRoot model 과 정합하도록 보정하거나, 명시적 "superseded by …" pointer 를 본문 상단에 단다.
+- 보정 시 `SHARED_GLOBAL_INVOCATION_CONTRACT.md` / `GLOBAL_INSTALL_UPDATE_MODEL.md` 의 현재 model 정의를 기준으로 한다.
+
+### Non-goals
+
+- 본 항목은 backlog candidate 다. 즉각 docs 변경은 자동 승인되지 않는다.
+- 위 docs 의 전체 rewrite / model 재정의 아님 — wording 정합성 보정 + superseding pointer 정리 범위다.
+- global runtime ToolRoot model 자체의 재정의 아님 (model 정의는 contract docs 가 source-of-truth).
+- 본 항목은 controlled global materialization 자체의 blocker 가 **아니다** — materialization / smoke 이후 적절한 시점에 docs cleanup 으로 처리한다.
+- 본 항목 implementation 은 별도 scoped goal 을 거친다.
