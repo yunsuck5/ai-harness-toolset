@@ -24,7 +24,8 @@
 ### Path notation
 
 - global Claude install layer 경로는 항상 `%USERPROFILE%\.claude` 로 표기한다. expanded example 이 필요하면 `C:\Users\<USER>\.claude` 처럼 placeholder 를 쓴다. 실제 Windows 사용자 폴더명은 본 문서에 쓰지 않는다.
-- canonical local ToolRoot 의 generalized 표현은 `<canonical-local-toolroot>` 다. 현재 system example 은 `H:\Work\ai-harness-toolset\ai-harness-toolset` 이며, example 일 뿐 강제 경로가 아니다.
+- canonical local ToolRoot 의 generalized 표현은 `<canonical-local-toolroot>` 다. 현재 system example 은 `H:\Work\ai-harness-toolset\ai-harness-toolset` 이며, example 일 뿐 강제 경로가 아니다. 본 경로는 source / build input (development repo) 이며, shared / global mode 의 default runtime ToolRoot 가 **아니다** — 아래 materialized runtime ToolRoot 항목 참조.
+- shared / global mode 의 **materialized runtime ToolRoot** 경로는 `%USERPROFILE%\.claude\ai-harness-toolset\current` 다. 이는 `Get-ToolRoot` 의 channel 3 이 resolve 하는 default 연결 경로이며 (`docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1, D1), Layer 2 (`%USERPROFILE%\.claude`) 아래에 위치한다. development repo (`<canonical-local-toolroot>`) 가 이 경로로 materialize 되는 source/build input 이고, `current` 가 lifecycle script 가 실제 실행되는 runtime ToolRoot 다.
 - target project root 의 generalized 표현은 `<ProjectRoot>` 다.
 
 ---
@@ -198,18 +199,20 @@ decision: 목표 방식은 세 번째 — **Claude-operated install/update + glo
 
 - generalized: `<canonical-local-toolroot>`. 현재 system example: `H:\Work\ai-harness-toolset\ai-harness-toolset`.
 - Layer 0 GitHub repo 의 local clone (install-from-git-url) 이거나, 사용자가 이미 가지고 있던 local clone (install-from-local-clone) 이다.
-- source / update source 이며, global install layer 의 원천이다.
+- **source / build input 이다** — global install layer (Layer 2) 의 materialized runtime ToolRoot 를 만드는 원천이며, 그 자체가 shared / global mode 의 default runtime ToolRoot 는 아니다.
 - `ai-harness-toolset` 자체의 source repo 이기도 하다.
-- `SHARED_GLOBAL_INVOCATION_CONTRACT.md` 의 ToolRoot, `GLOBAL_ADOPTION_DECISION.md` §8 의 `ToolRoot` 와 동일 개념이다. `ScriptRoot` / `ConfigRoot` / `TemplateRoot` 는 이 layer 아래의 `scripts/` `config/` `templates/` 다.
+- as-built ToolRoot resolution 모델 (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1, D1) 에서 본 경로가 `Get-ToolRoot` 의 결과 ToolRoot 가 되는 것은 **channel 4 (dogfooding mode)** — source repo 운영자가 source repo 안에서 직접 작업하는 경우 — 에 한정된다. shared / global mode 의 default 연결 경로는 channel 3 의 materialized runtime ToolRoot (`%USERPROFILE%\.claude\ai-harness-toolset\current`, Layer 2 아래) 다. `GLOBAL_ADOPTION_DECISION.md` §8 의 `ToolRoot` 개념과는 정합하되, "어느 경로가 runtime ToolRoot 인가" 는 channel resolution 에 따라 달라진다. `ScriptRoot` / `ConfigRoot` / `TemplateRoot` 는 resolve 된 ToolRoot 아래의 `scripts/` `config/` `templates/` 다.
 
 ### Layer 2 — Global Claude install layer
 
 - `%USERPROFILE%\.claude` (expanded example: `C:\Users\<USER>\.claude`).
 - commands / skills / managed prompts / metadata / ToolRoot reference 가 생성 / 갱신되는 위치다.
 - install metadata (§5) 가 이 layer 아래에 위치한다.
+- **materialized runtime ToolRoot `%USERPROFILE%\.claude\ai-harness-toolset\current` 가 이 layer 아래에 위치한다.** 이는 `Get-ToolRoot` 의 channel 3 이 resolve 하는 shared / global mode 의 default 연결 경로이며 (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1, D1), Layer 1 의 source/build input (`<canonical-local-toolroot>`) 으로부터 materialize 된다. 디렉터리가 부재하면 `Get-ToolRoot` 는 다음 channel 로 skip 하고, 존재하지만 payload 가 불완전하면 fail-fast 한다.
+- `AI_HARNESS_TOOL_ROOT` 환경변수 (`Get-ToolRoot` channel 2) 는 위 materialized runtime ToolRoot 를 가리는 **override / debug / development validation 용** 이며, default 연결 방식이 아니다. User / Machine scope 에 고정 설정하지 않고, 디버그·개발 repo 검증이 필요한 세션에서만 **process-scope** 로 set 하는 것을 권장한다 — User / Machine scope 고정은 channel 2 가 항상 channel 3 을 가려 stable default 모델을 무력화한다.
 - toolset payload 전체를 target project 에 복사하지 않고, 이 global layer 를 통해 기능을 노출한다.
 - Claude skill 자산의 경우 `GLOBAL_ADOPTION_PROCEDURE.md` §3 의 `GlobalSkillRoot` (`%USERPROFILE%\.claude\skills`) 가 이 layer 안에 위치한다.
-- 이 layer 의 실제 변경은 항상 사용자 명시 승인을 요구한다 (`GLOBAL_ADOPTION_DECISION.md` §6, §7).
+- 이 layer 의 실제 변경은 항상 사용자 명시 승인을 요구한다 (`GLOBAL_ADOPTION_DECISION.md` §6, §7). materialized runtime ToolRoot (`...\ai-harness-toolset\current`) 의 실제 materialization 은 별도 scoped 작업이며 본 문서 작성 시점에 수행되지 않았다 (§13 참조).
 
 ### Layer 3 — ProjectRoot
 
