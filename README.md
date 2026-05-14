@@ -82,7 +82,7 @@ From a deployed target project, replace `scripts/review-cycle.ps1` with `.ai-har
 - Verdict (`yes` / `no` / `yes with risk`) does not approve commit, push, publish, merge, or release.
 - Provide `-TargetFiles` (single file) or `-TargetFilesPath` (multi-file list) for deterministic target selection. Joining multiple paths into a single comma-separated `-TargetFiles` value (for example `-TargetFiles "a.txt,b.txt"`) is rejected before any reviewer runs (`FAIL TargetFiles appears to be a comma-separated single string`); use `-TargetFilesPath` for two or more files. A literal filename containing a comma is allowed in the single-file shape.
 
-Cycle/result mechanics, parse failure semantics, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`. CLI/runtime dependency boundary: `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`. Multi-file list-file build steps: `docs/MVP_OPERATOR_GUIDE_KR.md` §9.
+Cycle/result mechanics, parse failure semantics, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`. CLI/runtime dependency boundary: `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`. Multi-file list-file build steps: `docs/OPERATOR_GUIDE_KR.md` §9.
 
 ## Component scripts
 
@@ -145,7 +145,7 @@ Updating means replacing only the matching managed block; removing means deletin
 
 ## Optional Claude Code skill
 
-`snippets/claude-skills/ai-harness-review/SKILL.md` is an optional, copy-only Claude Code skill template. It defines the natural-language entrypoint for `review-cycle.ps1` (for example, `현재 진행한 작업 코덱스 리뷰 진행해`) so the user does not need to type raw PowerShell. Adoption is a deliberate user action — copy it to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `~/.claude/skills/ai-harness-review/SKILL.md` (global, opt-in only). Nothing is auto-installed. Details: `docs/MVP_OPERATOR_GUIDE_KR.md` sections 7–8.
+`snippets/claude-skills/ai-harness-review/SKILL.md` is an optional, copy-only Claude Code skill template. It defines the natural-language entrypoint for `review-cycle.ps1` (for example, `현재 진행한 작업 코덱스 리뷰 진행해`) so the user does not need to type raw PowerShell. Adoption is a deliberate user action — copy it to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `~/.claude/skills/ai-harness-review/SKILL.md` (global, opt-in only). Nothing is auto-installed. Details: `docs/OPERATOR_GUIDE_KR.md` sections 7–8.
 
 ## What this toolset does not do
 
@@ -170,7 +170,7 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 | `docs/EVIDENCE_CONTRACT.md` | active operational | `log/evidence/<scope>/<case>/` minimal capture contract. |
 | `docs/LEGACY_KNOWLEDGE_TRANSFER.md` | historical reference | Legacy `ai-harness` → v1 migration mapping table. |
 | `docs/MIGRATION_INVENTORY_SUMMARY.md` | historical reference | Frozen migration inventory counts. |
-| `docs/MVP_OPERATOR_GUIDE_KR.md` | active operational | Korean operator guide for MVP flow, CLI usage, diagrams, and acceptance checklist. |
+| `docs/OPERATOR_GUIDE_KR.md` | active operational | Current Korean operator guide for shared/global operation, CLI usage, legacy mode appendix, and acceptance checklist. |
 | `docs/POWERSHELL_POLICY.md` | active operational | Encoding, line-ending, file IO, and collection return rules. |
 | `docs/REVIEWER_CONFIG_POLICY.md` | active operational | Reviewer config location, precedence, defaults, and MVP reviewer boundary. |
 | `docs/REVIEW_RESULT_CONTRACT.md` | active operational | `result.md` / `result.json` minimum fields and `review-verify -RequireResult` binding rules. |

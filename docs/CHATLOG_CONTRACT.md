@@ -85,7 +85,7 @@ BF artifact 는 사용자가 BF save / closeout / handoff / restore-offer intent
 - review artifact 축과 BF artifact 축은 서로 분리된 평가 축이다. 한 축의 부재로 다른 축을 fail 처리하지 않는다.
 - source snapshot 한 묶음에는 `log/` runtime artifact 를 포함하지 않는다 (`source vs runtime 경계` 절). snapshot 안에 `log/chatlog/` 가 없는 것 역시 chatlog contract 의 위반이 아니다.
 
-시나리오별 기대 artifact 표와 dogfood 절차상의 위치는 `docs/MVP_OPERATOR_GUIDE_KR.md` 12b 절을 본다.
+시나리오별 기대 artifact 표와 dogfood 절차상의 위치는 `docs/OPERATOR_GUIDE_KR.md` 12b 절을 본다.
 
 ## 경로 규약
 
