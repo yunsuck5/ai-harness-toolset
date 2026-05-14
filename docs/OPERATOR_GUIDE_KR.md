@@ -117,6 +117,7 @@ flowchart TD
 - 한 번의 사용자 호출 = 한 번의 Codex 실행. retry / fallback model / auto-fix loop 없음.
 - verdict 가 `yes` 여도 commit / push / publish / merge / release 자동 트리거 없음.
 - parsing 실패한 run 은 디스크에 그대로 남는다. 사람이 같은 run-id 안의 파일을 손으로 보정하지 않고, 새 run-id 로 다시 만든다.
+- 본 절과 §6 의 diagram 은 review cycle 의 흐름을 mode-neutral 하게 기술한다. diagram 안의 `scripts/<name>.ps1` 는 script 이름이며, 실제 `<ToolRoot>` 위치 (현행 default: channel 3 global stable install) 는 §2 의 channel resolution 으로 결정된다 — shared / global, source-repo / dogfooding, legacy project-local copy 어느 모드에서도 흐름 자체는 동일하다.
 
 ---
 
@@ -559,7 +560,7 @@ legacy project-local copy mode (channel 5) 를 평가하는 경우에만 본 부
 
 ## 17. Post-MVP CLI-only operating notes
 
-본 절은 MVP acceptance 가 끝난 이후 (`docs/roadmap/POST_MVP_PLAN.md` §1 closeout) 의 일상 운용 권고다. 위 §1–§16 의 MVP scope 정의 / acceptance 절차는 그대로 유효하며, 본 절은 그 위에 post-MVP 운용 규칙만 얇게 덧붙인다.
+본 절은 `ai-harness-toolset` 의 일상 CLI-only 운용 권고를 모은다. §1–§16 의 scope 정의와 acceptance 절차 — 특히 §13–§16 의 MVP acceptance section — 는 본 active operator guide 의 일부로 그대로 유효하며, 본 절은 그 위에 일상 운용 규칙을 정리한다. CLI-only MVP 단계 자체는 closed 상태이고 (`docs/roadmap/POST_MVP_PLAN.md` §1 closeout), 본 절의 권고는 그 closeout 이후의 운용을 다룬다.
 
 ### Operating mode
 
