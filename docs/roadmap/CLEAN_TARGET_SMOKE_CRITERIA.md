@@ -224,6 +224,39 @@ evidence 보고에 SC5 / SC5' 중 어느 쪽이 실행되었는지 명시한다.
 
 ---
 
+## 2A. Stable global channel 3 positive smoke (CH3 series)
+
+본 절은 §2 의 SC1–SC7 과 **별개의 케이스 군** 이다. SC1–SC7 은 channel 1 (`-ToolRoot`) / channel 2 (`AI_HARNESS_TOOL_ROOT`) 의 positive 케이스와 channel exhaustion (SC4) 을 다루며, channel 3 (global stable install `%USERPROFILE%\.claude\ai-harness-toolset\current`) 의 **positive resolution** 은 다루지 않는다 — SC4 는 오히려 A3b 로 channel 3 의 부재를 요구한다. 본 §2A 는 그 gap, 즉 stable global channel 3 가 실제로 materialize 된 환경에서의 positive resolution 을 다룬다.
+
+본 절은 두 부분을 명시적으로 구분한다.
+
+- **(I) Current observed pass status** — global stable ToolRoot 가 `%USERPROFILE%\.claude\ai-harness-toolset\current` 에 controlled materialization 된 직후, CH3-A / CH3-B / CH3-C 가 각각 1 회 실행되어 PASS 로 관찰된 기록.
+- **(II) Future criteria** — 본 케이스 군을 SC1–SC7 과 동일한 수준의 Pre / Action / Pass / Fail / Evidence 형식으로 정식화하는 것은 **후속 scoped 작업** 이다. 본 절은 그 정식화도, 재실행도 자동 승인하지 않는다.
+
+### (I) Current observed pass status
+
+아래는 관찰 기록이며 criteria binding 이 아니다. execution HEAD / fixture path / run-id 등 per-run 세부는 per-run evidence 가 권한이다 (§4 항목 4 와 정합). 본 절 본문은 특정 commit hash 에 pin 하지 않는다.
+
+| case | 검증 대상 | 관찰 결과 |
+|---|---|---|
+| **CH3-A** | clean target fixture (`-ToolRoot` 미명시, `AI_HARNESS_TOOL_ROOT` unset, source markers 부재, `.ai-harness/` 부재) 에서 `brief-init.ps1` 가 ToolRoot 를 channel 3 `%USERPROFILE%\.claude\ai-harness-toolset\current` 로 resolve. seeded `log/brief/BRIEF.md` 가 channel 3 의 `templates/brief/BRIEF.md` 와 SHA-256 identical. | PASS |
+| **CH3-B** | 동일 clean target 조건에서 `review-cycle.ps1` 가 channel 3 로 resolve 하고 `meta.json.toolRoot` 가 `%USERPROFILE%\.claude\ai-harness-toolset\current` 에 bind. `review-verify` default + `-RequireResult` 모두 PASS. | PASS |
+| **CH3-C** | `brief-init.ps1` / `review-cycle.ps1` 의 runtime output 이 fixture 의 `log/` 아래에만 생성되고, source repo (`<SourceRepoRoot>`) 와 global `current` payload 가 모두 unchanged. global `.claude` layer (`CLAUDE.md` / `AGENTS.md` / `skills/`) 도 unchanged. | PASS |
+
+위 세 케이스는 stable global channel 3 materialization 직후 단일 라운드로 실행되었다. 재실행 / regression 추적은 본 절의 범위가 아니다.
+
+### (II) Future criteria — deferred items
+
+- **CH3-A / CH3-B / CH3-C 의 정식 criteria 화** — Pre / Action / Pass / Fail / Evidence 형식의 정식 SC 항목으로 편입하는 것은 후속 scoped 작업이다. 본 절의 (I) 는 그때까지의 observed-status 기록 역할만 한다.
+- **CH3-D — incomplete-payload negative guard (deferred).** `%USERPROFILE%\.claude\ai-harness-toolset\current` 가 존재하지만 payload 가 불완전한 경우 (entrypoint `scripts/review-cycle.ps1` 부재) `Get-ToolRoot` 가 channel 3 에서 fallthrough 하지 않고 fail-fast throw 하는지 검증하는 negative 케이스 (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1 channel 3 분기 참조). 본 케이스는 target 을 의도적으로 불완전 상태로 mutate 해야 하므로 별도 scoped 작업으로 **deferred** 한다. 본 절은 CH3-D 를 실행하지 않았다.
+
+### Relationship to SC1–SC7
+
+- 본 §2A 는 SC1–SC7 의 정의를 변경하지 않는다. SC4 의 A3b (channel 3 부재 가정) 는 그대로 유효하다 — SC4 는 channel exhaustion 을, §2A 는 channel 3 positive resolution 을 검증하므로 두 케이스 군의 환경 가정은 의도적으로 다르다.
+- SC7 의 `<SourceRepoRoot>` read-only invariant 는 §2A 의 CH3-C 에서 동일하게 관찰되었으며, 추가로 materialized global `current` payload 의 read-only 도 함께 관찰되었다.
+
+---
+
 ## 3. Expected ToolRoot / ProjectRoot / LogRoot / BriefRoot behavior
 
 | 개념 | clean target 기대값 | 검증 SC |
