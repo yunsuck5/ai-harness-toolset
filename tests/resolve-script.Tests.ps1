@@ -31,6 +31,13 @@ BeforeAll {
         return ([System.IO.Path]::GetFullPath($p))
     }
 
+    function script:AbsentStablePath {
+        # A path under TestDrive that is intentionally never created, so the
+        # channel-3 global stable install is deterministically absent regardless
+        # of the host machine's real %USERPROFILE%\.claude state.
+        return ([System.IO.Path]::GetFullPath((Join-Path $TestDrive 'pester-resolve-absent-stable-NEVER')))
+    }
+
     function script:Clear-EnvToolRoot {
         $env:AI_HARNESS_TOOL_ROOT = $null
     }
@@ -53,14 +60,37 @@ Describe 'Get-ToolRootSource' {
         }
     }
 
-    It 'AC-RS-SRC-3: returns implicit when both -ToolRoot and env are empty' {
-        Get-ToolRootSource -ToolRoot '' | Should -Be 'implicit'
+    It 'AC-RS-SRC-3: returns implicit when -ToolRoot, env, and stable install are all absent' {
+        # Inject an absent stable path so the result does not depend on whether
+        # the host machine actually has a global stable install.
+        Get-ToolRootSource -ToolRoot '' -StableToolRoot (script:AbsentStablePath) | Should -Be 'implicit'
     }
 
     It 'AC-RS-SRC-4: -ToolRoot non-empty wins over env even when env is also set' {
         $env:AI_HARNESS_TOOL_ROOT = 'H:/env-value'
         try {
             Get-ToolRootSource -ToolRoot 'H:/param-value' | Should -Be 'explicit'
+        }
+        finally {
+            $env:AI_HARNESS_TOOL_ROOT = $null
+        }
+    }
+
+    It 'AC-RS-SRC-5: returns explicit when the global stable install is present and -ToolRoot/env are empty' {
+        $stable = script:New-CaseDir -Name 'src-stable-present'
+        Get-ToolRootSource -ToolRoot '' -StableToolRoot $stable | Should -Be 'explicit'
+    }
+
+    It 'AC-RS-SRC-6: -ToolRoot param wins over a present stable install (still explicit)' {
+        $stable = script:New-CaseDir -Name 'src-param-over-stable'
+        Get-ToolRootSource -ToolRoot 'H:/param-value' -StableToolRoot $stable | Should -Be 'explicit'
+    }
+
+    It 'AC-RS-SRC-7: env var wins over a present stable install (still explicit)' {
+        $stable = script:New-CaseDir -Name 'src-env-over-stable'
+        $env:AI_HARNESS_TOOL_ROOT = 'H:/env-value'
+        try {
+            Get-ToolRootSource -ToolRoot '' -StableToolRoot $stable | Should -Be 'explicit'
         }
         finally {
             $env:AI_HARNESS_TOOL_ROOT = $null
@@ -103,6 +133,29 @@ Describe 'Resolve-CycleScript (D2: explicit ToolRoot suppresses PSScriptRoot fal
         $msg | Should -Match 'explicit ToolRoot'
         $msg | Should -Match ([regex]::Escape($tool))
         $msg | Should -Match 'scripts/foo.ps1'
+    }
+
+    It 'AC-RS-CYC-EXPLICIT-MISSING-DIAG: explicit-source diagnostic names all three explicit sources' {
+        # The explicit-source set grew to three (-ToolRoot, AI_HARNESS_TOOL_ROOT,
+        # global stable install). The suppressed-fallback diagnostic must name all
+        # three so the operator can tell which explicit source is in play.
+        $tool  = script:New-CaseDir -Name 'cyc-exp-diag-tool'
+        $local = script:New-CaseDir -Name 'cyc-exp-diag-local'
+
+        $threw = $false
+        $msg = ''
+        try {
+            Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit' | Out-Null
+        }
+        catch {
+            $threw = $true
+            $msg = [string]$_.Exception.Message
+        }
+
+        $threw | Should -BeTrue
+        $msg | Should -Match '-ToolRoot'
+        $msg | Should -Match 'AI_HARNESS_TOOL_ROOT'
+        $msg | Should -Match 'global stable install'
     }
 }
 

@@ -1,17 +1,39 @@
 ﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Reuse the shared ToolRoot path helpers (Get-StableToolRootCandidate). path.ps1
+# defines functions and sets Set-StrictMode / $ErrorActionPreference to the same
+# values already set above, so its function definitions are safe to re-source in
+# this context even though production callers also dot-source it directly.
+. (Join-Path -Path $PSScriptRoot -ChildPath 'path.ps1')
+
 function Get-ToolRootSource {
     [CmdletBinding()]
     param(
-        [string] $ToolRoot
+        [string] $ToolRoot,
+        # Optional override for the global stable install path. Production callers
+        # leave this empty so it resolves to the real
+        # %USERPROFILE%\.claude\ai-harness-toolset\current; tests inject a
+        # controlled path for deterministic isolation.
+        [string] $StableToolRoot
     )
 
+    # Explicit ToolRoot sources suppress the $PSScriptRoot component fallback so
+    # that misconfiguration fails fast. The explicit sources, in priority order,
+    # are: the -ToolRoot parameter (channel 1), the AI_HARNESS_TOOL_ROOT env var
+    # (channel 2), and the global stable install (channel 3). The implicit
+    # sources (dogfooding source repo, legacy .ai-harness) keep the fallback.
     if (-not [string]::IsNullOrEmpty($ToolRoot)) {
         return 'explicit'
     }
     $envTool = [System.Environment]::GetEnvironmentVariable('AI_HARNESS_TOOL_ROOT')
     if (-not [string]::IsNullOrEmpty($envTool)) {
+        return 'explicit'
+    }
+    if ([string]::IsNullOrEmpty($StableToolRoot)) {
+        $StableToolRoot = Get-StableToolRootCandidate
+    }
+    if (-not [string]::IsNullOrEmpty($StableToolRoot) -and (Test-Path -LiteralPath $StableToolRoot -PathType Container)) {
         return 'explicit'
     }
     return 'implicit'
@@ -38,7 +60,7 @@ function Resolve-ScriptUnderToolRoot {
     }
 
     if ($ToolRootSource -eq 'explicit') {
-        throw ('{0}: component script not found under explicit ToolRoot. ToolRoot={1} missing={2}. Fallback to $PSScriptRoot was suppressed because ToolRoot was specified via -ToolRoot or AI_HARNESS_TOOL_ROOT.' -f $CallerLabel, $Tool, $RelativePath)
+        throw ('{0}: component script not found under explicit ToolRoot. ToolRoot={1} missing={2}. Fallback to $PSScriptRoot was suppressed because ToolRoot came from an explicit source: the -ToolRoot parameter, the AI_HARNESS_TOOL_ROOT env var, or the global stable install.' -f $CallerLabel, $Tool, $RelativePath)
     }
 
     $local = Join-Path -Path $LocalDir -ChildPath (Split-Path -Leaf $RelativePath)

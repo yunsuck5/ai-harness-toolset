@@ -40,6 +40,28 @@ BeforeAll {
         return $root
     }
 
+    function script:New-StableInstall {
+        # Builds a channel-3 global stable install dir. With -Valid it carries the
+        # entrypoint scripts/review-cycle.ps1 (a complete payload); without it the
+        # directory exists but the payload is incomplete.
+        param(
+            [string] $Name,
+            [switch] $Valid
+        )
+        $root = script:New-CaseDir -Name $Name
+        if ($Valid) {
+            script:Write-Utf8NoBomFile -Path (Join-Path $root 'scripts/review-cycle.ps1') -Content "# fake entrypoint`n"
+        }
+        return $root
+    }
+
+    function script:AbsentStablePath {
+        # A path under TestDrive that is intentionally never created, so the
+        # channel-3 global stable install is deterministically absent regardless
+        # of the host machine's real %USERPROFILE%\.claude state.
+        return ([System.IO.Path]::GetFullPath((Join-Path $TestDrive 'pester-path-absent-stable-NEVER')))
+    }
+
     function script:Clear-EnvToolRoot {
         $env:AI_HARNESS_TOOL_ROOT = $null
     }
@@ -175,23 +197,92 @@ Describe 'Get-ToolRoot channel 2 (env AI_HARNESS_TOOL_ROOT)' {
     }
 }
 
-Describe 'Get-ToolRoot channel 3 (dogfooding multi-marker)' {
+Describe 'Get-ToolRoot channel 3 (global stable install)' {
     BeforeEach { script:Clear-EnvToolRoot }
 
-    It 'AC-PATH-CH3-1: returns ProjectRoot when all three markers present' {
-        $project = script:New-MultiMarkerSourceRepo -Name 'ch3-multi-marker'
-        $result = Get-ToolRoot -ProjectRoot $project
+    It 'AC-PATH-CH3-1: returns stable ToolRoot when present and payload is valid' {
+        $stable  = script:New-StableInstall -Name 'ch3-valid' -Valid
+        $project = script:New-CaseDir -Name 'ch3-valid-project'
+        $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot $stable
+        $result.TrimEnd('/','\') | Should -Be ($stable.TrimEnd('/','\'))
+    }
+
+    It 'AC-PATH-CH3-2: absent stable directory skips to the dogfooding fallback' {
+        $stableAbsent = script:AbsentStablePath
+        $project = script:New-MultiMarkerSourceRepo -Name 'ch3-absent-skips'
+        # channel 3 absent -> channel 4 dogfooding resolves.
+        $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot $stableAbsent
         $result.TrimEnd('/','\') | Should -Be ($project.TrimEnd('/','\'))
     }
 
-    It 'AC-PATH-CH3-2: does NOT match dogfooding when only single legacy marker present' {
-        $project = script:New-CaseDir -Name 'ch3-single-marker'
+    It 'AC-PATH-CH3-3: present-but-incomplete stable payload fails fast with a clear diagnostic' {
+        $stableInvalid = script:New-StableInstall -Name 'ch3-incomplete'   # no scripts/review-cycle.ps1
+        # Project IS a valid dogfooding repo, proving channel 3 fails fast rather
+        # than silently skipping to an available channel-4 fallback.
+        $project = script:New-MultiMarkerSourceRepo -Name 'ch3-incomplete-project'
+        $threw = $false
+        $msg = ''
+        try {
+            Get-ToolRoot -ProjectRoot $project -StableToolRoot $stableInvalid | Out-Null
+        }
+        catch {
+            $threw = $true
+            $msg = [string]$_.Exception.Message
+        }
+        $threw | Should -BeTrue -Because 'an existing but incomplete stable payload must fail fast, not silently skip'
+        $msg | Should -Match 'channel 3'
+        $msg | Should -Match 'payload is incomplete'
+        $msg | Should -Match 'review-cycle\.ps1'
+        $msg | Should -Match ([regex]::Escape($stableInvalid))
+    }
+
+    It 'AC-PATH-CH3-4: env var (channel 2) overrides the stable channel' {
+        $envTool = script:New-CaseDir -Name 'ch3-env-overrides-env'
+        $stable  = script:New-StableInstall -Name 'ch3-env-overrides-stable' -Valid
+        $project = script:New-CaseDir -Name 'ch3-env-overrides-project'
+        $env:AI_HARNESS_TOOL_ROOT = $envTool
+        try {
+            $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot $stable
+            $result.TrimEnd('/','\') | Should -Be ($envTool.TrimEnd('/','\'))
+        }
+        finally {
+            $env:AI_HARNESS_TOOL_ROOT = $null
+        }
+    }
+
+    It 'AC-PATH-CH3-5: explicit -ToolRoot (channel 1) overrides the stable channel' {
+        $explicitTool = script:New-CaseDir -Name 'ch3-param-overrides-tool'
+        $stable       = script:New-StableInstall -Name 'ch3-param-overrides-stable' -Valid
+        $project      = script:New-CaseDir -Name 'ch3-param-overrides-project'
+        $result = Get-ToolRoot -ToolRoot $explicitTool -ProjectRoot $project -StableToolRoot $stable
+        $result.TrimEnd('/','\') | Should -Be ($explicitTool.TrimEnd('/','\'))
+    }
+
+    It 'AC-PATH-CH3-6: stable channel wins over the dogfooding multi-marker (channel 4)' {
+        $stable  = script:New-StableInstall -Name 'ch3-wins-over-dogfood-stable' -Valid
+        $project = script:New-MultiMarkerSourceRepo -Name 'ch3-wins-over-dogfood-project'
+        $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot $stable
+        $result.TrimEnd('/','\') | Should -Be ($stable.TrimEnd('/','\'))
+    }
+}
+
+Describe 'Get-ToolRoot channel 4 (dogfooding multi-marker)' {
+    BeforeEach { script:Clear-EnvToolRoot }
+
+    It 'AC-PATH-CH4-1: returns ProjectRoot when all three markers present' {
+        $project = script:New-MultiMarkerSourceRepo -Name 'ch4-multi-marker'
+        $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot (script:AbsentStablePath)
+        $result.TrimEnd('/','\') | Should -Be ($project.TrimEnd('/','\'))
+    }
+
+    It 'AC-PATH-CH4-2: does NOT match dogfooding when only single legacy marker present' {
+        $project = script:New-CaseDir -Name 'ch4-single-marker'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'scripts/verify-ps1.ps1') -Content "# fake`n"
         # Without all three markers + no .ai-harness/ legacy dir, channel chain should throw.
         $threw = $false
         $msg = ''
         try {
-            Get-ToolRoot -ProjectRoot $project | Out-Null
+            Get-ToolRoot -ProjectRoot $project -StableToolRoot (script:AbsentStablePath) | Out-Null
         }
         catch {
             $threw = $true
@@ -199,39 +290,39 @@ Describe 'Get-ToolRoot channel 3 (dogfooding multi-marker)' {
         }
         $threw | Should -BeTrue
         $msg | Should -Match 'no ToolRoot channel could be resolved'
-        $msg | Should -Match 'channel 3'
+        $msg | Should -Match 'channel 4'
     }
 }
 
-Describe 'Get-ToolRoot channel 4 (legacy .ai-harness)' {
+Describe 'Get-ToolRoot channel 5 (legacy .ai-harness)' {
     BeforeEach { script:Clear-EnvToolRoot }
 
-    It 'AC-PATH-CH4-1: returns ProjectRoot/.ai-harness when that directory exists' {
-        $project = script:New-CaseDir -Name 'ch4-legacy'
+    It 'AC-PATH-CH5-1: returns ProjectRoot/.ai-harness when that directory exists' {
+        $project = script:New-CaseDir -Name 'ch5-legacy'
         $legacy = Join-Path $project '.ai-harness'
         $null = New-Item -ItemType Directory -Path $legacy -Force
-        $result = Get-ToolRoot -ProjectRoot $project
+        $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot (script:AbsentStablePath)
         $result.TrimEnd('/','\') | Should -Be ((Resolve-Path -LiteralPath $legacy).ProviderPath.TrimEnd('/','\'))
     }
 
-    It 'AC-PATH-CH4-2: dogfooding marker wins over legacy .ai-harness' {
-        $project = script:New-MultiMarkerSourceRepo -Name 'ch4-dogfood-wins'
+    It 'AC-PATH-CH5-2: dogfooding marker wins over legacy .ai-harness' {
+        $project = script:New-MultiMarkerSourceRepo -Name 'ch5-dogfood-wins'
         $legacy = Join-Path $project '.ai-harness'
         $null = New-Item -ItemType Directory -Path $legacy -Force
-        $result = Get-ToolRoot -ProjectRoot $project
+        $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot (script:AbsentStablePath)
         $result.TrimEnd('/','\') | Should -Be ($project.TrimEnd('/','\'))
     }
 }
 
-Describe 'Get-ToolRoot channel 5 (no channel resolved)' {
+Describe 'Get-ToolRoot channel 6 (no channel resolved)' {
     BeforeEach { script:Clear-EnvToolRoot }
 
-    It 'AC-PATH-CH5-1: throws with channel trace listing all attempted channels' {
-        $project = script:New-CaseDir -Name 'ch5-empty-project'
+    It 'AC-PATH-CH6-1: throws with channel trace listing all attempted channels' {
+        $project = script:New-CaseDir -Name 'ch6-empty-project'
         $threw = $false
         $msg = ''
         try {
-            Get-ToolRoot -ProjectRoot $project | Out-Null
+            Get-ToolRoot -ProjectRoot $project -StableToolRoot (script:AbsentStablePath) | Out-Null
         }
         catch {
             $threw = $true
@@ -242,6 +333,7 @@ Describe 'Get-ToolRoot channel 5 (no channel resolved)' {
         $msg | Should -Match 'channel 2'
         $msg | Should -Match 'channel 3'
         $msg | Should -Match 'channel 4'
+        $msg | Should -Match 'channel 5'
         $msg | Should -Match 'AI_HARNESS_TOOL_ROOT'
         $msg | Should -Match '-ToolRoot'
     }
@@ -260,7 +352,7 @@ Describe 'Get-ToolRoot caller contract (callsite consumption)' {
 
     It 'AC-PATH-CALL-2: result is usable directly as a Join-Path base' {
         $project = script:New-MultiMarkerSourceRepo -Name 'call-joinpath-project'
-        $result = Get-ToolRoot -ProjectRoot $project
+        $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot (script:AbsentStablePath)
         $joined = Join-Path -Path $result -ChildPath 'config/reviewer.json'
         Test-Path -LiteralPath $joined -PathType Leaf | Should -BeTrue
     }
