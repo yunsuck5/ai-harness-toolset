@@ -199,3 +199,28 @@ global stable runtime ToolRoot 모델로의 전환이 snippets / skill / resolut
 - global runtime ToolRoot model 자체의 재정의 아님 (model 정의는 contract docs 가 source-of-truth).
 - 본 항목은 controlled global materialization 자체의 blocker 가 **아니다** — materialization / smoke 이후 적절한 시점에 docs cleanup 으로 처리한다.
 - 본 항목 implementation 은 별도 scoped goal 을 거친다.
+
+---
+
+## Aggregate digest reproducibility — install/update verification scope debt
+
+- **Status**: candidate
+- **Classification**: install / update automation 의 verification scope. global runtime ToolRoot channel 3 (`%USERPROFILE%\.claude\ai-harness-toolset\current`) payload 무결성 검증 방법의 정의에 관한 debt 다.
+
+### Context
+
+channel 3 payload 검증 시, 단일 aggregate digest 값으로 payload 전체 무결성을 한 번에 확인하려는 시도가 있었으나, 그 digest 를 산출한 알고리즘이 repo docs / scripts 어디에도 명문화되어 있지 않고 `current/` 안에 동행 manifest 도 없어 재현 / 검증이 불가능했다. 동일 payload 에 대해 서로 다른 산출 방식 (relpath:hash 라인 집계, content-only concat 등) 이 서로 다른 값을 내므로, 알고리즘이 고정되지 않으면 "expected digest" 는 verifiable 한 기준이 되지 못한다. 해당 라운드에서는 per-file SHA-256 비교 (`current/` vs source HEAD, 27/27 byte-identical) 라는 method-independent 방식으로 content equality 를 확인하여 우회했다.
+
+### Candidate direction
+
+- install / update automation 의 verification scope (`GLOBAL_INSTALL_UPDATE_MODEL.md` §1 의 automation 본체 scope 정의 참조) 에 payload 무결성 검증 방식을 명시적으로 포함한다. 다음 중 하나로 좁힌다.
+  - (a) **deterministic aggregate digest algorithm 의 문서화** — 입력 파일 집합, 정렬 규칙, 경로 정규화, 줄바꿈 / BOM 처리, 해시 결합 순서를 명문화하고, 그 알고리즘으로 산출한 digest 를 `current/` 동행 manifest 에 기록한다.
+  - (b) **per-file manifest** — aggregate digest 대신 relative path → SHA-256 의 명시적 목록을 manifest 로 두고, 검증은 파일 단위 비교로 수행한다.
+- 어느 쪽이든 검증 알고리즘 / manifest schema 는 install metadata (`GLOBAL_INSTALL_UPDATE_MODEL.md` §5) 와 정합해야 한다.
+
+### Non-goals
+
+- 본 항목은 backlog candidate 다. 즉각 algorithm / manifest 도입은 자동 승인되지 않는다.
+- install / update automation 본체 구현의 승인이 아니다 — `GLOBAL_INSTALL_UPDATE_MODEL.md` §7 sequencing (validation 먼저) 이 우선한다.
+- digest 검증 linter / 자동 검사 tool 도입을 자동 승인하지 않는다.
+- 본 항목 implementation 은 별도 scoped goal 을 거친다.

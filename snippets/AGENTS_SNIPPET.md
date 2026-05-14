@@ -5,10 +5,12 @@ This is a manually adopted AI instruction payload for Codex CLI and other agent-
 
 ## Adoption rules
 
-- This payload is inserted only inside the managed block in root `AGENTS.md`.
-- Whole-file overwrite of root `AGENTS.md` is forbidden.
-- Project-specific instructions outside the managed block must be preserved verbatim.
-- Updating means replacing only the managed block content; removing means deleting only the managed block.
+- This payload lives only inside the `AI_HARNESS_TOOLSET_GLOBAL` managed block of the destination `AGENTS.md` (project root or global). Replacing the content inside that managed block is the standard, allowed way to adopt or update it.
+- Whole-file overwrite of `AGENTS.md` is forbidden. Content outside the managed block — project-specific or user instructions — must be preserved verbatim.
+- Adopting or updating this payload in a global or user `AGENTS.md` (or another Codex agent file) is an explicit, user-approved global/user config mutation, never an implicit or automatic action.
+- If the marker pair is already present, only the block between the markers may be replaced. Inserting the block into an existing file that has no marker, and creating a missing destination file, are each separate explicit-approval boundaries.
+- An incomplete marker pair, duplicated markers, or a malformed block is a fail-fast / manual-review condition: stop and do not edit the file.
+- The full marker-state apply policy is governed by `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6.
 
 ## Project layout
 
@@ -141,11 +143,19 @@ These triggers update BF Level 1/2 only. They do **not** auto-write `log/brief/B
 - No per-user / per-operator log partitioning, operator-id, machine-id, or ownership metadata.
 - No `BF_STATE.json` or sidecar state-machine file.
 - No daemon, watcher, scheduler, hook, or background task.
-- No global `CLAUDE.md` mutation.
-- No global `AGENTS.md` mutation.
-- No `~/.claude/` mutation.
+- No implicit, automatic, or whole-file mutation of a global `CLAUDE.md`, `AGENTS.md`, Codex agent file, or anything under `~/.claude/`. Explicit user-approved managed-block replacement (see Adoption rules) is the one governed exception.
 - No automatic mirror between `log/brief/BRIEF.md` and `log/chatlog/current/resume.md`.
 - No automatic target `.gitignore` mutation.
+
+## Execution discipline
+
+- Run lifecycle commands — `review-cycle.ps1` and its Codex review in particular — in the foreground, and wait for completion. Do not spawn detached background work, and do not run a review and other work in parallel.
+- A timeout or budget is only an operating allowance for a foreground attempt; it is not a correctness guarantee. Never raise a timeout as a way to make a review "valid." Review validity is judged by complete run artifacts, valid result binding, and `review-verify -RequireResult` — not by how the run was launched.
+- Review scope is set by the review purpose and the artifact boundary. Never shrink it artificially to avoid a long-running or background run.
+- If the harness silently auto-converts a foreground run to background, do not report it as a clean foreground execution. Report that the auto-conversion happened.
+- An auto-converted run is still acceptable as conditional review evidence only when the session waited for it with no parallel work, the run artifacts are complete, the result binding is valid, and `review-verify -RequireResult` passes. Output loss, incomplete artifacts, a missing result, stale binding, or a `review-verify` failure disqualifies it as closeout evidence.
+- Background execution by itself does not invalidate review quality or result validity. What is forbidden is detached background work, parallel background work, silent (unreported) background conversion, evidence ambiguity, and output loss — not the conversion event alone.
+- If a run leaves temp output clutter, report its path. Delete it only after separate explicit user approval.
 
 ## Other rules
 

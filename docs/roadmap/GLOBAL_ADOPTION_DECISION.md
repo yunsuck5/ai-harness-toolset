@@ -168,19 +168,27 @@ deterministic helper script (예: inspect-only, check-only) 는 후속 단계에
 
 ### Update policy — global CLAUDE.md / AGENTS.md
 
-destination 의 marker pair 상태에 따라 동작이 다르다.
+marker-bounded block 의 전면 교체가 standard 로 허용되는 적용 방식이다. whole-file overwrite 는 금지하며, marker-bounded block 바깥의 기존 사용자 / project 내용은 보존한다. 본 동작은 implicit / automatic mutation 이 아니라, §7 의 explicit user-approved global / user config mutation scope 에서만 수행된다. 즉 "global mutation 금지" 는 implicit / automatic / whole-file mutation 의 금지를 의미하며, explicit user-approved managed-block replacement 와 충돌하지 않는다.
 
-- destination 에 matching marker pair 가 **0 개** 인 경우.
+destination 의 파일 존재 여부와 marker pair 상태에 따라 동작이 다르다.
+
+- destination file 자체가 **존재하지 않는** 경우.
+  - missing file 의 생성은 별도 explicit approval boundary 다 (아래 marker 0 개 케이스와 구분된다).
+  - 생성 예정 경로와 삽입할 내용을 사용자에게 제안한다.
+  - 사용자 승인을 받는다.
+  - 승인된 경우에만 파일을 생성하고 source snippet 전체 (marker 포함) 를 기록한다.
+- destination file 은 존재하지만 matching marker pair 가 **0 개** 인 경우.
+  - marker 가 없는 기존 파일에 block 을 삽입하는 행위는 (missing file 생성과 구분되는) 별도 explicit approval boundary 다.
   - 삽입 지점을 사용자에게 제안한다.
   - 사용자 승인을 받는다.
   - source snippet 전체 (marker 포함) 를 삽입한다.
 - destination 에 matching marker pair 가 **정확히 1 개** 인 경우.
   - diff 를 사용자에게 보여준다.
   - 사용자 승인을 받는다.
-  - marker-bounded block 전체를 source snippet (marker 포함) 으로 교체한다.
-- destination 에 marker pair 가 **여러 개**, **malformed**, **nested** 인 경우.
-  - 동작을 중단한다.
-  - 충돌을 보고한다.
+  - marker-bounded block 전체를 source snippet (marker 포함) 으로 교체한다. 이 케이스에서는 marker 안쪽만 교체할 수 있다.
+- destination 에 marker pair 가 **불완전 (BEGIN / END 한쪽 누락)**, **여러 개**, **malformed**, **nested** 인 경우.
+  - 동작을 중단한다 (fail-fast).
+  - 충돌을 보고하고 manual review 대상으로 둔다.
   - 파일을 편집하지 않는다.
 - marker-bounded block **바깥** 의 텍스트는 어떤 경우에도 편집하지 않는다.
 

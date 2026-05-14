@@ -41,6 +41,7 @@
 - Claude Code 가 source repo 를 canonical local ToolRoot 로 등록 / 갱신한다.
 - Claude Code 가 source repo 를 기준으로 global Claude layer 를 install / update 한다. 업데이트는 global install metadata 기반으로 dispatch 된다 (§4, §5).
 - install / update **automation 을 먼저 구현하지 않는다.** 먼저 global behavior validation (manual global activation / controlled global materialization) 을 수행하고, 그 결과를 기준으로 automation 을 구현한다 (§7).
+- install / update automation 본체의 scope 는 **runtime ToolRoot channel 3 payload 의 materialize / refresh, install metadata, update dispatch, verification** 으로 제한한다. global `CLAUDE.md` / `AGENTS.md` / Codex agent file 의 managed-block apply 는 automation 본체에 포함되지 않으며, `GLOBAL_ADOPTION_DECISION.md` §6 가 governing 하는 별도의 explicit user-approved global / user config mutation scope 다. 두 scope 는 분리되며, 한쪽의 승인이 다른 쪽을 승인하지 않는다.
 - target project 에는 `ai-harness-toolset` payload 를 설치하지 않는다. target persistent footprint 는 `log/` + `brief/` 로 제한한다 (§8).
 - `ai-harness-toolset` repo 는 canonical ToolRoot 이면서 self-dogfooding ProjectRoot 인 special case 다. ProjectRoot 로 동작할 때 `log/` 와 `brief/` 를 가질 수 있으나, 그 `brief/` 는 source payload 도 install payload 도 아니다 (§9).
 
@@ -502,7 +503,7 @@ graph TD
 
 - 실제 global install 의 실행.
 - `%USERPROFILE%\.claude` (global Claude install layer) 의 변경.
-- global `CLAUDE.md` / `AGENTS.md` 의 변경.
+- global `CLAUDE.md` / `AGENTS.md` / Codex agent file 의 변경 (managed-block apply 포함). 이는 install / update automation 본체의 scope 가 아니며, `GLOBAL_ADOPTION_DECISION.md` §6 의 explicit user-approved managed-block replacement scope 로 분리된다 — 본 문서는 그 scope 를 자동 승인하지 않는다.
 - target project 의 변경.
 - smoke test 의 실행.
 - evidence archive 의 생성.
