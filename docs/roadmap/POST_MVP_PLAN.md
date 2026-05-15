@@ -35,26 +35,25 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 ## 3. Brief system — post-MVP core
 
-> **Superseded (BRIEF posture reconciliation).** 본 §3 의 canonical Brief 위치 결정 (`brief/BRIEF.md` 가 canonical,
-> `log/brief/` 디렉터리는 만들지 않는다) 은 이후의 BRIEF posture reconciliation 으로 superseded 되었다.
-> 현재 canonical BRIEF 위치는 `<ProjectRoot>/log/brief/BRIEF.md` 이며, BRIEF 는 `log/` 아래 operator-local
-> runtime state 다. root `<ProjectRoot>/brief/` 는 ai-harness 용도로 금지된다. source-of-truth 는
-> `docs/BRIEF_CONTRACT.md` 다. 아래 §3 본문은 reconciliation 이전 시점의 결정 기록으로 보존한다.
+> **Posture re-affirmed.** 본 §3 의 canonical Brief 위치 결정 (`brief/BRIEF.md` 가 target 의 product canonical
+> 자리이며 `log/brief/` 는 product canonical 자리가 아니다) 은 별도 라운드에서 재확인되었다. 그 사이 진행되었던
+> "BRIEF posture reconciliation" — `log/brief/BRIEF.md` 를 canonical 자리로 격상하고 root `brief/` 를 forbidden
+> 으로 둔 framing — 은 정정되어 더 이상 유효하지 않다. 현행 source-of-truth 는 `docs/BRIEF_CONTRACT.md` 다.
 
 - Brief system 은 post-MVP 의 core 항목이다. 단, 본 문서는 Brief system 의 implementation 시점, 우선순위, owner, deadline 을 확정하지 않는다.
 - canonical Brief 위치 결정.
-  - target repo 의 canonical restore source 는 `brief/BRIEF.md` 다.
-  - source repo (이 toolset 의 source 트리) 에는 `brief/` 를 두지 않는다.
-  - target project 에 적용되는 시점에 한해 `brief/BRIEF.md` 가 canonical 위치다.
-- 금지 항목.
-  - `log/brief/` 디렉터리는 만들지 않는다. `log/` 는 runtime artifact 트리이고, Brief 의 canonical 위치가 아니다.
-  - 기존 `log/chatlog/current/resume.md` / `log/chatlog/current/summary.md` 를 `log/brief/` 아래로 옮기는 reorganization 은 본 결정 범위 밖이다.
-- 기존 `log/chatlog/current/resume.md` / `log/chatlog/current/summary.md` 는 BF Level 1/2 artifact 로 계속 동작한다. 이 두 파일이 곧 Chatlog system 의 implementation 은 아니다 (다음 절 참조).
+  - target repo 의 product canonical restore source 는 `<ProjectRoot>/brief/BRIEF.md` 다.
+  - source repo (이 toolset 의 source 트리) 에는 `brief/` artifact 를 두지 않는다 (template 자리 `templates/brief/BRIEF.md` 는 별개).
+  - target project 에 적용되는 시점의 product canonical 자리는 `brief/BRIEF.md` 한 곳이다.
+- 현재 source-side primitive 와 product canonical 의 관계.
+  - `scripts/brief-init.ps1` 의 현재 writer destination 은 `<ProjectRoot>/log/brief/BRIEF.md` 다. 이는 narrow source-side primitive 의 현재 동작이며, target 의 product canonical 자리가 아니다.
+  - 따라서 `<ProjectRoot>/log/brief/BRIEF.md` 가 존재할 수 있어도 product canonical 로 승격되지 않는다. 그 routing 을 target canonical (`brief/BRIEF.md`) 로 옮기는 작업은 future scoped work 다 (§5 참조).
+  - 기존 `log/chatlog/current/resume.md` / `log/chatlog/current/summary.md` 를 product canonical 의 자리로 reorganize 하는 시도는 본 결정 범위 밖이다 — 두 파일은 `docs/CHATLOG_CONTRACT.md` 의 failed intermediate / legacy migration source / deprecation candidate 분류를 따른다.
 - 현재 상태 (source repo).
-  - source-side primitive (`scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `templates/brief/BRIEF.md`) implementation 완료.
-  - `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 의 BF Level 3 protocol 정합성 정렬 완료.
-  - target payload 측 smoke test 완료.
-  - 위 항목들은 source-side 가 `docs/BRIEF_CONTRACT.md` 책임 경계를 충족한다는 의미다. Brief system 전체 (target-side rollout, deterministic 자동화 확장 등) 의 완료를 의미하지 않으며, 본 절 첫 줄의 implementation 시점 / 우선순위 / owner / deadline 미확정 진술은 그 broader scope 에 대해 그대로 유효하다.
+  - source-side primitive (`scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `templates/brief/BRIEF.md`) implementation 완료. 단, 이는 BF Level 3 capability 의 full implementation 이 아니라 narrow primitive 수준이다 (`docs/BRIEF_CONTRACT.md` §"BF Level — save/restore capability maturity").
+  - `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 가 사용자 자연어 trigger 에 의한 BF save / restore-offer protocol **동작 형태** 를 정의하는 작업은 완료되어 있다. 단 두 snippet 본문의 framing 자체 — path 표현, "canonical" / "forbidden" 라벨링, BF Level 정의 — 는 본 §3 및 `docs/BRIEF_CONTRACT.md` / `docs/CHATLOG_CONTRACT.md` 의 현행 contract 보다 앞선 시점의 모델이며 그 contract 와 drift 상태다. snippet 본문 정정 (path / 라벨링 / BF Level 정의 정합화 및 writer destination routing) 은 별도 future scoped work 다. drift 가 해소되기 전까지 framing 의 source-of-truth 는 본 §3 와 contract docs 다.
+  - target payload 측 source-side primitive smoke test 완료.
+  - 위 항목들은 narrow source-side primitive 가 동작 가능 상태라는 의미다. Brief system 전체 (target-canonical routing, BF Level 3 deterministic capability 등) 의 완료를 의미하지 않으며, 본 절 첫 줄의 implementation 시점 / 우선순위 / owner / deadline 미확정 진술은 그 broader scope 에 대해 그대로 유효하다.
 
 ---
 
@@ -63,19 +62,20 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - Chatlog system 은 ai-harness-toolset 이 향후 다루기로 의도한 subsystem 이다.
 - 현재 시점의 사실 인식.
   - Chatlog system 자체의 practical implementation 과 testing 은 **거의 없는 상태** 다.
-  - `docs/CHATLOG_CONTRACT.md` 가 BF / CL 책임 분리, summary-first / resume-first 원칙, canonical heading 등을 정의하지만, 이는 manual convention 이다.
-  - `log/chatlog/current/resume.md`, `log/chatlog/current/summary.md` 는 **BF Level 1/2 artifact** 다. Chatlog system 의 CL (Chat Log — 누적 work history / portfolio / audit) 영역의 fuller implementation 이 아니다.
+  - `docs/CHATLOG_CONTRACT.md` 가 Brief 와 Chatlog 의 책임 분리, Chatlog 의 history / decision rationale / Brief reconstruction evidence 책임을 정의하지만, 이는 manual convention 이다.
+  - `log/chatlog/current/resume.md`, `log/chatlog/current/summary.md` 는 **canonical 자리가 아니다.** failed intermediate / legacy migration source / deprecation candidate 분류이며, current restore source 가 아니다 (`docs/CHATLOG_CONTRACT.md`). 이는 Chatlog system 의 fuller implementation 도 아니다.
 - 따라서 다음 두 개의 명제가 동시에 성립한다.
   - "log/chatlog/current/ 가 갱신되고 있다" 는 사실은 Chatlog system 이 implementation 되었다는 의미가 아니다.
-  - "Chatlog system 이 아직 implementation 되지 않았다" 는 사실은 BF artifact 사용을 막지 않는다.
-- CL 영역의 자동화 (누적 work history, 자체 schema, retention, browse UI, RND-style heavy workflow) 는 본 결정 범위 밖이며 별도 scoped 승인이 필요하다.
+  - "Chatlog system 이 아직 implementation 되지 않았다" 는 사실은 BF Level 1/2 manual discipline 의 운용을 막지 않는다 — 그 discipline 의 target 자리는 Chatlog 가 아니라 Brief (`<ProjectRoot>/brief/BRIEF.md`) 이며, 현재 source-side primitive 는 writer destination 이 다르다는 점만 별도로 정합화 대상이다 (§3, §5).
+- Chatlog fuller implementation (누적 work history, 자체 schema, retention, browse UI, RND-style heavy workflow) 는 본 결정 범위 밖이며 later track 이다 (`docs/CHATLOG_CONTRACT.md`).
 
 ---
 
 ## 5. BF Level 3 — allowed scope
 
-- BF Level 3 (사용자 자연어 trigger 가 아닌, 보다 deterministic 하게 BF 를 갱신하는 형태의 자동화) 는 post-MVP 단계에서 **허용 범위 안** 이다.
-- 단, 다음 항목은 BF Level 3 의 이름으로도 본 결정 범위에서 명시적으로 **금지** 한다.
+- BF Level 은 path 가 아니라 **save / restore capability maturity** 다 (`docs/BRIEF_CONTRACT.md`). BF Level 1/2 는 manual save / restore discipline 이고, BF Level 3 는 deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer 의 자동화다.
+- BF Level 3 는 post-MVP 단계에서 **허용 범위 안** 이다. 단, 사람이 BRIEF 본문을 직접 손편집하는 모델을 BF Level 3 의 목표로 두지 않는다. 반대로 BF Level 3 는 그 손편집 의존을 줄이는 방향이다.
+- 다음 항목은 BF Level 3 의 이름으로도 본 결정 범위에서 명시적으로 **금지** 한다.
   - daemon
   - watcher
   - scheduler
@@ -84,7 +84,8 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - BF Level 3 implementation 자체도 본 문서가 자동 승인하지 않는다. design / scoped 승인 / scoped implementation 이 별도로 필요하다.
 - 본 절은 BF Level 3 이 후속 작업의 scope 안에 있을 수 있다는 사실만 기록한다.
 - 현재 상태 (source repo).
-  - BF Level 3 의 source-side primitive (§3 참조) 는 implementation 완료 상태다.
+  - `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 라는 **narrow source-side primitive** 가 갖춰져 있다 (§3 참조). 이는 BF Level 3 capability 의 full implementation 이 아니다.
+  - BF Level 3 의 미구현 future scoped work 에는 다음이 포함된다 — deterministic save / update writer, restore-offer behavior 의 source-side automation, stale warning, session-start guidance, 현재 primitive 의 writer destination 을 target canonical (`brief/BRIEF.md`) 로 routing 정합화.
   - 본 §5 의 forbidden 항목 (daemon / watcher / scheduler / `BF_STATE.json` / automatic decision-maker) 은 그대로 유지된다.
   - 그 다음 BF Level 3 단계는 본 §5 가 자동 승인하지 않는다. design / scoped 승인을 별도로 거친다.
 
@@ -167,9 +168,9 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 - CLI-only MVP closed (§1).
 - Codex review subsystem operational, maintenance mode 진입 (§2).
-- Brief / BF Level 3 의 source-side primitive (`scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `templates/brief/BRIEF.md`) implementation 완료 (§3, §5).
-- `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 의 BF Level 3 protocol 정합성 정렬 완료 (§3, §5).
-- target payload 측 BF Level 3 smoke test 완료 (§3, §5).
+- Brief 의 narrow source-side primitive (`scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `templates/brief/BRIEF.md`) implementation 완료 (§3, §5). 이는 BF Level 3 capability 의 full implementation 이 아니다 — `docs/BRIEF_CONTRACT.md` §"BF Level — save/restore capability maturity" 참조.
+- `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 가 사용자 자연어 trigger 에 의한 BF save / restore-offer protocol **동작 형태** 를 정의하는 작업은 완료되어 있다 (§3, §5). 단 두 snippet 본문의 framing 자체 (path 표현, "canonical" / "forbidden" 라벨링, BF Level 정의) 는 현행 `docs/BRIEF_CONTRACT.md` / `docs/CHATLOG_CONTRACT.md` 와 drift 상태이며 그 정정은 future scoped work 다 — writer destination routing 정합화도 그 안에 포함된다. drift 가 해소되기 전까지 framing 의 source-of-truth 는 contract docs 다.
+- target payload 측 source-side primitive smoke test 완료 (§3, §5).
 - post-MVP review effort / cost 운영 권고 문서 `docs/roadmap/REVIEW_EFFORT_GUIDE.md` 추가 완료 (§2).
 - global adoption operating layer 방향 결정 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` 기록 완료 (§6, §11).
 - `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 에 `AI_HARNESS_TOOLSET_GLOBAL` managed block marker 적용 완료 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6).

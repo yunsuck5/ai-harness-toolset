@@ -123,9 +123,12 @@ Behavior, field set, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`.
 ## Evidence and chatlog
 
 - `log/evidence/<scope>/<case>/` captures command, test, and execution facts. Contract: `docs/EVIDENCE_CONTRACT.md`.
-- `log/chatlog/current/` is split into BF and CL. `log/chatlog/current/resume.md` is the current BF (Brief) restore point — the canonical session restore / handoff / phase-transition state. `log/chatlog/current/summary.md` is its compact companion. Cumulative work history (CL) is concept-boundary only in MVP; full CL automation is post-MVP. Contract: `docs/CHATLOG_CONTRACT.md`.
-- BF stays compact and references CL / review / evidence artifacts by path only. Do not inline full review results, evidence payloads, or cumulative CL content into BF.
-- `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` define the natural-language BF save and restore-offer protocol that activates only when the user has manually adopted those snippets into root `CLAUDE.md` / `AGENTS.md`. There is no automatic global install, no hook, no auto-injection, no automatic transcript or prompt capture, no transcript JSONL parser, no Claude JSONL parser, and no `BF_STATE.json` or other separate state-machine file.
+- The current restore source for any project is **Brief**, not Chatlog. The target repo's product canonical Brief location is `<ProjectRoot>/brief/BRIEF.md` (`docs/BRIEF_CONTRACT.md`). `log/chatlog/current/resume.md` and `log/chatlog/current/summary.md` are **not** canonical artifacts — they are failed intermediate / legacy migration source / deprecation candidate, kept only as wording legacy until a separately approved migration step (`docs/CHATLOG_CONTRACT.md`).
+- BF Level is save/restore capability maturity, not a path. BF Level 1/2 is manual save/restore discipline. BF Level 3 (deterministic Brief maintenance, validation, stale warning, session-start guidance, restore-offer) is future scoped work; `scripts/brief-init.ps1` / `scripts/brief-check.ps1` are narrow source-side primitives, not the full BF Level 3 implementation.
+- Chatlog is history / decision rationale / Brief reconstruction evidence. Chatlog is not the current restore source. If Brief is corrupted / missing / stale, Chatlog can be used as evidence to reconstruct it, but Chatlog itself never gets promoted into Brief's seat.
+- Brief stays compact and references Chatlog / review / evidence artifacts by path only. Do not inline full review results, evidence payloads, or cumulative chat content into Brief.
+- Snippet protocols in `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` activate only when the user has manually adopted those snippets into a destination `CLAUDE.md` / `AGENTS.md`. There is no automatic global install, no hook, no auto-injection, no automatic transcript or prompt capture, no transcript JSONL parser, no Claude JSONL parser, and no `BF_STATE.json` or other separate state-machine file.
+- **Snippet drift note.** The current snippet bodies still carry an older Brief / Chatlog / BF Level model (treating `log/brief/BRIEF.md` as canonical BRIEF Level 3, `log/chatlog/current/resume.md` / `summary.md` as canonical BF Level 1/2, and root `<ProjectRoot>/brief/` as forbidden). That wording is drift relative to the current contracts in `docs/BRIEF_CONTRACT.md` and `docs/CHATLOG_CONTRACT.md`. Updating the snippet bodies is future scoped work; until then, when the docs and the snippets disagree, the current contracts win.
 
 ## Snippets for CLAUDE.md / AGENTS.md
 
@@ -168,8 +171,8 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 | File | Role | One-line role |
 |---|---|---|
 | `docs/AI_HARNESS_TOOLSET_SCOPE.md` | active operational | Project nature, in/out of scope, source-vs-target payload mapping. |
-| `docs/BRIEF_CONTRACT.md` | active operational | Brief / BF Level 3 contract for `<ProjectRoot>/log/brief/BRIEF.md` (operator-local runtime state) and the `brief-init.ps1` / `brief-check.ps1` responsibility boundary. |
-| `docs/CHATLOG_CONTRACT.md` | active operational | `log/chatlog/` layout and `summary.md` / `resume.md` canonical headings. |
+| `docs/BRIEF_CONTRACT.md` | active operational | Brief contract: BF Level as save/restore capability maturity, target canonical at `<ProjectRoot>/brief/BRIEF.md`, and the `brief-init.ps1` / `brief-check.ps1` source-side primitive responsibility boundary. |
+| `docs/CHATLOG_CONTRACT.md` | active operational | Chatlog responsibility (history / decision rationale / Brief reconstruction evidence) and the demotion of `log/chatlog/current/resume.md` / `summary.md` to failed intermediate / legacy migration source / deprecation candidate. |
 | `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md` | active operational | Canonical CLI/runtime dependency boundary. |
 | `docs/DECISIONS.md` | mixed decision log | Bootstrap-era and active policy decisions. |
 | `docs/EVIDENCE_CONTRACT.md` | active operational | `log/evidence/<scope>/<case>/` minimal capture contract. |
