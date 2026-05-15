@@ -228,10 +228,11 @@ evidence 보고에 SC5 / SC5' 중 어느 쪽이 실행되었는지 명시한다.
 
 본 절은 §2 의 SC1–SC7 과 **별개의 케이스 군** 이다. SC1–SC7 은 channel 1 (`-ToolRoot`) / channel 2 (`AI_HARNESS_TOOL_ROOT`) 의 positive 케이스와 channel exhaustion (SC4) 을 다루며, channel 3 (global stable install `%USERPROFILE%\.claude\ai-harness-toolset\current`) 의 **positive resolution** 은 다루지 않는다 — SC4 는 오히려 A3b 로 channel 3 의 부재를 요구한다. 본 §2A 는 그 gap, 즉 stable global channel 3 가 실제로 materialize 된 환경에서의 positive resolution 을 다룬다.
 
-본 절은 두 부분을 명시적으로 구분한다.
+본 절은 세 부분을 명시적으로 구분한다.
 
 - **(I) Current observed pass status** — global stable ToolRoot 가 `%USERPROFILE%\.claude\ai-harness-toolset\current` 에 controlled materialization 된 직후, CH3-A / CH3-B / CH3-C 가 각각 1 회 실행되어 PASS 로 관찰된 기록.
-- **(II) Future criteria** — 본 케이스 군을 SC1–SC7 과 동일한 수준의 Pre / Action / Pass / Fail / Evidence 형식으로 정식화하는 것은 **후속 scoped 작업** 이다. 본 절은 그 정식화도, 재실행도 자동 승인하지 않는다.
+- **(II) Formalized criteria** — 본 케이스 군을 §2 의 SC1–SC7 과 동일한 수준의 Pre / Action / Pass / Fail / Evidence 형식으로 정식화한 contract. (I) 의 observed-status 기록 위에 evaluation contract 의 정식 binding 을 추가한다. 본 절은 implementation / automation 의 자동 승인이 아니다.
+- **(III) Future deferred items** — CH3-D 등 본 commit 의 (II) Formalized criteria 에 포함되지 않은 deferred 케이스의 기록. (III) 은 본 절이 실행 / 승인하지 않는 범위다.
 
 ### (I) Current observed pass status
 
@@ -245,12 +246,90 @@ evidence 보고에 SC5 / SC5' 중 어느 쪽이 실행되었는지 명시한다.
 
 위 세 케이스는 stable global channel 3 materialization 직후 단일 라운드로 실행되었다. 재실행 / regression 추적은 본 절의 범위가 아니다.
 
-**Reaffirming round.** 별도 후속 round (global activation 의 latest repo HEAD 재동기화 직후) 에서 CH3-A 는 brief-init smoke 로, CH3-B / CH3-C 는 review-cycle smoke 로 재검증되어 동일하게 PASS 로 관찰되었다. CH3-B 의 verifier-half 도 본 reaffirming round 에서 함께 충족되었다 — `meta.json.toolRoot` 가 `%USERPROFILE%\.claude\ai-harness-toolset\current` 에 bind, `meta.json.projectRoot` 가 fixture 에 bind, `review-verify` default + `-RequireResult` 모두 PASS, `result.json.verdict` 가 valid vocabulary (`yes` / `no` / `yes with risk`) 안에 위치. CH3-C 의 isolation invariant (fixture/`log/` only runtime artifact, source repo / global `current/` payload / `%USERPROFILE%\.claude\AGENTS.md` 부재 / env var 모두 unchanged, fixture 에 `.ai-harness/` · `scripts/` · `config/` · `templates/` · `snippets/` payload 부재) 도 동일하게 관찰되었다. 재검증의 execution HEAD / fixture path / run-id 같은 per-run 세부는 본 절 본문이 아니라 per-run evidence 가 권한이다 (§4 항목 4 와 정합, `docs/backlog/operations.md` Long-lived docs commit hash hygiene 항목과도 정합). CH3-D 는 본 절 (II) 에 따라 여전히 deferred 다.
+**Reaffirming round.** 별도 후속 round (global activation 의 latest repo HEAD 재동기화 직후) 에서 CH3-A 는 brief-init smoke 로, CH3-B / CH3-C 는 review-cycle smoke 로 재검증되어 동일하게 PASS 로 관찰되었다. CH3-B 의 verifier-half 도 본 reaffirming round 에서 함께 충족되었다 — `meta.json.toolRoot` 가 `%USERPROFILE%\.claude\ai-harness-toolset\current` 에 bind, `meta.json.projectRoot` 가 fixture 에 bind, `review-verify` default + `-RequireResult` 모두 PASS, `result.json.verdict` 가 valid vocabulary (`yes` / `no` / `yes with risk`) 안에 위치. CH3-C 의 isolation invariant (fixture/`log/` only runtime artifact, source repo / global `current/` payload / `%USERPROFILE%\.claude\AGENTS.md` 부재 / env var 모두 unchanged, fixture 에 `.ai-harness/` · `scripts/` · `config/` · `templates/` · `snippets/` payload 부재) 도 동일하게 관찰되었다. 재검증의 execution HEAD / fixture path / run-id 같은 per-run 세부는 본 절 본문이 아니라 per-run evidence 가 권한이다 (§4 항목 4 와 정합, `docs/backlog/operations.md` Long-lived docs commit hash hygiene 항목과도 정합). CH3-D 는 본 절 (III) 에 따라 여전히 deferred 다.
 
-### (II) Future criteria — deferred items
+### (II) Formalized criteria — Pre / Action / Pass / Fail / Evidence
 
-- **CH3-A / CH3-B / CH3-C 의 정식 criteria 화** — Pre / Action / Pass / Fail / Evidence 형식의 정식 SC 항목으로 편입하는 것은 후속 scoped 작업이다. 본 절의 (I) 는 그때까지의 observed-status 기록 역할만 한다.
-- **CH3-D — incomplete-payload negative guard (deferred).** `%USERPROFILE%\.claude\ai-harness-toolset\current` 가 존재하지만 payload 가 불완전한 경우 (entrypoint `scripts/review-cycle.ps1` 부재) `Get-ToolRoot` 가 channel 3 에서 fallthrough 하지 않고 fail-fast throw 하는지 검증하는 negative 케이스 (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1 channel 3 분기 참조). 본 케이스는 target 을 의도적으로 불완전 상태로 mutate 해야 하므로 별도 scoped 작업으로 **deferred** 한다. 본 절은 CH3-D 를 실행하지 않았다.
+본 절은 §2A 의 채널 3 positive smoke 를 §2 의 SC1–SC7 과 동일한 Pre / Action / Pass / Fail / Evidence 형식으로 정식화한다. (I) 의 observed-status 기록과 충돌하지 않으며, (I) 은 본 정식 criteria 의 사전 관찰 기록 역할로 보존된다. 본 정식 criteria 는 implementation / automation 의 자동 승인이 아니라 evaluation contract 의 기록이다.
+
+#### CH3 시리즈에 적용되는 보조 가정
+
+본 §2A 시리즈에만 적용되는 self-contained 가정. §1 의 기존 A1–A8 / A7a / A7b / A3b 는 그대로 유효하며 본 절의 가정은 그와 호환되도록 정의된다.
+
+- **A7c — CH3 positive-channel mode**. ToolRoot 가 channel 3 으로 resolve 되어야 한다. 호출에 `-ToolRoot` 미명시, `AI_HARNESS_TOOL_ROOT` Process / User / Machine scope 모두 unset (channel 1, 2 비활성). A3 (multi-marker 부재 → channel 4 비활성), A2 (`.ai-harness/` 부재 → channel 5 비활성) 충족. 따라서 channel 3 가 최우선 활성 channel.
+- **A3c — CH3 global stable install 활성**. `%USERPROFILE%\.claude\ai-harness-toolset\current\` 가 존재하고 channel 3 payload completeness 조건 (entrypoint `scripts/review-cycle.ps1` 등) 을 충족. 본 가정은 §1 A3b 의 정반대 — A3b 는 SC4 channel exhaustion 검증을 위해 channel 3 부재를 요구하고, A3c 는 본 §2A 시리즈가 channel 3 positive resolution 을 검증하기 위해 channel 3 존재를 요구한다. 두 가정은 서로 다른 case 군에 적용되므로 충돌하지 않는다.
+- **A9 — forbidden path absent**. `%USERPROFILE%\.claude\AGENTS.md` 가 case 시작 시점에 absent. snippet contract 상 valid destination 이 아닌 forbidden path 이며 (`GLOBAL_ADOPTION_DECISION.md` §6 path table 의 Forbidden row 와 정합), case 동안 생성되어서는 안 된다.
+
+#### CH3-A — brief-init seed via channel 3
+
+clean target 에서 `Get-ToolRoot` 가 channel 3 으로 resolve 되었음을 `brief-init.ps1` 이 seed 한 BRIEF.md 가 channel 3 의 template 과 byte-identical 한지로 검증한다.
+
+- **Pre.** A1, A2, A3, A4, A5, A6, A7c, A3c, A8, A9. CWD = `<fixture>`.
+- **Action.** `powershell -NoProfile -ExecutionPolicy Bypass -File "%USERPROFILE%\.claude\ai-harness-toolset\current\scripts\brief-init.ps1" -ProjectRoot <fixture>`.
+- **Pass.**
+  - exit 0.
+  - `<fixture>/log/brief/BRIEF.md` 생성.
+  - seeded BRIEF.md 의 SHA-256 == `%USERPROFILE%\.claude\ai-harness-toolset\current\templates\brief\BRIEF.md` 의 SHA-256 (byte-identical — channel 3 resolution 의 직접 증거).
+  - host stdout 의 `brief-init: source template ...` line 의 path 가 `%USERPROFILE%\.claude\ai-harness-toolset\current\templates\brief\BRIEF.md` (channel 3 경로).
+- **Fail.** non-zero exit; BRIEF.md 미생성; SHA-256 mismatch; `source template` path 가 channel 3 외부 (source repo, `<fixture>/.ai-harness/`, `%USERPROFILE%\.codex\` 등) 로 출력.
+- **Evidence.** stdout 전문; seeded BRIEF.md SHA-256; channel 3 template SHA-256; `<SourceRepoRoot>` 의 `git status --porcelain=v1` (SC7 입력); fixture 의 forbidden subtree (`<fixture>/.ai-harness/`, `<fixture>/scripts/`, `<fixture>/config/`, `<fixture>/templates/`, `<fixture>/snippets/`) absence; CH3-C umbrella 가 사용하는 global snapshot.
+
+#### CH3-B — review-cycle ToolRoot/ProjectRoot binding via channel 3
+
+본 case 는 외부 Codex CLI 가용성에 의존한다. CLI 부재 환경에서는 CH3-B' (prepare-only fallback) 로 대체한다. clean target 에서 `review-cycle.ps1` 가 channel 3 으로 resolve 되고 `meta.json` 의 root field 가 expected path 에 bind 되며 `review-verify -RequireResult` 가 PASS 하는지 검증한다.
+
+- **Pre.** A1, A2, A3, A4, A5, A6, A7c, A3c, A8, A9. fixture 에 review TargetFiles 후보 tracked file 1 개 이상 존재.
+- **Action.** `& "%USERPROFILE%\.claude\ai-harness-toolset\current\scripts\review-cycle.ps1" -Stage implementation -Purpose '<smoke purpose>' -TargetFiles <single-tracked-file> -Context '<C>' -RequiredInspectionPaths '<P>' -ReviewQuestions '<Q>' -Constraints '<X>'` 1 회. `-ToolRoot` / `-ProjectRoot` 모두 미명시 (channel 3 default + CWD default). `<C>` / `<P>` / `<Q>` / `<X>` 는 `review-input-verify` 의 placeholder / empty-section 게이트를 통과하는 minimum-viable 문자열 (SC5 의 동일 prescription 와 동등).
+- **Pass.**
+  - exit 0.
+  - `<fixture>/log/review/<run-id>/meta.json` 의 `toolRoot` field 가 `%USERPROFILE%\.claude\ai-harness-toolset\current` 에 normalized + case-insensitive ordinal equality 로 bind.
+  - `meta.json.projectRoot` 가 `<fixture>` 에 bind. `meta.json.projectLogRoot` 가 `<fixture>/log` 에 bind.
+  - `review-cycle.ps1` 이 자체적으로 호출하는 `review-verify.ps1` default + `-RequireResult` 두 모드 모두 PASS.
+  - `result.json.verdict` 가 `yes` / `no` / `yes with risk` 중 하나.
+- **Fail.** non-zero exit; `meta.json.toolRoot` mismatch (예: source repo / `.codex\` / `<fixture>` 내부 등 channel 3 외부); root field mismatch; `review-verify` FAIL; `result.json` / `result.md` 미생성; verdict vocabulary 위반.
+- **Evidence.** `meta.json`, `input.md`, `result.md`, `result.json`, `review-verify` 두 모드 stdout; `<SourceRepoRoot>` 의 `git status`; fixture 의 forbidden subtree absence; CH3-C umbrella 가 사용하는 global snapshot.
+
+##### CH3-B' — review-prepare-only fallback (Codex CLI 부재 시)
+
+본 case 의 환경 가정은 CH3-B 와 동일. Codex CLI 가 부재한 환경에서 `review-prepare.ps1` 만 호출하여 prepare 산출물의 ToolRoot binding 만 검증한다. Codex 실행 / verdict / `review-verify` 의 result-binding 검증은 본 case 의 범위 밖이다.
+
+본 case 는 CH3-B 의 verifier-half (`meta.toolRoot` ↔ runtime ToolRoot mismatch FAIL 검증) 를 포함하지 **않는다.** 따라서 CH3-B 의 **partial substitute** 이며, CH3-B 의 완전 충족은 별도 fixture (Codex CLI 가용 환경) 에서 CH3-B 를 직접 실행해야 한다. suite-level 결과 분류는 §5 의 partial 분류 규칙을 따른다 (`partial: CH3-B verifier binding not covered, channel 3 prepare-side ToolRoot binding covered`).
+
+- **Pre.** CH3-B 와 동일.
+- **Action.** `& "%USERPROFILE%\.claude\ai-harness-toolset\current\scripts\review-prepare.ps1" -Stage implementation -Purpose '<smoke purpose>' -TargetFiles <single-tracked-file>` 1 회.
+- **Pass.** `<fixture>/log/review/<run-id>/meta.json` 의 root field (`toolRoot` / `projectRoot` / `projectLogRoot`) 가 CH3-B Pass 의 첫 3 항목과 동일하게 bind. `input.md` seed 됨. Codex 미호출.
+- **Fail.** root field mismatch; prepare 자체 실패.
+- **Evidence.** `meta.json`, `input.md`, prepare stdout, `<SourceRepoRoot>` 의 `git status`.
+
+evidence 보고에 CH3-B / CH3-B' 중 어느 쪽이 실행되었는지 명시한다. CH3-B' 가 실행된 경우 suite-level 결과를 `partial: CH3-B verifier binding not covered` 로 분류한다.
+
+#### CH3-C — runtime isolation umbrella (channel 3)
+
+본 case 는 CH3-A 와 CH3-B (또는 CH3-B') 의 umbrella invariant 다. SC7 의 source-tree read-only invariant 를 channel 3 환경의 추가 isolation 까지 확장한다. CH3-A / CH3-B / CH3-B' 의 매 실행 전 · 후로 측정한다.
+
+- **Pre.** A8 (suite-level `<SourceRepoRoot>` `git status` 빈 문자열 + execution HEAD snapshot), A9 (forbidden path absent). case 시작 전에 다음 snapshot 확보:
+  - `<SourceRepoRoot>` 의 `git status --porcelain=v1` (SC7 입력).
+  - `%USERPROFILE%\.claude\ai-harness-toolset\current\` 의 aggregate digest (per-file SHA-256 rel:hash per-line 후 SHA-256, 또는 이와 등가인 deterministic digest).
+  - `%USERPROFILE%\.claude\AGENTS.md` absent 확인 (A9).
+  - `%USERPROFILE%\.claude\CLAUDE.md` 의 managed-block 외부 content hash (block 안은 user-approved managed-block insert/replace scope 이므로 외부만 capture).
+  - effective Codex global instruction file (`%USERPROFILE%\.codex\AGENTS.md` 또는 `%CODEX_HOME%\AGENTS.md` 또는 그 scope 의 `AGENTS.override.md`) 의 managed-block 외부 content hash.
+  - `AI_HARNESS_TOOL_ROOT` 와 `CODEX_HOME` 의 Process / User / Machine scope 값.
+  - `<fixture>` 의 forbidden subtree (`<fixture>/.ai-harness/`, `<fixture>/scripts/`, `<fixture>/config/`, `<fixture>/templates/`, `<fixture>/snippets/`) absence 확인.
+- **Action.** 본 case 는 단독 action 이 없다. CH3-A / CH3-B / CH3-B' 의 매 실행 전 · 후로 위 snapshot 을 다시 측정한다.
+- **Pass.**
+  - **fixture/log/ only**: `<fixture>` 의 모든 신규 / 변경 file 이 `<fixture>/log/` 트리 하위에만 위치.
+  - **target footprint clean**: `<fixture>/.ai-harness/`, `<fixture>/scripts/`, `<fixture>/config/`, `<fixture>/templates/`, `<fixture>/snippets/` 모두 case 종료 시점에 부재 (Pre snapshot 과 동일).
+  - **source repo unchanged (SC7 invariant)**: `<SourceRepoRoot>` 의 tracked / untracked 양쪽 모두 신규 또는 변경 항목 없음.
+  - **global current/ unchanged**: aggregate digest 가 Pre snapshot 과 동일 (channel 3 ToolRoot read-only invariant).
+  - **forbidden path absent unchanged**: `%USERPROFILE%\.claude\AGENTS.md` 가 case 동안 생성되지 않음 (A9 유지).
+  - **global CLAUDE.md / Codex AGENTS.md outside-block unchanged**: managed-block 외부 content hash 가 Pre snapshot 과 동일 (managed-block 자체는 본 case 의 mutation 대상이 아니므로 case 진행 중 변경되지 않으며, 외부 hash 의 동일성으로 boundary 확인).
+  - **env var unchanged**: `AI_HARNESS_TOOL_ROOT` / `CODEX_HOME` 의 Process / User / Machine scope 모두 Pre snapshot 과 동일.
+- **Fail.** 위 invariant 중 어느 하나라도 위반.
+- **Evidence.** case 별 before / after snapshot diff (Pre 의 7 항목 모두), CH3-A / CH3-B (또는 CH3-B') 의 evidence 와 결합.
+
+### (III) Future deferred items
+
+- **CH3-D — incomplete-payload negative guard (deferred).** `%USERPROFILE%\.claude\ai-harness-toolset\current` 가 존재하지만 payload 가 불완전한 경우 (entrypoint `scripts/review-cycle.ps1` 부재) `Get-ToolRoot` 가 channel 3 에서 fallthrough 하지 않고 fail-fast throw 하는지 검증하는 negative 케이스 (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1 channel 3 분기 참조). 본 케이스는 target 을 의도적으로 불완전 상태로 mutate 해야 하므로 별도 scoped 작업으로 **deferred** 한다. 본 commit 의 (II) Formalized criteria 에 CH3-D 는 포함되지 않으며, 본 절은 CH3-D 를 실행하지 않는다.
 
 ### Relationship to SC1–SC7
 
