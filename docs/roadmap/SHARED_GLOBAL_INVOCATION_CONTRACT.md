@@ -32,7 +32,7 @@
 본 design 의 책임이 **아닌** 항목.
 
 - 실제 `scripts/`, `config/`, `templates/`, `snippets/` 의 수정. 본 문서는 어떤 source file 도 수정하지 않는다.
-- 글로벌 `CLAUDE.md` / `AGENTS.md` 의 변경.
+- 글로벌 instruction file (Claude `%USERPROFILE%\.claude\CLAUDE.md`, Codex `%USERPROFILE%\.codex\AGENTS.md` 또는 `%CODEX_HOME%\AGENTS.md`, Codex user-global `AGENTS.override.md`, project-root `CLAUDE.md` / `AGENTS.md`) 의 변경. `%USERPROFILE%\.claude\AGENTS.md` 는 valid destination 이 아니며 어느 scope 에서도 본 design 으로 생성되지 않는다. path / marker 정책은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6 이 source-of-truth 다.
 - claude-skill SKILL.md 의 실제 수정.
 - 새 env var 의 실제 활성화.
 - shared / global mode 의 actual implementation.
@@ -496,7 +496,7 @@ design 단계에서 결정을 내렸지만, implementation / 운영 단계에서
 
 - 실제 `scripts/`, `config/`, `templates/`, `snippets/` 의 수정.
 - env var 의 자동 활성화 / user shell config 변경.
-- 글로벌 `CLAUDE.md` / `AGENTS.md` 의 변경.
+- 글로벌 instruction file (Claude `%USERPROFILE%\.claude\CLAUDE.md`, Codex `%USERPROFILE%\.codex\AGENTS.md` 또는 `%CODEX_HOME%\AGENTS.md`, Codex user-global `AGENTS.override.md`, project-root `CLAUDE.md` / `AGENTS.md`) 의 변경. `%USERPROFILE%\.claude\AGENTS.md` 는 valid destination 이 아니다.
 - claude-skill SKILL.md 의 실제 수정.
 - shared / global mode 의 actual implementation.
 - `.gitignore` / `.gitattributes` 의 변경.

@@ -170,6 +170,20 @@ deterministic helper script (예: inspect-only, check-only) 는 후속 단계에
 
 marker-bounded block 의 전면 교체가 standard 로 허용되는 적용 방식이다. whole-file overwrite 는 금지하며, marker-bounded block 바깥의 기존 사용자 / project 내용은 보존한다. 본 동작은 implicit / automatic mutation 이 아니라, §7 의 explicit user-approved global / user config mutation scope 에서만 수행된다. 즉 "global mutation 금지" 는 implicit / automatic / whole-file mutation 의 금지를 의미하며, explicit user-approved managed-block replacement 와 충돌하지 않는다.
 
+본 정책이 적용되는 instruction file 의 path 는 다음과 같이 명시 enumerate 한다 — generic 한 "global `AGENTS.md`" wording 만 사용하면 `%USERPROFILE%\.claude\AGENTS.md` 같은 잘못된 path 로 오인될 수 있으므로, 본 절은 official 경로를 명시한다.
+
+| 대상 | path |
+|---|---|
+| Claude project-root | `<ProjectRoot>/CLAUDE.md` |
+| Claude user-global | `%USERPROFILE%\.claude\CLAUDE.md` |
+| Codex project-root | `<ProjectRoot>/AGENTS.md` |
+| Codex user-global default | `%USERPROFILE%\.codex\AGENTS.md` |
+| Codex user-global with `CODEX_HOME` | `%CODEX_HOME%\AGENTS.md` |
+| Codex user-global override | `AGENTS.override.md` at the same Codex user-global scope (예: `%USERPROFILE%\.codex\AGENTS.override.md`) takes precedence over `AGENTS.md` when both exist |
+| **Forbidden** | `%USERPROFILE%\.claude\AGENTS.md` — 어떤 agent 의 global instruction 경로도 아니며, ai-harness 는 절대 이 file 을 생성하지 않는다 |
+
+위 path 들에 대한 managed-block apply 는 모두 동일한 marker policy (아래 destination 분기) 를 따른다. snippet 별 매핑은 `snippets/CLAUDE_SNIPPET.md` → Claude 측 path 군, `snippets/AGENTS_SNIPPET.md` → Codex 측 path 군이다. 두 snippet 은 모두 dual-role safe 로 설계되어 있어 (loaded agent 가 operator / reviewer / auditor / supervisor 어느 역할이든 무관하게 적용), 어느 destination 에 load 되더라도 loaded agent 가 항상 operator 라고 가정하지 않는다 (`snippets/CLAUDE_SNIPPET.md` 및 `snippets/AGENTS_SNIPPET.md` 의 "Role neutrality" 섹션 참조).
+
 destination 의 파일 존재 여부와 marker pair 상태에 따라 동작이 다르다.
 
 - destination file 자체가 **존재하지 않는** 경우.

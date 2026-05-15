@@ -1,16 +1,33 @@
 <!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->
-# ai-harness-toolset instructions for Claude Code
+# ai-harness-toolset instructions for CLAUDE.md-compatible agents
 
-This is a manually adopted AI instruction payload for Claude Code. The user has copied it into the destination `CLAUDE.md` (project root or global) inside a managed block delimited by `<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->` and `<!-- END AI_HARNESS_TOOLSET_GLOBAL -->`. Treat its content as authoritative for ai-harness workflows in this project.
+This is a manually adopted AI instruction payload for Claude Code and other CLAUDE.md-compatible agent assistants. The user has copied it into the destination `CLAUDE.md` inside a managed block delimited by `<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->` and `<!-- END AI_HARNESS_TOOLSET_GLOBAL -->`. Treat its content as authoritative for ai-harness workflows in this project.
+
+## Adoption destination
+
+The valid destinations for this payload are exactly:
+
+- **Project-root `CLAUDE.md`** — `<ProjectRoot>/CLAUDE.md`.
+- **User-global Claude `CLAUDE.md`** — `%USERPROFILE%\.claude\CLAUDE.md`.
+
+The forbidden destination is `%USERPROFILE%\.claude\AGENTS.md`. That path is not a recognized global instruction location for any agent, and ai-harness must never create it. The Codex user-global instruction path is `%USERPROFILE%\.codex\AGENTS.md` by default, or `%CODEX_HOME%\AGENTS.md` if `CODEX_HOME` is set, and is the destination for `snippets/AGENTS_SNIPPET.md` — it is not under `.claude\`.
 
 ## Adoption rules
 
-- This payload lives only inside the `AI_HARNESS_TOOLSET_GLOBAL` managed block of the destination `CLAUDE.md` (project root or global). Replacing the content inside that managed block is the standard, allowed way to adopt or update it.
-- Whole-file overwrite of `CLAUDE.md` is forbidden. Content outside the managed block — project-specific or user instructions — must be preserved verbatim.
-- Adopting or updating this payload in a global or user `CLAUDE.md` is an explicit, user-approved global/user config mutation, never an implicit or automatic action.
+- This payload lives only inside the `AI_HARNESS_TOOLSET_GLOBAL` managed block of one of the destinations above. Replacing the content inside that managed block is the standard, allowed way to adopt or update it.
+- Whole-file overwrite of either destination is forbidden. Content outside the managed block — project-specific or user instructions — must be preserved verbatim.
+- Adopting or updating this payload in any destination above is an explicit, user-approved global / user config mutation, never an implicit or automatic action.
 - If the marker pair is already present, only the block between the markers may be replaced. Inserting the block into an existing file that has no marker, and creating a missing destination file, are each separate explicit-approval boundaries.
 - An incomplete marker pair, duplicated markers, or a malformed block is a fail-fast / manual-review condition: stop and do not edit the file.
 - The full marker-state apply policy is governed by `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6.
+
+## Role neutrality
+
+This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-cycle.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
+
+- When acting as **reviewer** or **auditor**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<run-id>/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form any verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict.
+- The operator-side protocols described below — BF save triggers, new-session restore-offer, `review-cycle.ps1` execution discipline — apply only when acting as **operator**. Do not perform them when reading a review packet, when auditing existing artifacts, or when supervising another agent's work.
+- Nothing in this payload forces accept / approve. Nothing in it weakens reviewer independence. Nothing in it permits whole-file overwrite of a global instruction file.
 
 ## Project layout
 
@@ -143,7 +160,8 @@ These triggers update BF Level 1/2 only. They do **not** auto-write `log/brief/B
 - No per-user / per-operator log partitioning, operator-id, machine-id, or ownership metadata.
 - No `BF_STATE.json` or sidecar state-machine file.
 - No daemon, watcher, scheduler, hook, or background task.
-- No implicit, automatic, or whole-file mutation of a global `CLAUDE.md`, `AGENTS.md`, Codex agent file, or anything under `~/.claude/`. Explicit user-approved managed-block replacement (see Adoption rules) is the one governed exception.
+- No implicit, automatic, or whole-file mutation of a global instruction file. Specifically: `%USERPROFILE%\.claude\CLAUDE.md` (Claude), `%USERPROFILE%\.codex\AGENTS.md` (Codex default), `%CODEX_HOME%\AGENTS.md` (Codex with `CODEX_HOME` set), `AGENTS.override.md` at the Codex user-global scope, and any project-root `CLAUDE.md` / `AGENTS.md`. Explicit user-approved managed-block insert / replace per `Adoption rules` is the one governed exception. No file is auto-created under `~/.claude/` or `~/.codex/`.
+- No creation of `%USERPROFILE%\.claude\AGENTS.md`. That path is not a recognized global instruction location for any agent; ai-harness never writes to it.
 - No automatic mirror between `log/brief/BRIEF.md` and `log/chatlog/current/resume.md`.
 - No automatic target `.gitignore` mutation.
 

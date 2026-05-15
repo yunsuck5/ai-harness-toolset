@@ -7,7 +7,7 @@ description: Run an ai-harness-toolset review cycle on the user's current in-pro
 
 This skill runs the ai-harness-toolset single-shot review cycle (`review-cycle.ps1`) on the user's currently in-progress work. It is the natural-language entrypoint for the toolset's review flow. The user is not expected to type raw PowerShell arguments.
 
-This skill is the optional, copied counterpart to `snippets/CLAUDE_SNIPPET.md`. Adoption path: copy this file to `<ProjectRoot>/.claude/skills/ai-harness-review/SKILL.md` (or `~/.claude/skills/ai-harness-review/SKILL.md` for personal use). Do not create global files automatically. The AI-guided adoption / update / removal procedure is defined in `docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`.
+This skill is the optional, copied counterpart to `snippets/CLAUDE_SNIPPET.md`. Adoption path: copy this file to `<ProjectRoot>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or to the user-global Claude skills directory `%USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md` (personal use, opt-in only). Do not create any global file automatically; copying a `SKILL.md` into `%USERPROFILE%\.claude\skills\` is an explicit user-approved global / user filesystem mutation. The AI-guided adoption / update / removal procedure is defined in `docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`.
 
 ## Two supported intents
 
@@ -208,5 +208,5 @@ If the user asks you to commit or push *after* seeing the verdict, that is a sep
 - Running multiple cycles to "average out" verdicts.
 - Translating the verdict into other vocabulary.
 - Auto-committing, auto-pushing, auto-merging, auto-releasing, auto-deploying.
-- Modifying `~/.claude/`, global `CLAUDE.md`, global `AGENTS.md`, or the user's git config.
+- Modifying `%USERPROFILE%\.claude\`, `%USERPROFILE%\.codex\`, `%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md` (or `%CODEX_HOME%\AGENTS.md` or `AGENTS.override.md` at the Codex user-global scope), project-root `CLAUDE.md` / `AGENTS.md`, or the user's git config. `%USERPROFILE%\.claude\AGENTS.md` is forbidden — the skill must not create it. Managed-block insert / replace in those global files is a separate explicit user-approved scope governed by `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6.
 - Cleaning up `log/review/<run-id>/` directories.

@@ -27,7 +27,7 @@
 
 본 가이드의 책임이 **아닌** 항목.
 
-- 글로벌 `CLAUDE.md` / `AGENTS.md` 의 managed block update. 본 동작의 marker 정책은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6 가 source-of-truth 다.
+- 글로벌 instruction file (Claude `%USERPROFILE%\.claude\CLAUDE.md`, Codex `%USERPROFILE%\.codex\AGENTS.md` 또는 `%CODEX_HOME%\AGENTS.md`, Codex user-global `AGENTS.override.md`, project-root `CLAUDE.md` / `AGENTS.md`) 의 managed block update. 본 동작의 marker 정책과 path enumeration 은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6 이 source-of-truth 다 — generic 한 "global `AGENTS.md`" wording 만 사용하면 `%USERPROFILE%\.claude\AGENTS.md` 같은 forbidden path 로 오인될 수 있으므로 §6 의 path table 을 참조한다.
 - shared / global script invocation 의 path handling implementation. 본 동작의 audit 요구 사항은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8 다.
 - target project 의 `.gitignore`, `brief/`, `log/` 의 변경. 본 동작들은 다른 계약이 source-of-truth 다.
 - installer 자동화. 본 단계에서 `install.ps1` 등 productized installer 는 명시적으로 out of scope 다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §10).

@@ -41,7 +41,7 @@
 - Claude Code 가 source repo 를 canonical local ToolRoot 로 등록 / 갱신한다.
 - Claude Code 가 source repo 를 기준으로 global Claude layer 를 install / update 한다. 업데이트는 global install metadata 기반으로 dispatch 된다 (§4, §5).
 - install / update **automation 을 먼저 구현하지 않는다.** 먼저 global behavior validation (manual global activation / controlled global materialization) 을 수행하고, 그 결과를 기준으로 automation 을 구현한다 (§7).
-- install / update automation 본체의 scope 는 **runtime ToolRoot channel 3 payload 의 materialize / refresh, install metadata, update dispatch, verification** 으로 제한한다. global `CLAUDE.md` / `AGENTS.md` / Codex agent file 의 managed-block apply 는 automation 본체에 포함되지 않으며, `GLOBAL_ADOPTION_DECISION.md` §6 가 governing 하는 별도의 explicit user-approved global / user config mutation scope 다. 두 scope 는 분리되며, 한쪽의 승인이 다른 쪽을 승인하지 않는다.
+- install / update automation 본체의 scope 는 **runtime ToolRoot channel 3 payload 의 materialize / refresh, install metadata, update dispatch, verification** 으로 제한한다. global instruction file (Claude `%USERPROFILE%\.claude\CLAUDE.md`, Codex `%USERPROFILE%\.codex\AGENTS.md` 또는 `%CODEX_HOME%\AGENTS.md`, Codex user-global `AGENTS.override.md`, project-root `CLAUDE.md` / `AGENTS.md`) 의 managed-block apply 는 automation 본체에 포함되지 않으며, `GLOBAL_ADOPTION_DECISION.md` §6 가 governing 하는 별도의 explicit user-approved global / user config mutation scope 다. 두 scope 는 분리되며, 한쪽의 승인이 다른 쪽을 승인하지 않는다. `%USERPROFILE%\.claude\AGENTS.md` 는 어떤 scope 에서도 valid destination 이 아니며, automation 본체와 managed-block apply scope 모두 본 path 를 생성하지 않는다.
 - target project 에는 `ai-harness-toolset` payload 를 설치하지 않는다. target persistent footprint 는 `log/` + `brief/` 로 제한한다 (§8).
 - `ai-harness-toolset` repo 는 canonical ToolRoot 이면서 self-dogfooding ProjectRoot 인 special case 다. ProjectRoot 로 동작할 때 `log/` 와 `brief/` 를 가질 수 있으나, 그 `brief/` 는 source payload 도 install payload 도 아니다 (§9).
 
@@ -209,6 +209,7 @@ decision: 목표 방식은 세 번째 — **Claude-operated install/update + glo
 - `%USERPROFILE%\.claude` (expanded example: `C:\Users\<USER>\.claude`).
 - commands / skills / managed prompts / metadata / ToolRoot reference 가 생성 / 갱신되는 위치다.
 - install metadata (§5) 가 이 layer 아래에 위치한다.
+- 이 layer 안의 **valid 한 user-facing 파일** 은 다음 두 분류로만 구성된다. (a) tool-payload — `%USERPROFILE%\.claude\ai-harness-toolset\current\` (channel 3 materialized runtime ToolRoot), `%USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md` (Claude skill). 둘 모두 explicit user-approved 시에만 install / refresh / overwrite 된다. (b) user-owned managed-block instruction — `%USERPROFILE%\.claude\CLAUDE.md`. 이 파일은 user-owned 이며 ai-harness 는 managed-block insert / replace 만 수행할 수 있고 whole-file overwrite 는 금지된다 (`GLOBAL_ADOPTION_DECISION.md` §6). **이 layer 아래에 `%USERPROFILE%\.claude\AGENTS.md` 는 어떠한 agent 의 global instruction 경로도 아니며, ai-harness 는 이 path 를 생성하지 않는다.** Codex 의 user-global instruction 경로는 별개 directory tree (`%USERPROFILE%\.codex\AGENTS.md` 기본; `CODEX_HOME` set 시 `%CODEX_HOME%\AGENTS.md`; 동일 scope 의 `AGENTS.override.md` 가 `AGENTS.md` 보다 우선) 에 위치하며, Layer 2 외부다.
 - **materialized runtime ToolRoot `%USERPROFILE%\.claude\ai-harness-toolset\current` 가 이 layer 아래에 위치한다.** 이는 `Get-ToolRoot` 의 channel 3 이 resolve 하는 shared / global mode 의 default 연결 경로이며 (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1, D1), Layer 1 의 source/build input (`<canonical-local-toolroot>`) 으로부터 materialize 된다. 디렉터리가 부재하면 `Get-ToolRoot` 는 다음 channel 로 skip 하고, 존재하지만 payload 가 불완전하면 fail-fast 한다.
 - `AI_HARNESS_TOOL_ROOT` 환경변수 (`Get-ToolRoot` channel 2) 는 위 materialized runtime ToolRoot 를 가리는 **override / debug / development validation 용** 이며, default 연결 방식이 아니다. User / Machine scope 에 고정 설정하지 않고, 디버그·개발 repo 검증이 필요한 세션에서만 **process-scope** 로 set 하는 것을 권장한다 — User / Machine scope 고정은 channel 2 가 항상 channel 3 을 가려 stable default 모델을 무력화한다.
 - toolset payload 전체를 target project 에 복사하지 않고, 이 global layer 를 통해 기능을 노출한다.
@@ -505,7 +506,7 @@ graph TD
 
 - 실제 global install 의 실행.
 - `%USERPROFILE%\.claude` (global Claude install layer) 의 변경.
-- global `CLAUDE.md` / `AGENTS.md` / Codex agent file 의 변경 (managed-block apply 포함). 이는 install / update automation 본체의 scope 가 아니며, `GLOBAL_ADOPTION_DECISION.md` §6 의 explicit user-approved managed-block replacement scope 로 분리된다 — 본 문서는 그 scope 를 자동 승인하지 않는다.
+- global instruction file (`%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md` 또는 `%CODEX_HOME%\AGENTS.md`, Codex user-global `AGENTS.override.md`, project-root `CLAUDE.md` / `AGENTS.md`) 의 변경 (managed-block apply 포함). 이는 install / update automation 본체의 scope 가 아니며, `GLOBAL_ADOPTION_DECISION.md` §6 의 explicit user-approved managed-block insert / replace scope 로 분리된다 — 본 문서는 그 scope 를 자동 승인하지 않는다. `%USERPROFILE%\.claude\AGENTS.md` 는 valid destination 이 아니며 어느 scope 에서도 생성하지 않는다.
 - target project 의 변경.
 - smoke test 의 실행.
 - evidence archive 의 생성.
@@ -523,4 +524,4 @@ graph TD
 
 ## 13. Execution status note
 
-본 문서 작성 시점에 **실제 global install / update 는 수행되지 않았다.** 본 문서는 doc-only design clarification 이며, `%USERPROFILE%\.claude`, global `CLAUDE.md` / `AGENTS.md`, 어떤 target project 도 본 작업으로 변경되지 않았다. install metadata instance 도 생성되지 않았다 — §5 는 schema / example 의 기록일 뿐이다. 본 문서는 current model 의 기록이며, implementation approval 도, install / update 실행 지시도 아니다.
+본 문서 작성 시점에 **실제 global install / update 는 수행되지 않았다.** 본 문서는 doc-only design clarification 이며, `%USERPROFILE%\.claude`, `%USERPROFILE%\.codex`, global instruction file (Claude `%USERPROFILE%\.claude\CLAUDE.md`, Codex `%USERPROFILE%\.codex\AGENTS.md` / `%CODEX_HOME%\AGENTS.md` / Codex user-global `AGENTS.override.md`), 어떤 target project 도 본 작업으로 변경되지 않았다. install metadata instance 도 생성되지 않았다 — §5 는 schema / example 의 기록일 뿐이다. 본 문서는 current model 의 기록이며, implementation approval 도, install / update 실행 지시도 아니다.

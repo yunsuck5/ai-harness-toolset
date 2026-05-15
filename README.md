@@ -131,28 +131,22 @@ Behavior, field set, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`.
 
 ai-harness-toolset does not overwrite global or project-local `CLAUDE.md` / `AGENTS.md`. It only ships AI-facing English payloads the user may choose to adopt manually:
 
-- `snippets/CLAUDE_SNIPPET.md` — payload for Claude Code root `CLAUDE.md`.
-- `snippets/AGENTS_SNIPPET.md` — payload for Codex / generic agent root `AGENTS.md`.
+- `snippets/CLAUDE_SNIPPET.md` — payload for a CLAUDE.md-compatible agent (Claude Code and similar). Valid destinations: `<project-root>/CLAUDE.md` (project-root) or `%USERPROFILE%\.claude\CLAUDE.md` (user-global).
+- `snippets/AGENTS_SNIPPET.md` — payload for an AGENTS.md-compatible agent (Codex CLI and similar). Valid destinations: `<project-root>/AGENTS.md` (project-root) or the Codex user-global path `%USERPROFILE%\.codex\AGENTS.md` by default, or `%CODEX_HOME%\AGENTS.md` if the `CODEX_HOME` environment variable is set. At the Codex user-global scope, `AGENTS.override.md` (e.g., `%USERPROFILE%\.codex\AGENTS.override.md`) takes precedence over `AGENTS.md` when both exist; the managed block lives in whichever file is the effective Codex source of truth in that environment.
 
-Adoption is a deliberate user action: append the matching snippet into the root instruction file inside a managed block delimited by these markers.
+`%USERPROFILE%\.claude\AGENTS.md` is **forbidden**: that path is not a recognized global instruction location for any agent, and ai-harness must never create it. The Codex user-global instruction path is under `.codex\`, not `.claude\`.
 
-For `CLAUDE.md`:
+Both snippets are written **dual-role safe** — they apply regardless of whether the loading agent is currently acting as operator, reviewer, auditor, or supervisor. Role-specific behavior is set by `/goal`, the review input, the skill prompt, or the command invocation, not by these global payloads. See each snippet's `Role neutrality` section.
 
-````markdown
-<!-- BEGIN ai-harness-toolset:CLAUDE_SNIPPET.md -->
-<contents of snippets/CLAUDE_SNIPPET.md>
-<!-- END ai-harness-toolset:CLAUDE_SNIPPET.md -->
-````
-
-For `AGENTS.md`:
+Adoption is a deliberate user action: append the matching snippet into one of the valid destination files inside the single canonical managed block delimited by the `AI_HARNESS_TOOLSET_GLOBAL` markers. The canonical marker form is identical for both `CLAUDE.md` and `AGENTS.md` (the snippet files themselves carry these markers literally — see the first / last lines of `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md`):
 
 ````markdown
-<!-- BEGIN ai-harness-toolset:AGENTS_SNIPPET.md -->
-<contents of snippets/AGENTS_SNIPPET.md>
-<!-- END ai-harness-toolset:AGENTS_SNIPPET.md -->
+<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->
+<contents of snippets/CLAUDE_SNIPPET.md or snippets/AGENTS_SNIPPET.md>
+<!-- END AI_HARNESS_TOOLSET_GLOBAL -->
 ````
 
-Updating means replacing only the matching managed block; removing means deleting only the matching managed block. Whole-file overwrite of root `CLAUDE.md` / `AGENTS.md` is forbidden.
+The marker text `AI_HARNESS_TOOLSET_GLOBAL` is the canonical form for both snippet types, governed by `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6. Updating means replacing only the content inside this managed block; removing means deleting only the entire managed block. Whole-file overwrite of any destination listed above is forbidden.
 
 ## Optional Claude Code skill
 
