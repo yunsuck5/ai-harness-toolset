@@ -366,6 +366,22 @@ prepare 가 성공하면 입력 파일 목록은 `log/review/<run-id>/target-fil
 
 PowerShell 에서 위 here-string 을 `Out-File -Encoding utf8` 로 쓰면 PS 5.1 에서는 기본적으로 BOM 이 붙는다. `review-cycle.ps1` 는 BOM 유무와 무관하게 list 파일을 읽는다. 더 엄격히 BOM 없이 만들고 싶으면 PS 7 이상에서 `-Encoding utf8NoBOM` 을 쓰거나, `[System.IO.File]::WriteAllText($path, $text, (New-Object System.Text.UTF8Encoding($false)))` 를 직접 사용한다.
 
+### Free-text argv quoting 규율 (Stage 1 docs-only mitigation)
+
+`scripts/review-cycle.ps1` 를 PowerShell 5.1 환경에서 직접 호출할 때, free-text 인자 (`-Context`, `-ReviewQuestions`, `-Constraints`, `-RequiredInspectionPaths`) 의 본문이 (a) multi-line here-string 이거나 (b) embedded ASCII double-quote (`"`) 문자를 포함하면, child `powershell.exe` 의 argument tokenization / parameter binding 단계에서 의도와 다른 분리가 일어날 수 있다. 두 종류의 실패가 관찰되었다 — `review-prepare` 단계에서의 `PathTooLongException`, 그리고 `-Reviewer` 가 본문 token (예: `narrow`) 으로 mis-bind 되어 `only -Reviewer codex is supported; got narrow` 로 종료. 둘 다 Codex CLI 호출 이전 단계의 wrapper-level failure 다 (`docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" 참조).
+
+본 round 의 mitigation 은 docs-only 다. 다음 quoting 규율을 직접 invocation 에 적용한다.
+
+- 본문은 **single-line** 으로 유지한다. multi-line here-string (`@'…'@`, `@"…"@`) 을 free-text argv 로 전달하지 않는다. 진짜 multi-line 내용이 필요하면 본문을 single-line ASCII 로 압축하여 한 줄로 만든다.
+- 본문은 **single-quote** 로 감싼다 (`'…'`). PS 5.1 의 single-quoted string 은 `$` / 백틱 / `"` 의 해석 없이 literal 로 전달되어 tokenization 위험을 줄인다.
+- 본문 안에 **literal ASCII double-quote (`"`)** 를 포함하지 않는다. 인용 표현이 필요한 경우 single-quote (`'`) 또는 typographic quote (`“ ”`) 같은 ASCII-double-quote 가 아닌 문자로 대체한다. PS 5.1 의 cross-process argv 단계는 embedded double-quote 를 보존하지 않는다.
+- 본문은 ASCII fallback wording 으로 단순화하는 편이 안전하다. 한국어 본문이 필요하면 그대로 두되, embedded double-quote / multi-line here-string / 백틱 / `$variable` 같은 PowerShell metacharacter 를 본문에 섞지 않는다.
+- 본문이 위 규율로 표현하기 어려울 만큼 길고 quote-heavy 하면, 본 round 에서는 review request 자체를 **두 단계로 쪼개거나 wording 을 단순화**한다. complex 본문을 file 로 전달하는 채널은 본 round 의 mitigation 범위에 포함되지 않는다 (`docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" 의 Stage 3 — file-backed input — 별도 scoped goal 의 후보).
+
+**smoke driver 와 operator-direct 의 경계.** `scripts/smoke/invoke-review-cycle.ps1` 는 smoke driver 전용 thin wrapper 다 (`docs/backlog/operations.md` §"PowerShell smoke invocation quoting hardening" 의 (W) closeout). 본 wrapper 의 헤더 및 Pester contract (`tests/invoke-review-cycle-smoke.Tests.ps1`) 는 smoke driver use case 한정을 명시하며, parent process → wrapper 단계의 embedded ASCII double-quote 보존을 contract 에서 명시적으로 제외한다. 따라서 본 wrapper 를 operator 의 직접 invocation 대체 entrypoint 로 안내하지 않는다. operator 직접 호출은 위 quoting 규율 + `scripts/review-cycle.ps1` 의 정식 parameter 만 사용한다.
+
+**Stage 2 / Stage 3 후보의 위치 (deferred).** operator-direct 전용 wrapper 의 신설 (Stage 2 — `docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" 의 candidate (X)) 과 `scripts/review-cycle.ps1` 에 file-backed spec input 채널을 도입하는 방안 (Stage 3 — 같은 항목의 candidate (F); `docs/backlog/review.md` §"Review-cycle file-backed request input" 과의 통합 / 분리 결정 포함) 은 본 round 의 docs-only mitigation 범위 밖이며 각각 별도 scoped goal 의 대상이다. 본 §9 의 quoting 규율은 그 후속 결정이 이루어지기 전까지 적용한다.
+
 ---
 
 ## 9a. 이미 준비된 run-id 에 대해 reviewer 만 실행하는 경우

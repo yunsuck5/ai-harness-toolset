@@ -107,7 +107,7 @@ decision boundary:
 
 ## Review-cycle invocation quoting hardening
 
-- **Status**: candidate (future hardening; 본 라운드 implementation 아님).
+- **Status**: Stage 1 docs-only mitigation applied. `docs/OPERATOR_GUIDE_KR.md` §9 "Free-text argv quoting 규율" 과 `README.md` "Single-shot review cycle" 의 free-text argv quoting bullet 이 operator-direct invocation 의 single-line / single-quote / no-embedded-double-quote 규율 + smoke wrapper 의 operator-direct fallback 비권장 + Stage 2 / Stage 3 deferred 위치를 명문화했다. Stage 2 (operator-direct 전용 wrapper) / Stage 3 (file-backed spec input) 는 deferred candidate 그대로 유지되며 본 docs-only round 가 어느 것도 자동 승인하지 않는다. 본 entry 는 implementation closeout 이 아니라 docs-only mitigation closeout 이다. `scripts/`, `scripts/lib/`, `scripts/smoke/`, `tests/`, `templates/`, `config/`, `snippets/`, global / user filesystem 의 변경은 본 round 의 boundary 밖이며 별도 scoped goal 의 대상이다.
 - **Classification**: 운영자가 `scripts/review-cycle.ps1` 를 PowerShell 5.1 환경에서 직접 호출할 때의 argument-quoting reliability 문제. smoke driver 가 lifecycle script 를 호출하는 경로 (위 §"PowerShell smoke invocation quoting hardening") 도, review-cycle 내부 input channel 변경 (`docs/backlog/review.md` §"Review-cycle file-backed request input") 도 아닌, **operator → review-cycle.ps1 의 직접 invocation argv** 한 layer 만을 다룬다.
 
 ### Context
