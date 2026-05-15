@@ -105,6 +105,59 @@ decision boundary:
 
 ---
 
+## Review-cycle invocation quoting hardening
+
+- **Status**: candidate (future hardening; 본 라운드 implementation 아님).
+- **Classification**: 운영자가 `scripts/review-cycle.ps1` 를 PowerShell 5.1 환경에서 직접 호출할 때의 argument-quoting reliability 문제. smoke driver 가 lifecycle script 를 호출하는 경로 (위 §"PowerShell smoke invocation quoting hardening") 도, review-cycle 내부 input channel 변경 (`docs/backlog/review.md` §"Review-cycle file-backed request input") 도 아닌, **operator → review-cycle.ps1 의 직접 invocation argv** 한 layer 만을 다룬다.
+
+### Context
+
+본 라운드의 BF Level 3 status helper (`scripts/brief-status.ps1`) 도입 작업 중, 후속 review gate 를 위해 운영자가 `review-cycle.ps1` 를 free-text 인자 (`-Context`, `-ReviewQuestions`, `-Constraints`, `-RequiredInspectionPaths`) 와 함께 직접 호출하는 단계에서 두 차례 wrapper-level failure 가 관찰되었다. 두 실패 모두 Codex reviewer evaluation 이전 단계의 driver / wrapper / prepare layer 에서 발생했고, 동일 의미의 invocation 을 wording / quoting 만 단순화한 형태로 재시도해서 정상 review 로 진행했다.
+
+### Problem
+
+PowerShell 5.1 에서 `scripts/review-cycle.ps1` 를 free-text 인자와 함께 직접 호출할 때, 본문이 (a) multi-line here-string 을 포함하거나 (b) embedded ASCII double-quote (`"`) 문자를 포함하면, child `powershell.exe` 의 argument tokenization / parameter binding 단계에서 의도와 다른 분리가 발생할 수 있다. 결과적으로 review-cycle.ps1 자체 또는 그 호출 직전 wrapper layer 에서 실패가 발생하며, Codex reviewer 호출까지 도달하지 못한다. 본 fragility 는 운영자 quote-discipline 권고만으로는 root-cause 가 해결되지 않는다.
+
+### Observed symptoms
+
+- **PathTooLongException in review-prepare path handling.** multi-line here-string 본문을 free-text 인자로 전달하는 직접 invocation 에서 `review-prepare.ps1` 가 path 를 구성하는 과정에 PathTooLongException 이 발생, prepare 자체가 완료되지 못했다. `<ProjectRoot>/log/review/<run-id>/` 디렉터리, `meta.json`, `input.md`, `result.md`, `result.json` 어느 것도 생성되지 않았다.
+- **`-Reviewer` validation failure with unintended token (`narrow`).** free-text 인자 안의 embedded ASCII double-quote 문자가 child PowerShell 의 argument tokenizer 단계에서 parameter 경계로 reinterpret 되어, `-Reviewer` 가 본문의 token (`narrow`) 을 받아 `only -Reviewer codex is supported; got narrow` validation error 로 종료되었다. 이 또한 Codex 호출 이전 단계의 실패다.
+
+두 symptom 모두 위 §"PowerShell smoke invocation quoting hardening" 의 driver failure 분류 표지 (parser/binder error, manually-quoted single-string form 으로는 통과, run-id 디렉터리 부재) 와 정확히 동형이며, layer 만 다르다 (smoke driver 가 아니라 operator 의 직접 review-cycle invocation).
+
+### Impact
+
+- **No review verdict corruption.** 실패는 Codex 호출 전 단계 (driver / wrapper / prepare) 에서 발생하므로 final review verdict evidence 를 오염시키지 않는다. 별개의 정상 invocation 으로 진행된 review 만이 evidence 로 사용된다.
+- **Operational friction.** 운영자가 동일 의미의 review request 를 wording / quoting 만 다르게 재시도해야 하는 시간 비용이 발생한다.
+- **Risk of confusing failure 분류.** wrapper-level invocation failure 를 (a) review-cycle 자체의 결함 또는 (b) Codex reviewer 실패로 오인할 risk 가 있다. 이는 위 §"PowerShell smoke invocation quoting hardening" 의 driver failure / smoke contract failure / Codex review failure 3 계층 분류와 같은 가족이며, operator 직접 invocation 도 동일 분류 위험을 공유한다.
+
+### Preferred direction
+
+본 항목은 backlog candidate 이며, 다음은 구현 결정이 아닌 candidate direction 이다. 실제 채택 / 후보 선택은 별도 scoped goal 에서 결정한다.
+
+- **직접 invocation 에서 multi-line here-string / embedded ASCII double-quote 사용을 줄인다.** complex / quote-heavy review request 의 경우 직접 invocation 의 free-text argv 를 단순화 (single-line, single-quote, ASCII fallback wording) 하는 것이 가장 저비용 mitigation 이다.
+- **wrapper 또는 file-based input 채널 채택 검토.** review-cycle 외부에서 thin invocation wrapper 를 두는 후보, 또는 review-cycle 내부에 file-backed request input 채널 (`docs/backlog/review.md` §"Review-cycle file-backed request input" 후보 — `-ReviewRequestPath`) 을 도입하여 free-text argv 의존도를 줄이는 후보. 두 후보 모두 본 backlog 항목이 자동 승인하지 않는다.
+- **direct invocation 의 사용 권장도 조정.** runbook / operator guide 에서 complex review request (long context, multi-line, multilingual, quote-heavy) 의 경우 직접 invocation 을 권장 패턴에서 제외하고, wrapper 또는 file-based 채널로 안내한다.
+
+### Cross-reference
+
+- 위 §"PowerShell smoke invocation quoting hardening" — smoke driver layer 의 invocation hardening. 본 항목과 root cause (PowerShell 5.1 의 argument tokenization fragility) 를 공유하지만 layer 가 다르다 (smoke driver vs operator 직접 invocation). 두 항목을 한 batch 에 묶어서 구현하지 않는다.
+- `docs/backlog/review.md` §"Review-cycle file-backed request input" — review-cycle **내부** input channel 변경으로 동일 root cause 를 review-cycle 한 layer 안에서 해결하는 후보. 본 항목과 두 layer 가 묶이지 않으며 각각 별도 scoped goal 의 대상이다.
+
+### Non-goals
+
+- 본 항목은 backlog candidate 다. 즉각 wrapper / file-based input 도입은 자동 승인되지 않는다.
+- review subsystem 의 redesign 아님.
+- 광범위한 PowerShell quoting abstraction layer / cross-shell quoting helper / 범용 quoting framework 도입 아님.
+- verdict semantics 변경 아님.
+- `review-verify` binding 또는 freshness / hash 검증 규칙 변경 아님.
+- background / detached review execution 도입 아님.
+- `scripts/review-cycle.ps1` 의 parameter contract 변경 아님 (file-based input 후보 채택 시 별도 scoped goal 의 대상).
+- 본 backlog 항목 자체는 본 라운드의 BF Level 3 status helper 라인 작업의 implementation 결정 / commit 결정 어느 것도 자동 승인하지 않는다.
+- 본 항목 implementation 은 별도 scoped goal 을 거친다.
+
+---
+
 ## Smoke evidence preservation
 
 - **Status**: scope-defined; implementation candidate decision (runbook-only / helper-script / archive manifest; §Future implementation candidates 참조) 는 별도 scoped goal 로 deferred.
