@@ -14,6 +14,8 @@
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
+> **BRIEF wording supersede note (3rd reconciliation, 문서 전체 적용).** 본 audit 본문의 BRIEF / BriefRoot 관련 wording — §2 의 `BriefRoot — <ProjectRoot>/brief. durable BRIEF artifact tree`, §4 의 `brief-check.ps1` 행이 `<ProjectRoot>/brief/BRIEF.md` 를 default 검사 대상으로 적은 것, §4 의 `templates/brief/BRIEF.md` 가 `<ProjectRoot>/brief/BRIEF.md` 를 canonical 위치로 적었다는 audit observation, §5 의 `5.2 brief/` 절에서 source repo 의 root `brief/` collision 을 다룬 부분 — 은 audit 시점의 BRIEF model 을 반영한 historical record 다. 그 모델은 이후 reconciliation 라운드를 거쳐 정정되었다. **현행 (3차 reconciliation) 기준**: canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` (project-local, operator-local, source-control-excluded runtime artifact under `<ProjectRoot>/log/`, gitignored), root `<ProjectRoot>/brief/` 는 **rejected**, user-home operator-local runtime root 도 rejected, target persistent footprint = `<ProjectRoot>/log/` only. `BriefRoot` 는 `<ProjectRoot>/log/brief` 다. `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 의 destination 이 정확히 그 자리와 일치한다. canonical source-of-truth 는 `docs/BRIEF_CONTRACT.md` 와 `docs/CHATLOG_CONTRACT.md` 다. 본 audit 의 process / gap / blocker 결론 자체는 path handling audit 의 read-only 관찰이므로 BRIEF 자리 결정과 독립적으로 유효하다 — wording 의 BRIEF 자리만 본 note 의 3차 framing 으로 읽는다.
+
 ---
 
 ## 1. Purpose

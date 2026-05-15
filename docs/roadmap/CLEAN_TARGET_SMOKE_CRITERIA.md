@@ -26,21 +26,27 @@
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
-> **BRIEF wording — two-step reconciliation (note for partial readers).** 본 문서의 BRIEF 관련 assertion
-> (precondition A5 / A6, SC2 / SC3 / SC4, §1.1 fixture 절차, §3 BriefRoot, §4 evidence) 은 1차 reconciliation
-> 시점에 `<ProjectRoot>/log/brief/BRIEF.md` 를 canonical 자리로 부르고 root `<ProjectRoot>/brief/` 를 forbidden
-> 으로 둔 framing 으로 정리되었다. **이후 후속 정정에서 그 framing 자체가 정정되었다.** 현행 (2차) 기준:
-> **target repo product canonical Brief 는 `<ProjectRoot>/brief/BRIEF.md`** 이며, `<ProjectRoot>/log/brief/BRIEF.md`
-> 는 현재 `scripts/brief-init.ps1` 의 seed destination — operator-local runtime artifact (`log/` 아래, default
-> gitignored) — 이고 product canonical 로 승격되지 않는다. **root `<ProjectRoot>/brief/` 는 forbidden 이 아니다.**
-> BF Level 은 path 가 아니라 save / restore capability maturity 다; BF Level 3 (deterministic Brief
-> maintenance / validation / stale warning / session-start guidance / restore-offer) 는 미구현 future scoped
-> work 다. **그러나 본 criteria 의 SC2 / SC3 / SC4 / §1.1 / §3 / §4 assertion 자체는 modify 하지 않는다.**
+> **BRIEF wording — three-step reconciliation (note for partial readers).** 본 문서의 BRIEF 관련 assertion
+> (precondition A5 / A6, SC2 / SC3 / SC4, §1.1 fixture 절차, §3 BriefRoot, §4 evidence) 은 세 단계의 reconciliation
+> 을 거친 BRIEF 모델 framing 안에서 읽는다.
+> **(1) 1차 reconciliation (historical):** canonical 을 `<ProjectRoot>/log/brief/BRIEF.md` 로 두고 root
+> `<ProjectRoot>/brief/` 를 forbidden 으로 둔 framing.
+> **(2) 2차 reconciliation (historical, superseded):** target repo product canonical Brief 를
+> `<ProjectRoot>/brief/BRIEF.md` 로 두고 `<ProjectRoot>/log/brief/BRIEF.md` 를 not-canonical 한 seed destination 으로
+> 분류한 framing.
+> **(3) 3차 reconciliation (현행 기준):** 2차 framing 이 정정되어 **canonical Brief 는 다시 `<ProjectRoot>/log/brief/BRIEF.md`**
+> — project-local, operator-local, source-control-excluded runtime artifact under `<ProjectRoot>/log/` (gitignored).
+> **root `<ProjectRoot>/brief/` 는 rejected**, user-home operator-local runtime root (예:
+> `%USERPROFILE%\.ai-harness\projects\<project-key>\...`) 도 rejected, target persistent footprint =
+> `<ProjectRoot>/log/` only. BF Level 은 path 가 아니라 save / restore capability maturity 다; BF Level 3
+> (deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer) 는
+> 미구현 future scoped work 다.
+> **본 criteria 의 SC2 / SC3 / SC4 / §1.1 / §3 / §4 assertion 자체는 세 reconciliation 어느 단계에서도 modify 하지 않는다.**
 > 그 assertion 들은 현재 `scripts/brief-init.ps1` 가 `<ProjectRoot>/log/brief/BRIEF.md` 에 seed 한다는 사실을
-> 검증하는 primitive-behavior smoke 다 — 그 동작은 양쪽 reconciliation 어디에서도 그대로다. 따라서 본문에
-> 등장하는 "canonical BRIEF artifact" 같은 wording 은 본 criteria 안에서는 **primitive 의 현재 destination** 을
-> 가리키는 것으로 읽고, target repo 의 product canonical 자리 (`<ProjectRoot>/brief/BRIEF.md`) 와 동의어로
-> 읽지 않는다. canonical source-of-truth 는 `docs/BRIEF_CONTRACT.md` 와 `docs/CHATLOG_CONTRACT.md` 다.
+> 검증하는 primitive-behavior smoke 다 — 그 동작은 세 reconciliation 모두에서 그대로다. 본문에 등장하는
+> "canonical BRIEF artifact" wording 은 3차 reconciliation 기준 그대로 canonical 자리를 의미한다 (1차 의미와 일치;
+> 2차 단계의 "primitive destination 이며 not-canonical" 해석은 superseded). canonical source-of-truth 는
+> `docs/BRIEF_CONTRACT.md` 와 `docs/CHATLOG_CONTRACT.md` 다.
 
 ---
 

@@ -13,7 +13,7 @@
 
 ## current restore source 는 Brief 다
 
-- 어떤 session 이든 작업 (재)개 시 **가장 먼저 읽는 자리는 Brief** 다 (`docs/BRIEF_CONTRACT.md`). target repo 의 product canonical Brief 는 `<ProjectRoot>/brief/BRIEF.md` 다.
+- 어떤 session 이든 작업 (재)개 시 **가장 먼저 읽는 자리는 Brief** 다 (`docs/BRIEF_CONTRACT.md`). canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` — 그 project 의 checkout 안 `log/` 트리 아래 project-local, operator-local, source-control-excluded runtime artifact. root `<ProjectRoot>/brief/` 와 user-home operator-local runtime root 는 Brief 자리가 아니다.
 - Chatlog 는 새 session 의 default context 가 아니다. AI agent 가 raw transcript / 누적 Chatlog 본문을 읽어 자체 요약으로 restore 를 시도하는 우회는 권장되지 않는다.
 - Chatlog 가 사용되는 정상 경로는 두 가지뿐이다.
   - Brief 가 가리키는 path 를 따라가 특정 결정 / 근거 / 인용 wording 을 확인할 때.
@@ -65,7 +65,7 @@ Chatlog 가 담당하지 **않는** 것:
 
 ## Brief reconstruction evidence — 사용 흐름
 
-Brief (`<ProjectRoot>/brief/BRIEF.md`) 가 오염 / 삭제 / stale 로 신뢰할 수 없는 경우, Chatlog 본문이 Brief 재구성의 evidence 로 사용될 수 있다. 이 사용은 다음 흐름을 따른다.
+Brief (`<ProjectRoot>/log/brief/BRIEF.md`) 가 오염 / 삭제 / stale 로 신뢰할 수 없는 경우, Chatlog 본문이 Brief 재구성의 evidence 로 사용될 수 있다. 이 사용은 다음 흐름을 따른다.
 
 - 운영자가 명시적으로 "Brief 가 신뢰할 수 없다" 고 판단한 경우에만 시작한다. 본 contract 는 그 판단을 자동 trigger 로 만들지 않는다.
 - AI agent 가 Chatlog 를 읽고 Brief 의 required heading set 에 맞춰 사람이 검토 가능한 draft 를 만든다. agent 가 직접 Brief artifact 를 commit / overwrite 하지 않는다.

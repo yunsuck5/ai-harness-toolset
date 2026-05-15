@@ -27,12 +27,25 @@
 - 현재 `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 는 BF Level 3 의 **full implementation 이 아니라** source-side primitive 다 (아래 §"source-side primitive 책임" 참조). 두 script 가 존재한다고 해서 BF Level 3 capability 가 갖춰진 상태는 아니다.
 - BF Level 1/2 에서 사람이 BRIEF 를 손으로 작성하는 부분은 BF Level 3 가 deterministic writer 로 흡수해야 할 대상이다. 본 contract 는 그 흡수의 완료를 강제하지 않는다.
 
-## target repo canonical Brief 자리
+## canonical Brief 자리 — project-local runtime under `<ProjectRoot>/log/`
 
-- target repo 의 **product canonical restore source** 는 `<ProjectRoot>/brief/BRIEF.md` 다.
-- 이 자리는 target repo 가 자기 자신의 durable restore state 를 두는 product-level location 이다. 어느 BF Level 의 운영이라도 target repo 의 restore entrypoint 는 이 한 자리다.
-- 현재 source-side primitive 의 writer destination 은 이 자리와 일치하지 않는다 (`<ProjectRoot>/log/brief/BRIEF.md` 로 seed). 그 불일치는 아래 §"현재 source-side primitive 상태" 에서 다룬다.
-- target repo 의 canonical 자리를 `brief/BRIEF.md` 로 정합화하고 deterministic writer 를 그쪽으로 routing 하는 작업은 BF Level 3 의 일부 future scoped work 다.
+- 한 project 의 **canonical Brief 자리** 는 `<ProjectRoot>/log/brief/BRIEF.md` 다.
+- 이 자리는 **project-local, operator-local, source-control-excluded** runtime artifact 다.
+  - **project-local** — 그 project 의 checkout 안 (`<ProjectRoot>/log/` 트리 안) 에 위치한다. 다른 project 의 Brief 와 섞이지 않는다. user-home global runtime root (예: `%USERPROFILE%\.ai-harness\projects\<project-key>\...`) 는 canonical 이 아니며 본 contract 가 도입하지 않는다.
+  - **operator-local** — 각 운영자의 local checkout 안에 존재한다는 의미다. team-shared 가 아니다. 같은 project 의 다른 운영자 / 다른 machine 의 Brief 는 별개 instance 다.
+  - **source-control-excluded** — `<ProjectRoot>/log/` 는 target project 의 `.gitignore` 의 `log/` 규칙으로 ignored 되며, Brief 는 그 아래의 runtime artifact 다. commit / push / merge / release / publish 대상이 아니고 product source 의 일부도 아니다. "project-local" 은 "repo-tracked" 의 동의어가 아니다.
+- 현재 source-side primitive (`scripts/brief-init.ps1`) 의 writer destination 이 정확히 이 자리이며, `scripts/brief-check.ps1` 의 default check path 도 이 자리다. canonical 자리와 primitive 의 destination 은 일치한다.
+- `<ProjectRoot>/brief/BRIEF.md` (root `brief/`) 는 **rejected** 다. 본 contract 의 canonical Brief 자리가 아니며, 어떤 BF Level 의 운영에서도 ai-harness 용도로 root `<ProjectRoot>/brief/` 를 생성하지 않는다.
+
+### Historical lineage (preserved, not current)
+
+본 자리의 결정은 두 단계의 reconciliation 을 거쳐 왔다.
+
+- **1차 reconciliation (historical, superseded)** — 한때 canonical 을 `<ProjectRoot>/log/brief/BRIEF.md` 로 두고 root `<ProjectRoot>/brief/` 를 forbidden 으로 표기한 framing.
+- **2차 reconciliation (historical, superseded)** — 그 framing 이 정정되어 target repo product canonical Brief 를 `<ProjectRoot>/brief/BRIEF.md` 로 두고, `<ProjectRoot>/log/brief/BRIEF.md` 를 narrow source-side primitive 의 seed destination (operator-local runtime artifact, not promoted to canonical) 으로 분류한 framing.
+- **3차 reconciliation (현행, 본 contract 본문)** — 위 2차 framing 도 정정되었다. canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` 한 자리이며, root `<ProjectRoot>/brief/` 는 rejected, user-home operator-local runtime root 도 rejected, target persistent footprint = `<ProjectRoot>/log/` only. 본 본문의 모든 정의가 우선한다.
+
+위 lineage 표기는 silent deletion 을 피하기 위한 기록이다. 다른 docs / snippet / template / script / test 에 남아 있는 1차 또는 2차 wording 은 본 본문의 정의로 읽는다. 그 wording 자체의 정합화는 별도 scoped work 다.
 
 ## 현재 source-side primitive 상태
 
@@ -41,11 +54,12 @@
 - `brief-init.ps1` — `<ProjectRoot>/log/brief/BRIEF.md` 에 template artifact 를 한 번 seed. 이미 존재하면 default 동작은 거부 (no overwrite).
 - `brief-check.ps1` — 지정된 BRIEF artifact 의 shape (canonical heading 8 종, placeholder / sentinel 잔존, duplicate, empty body) 만 검증. read-only.
 
-위 두 primitive 의 writer destination 은 현재 `<ProjectRoot>/log/brief/BRIEF.md` 다. 이는 다음의 의미를 갖는다.
+두 primitive 의 destination / default check path 는 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`) 와 일치한다. 위 §"canonical Brief 자리" 의 정의가 primitive 의 동작과 정합한다.
 
-- `ai-harness-toolset` 가 자기 자신을 dogfooding ProjectRoot 로 동작할 때, 그 결과로 생기는 `<ToolsetRepoRoot>/log/brief/BRIEF.md` 는 **ai-harness-toolset 내부 runtime artifact** 다. operator-local 이며 source payload 도 install payload 도 아니다.
-- 같은 primitive 를 target repo 에 적용해도 현재 동작상 writer 는 `<TargetRoot>/log/brief/BRIEF.md` 에 쓴다. 이 자리에 생긴 파일은 **target repo 의 product canonical restore source 로 승격되지 않는다.** product canonical 은 `<ProjectRoot>/brief/BRIEF.md` 이며, 그 routing 은 위에서 적은 대로 future scoped work 다.
-- 따라서 본 contract 는 `<ProjectRoot>/log/brief/BRIEF.md` 의 존재를 금지하지 않는다. 단, 그 자리를 product 의 canonical restore source 로 해석하는 것은 금지한다.
+- `ai-harness-toolset` 가 자기 자신을 dogfooding ProjectRoot 로 동작할 때, 그 결과로 생기는 `<ToolsetRepoRoot>/log/brief/BRIEF.md` 는 ai-harness-toolset 자신의 self-dogfooding canonical Brief instance 다. operator-local runtime artifact 이며 source payload / install payload / 다른 project 의 Brief 와 무관하다.
+- 외부 target repo 에 primitive 를 적용해도 같은 자리 (`<TargetRoot>/log/brief/BRIEF.md`) 가 canonical 이다. routing 변경 future scoped work 는 없다 — destination 자체가 이미 canonical 이다.
+
+primitive 의 narrow 성격은 destination 의 문제가 아니라 capability 의 문제다 — deterministic save / update writer, restore-offer behavior, stale warning, session-start guidance 같은 BF Level 3 의 자동화는 두 primitive 가 제공하지 않는다 (§"Future scoped work" 참조).
 
 ## Future scoped work — 본 contract 가 자동 승인하지 않는 항목
 
@@ -55,14 +69,15 @@
 - restore-offer behavior — 새 session 진입 시 BRIEF 를 읽고 현재 상태 / 다음 단일 action / do-not-do / pending user decision 을 사용자에게 요약 보고하고, "이 복구 지점에서 이어서 진행할까요?" 류의 확인을 받는 흐름. 본 contract 는 그 흐름의 source-side automation 을 강제하지 않는다.
 - stale warning — BRIEF 가 일정 시간 / 일정 작업 단위 이상 갱신되지 않은 상태를 감지하고 사용자에게 알리는 메커니즘.
 - session-start guidance — 새 agent session 이 BRIEF 를 가장 먼저 읽도록 일관되게 유도하는 deterministic guidance.
-- writer routing 의 target canonical (`brief/BRIEF.md`) 정합화 — 현재 source-side primitive 의 writer destination 을 target canonical 자리로 옮기는 작업.
 - 위 항목들의 source-side automation 을 ai-harness-toolset 내부에 도입할지, 외부 의도에 위임할지의 decision.
+
+primitive 의 writer destination 은 이미 canonical (`<ProjectRoot>/log/brief/BRIEF.md`) 이므로 "writer routing 의 target canonical 정합화" 는 더 이상 BF Level 3 의 future scoped work 항목이 아니다. (2차 reconciliation 의 잔재였으며, 3차 reconciliation 으로 자연 해소되었다 — §"canonical Brief 자리" Historical lineage 참조.)
 
 이 항목들이 implementation 되기 전까지, BRIEF 작성 / 유지 자체는 BF Level 1/2 의 manual discipline 으로 운영된다. 본 contract 는 그 manual discipline 을 영구화하는 것이 아니라, BF Level 3 에서 흡수할 대상으로 명시한다.
 
 ## BRIEF 의 위치와 독자
 
-target repo 의 BRIEF artifact 자리는 `<ProjectRoot>/brief/BRIEF.md` 한 곳이다.
+target repo 의 BRIEF artifact 자리는 `<ProjectRoot>/log/brief/BRIEF.md` 한 곳이다. root `<ProjectRoot>/brief/` 와 user-home operator-local runtime root 는 BRIEF 자리가 아니다 (§"canonical Brief 자리" 참조).
 
 독자 우선순위:
 
@@ -74,19 +89,19 @@ BRIEF 는 짧고 자족적이어야 한다. 누적 history, 자세한 review pay
 
 ## source repo vs target repo 경계
 
-- source repo (`ai-harness-toolset`) 의 source 트리에는 target 의 BRIEF artifact 를 두지 않는다. `templates/brief/BRIEF.md` 는 template 자리이며 실제 BRIEF artifact 가 아니다.
-- target repo 의 product canonical Brief artifact 는 `<ProjectRoot>/brief/BRIEF.md` 다. 본 contract 는 그 자리의 운영 책임을 target repo 의 operator 에게 둔다.
-- `ai-harness-toolset` 가 자기 자신을 dogfooding ProjectRoot 로 동작할 때 생기는 `log/brief/BRIEF.md` 는 ai-harness-toolset 내부 runtime artifact 다. target 의 product canonical 자리로 해석되지 않는다.
+- source repo (`ai-harness-toolset`) 의 source 트리에는 어떤 project 의 BRIEF artifact 도 두지 않는다. `templates/brief/BRIEF.md` 는 template 자리이며 실제 BRIEF artifact 가 아니다.
+- target repo 의 canonical Brief artifact 는 `<ProjectRoot>/log/brief/BRIEF.md` 다 — 그 project 의 checkout 안 `log/` 트리 아래 operator-local runtime artifact. 본 contract 는 그 자리의 운영 책임을 target repo 의 operator 에게 둔다.
+- `ai-harness-toolset` 가 자기 자신을 dogfooding ProjectRoot 로 동작할 때 생기는 `<ToolsetRepoRoot>/log/brief/BRIEF.md` 는 그 self-dogfooding instance 의 canonical Brief 다. 외부 target 의 Brief 와 동일한 종류의 runtime artifact 이며, source / install payload 가 아니다.
 
-## tracked vs gitignored — target canonical 자리
+## tracked vs gitignored — canonical Brief 자리
 
-`<ProjectRoot>/brief/BRIEF.md` 의 tracked 여부는 본 contract 의 hard rule 이 아니다. target repo 의 operator 가 결정한다.
+`<ProjectRoot>/log/brief/BRIEF.md` 의 default 기대값은 **gitignored (untracked)** 이다. 이는 `<ProjectRoot>/log/` 가 runtime artifact tree 이고 target project 의 `.gitignore` 의 `log/` 규칙으로 ignored 되기 때문이다. 결과적으로 canonical Brief 는 commit / push / merge / release / publish 대상이 아니며 product source 의 일부도 아니다.
 
-- target repo 의 운영자가 `brief/BRIEF.md` 를 tracked 로 두면, 그 BRIEF 는 그 project 의 shared restore state 가 된다.
-- 운영자가 untracked / gitignored 로 두면 그 BRIEF 는 operator-local restore state 다.
-- 둘 중 어느 쪽이든 본 contract 는 BRIEF 를 "shared project source-of-truth" 로 격상하지 않는다. 협업 공유가 필요한 durable project 정보는 BRIEF 가 아니라 그 project 의 정식 docs 가 담는다.
+- "project-local" 은 그 project 의 checkout 안에 있다는 의미이지 "repo-tracked" 라는 의미가 아니다.
+- "operator-local" 은 각 운영자의 local checkout 안에 instance 가 존재한다는 의미이지 user-home 의 global state 라는 의미가 아니다. 같은 project 라도 운영자마다 / machine 마다 별개 instance 다.
+- 협업 공유가 필요한 durable project 정보는 BRIEF 가 아니라 그 project 의 정식 docs 가 담는다. BRIEF 를 "shared project source-of-truth" 로 격상하지 않는다.
 
-`<ProjectRoot>/log/brief/BRIEF.md` (= 현재 source-side primitive 의 writer destination) 의 default 기대값은 **gitignored (untracked)** 이다. 이는 `<ProjectRoot>/log/` 가 runtime artifact tree 이고 `.gitignore` 의 `log/` 규칙으로 ignored 되기 때문이다.
+operator 가 명시적으로 결정해 `<ProjectRoot>/log/` 의 `.gitignore` 규칙을 깨고 BRIEF 를 tracked 로 두는 것은 본 contract 가 정의하지 않는 운영 결정이다. 본 contract 의 default 기대는 untracked 이며, ai-harness 는 그 default 위에서 동작한다.
 
 ## Chatlog 와의 관계
 
@@ -97,7 +112,7 @@ BRIEF 는 짧고 자족적이어야 한다. 누적 history, 자세한 review pay
 
 ## BRIEF required / optional headings
 
-BRIEF artifact (`<ProjectRoot>/brief/BRIEF.md`, 그리고 현재 source-side primitive 가 seed 하는 `<ProjectRoot>/log/brief/BRIEF.md`) 는 다음 canonical heading 을 사용한다.
+BRIEF artifact (canonical 자리 `<ProjectRoot>/log/brief/BRIEF.md`) 는 다음 canonical heading 을 사용한다.
 
 required:
 
@@ -144,7 +159,7 @@ required behavior:
 
 - `ProjectRoot`, `ToolRoot` 를 resolve.
 - `<ToolRoot>/templates/brief/BRIEF.md` 를 read.
-- 현재 default writer destination 은 `<ProjectRoot>/log/brief/BRIEF.md` 다. 이 destination 을 target canonical (`<ProjectRoot>/brief/BRIEF.md`) 로 옮기는 작업은 future scoped work 다.
+- writer destination 은 canonical Brief 자리 `<ProjectRoot>/log/brief/BRIEF.md` 다. routing 변경 future scoped work 는 없다 — destination 자체가 canonical 이다 (§"canonical Brief 자리").
 - destination directory 가 없으면 생성. 이미 BRIEF 가 있으면 default 동작은 거부 (no overwrite).
 - 작성 IO 는 `scripts/lib/encoding.ps1` 의 함수만 사용. 결과 파일은 UTF-8 without BOM.
 
@@ -216,12 +231,13 @@ forbidden behavior:
 - multi-Brief orchestration (한 project 안의 복수 BRIEF 파일).
 - public release packaging.
 - BF Level 3 capability 의 implementation 자체 (위 §"Future scoped work" 참조).
-- 현재 source-side primitive 의 writer destination 을 `brief/BRIEF.md` 로 routing 하는 변경.
-- `log/brief/BRIEF.md` 를 product canonical restore source 로 승격하는 모든 해석.
+- root `<ProjectRoot>/brief/` 를 canonical Brief 자리로 되살리는 모든 해석. (그 자리는 본 contract 가 reject 했다.)
+- user-home operator-local runtime root (예: `%USERPROFILE%\.ai-harness\projects\<project-key>\...`) 를 canonical Brief 자리로 도입하는 변경.
+- `<ProjectRoot>/log/brief/BRIEF.md` 외의 자리를 canonical Brief 의 동의어로 부르는 모든 해석.
 
 ## 향후 확장 시 고려 사항
 
-- 새 wrapper 또는 새 CLI 가 도입되어도 본 contract 의 target canonical (`<ProjectRoot>/brief/BRIEF.md`), heading set, 두 primitive 의 책임 경계는 default 로 유지한다.
+- 새 wrapper 또는 새 CLI 가 도입되어도 본 contract 의 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`), heading set, 두 primitive 의 책임 경계는 default 로 유지한다.
 - 새 schema 가 도입되어도 본 manual convention 과 모순되지 않도록 한다.
 - BRIEF 가 review / evidence / Chatlog artifact 를 inline 으로 옮겨 적기 시작하면 본 contract 의 compact 원칙 위반이다. 그 경우 새 wrapper 가 아니라 BRIEF 본문이 잘못 작성된 것으로 본다.
 - 위 §"Future scoped work" 항목이 별도 scoped 승인을 받아 implementation 되는 시점에는 본 contract 도 그에 맞춰 갱신된다. 갱신 자체가 본 contract 의 존재만으로 자동 승인되지 않는다.

@@ -65,7 +65,7 @@
 - `ToolRoot` — source-managed file (`scripts/`, `templates/`, `config/`, `snippets/`) 의 위치.
 - `ProjectRoot` — 적용 대상 project repo 의 root.
 - `LogRoot` — `<ProjectRoot>/log`.
-- `BriefRoot` — `<ProjectRoot>/log/brief` (current source-side primitive `scripts/brief-init.ps1` seed destination — operator-local runtime artifact, **not** target product canonical Brief). Target product canonical Brief is `<ProjectRoot>/brief/BRIEF.md` per `docs/BRIEF_CONTRACT.md`. The earlier value `<ProjectRoot>/brief` was used at one stage; an intermediate BRIEF-posture reconciliation moved it to `<ProjectRoot>/log/brief` and declared root `brief/` forbidden — that reconciliation has since been corrected (see `docs/BRIEF_CONTRACT.md`, `docs/DECISIONS.md`, `docs/roadmap/POST_MVP_PLAN.md` §3). `BriefRoot` here continues to name the primitive's seed destination for path-resolution purposes and is not a canonical-Brief claim.
+- `BriefRoot` — `<ProjectRoot>/log/brief`. Under the **3rd reconciliation (현행)** of the BRIEF contract this is also the canonical Brief location per `docs/BRIEF_CONTRACT.md` — `<ProjectRoot>/log/brief/BRIEF.md` is the project-local, operator-local, source-control-excluded runtime Brief artifact (gitignored under `log/`). Three reconciliations applied to this name historically: (1) 1st — canonical at `<ProjectRoot>/log/brief/BRIEF.md`, root `brief/` forbidden; (2) 2nd (superseded) — canonical at `<ProjectRoot>/brief/BRIEF.md`, `<ProjectRoot>/log/brief/BRIEF.md` reduced to a not-canonical seed destination; (3) 3rd (현행) — canonical returned to `<ProjectRoot>/log/brief/BRIEF.md`, root `<ProjectRoot>/brief/` rejected, user-home operator-local runtime root rejected, target persistent footprint = `<ProjectRoot>/log/` only. The path-resolution role of `BriefRoot` itself does not change across the three reconciliations — only the canonical-claim framing did. See `docs/BRIEF_CONTRACT.md`, `docs/DECISIONS.md`, `docs/roadmap/POST_MVP_PLAN.md` §3 for canonical wording.
 - `ConfigRoot` — `<ToolRoot>/config`.
 - `TemplateRoot` — `<ToolRoot>/templates`.
 - `ScriptRoot` — `<ToolRoot>/scripts`.
@@ -201,22 +201,23 @@ backward compat 영향. 기존 source repo 에서 만든 review packet 은 `tool
 - 그 외 untracked 는 fail 동작 유지.
 - 명시적으로 제외 대상이 **아닌** 예: `log-old`, `log_archive/`, `.ai-harness-backup`, `.ai-harness.zip`. 이들은 sibling path 로 간주되어 현재처럼 untracked fail 을 유지한다.
 
-`brief/` 는 BRIEF 가 의도적으로 tracked 인 source-of-truth 이므로 제외하지 않는다. BRIEF artifact 가 untracked 상태로 존재한다는 사실 자체가 운영 이슈 (commit 되지 않은 BRIEF) 이므로 그대로 fail 신호를 유지한다. (**이 문단은 historical rationale 이다** — 아래 **Superseded** note 의 two-step reconciliation 참조. 현행 기준: target product canonical Brief 는 `<ProjectRoot>/brief/BRIEF.md` 이며, `<ProjectRoot>/log/brief/BRIEF.md` 는 source-side primitive 의 seed destination 이다.)
+`brief/` 는 BRIEF 가 의도적으로 tracked 인 source-of-truth 이므로 제외하지 않는다. BRIEF artifact 가 untracked 상태로 존재한다는 사실 자체가 운영 이슈 (commit 되지 않은 BRIEF) 이므로 그대로 fail 신호를 유지한다. (**이 문단은 historical rationale 이다** — 아래 **Superseded** note 의 three-step reconciliation 참조. 현행 기준 (3차 reconciliation): canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` 이며 root `<ProjectRoot>/brief/` 는 rejected. canonical Brief 가 `log/` 아래 있으므로 `log/` exclusion 으로 이미 untracked-fail 에서 자연 제외되고, root `brief/` 자체가 만들어지지 않는다.)
 
 **Rationale.** shared / global mode 전환기에는 target 에 `.ai-harness/` 가 untracked 로 잠시 남을 수 있다 (legacy copy 가 제거되기 전). 본 exclusion 은 그 전환기의 마찰을 줄인다. exact-or-strict-child 매칭은 prefix-only 매칭이 sibling path 까지 widening 하는 ambiguity 를 차단한다. BRIEF 는 정책적으로 tracked 이어야 하므로 동일 exclusion 을 적용하지 않는다.
 
-> **Superseded — D7 rationale only (two-step reconciliation).** 위 D7 의 "`brief/` 는 BRIEF 가
-> 의도적으로 tracked 인 source-of-truth 이므로 제외하지 않는다" 는 rationale 은 두 단계의 reconciliation 을
+> **Superseded — D7 rationale only (three-step reconciliation).** 위 D7 의 "`brief/` 는 BRIEF 가
+> 의도적으로 tracked 인 source-of-truth 이므로 제외하지 않는다" 는 rationale 은 세 단계의 reconciliation 을
 > 거쳤다. (1) 1차 BRIEF posture reconciliation 에서 canonical 을 `<ProjectRoot>/log/brief/BRIEF.md` 로 옮기고
-> root `brief/` 를 forbidden 으로 둔 framing 이 채택되었다. (2) 이후 후속 정정에서 그 framing 자체가
-> 정정되었다: **target repo product canonical Brief 는 `<ProjectRoot>/brief/BRIEF.md`** 이고,
-> `<ProjectRoot>/log/brief/BRIEF.md` 는 현재 `scripts/brief-init.ps1` 의 seed destination (operator-local
-> runtime artifact) 이며 product canonical 로 승격되지 않는다. root `brief/` 는 forbidden 이 아니다.
-> **D7 의 동작 결정 자체는 두 단계의 변천에도 그대로 유효하다**: `review-cycle.ps1` 의 untracked detection 은
-> `log/` 를 이미 제외하므로 `log/brief/BRIEF.md` 는 자연히 제외되고, root `brief/` (operator 가 두기로 한
-> target product canonical Brief 자리) 는 운영자가 tracked 으로 두면 untracked 이슈가 발생하지 않아
-> "제외하지 않는다" 는 규칙이 자연스럽게 정합된다. 따라서 `review-cycle.ps1` 변경은 불필요하다. canonical
-> source-of-truth 는 `docs/BRIEF_CONTRACT.md` 다.
+> root `brief/` 를 forbidden 으로 둔 framing 이 채택되었다. (2) 그 framing 이 정정되어 target repo product canonical Brief 를
+> `<ProjectRoot>/brief/BRIEF.md` 로 두고 `<ProjectRoot>/log/brief/BRIEF.md` 를 not-canonical 한 seed destination
+> 으로 분류한 framing 이 채택되었다. **(3) 3차 reconciliation (현행 기준):** 2차 framing 도 정정되어
+> canonical Brief 는 다시 `<ProjectRoot>/log/brief/BRIEF.md` — project-local, operator-local,
+> source-control-excluded runtime artifact (gitignored under `log/`) — 이며 **root `<ProjectRoot>/brief/` 는
+> rejected**, user-home operator-local runtime root 도 rejected, target persistent footprint = `<ProjectRoot>/log/` only 다.
+> **D7 의 동작 결정 자체는 세 단계의 변천에도 그대로 유효하다**: `review-cycle.ps1` 의 untracked detection 은
+> `log/` 를 이미 제외하므로 canonical Brief (`<ProjectRoot>/log/brief/BRIEF.md`) 가 자연히 제외되고, root
+> `<ProjectRoot>/brief/` 는 어차피 만들어지지 않으므로 untracked-fail 에 걸릴 수 없다. 따라서
+> `review-cycle.ps1` 변경은 불필요하다. canonical source-of-truth 는 `docs/BRIEF_CONTRACT.md` 다.
 
 ### D8 — self-target enforcement
 
