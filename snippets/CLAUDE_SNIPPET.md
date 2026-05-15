@@ -93,33 +93,34 @@ The only valid final verdict values for this toolset are exactly:
 
 A reviewer verdict does not approve commit, push, publish, merge, release, upload, or adoption.
 
-## Brief (BF Level 3)
+## Brief
 
-- `<ProjectRoot>/log/brief/BRIEF.md` is the **operator-local durable restore state** (BF Level 3). The current operator — or a new AI agent session — reads it first as a local restore entrypoint when (re)starting work. It is not a shared project source-of-truth or a human handoff document.
-- `<ProjectRoot>/log/chatlog/current/resume.md` is the **volatile current-session restore file** (BF Level 1/2). It lives at a different time scale than BRIEF.
-- Both coexist. The toolset does not mirror between them. A human decides which side to update.
-- `<ToolRoot>/templates/brief/BRIEF.md` is the source-side template. `<ToolRoot>/scripts/brief-init.ps1` seeds `<ProjectRoot>/log/brief/BRIEF.md` one-shot and refuses to overwrite an existing file. `<ToolRoot>/scripts/brief-check.ps1` validates BRIEF shape only (required heading set, no unfilled placeholders).
+- **Brief** is a project's durable restore source-of-truth. The current operator — or a new AI agent session — reads it first as a local restore entrypoint when (re)starting work. It is not a shared project handoff document.
+- **Target repo product canonical Brief** = `<ProjectRoot>/brief/BRIEF.md`. That path is the canonical reading position for any session.
+- `<ProjectRoot>/log/brief/BRIEF.md` is the current source-side primitive's seed destination. `<ToolRoot>/scripts/brief-init.ps1` writes there. That file is an **operator-local runtime artifact under `log/` (gitignored by default)** and is **not** promoted to target product canonical. Routing the primitive to the canonical `brief/BRIEF.md` is future scoped work.
+- **BF Level** is save/restore capability maturity, not a file path.
+  - **BF Level 1/2** — manual save/restore discipline. The agent (or operator) writes/updates the canonical Brief by hand following the protocol below.
+  - **BF Level 3** — deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer. Currently **unimplemented**; future scoped work. The agent does not claim BF Level 3 capability.
+- `<ToolRoot>/templates/brief/BRIEF.md` is the source-side template. `<ToolRoot>/scripts/brief-init.ps1` seeds `<ProjectRoot>/log/brief/BRIEF.md` one-shot and refuses to overwrite an existing file. `<ToolRoot>/scripts/brief-check.ps1` validates BRIEF shape only (required heading set, no unfilled placeholders). Both are **narrow source-side primitives**, not the full BF Level 3 capability.
 - `brief-check.ps1` PASS or FAIL is **not** a reviewer verdict. It does not approve or block commit, push, publish, merge, release, upload, or adoption.
-- BRIEF is not a review input or a review output. It is not a commit gate, push gate, or release gate.
-- BF Level 1/2 save triggers (see below) update `resume.md` / `summary.md` only. They do not auto-write `log/brief/BRIEF.md`. BF Level 3 is human-edited or seeded by an explicit `brief-init.ps1` call.
-- `<ProjectRoot>/log/brief/BRIEF.md` is **operator-local runtime state** under `log/`. It is gitignored by default (via the `log/` rule) and is not a shared project source-of-truth. Root `<ProjectRoot>/brief/` is forbidden for ai-harness usage; the canonical BRIEF location is `log/brief/` only.
-- The toolset does **not** automatically mutate the project's `.gitignore`. If an operator chooses to track `log/brief/BRIEF.md` explicitly, that is their decision and their responsibility.
+- Brief is not a review input or a review output. It is not a commit gate, push gate, or release gate.
+- The toolset does **not** automatically mutate the project's `.gitignore`. Tracking decisions for `<ProjectRoot>/brief/BRIEF.md` (target canonical) and `<ProjectRoot>/log/brief/BRIEF.md` (operator-local runtime artifact) are the operator's responsibility.
 
-## Chatlog (BF Level 1/2 and CL)
+## Chatlog
 
-- Use `<ProjectRoot>/log/chatlog/current/resume.md` as the current BF Level 1/2 restore point.
-- Use `<ProjectRoot>/log/chatlog/current/summary.md` as its compact companion.
-- Treat other files under `<ProjectRoot>/log/chatlog/` as CL / history context, referenced only when needed.
-- Keep BF Level 1/2 compact and reference review / evidence / CL details by path only.
+- **Chatlog ≠ Brief.** Chatlog is the history / decision rationale / Brief reconstruction evidence area at `<ProjectRoot>/log/chatlog/`. It is **not** the current restore source.
+- The current restore source is **Brief** (`<ProjectRoot>/brief/BRIEF.md`).
+- Chatlog may be consulted when Brief is missing, corrupted, or stale, as **reconstruction evidence only**. Chatlog is never promoted into Brief's seat.
+- `<ProjectRoot>/log/chatlog/current/resume.md` and `<ProjectRoot>/log/chatlog/current/summary.md` are **failed intermediate / legacy migration source / deprecation candidate**, not canonical BF Level 1/2 artifacts. Do not update them as the BF save target. Reading them for legacy wording during Brief reconstruction is acceptable.
+- Chatlog fuller implementation (cumulative history layout, retention, browse UI) is later track and not in scope here.
 
 ## New session restore-offer
 
 At the start of meaningful work, read in this order:
 
-1. `<ProjectRoot>/log/brief/BRIEF.md` — operator-local durable restore state (BF Level 3).
-2. `<ProjectRoot>/log/chatlog/current/resume.md` — current-session restore (BF Level 1/2).
-3. `<ProjectRoot>/log/chatlog/current/summary.md` — compact companion / fallback.
-4. Referenced review / evidence / CL artifacts only when BRIEF or `resume.md` points to them.
+1. `<ProjectRoot>/brief/BRIEF.md` — target product canonical Brief (durable restore source-of-truth).
+2. `<ProjectRoot>/log/brief/BRIEF.md` — fallback only. This is the current source-side primitive's destination (operator-local runtime artifact under `log/`), **not** the canonical Brief. Reading it is fallback / legacy only.
+3. Referenced review / evidence / Chatlog artifacts only when Brief points to them.
 
 Then:
 
@@ -129,13 +130,12 @@ Then:
 
 Missing-file handling:
 
-- If `log/brief/BRIEF.md` is missing, report the gap and fall back to `resume.md`.
-- If `resume.md` is also missing, fall back to `summary.md`.
-- If all three are missing, report no restore point and ask the user how to proceed.
+- If `<ProjectRoot>/brief/BRIEF.md` is missing, fall back to `<ProjectRoot>/log/brief/BRIEF.md`.
+- If both are missing, do **not** default-restore from Chatlog. Report the absence and ask the user how to proceed. If the user explicitly asks for reconstruction from Chatlog, treat Chatlog as evidence and produce a draft Brief for the user's review rather than restoring blindly.
 
 ## BF save / checkpoint protocol
 
-Treat any of the following user phrases as BF Level 1/2 save intent (Korean, verbatim):
+Treat any of the following user phrases as BF Level 1/2 (manual save) intent (Korean, verbatim):
 
 - `현재 진행 지점을 복구 시점으로 저장해`
 - `BF 저장해`
@@ -147,22 +147,21 @@ Treat any of the following user phrases as BF Level 1/2 save intent (Korean, ver
 When detected:
 
 1. Inspect repo state.
-2. Update `<ProjectRoot>/log/chatlog/current/resume.md` with current state, last completed action, next single action, do-not-do, pending user decision.
-3. Update `<ProjectRoot>/log/chatlog/current/summary.md` as its compact companion.
-4. Keep BF Level 1/2 compact and reference review / evidence / CL details by path only.
-5. Report the updated files and any remaining risks.
+2. Update `<ProjectRoot>/brief/BRIEF.md` (target product canonical Brief) with current state, last completed action, next single action, do-not-do, pending user decision. This is a manual save: the agent writes the file directly using the canonical heading set defined in `docs/BRIEF_CONTRACT.md`.
+3. Keep Brief compact and reference review / evidence / Chatlog details by path only — do not inline review payloads, evidence body, or cumulative Chatlog content into Brief.
+4. Do **not** write to `log/chatlog/current/resume.md` or `log/chatlog/current/summary.md` as part of this protocol. Those are legacy / deprecation candidates and are not the BF save target.
+5. Report the updated file and any remaining risks.
 
-These triggers update BF Level 1/2 only. They do **not** auto-write `log/brief/BRIEF.md`. BF Level 3 is human-edited; the toolset never auto-generates BRIEF content.
+These triggers exercise BF Level 1/2 capability — manual save discipline. They do **not** invoke any deterministic writer, daemon, watcher, scheduler, or BF Level 3 automation. Those remain future scoped work.
 
 ## Forbidden in this toolset
 
-- No root `<ProjectRoot>/brief/` directory for ai-harness usage; BRIEF lives only under `log/brief/`.
 - No per-user / per-operator log partitioning, operator-id, machine-id, or ownership metadata.
 - No `BF_STATE.json` or sidecar state-machine file.
 - No daemon, watcher, scheduler, hook, or background task.
 - No implicit, automatic, or whole-file mutation of a global instruction file. Specifically: `%USERPROFILE%\.claude\CLAUDE.md` (Claude), `%USERPROFILE%\.codex\AGENTS.md` (Codex default), `%CODEX_HOME%\AGENTS.md` (Codex with `CODEX_HOME` set), `AGENTS.override.md` at the Codex user-global scope, and any project-root `CLAUDE.md` / `AGENTS.md`. Explicit user-approved managed-block insert / replace per `Adoption rules` is the one governed exception. No file is auto-created under `~/.claude/` or `~/.codex/`.
 - No creation of `%USERPROFILE%\.claude\AGENTS.md`. That path is not a recognized global instruction location for any agent; ai-harness never writes to it.
-- No automatic mirror between `log/brief/BRIEF.md` and `log/chatlog/current/resume.md`.
+- No automatic mirror between Brief (`<ProjectRoot>/brief/BRIEF.md` or `<ProjectRoot>/log/brief/BRIEF.md`) and Chatlog (`<ProjectRoot>/log/chatlog/`).
 - No automatic target `.gitignore` mutation.
 
 ## Execution discipline
