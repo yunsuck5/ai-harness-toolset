@@ -1,6 +1,6 @@
 # Brief Contract
 
-본 contract 는 ai-harness-toolset 의 **Brief** 책임 영역, 그리고 그것을 다루는 두 source-side primitive (`scripts/brief-init.ps1`, `scripts/brief-check.ps1`) 의 책임 경계를 정의한다.
+본 contract 는 ai-harness-toolset 의 **Brief** 책임 영역, 그리고 그것을 다루는 세 source-side primitive (`scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `scripts/brief-status.ps1`) 의 책임 경계를 정의한다.
 
 본 문서는 **manual convention first** 문서다. hook, parser, daemon, watcher, scheduler, retention automation 은 포함하지 않는다.
 
@@ -24,7 +24,7 @@
 
 - BF Level 은 maturity 다. 같은 자리에서 더 일관되고 더 deterministic 한 운영으로 올라가는 layer 다. Level 별로 다른 path 를 두지 않는다.
 - BF Level 3 의 목표는 **사람이 BRIEF 본문을 손편집하는 모델의 안정화가 아니다.** 반대로, BRIEF 의 유지 / 검증 / restore-offer 를 deterministic 하게 수행해 손편집 의존을 줄이는 방향이다.
-- 현재 `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 는 BF Level 3 의 **full implementation 이 아니라** source-side primitive 다 (아래 §"source-side primitive 책임" 참조). 두 script 가 존재한다고 해서 BF Level 3 capability 가 갖춰진 상태는 아니다.
+- 현재 `scripts/brief-init.ps1` / `scripts/brief-check.ps1` / `scripts/brief-status.ps1` 는 BF Level 3 의 **full implementation 이 아니라** source-side primitive 다 (아래 §"source-side primitive 책임" 참조). 세 script 가 존재한다고 해서 BF Level 3 capability 가 갖춰진 상태는 아니다.
 - BF Level 1/2 에서 사람이 BRIEF 를 손으로 작성하는 부분은 BF Level 3 가 deterministic writer 로 흡수해야 할 대상이다. 본 contract 는 그 흡수의 완료를 강제하지 않는다.
 
 ## canonical Brief 자리 — project-local runtime under `<ProjectRoot>/log/`
@@ -49,26 +49,27 @@
 
 ## 현재 source-side primitive 상태
 
-`scripts/brief-init.ps1` / `scripts/brief-check.ps1` 은 현재 시점의 narrow source-side primitive 다. BF Level 3 의 full capability 가 아니다.
+`scripts/brief-init.ps1` / `scripts/brief-check.ps1` / `scripts/brief-status.ps1` 은 현재 시점의 narrow source-side primitive 다. BF Level 3 의 full capability 가 아니다.
 
 - `brief-init.ps1` — `<ProjectRoot>/log/brief/BRIEF.md` 에 template artifact 를 한 번 seed. 이미 존재하면 default 동작은 거부 (no overwrite).
 - `brief-check.ps1` — 지정된 BRIEF artifact 의 shape (canonical heading 8 종, placeholder / sentinel 잔존, duplicate, empty body) 만 검증. read-only.
+- `brief-status.ps1` — canonical Brief 자리의 존재 여부를 확인하고, shape 검증은 `brief-check.ps1` 에 delegate 한 뒤, shape PASS 인 경우 required heading 8 종 각각의 첫 비어있지 않은 본문 줄을 Korean label 과 함께 stdout 으로 출력. read-only. session-start / restore-offer manual discipline 의 deterministic input 으로 호출자가 활용한다. 호출 시점, confirm UX, stale 판단은 본 primitive 의 책임이 아니다.
 
-두 primitive 의 destination / default check path 는 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`) 와 일치한다. 위 §"canonical Brief 자리" 의 정의가 primitive 의 동작과 정합한다.
+세 primitive 의 destination / default check path / default read path 는 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`) 와 일치한다. 위 §"canonical Brief 자리" 의 정의가 primitive 의 동작과 정합한다.
 
 - `ai-harness-toolset` 가 자기 자신을 dogfooding ProjectRoot 로 동작할 때, 그 결과로 생기는 `<ToolsetRepoRoot>/log/brief/BRIEF.md` 는 ai-harness-toolset 자신의 self-dogfooding canonical Brief instance 다. operator-local runtime artifact 이며 source payload / install payload / 다른 project 의 Brief 와 무관하다.
 - 외부 target repo 에 primitive 를 적용해도 같은 자리 (`<TargetRoot>/log/brief/BRIEF.md`) 가 canonical 이다. routing 변경 future scoped work 는 없다 — destination 자체가 이미 canonical 이다.
 
-primitive 의 narrow 성격은 destination 의 문제가 아니라 capability 의 문제다 — deterministic save / update writer, restore-offer behavior, stale warning, session-start guidance 같은 BF Level 3 의 자동화는 두 primitive 가 제공하지 않는다 (§"Future scoped work" 참조).
+primitive 의 narrow 성격은 destination 의 문제가 아니라 capability 의 문제다 — deterministic save / update writer, restore-offer 의 confirm UX 자동화, stale warning, deterministic session-start guidance (호출 시점의 자동화) 같은 BF Level 3 의 자동화는 세 primitive 가 제공하지 않는다 (§"Future scoped work" 참조). `brief-status.ps1` 은 session-start / restore-offer manual discipline 이 사용할 수 있는 deterministic summary input 만 제공하며, 그 자체가 호출 시점이나 confirm UX 를 자동화하지 않는다.
 
 ## Future scoped work — 본 contract 가 자동 승인하지 않는 항목
 
 아래는 BF Level 3 capability 의 완성에 필요하지만 본 contract 가 자동 승인하지 않는 항목이다. 각각 별도 scoped 승인이 필요하다.
 
 - deterministic save / update writer — agent 또는 사람이 BRIEF 본문을 손편집하지 않고도 정해진 trigger 에 따라 BRIEF 를 갱신하는 writer.
-- restore-offer behavior — 새 session 진입 시 BRIEF 를 읽고 현재 상태 / 다음 단일 action / do-not-do / pending user decision 을 사용자에게 요약 보고하고, "이 복구 지점에서 이어서 진행할까요?" 류의 확인을 받는 흐름. 본 contract 는 그 흐름의 source-side automation 을 강제하지 않는다.
+- restore-offer behavior — 새 session 진입 시 BRIEF 를 읽고 현재 상태 / 다음 단일 action / do-not-do / pending user decision 을 사용자에게 요약 보고하고, "이 복구 지점에서 이어서 진행할까요?" 류의 확인을 받는 흐름. `brief-status.ps1` 은 그 흐름의 manual discipline 이 사용할 수 있는 deterministic summary input 만 제공한다 — confirm UX 자체와 호출 시점의 자동화는 여전히 future scoped work 다. 본 contract 는 그 흐름의 source-side automation 을 강제하지 않는다.
 - stale warning — BRIEF 가 일정 시간 / 일정 작업 단위 이상 갱신되지 않은 상태를 감지하고 사용자에게 알리는 메커니즘.
-- session-start guidance — 새 agent session 이 BRIEF 를 가장 먼저 읽도록 일관되게 유도하는 deterministic guidance.
+- session-start guidance — 새 agent session 이 BRIEF 를 가장 먼저 읽도록 일관되게 유도하는 deterministic guidance. `brief-status.ps1` 의 deterministic summary 출력은 그 guidance 가 호출 시점에 활용할 수 있는 input 일 뿐이며, 호출 자체를 강제하거나 자동화하지 않는다.
 - 위 항목들의 source-side automation 을 ai-harness-toolset 내부에 도입할지, 외부 의도에 위임할지의 decision.
 
 primitive 의 writer destination 은 이미 canonical (`<ProjectRoot>/log/brief/BRIEF.md`) 이므로 "writer routing 의 target canonical 정합화" 는 더 이상 BF Level 3 의 future scoped work 항목이 아니다. (2차 reconciliation 의 잔재였으며, 3차 reconciliation 으로 자연 해소되었다 — §"canonical Brief 자리" Historical lineage 참조.)
@@ -199,6 +200,32 @@ forbidden behavior:
 - daemon / watcher / scheduler / hook / background process.
 - 글로벌 파일 변경.
 
+### brief-status.ps1
+
+`scripts/brief-status.ps1` 은 canonical Brief 의 존재 여부 + shape 검증 결과 (delegated) + required heading 별 첫 비어있지 않은 본문 줄을 Korean label 과 함께 stdout 으로 출력하는 read-only CLI 다. session-start / restore-offer manual discipline 의 deterministic input 으로만 활용된다.
+
+required behavior:
+
+- `ProjectRoot` 를 resolve.
+- 명시적 path argument 가 있으면 그 path 를 사용하되 ProjectRoot 안쪽이어야 한다. 명시 path 없으면 현재 primitive 의 default target 인 `<ProjectRoot>/log/brief/BRIEF.md` 를 검사한다.
+- target 파일이 없으면 FAIL exit non-zero. diagnostic 출력에 부재 사실을 명시.
+- shape 검증은 `scripts/brief-check.ps1` 를 child process 로 호출해 그 결과 / exit code 를 그대로 사용한다. brief-check 의 책임 / 출력 / verdict-not-verdict 의미를 변경하지 않는다. brief-check 의 출력 각 줄은 `brief-status: brief-check: <line>` 형태로 prefix 를 붙여 stdout 에 그대로 emit 한다.
+- shape FAIL 인 경우 그 exit code 를 그대로 전달하고 summary 출력은 하지 않는다.
+- shape PASS 인 경우, canonical heading 8 종 각각에 대해 본문의 첫 비어있지 않은 줄 (Trim 후) 을 추출하여 `brief-status: <Korean label>: <line>` 형태로 출력한다. 본문이 모두 비어 있으면 (이 경우는 brief-check PASS 와 상호 모순이므로 정상 흐름에서는 도달 불가) `(empty)` 로 fallback.
+- exit code 는 file presence + shape result 로만 결정. verdict 의미 부여 금지.
+- 작성 IO 없음. 어떤 파일도 mutate 하지 않는다.
+
+forbidden behavior:
+
+- `yes` / `no` / `yes with risk` verdict 생성. commit / push / publish / merge / release / adoption 승인 또는 차단.
+- BRIEF 본문 mutation. shape 검증 의미 변경. `brief-check.ps1` 의 책임 확장.
+- stale heuristic (mtime 임계, HEAD SHA cross-check, branch 비교 등) 도입.
+- restore-offer confirm prompt UX 자동화. session-start hook / SessionStart hook / OnStop hook / OnPromptSubmit hook / 어떤 형태의 background trigger.
+- daemon / watcher / scheduler / hook / background process.
+- 글로벌 파일 변경, `.gitignore` 변경, snapshot / manifest / handoff 생성.
+
+종료 코드는 file presence + shape result 로만 결정한다. verdict 의미를 갖지 않는다.
+
 ## review / commit / push 경계
 
 - BRIEF 는 review subsystem 의 input 이 아니며 output 도 아니다.
@@ -209,7 +236,7 @@ forbidden behavior:
 ## encoding 정책
 
 - BRIEF runtime artifact 는 UTF-8 without BOM 이다.
-- `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 의 파일 IO 는 `scripts/lib/encoding.ps1` 의 함수 (`Read-Utf8`, `Write-Utf8NoBom`) 를 사용한다.
+- `scripts/brief-init.ps1` / `scripts/brief-check.ps1` / `scripts/brief-status.ps1` 의 파일 IO 는 `scripts/lib/encoding.ps1` 의 함수 (`Read-Utf8`, `Write-Utf8NoBom`) 를 사용한다. `brief-status.ps1` 은 read-only 이므로 `Read-Utf8` 만 사용한다.
 - `Set-Content -Encoding UTF8`, `Add-Content -Encoding UTF8`, `Out-File`, `Get-Content -Raw` 는 사용하지 않는다.
 - `.ps1` 소스 파일은 UTF-8 with BOM + CRLF 이다 (`docs/POWERSHELL_POLICY.md`).
 
@@ -237,7 +264,7 @@ forbidden behavior:
 
 ## 향후 확장 시 고려 사항
 
-- 새 wrapper 또는 새 CLI 가 도입되어도 본 contract 의 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`), heading set, 두 primitive 의 책임 경계는 default 로 유지한다.
+- 새 wrapper 또는 새 CLI 가 도입되어도 본 contract 의 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`), heading set, 세 primitive 의 책임 경계는 default 로 유지한다.
 - 새 schema 가 도입되어도 본 manual convention 과 모순되지 않도록 한다.
 - BRIEF 가 review / evidence / Chatlog artifact 를 inline 으로 옮겨 적기 시작하면 본 contract 의 compact 원칙 위반이다. 그 경우 새 wrapper 가 아니라 BRIEF 본문이 잘못 작성된 것으로 본다.
 - 위 §"Future scoped work" 항목이 별도 scoped 승인을 받아 implementation 되는 시점에는 본 contract 도 그에 맞춰 갱신된다. 갱신 자체가 본 contract 의 존재만으로 자동 승인되지 않는다.

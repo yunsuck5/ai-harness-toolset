@@ -225,6 +225,7 @@ handoff 지점 만들어줘
 1. Claude Code 가 canonical Brief 의 존재 여부를 확인한다.
    - 자리: `<project-root>/log/brief/BRIEF.md` (canonical Brief; `docs/BRIEF_CONTRACT.md`). project-local runtime artifact, gitignored under `log/`. 단일 자리이며 fallback 자리를 두지 않는다. root `<project-root>/brief/` 와 user-home operator-local runtime root 는 자리가 아니다.
 2. 어떤 자리에서든 Brief 가 읽히면 그 파일을 기준으로 한국어로 현재 상태 / 다음 단일 action / do-not-do / pending user decision 을 요약 보고.
+   - read-only helper `scripts/brief-status.ps1` 가 manual discipline 의 deterministic input 으로 사용 가능하다 (`docs/BRIEF_CONTRACT.md` §"source-side primitive 책임" 의 `brief-status.ps1`). file presence + shape 결과 (delegated to `brief-check.ps1`) + required heading 별 첫 비어있지 않은 본문 줄을 Korean label 과 함께 stdout 으로 출력한다. 호출 시점, confirm UX, stale 판단은 여전히 agent / 사용자의 책임이며 helper 가 자동화하지 않는다. helper 호출은 강제가 아니다 — Brief 본문을 직접 읽어 요약하는 manual 흐름도 그대로 유효하다.
 3. 사용자에게 `이 복구 지점에서 이어서 진행할까요?` 라고 묻는다.
 4. 사용자 확인 전에는 의미 있는 작업을 실행하지 않는다.
 
@@ -601,7 +602,7 @@ verdict 의 source-of-truth 는 `log/review/<run-id>/result.json.verdict` 다 (`
 ### GJMNet 관련 운영
 
 - 기존 GJMNet 안에 남아 있는 ai-harness-toolset 적용 잔여물 (legacy application state) 은 **disposable** 이다. 그 잔여물에 대한 migration / cleanup 작업은 **post-MVP 항목이 아니며**, 본 toolset 측에서 수행하지 않는다 (`docs/roadmap/POST_MVP_PLAN.md` §7).
-- GJMNet clean adoption 은 post-MVP foundation 항목 (Brief system, BF Level 3 capability, packaging) 이 ready 된 뒤 별도 scoped 승인을 받아 진행한다 (`docs/roadmap/POST_MVP_PLAN.md` §7). 본 라인의 "BF Level 3" 은 deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer 의 미구현 future scoped capability 를 가리키며, 현재 `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 라는 narrow source-side primitive 의 존재로는 ready 상태가 되지 않는다.
+- GJMNet clean adoption 은 post-MVP foundation 항목 (Brief system, BF Level 3 capability, packaging) 이 ready 된 뒤 별도 scoped 승인을 받아 진행한다 (`docs/roadmap/POST_MVP_PLAN.md` §7). 본 라인의 "BF Level 3" 은 deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer 의 미구현 future scoped capability 를 가리키며, 현재 `scripts/brief-init.ps1` / `scripts/brief-check.ps1` / `scripts/brief-status.ps1` 라는 narrow source-side primitive 의 존재로는 ready 상태가 되지 않는다. `brief-status.ps1` 은 session-start / restore-offer manual discipline 의 deterministic summary input 만 제공하며 confirm UX / 호출 시점 자동화 / stale warning / deterministic maintenance writer 어느 것도 흡수하지 않는다.
 - 재생성된 clean GJMNet 운용은 본 toolset 의 CLI-only 운용 규칙을 그대로 따른다.
 
 ### 별도 scoped 승인 항목
