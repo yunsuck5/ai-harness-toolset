@@ -18,7 +18,14 @@ param(
     [string] $ReasoningEffort,
     [string] $ProjectRoot,
     [string] $ToolRoot,
-    [string] $RunId
+    [string] $RunId,
+
+    # Stage 3 file-backed review request input. When set, must reside under
+    # <ProjectRoot>/log/review-requests/. review-prepare records the project-relative
+    # path and SHA-256 into meta.json.reviewRequest for binding/auditability. The
+    # actual section parsing and placeholder substitution is review-cycle's job;
+    # review-prepare only validates containment + records provenance.
+    [string] $ReviewRequestPath
 )
 
 Set-StrictMode -Version Latest
@@ -200,6 +207,30 @@ if (-not [string]::IsNullOrEmpty($Reviewer)) {
     $effReviewer = $Reviewer
 }
 
+$reviewRequestEntry = $null
+if (-not [string]::IsNullOrEmpty($ReviewRequestPath)) {
+    $rrCandidate = $ReviewRequestPath
+    if (-not [System.IO.Path]::IsPathRooted($rrCandidate)) {
+        $rrCandidate = Join-Path -Path $project -ChildPath $rrCandidate
+    }
+    $rrCandidate = [System.IO.Path]::GetFullPath($rrCandidate)
+    if (-not (Test-Path -LiteralPath $rrCandidate -PathType Leaf)) {
+        throw "review-prepare: ReviewRequestPath not found: $rrCandidate"
+    }
+    try {
+        [void] (Assert-InProjectLogReviewRequestsRoot -Path $rrCandidate -ProjectLogRoot $logRoot)
+    }
+    catch {
+        throw "review-prepare: ReviewRequestPath outside <ProjectRoot>/log/review-requests/: $($_.Exception.Message)"
+    }
+    $rrRel = (Resolve-ProjectRelativePath -Path $rrCandidate -ProjectRoot $project) -replace '\\', '/'
+    $rrSha = Get-FileSha256 -Path $rrCandidate
+    $reviewRequestEntry = [ordered]@{
+        path   = $rrRel
+        sha256 = $rrSha
+    }
+}
+
 $meta = [ordered]@{
     schemaVersion      = 1
     runId              = $RunId
@@ -227,6 +258,10 @@ $meta = [ordered]@{
         type    = 'target-sha256-match'
         failure = 'fail'
     }
+}
+
+if ($null -ne $reviewRequestEntry) {
+    $meta['reviewRequest'] = $reviewRequestEntry
 }
 
 $metaPath = Join-Path -Path $runDir -ChildPath 'meta.json'

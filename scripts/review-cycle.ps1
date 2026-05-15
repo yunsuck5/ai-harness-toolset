@@ -16,7 +16,15 @@ param(
     [string] $Reviewer = 'codex',
     [string] $RunId,
     [string] $ProjectRoot,
-    [string] $ToolRoot
+    [string] $ToolRoot,
+
+    # Stage 3 file-backed review request input. The file must reside under
+    # <ProjectRoot>/log/review-requests/ and contain four required H2 sections
+    # (## Context, ## Required inspection paths, ## Review questions, ## Constraints).
+    # Body text under each heading replaces the corresponding template placeholder
+    # in input.md. Cannot be combined with -Context / -RequiredInspectionPaths /
+    # -ReviewQuestions / -Constraints: supplying both fails fast.
+    [string] $ReviewRequestPath
 )
 
 Set-StrictMode -Version Latest
@@ -28,6 +36,60 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib/git.ps1')
 . (Join-Path $PSScriptRoot 'lib/json.ps1')
 . (Join-Path $PSScriptRoot 'lib/resolve-script.ps1')
+
+function Read-ReviewRequestSections {
+    param([string] $Path)
+
+    $text = Read-Utf8 -Path $Path
+    $lines = $text -split "`r?`n"
+
+    $required = @(
+        '## Context',
+        '## Required inspection paths',
+        '## Review questions',
+        '## Constraints'
+    )
+    $headingIndex = @{}
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        $trimmed = $lines[$i].TrimEnd()
+        foreach ($h in $required) {
+            if ($trimmed -eq $h) {
+                if ($headingIndex.ContainsKey($h)) {
+                    throw ("review-cycle: FAIL ReviewRequest duplicate heading: {0}" -f $h)
+                }
+                $headingIndex[$h] = $i
+            }
+        }
+    }
+    foreach ($h in $required) {
+        if (-not $headingIndex.ContainsKey($h)) {
+            throw ("review-cycle: FAIL ReviewRequest missing heading: {0}" -f $h)
+        }
+    }
+
+    $sections = @{}
+    foreach ($h in $required) {
+        $start = $headingIndex[$h] + 1
+        $end = $lines.Count
+        for ($j = $start; $j -lt $lines.Count; $j++) {
+            $ln = $lines[$j]
+            if ($ln -match '^## .+$') {
+                $end = $j
+                break
+            }
+        }
+        $body = @()
+        for ($k = $start; $k -lt $end; $k++) {
+            $body += $lines[$k]
+        }
+        $bodyText = ($body -join "`n").Trim()
+        if ([string]::IsNullOrWhiteSpace($bodyText)) {
+            throw ("review-cycle: FAIL ReviewRequest section is empty: {0}" -f $h)
+        }
+        $sections[$h] = $bodyText
+    }
+    return $sections
+}
 
 function Invoke-CodexExec {
     param(
@@ -186,6 +248,55 @@ $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 $tool    = Get-ToolRoot -ToolRoot $ToolRoot -ProjectRoot $project
 $logRoot = Get-ProjectLogRoot -ProjectRoot $project
 
+$resolvedReviewRequestPath = ''
+if (-not [string]::IsNullOrEmpty($ReviewRequestPath)) {
+    # Stage 3 conflict rule — file-backed input and inline free-text params are
+    # mutually exclusive. Operator picks exactly one channel per invocation; mixing
+    # the two layers re-introduces the PowerShell 5.1 argv tokenization fragility
+    # the file-backed channel is designed to remove.
+    $inlineConflicts = @()
+    if (-not [string]::IsNullOrEmpty($Context)) { $inlineConflicts += '-Context' }
+    if (-not [string]::IsNullOrEmpty($RequiredInspectionPaths)) { $inlineConflicts += '-RequiredInspectionPaths' }
+    if (-not [string]::IsNullOrEmpty($ReviewQuestions)) { $inlineConflicts += '-ReviewQuestions' }
+    if (-not [string]::IsNullOrEmpty($Constraints)) { $inlineConflicts += '-Constraints' }
+    if ($inlineConflicts.Count -gt 0) {
+        Write-Host ('review-cycle: FAIL -ReviewRequestPath cannot be combined with inline free-text parameters: {0}. Use the request file XOR the inline parameters.' -f ($inlineConflicts -join ', '))
+        exit 1
+    }
+
+    $rrCandidate = $ReviewRequestPath
+    if (-not [System.IO.Path]::IsPathRooted($rrCandidate)) {
+        $rrCandidate = Join-Path -Path $project -ChildPath $rrCandidate
+    }
+    $rrCandidate = [System.IO.Path]::GetFullPath($rrCandidate)
+
+    if (-not (Test-Path -LiteralPath $rrCandidate -PathType Leaf)) {
+        Write-Host ('review-cycle: FAIL ReviewRequestPath not found: {0}' -f $rrCandidate)
+        exit 1
+    }
+    try {
+        [void] (Assert-InProjectLogReviewRequestsRoot -Path $rrCandidate -ProjectLogRoot $logRoot)
+    }
+    catch {
+        Write-Host ('review-cycle: FAIL ReviewRequestPath outside <ProjectRoot>/log/review-requests/: {0}' -f $_.Exception.Message)
+        exit 1
+    }
+
+    try {
+        $rrSections = Read-ReviewRequestSections -Path $rrCandidate
+    }
+    catch {
+        Write-Host ([string]$_.Exception.Message)
+        exit 1
+    }
+
+    $Context = $rrSections['## Context']
+    $RequiredInspectionPaths = $rrSections['## Required inspection paths']
+    $ReviewQuestions = $rrSections['## Review questions']
+    $Constraints = $rrSections['## Constraints']
+    $resolvedReviewRequestPath = $rrCandidate
+}
+
 if (-not [string]::IsNullOrEmpty($TargetFilesPath)) {
     if (-not (Test-Path -LiteralPath $TargetFilesPath -PathType Leaf)) {
         Write-Host ('review-cycle: FAIL TargetFilesPath not found: {0}' -f $TargetFilesPath)
@@ -283,6 +394,9 @@ $prepareArgs = @(
     '-ToolRoot', $tool,
     '-TargetFilesPath', $targetListPath
 )
+if (-not [string]::IsNullOrEmpty($resolvedReviewRequestPath)) {
+    $prepareArgs += @('-ReviewRequestPath', $resolvedReviewRequestPath)
+}
 
 & powershell.exe @prepareArgs
 $prepareExit = $LASTEXITCODE

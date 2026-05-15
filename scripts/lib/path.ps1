@@ -264,6 +264,39 @@ function Assert-ValidRunId {
     return $true
 }
 
+function Assert-InProjectLogReviewRequestsRoot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+        [Parameter(Mandatory = $true)]
+        [string] $ProjectLogRoot
+    )
+
+    if ([string]::IsNullOrEmpty($ProjectLogRoot)) {
+        throw 'Assert-InProjectLogReviewRequestsRoot: -ProjectLogRoot is required.'
+    }
+
+    [void] (Assert-InProjectLogRoot -Path $Path -ProjectLogRoot $ProjectLogRoot)
+
+    $logFull = [System.IO.Path]::GetFullPath($ProjectLogRoot)
+    $reqBase = [System.IO.Path]::GetFullPath((Join-Path -Path $logFull -ChildPath 'review-requests'))
+    $full = [System.IO.Path]::GetFullPath($Path)
+
+    $sep = [System.IO.Path]::DirectorySeparatorChar
+    $baseNorm = $reqBase.TrimEnd($sep)
+    $cmp = [System.StringComparison]::OrdinalIgnoreCase
+
+    if ([string]::Equals($full, $baseNorm, $cmp)) {
+        return $true
+    }
+    $prefix = $baseNorm + $sep
+    if ($full.StartsWith($prefix, $cmp)) {
+        return $true
+    }
+    throw "Assert-InProjectLogReviewRequestsRoot: path is outside review-requests root. Path=$full ReviewRequestsRoot=$baseNorm"
+}
+
 function Assert-InReviewRunRoot {
     [CmdletBinding()]
     param(

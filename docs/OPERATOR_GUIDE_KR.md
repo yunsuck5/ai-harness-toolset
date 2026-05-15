@@ -376,11 +376,83 @@ PowerShell 에서 위 here-string 을 `Out-File -Encoding utf8` 로 쓰면 PS 5.
 - 본문은 **single-quote** 로 감싼다 (`'…'`). PS 5.1 의 single-quoted string 은 `$` / 백틱 / `"` 의 해석 없이 literal 로 전달되어 tokenization 위험을 줄인다.
 - 본문 안에 **literal ASCII double-quote (`"`)** 를 포함하지 않는다. 인용 표현이 필요한 경우 single-quote (`'`) 또는 typographic quote (`“ ”`) 같은 ASCII-double-quote 가 아닌 문자로 대체한다. PS 5.1 의 cross-process argv 단계는 embedded double-quote 를 보존하지 않는다.
 - 본문은 ASCII fallback wording 으로 단순화하는 편이 안전하다. 한국어 본문이 필요하면 그대로 두되, embedded double-quote / multi-line here-string / 백틱 / `$variable` 같은 PowerShell metacharacter 를 본문에 섞지 않는다.
-- 본문이 위 규율로 표현하기 어려울 만큼 길고 quote-heavy 하면, 본 round 에서는 review request 자체를 **두 단계로 쪼개거나 wording 을 단순화**한다. complex 본문을 file 로 전달하는 채널은 본 round 의 mitigation 범위에 포함되지 않는다 (`docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" 의 Stage 3 — file-backed input — 별도 scoped goal 의 후보).
+- 본문이 위 규율로 표현하기 어려울 만큼 길고 quote-heavy 하면, inline 인자 사용을 고집하지 말고 아래 §9b 의 **file-backed channel (`-ReviewRequestPath`)** 을 사용한다. file-backed channel 은 본 toolset 의 정식 entrypoint 이며 argv layer 의 quote / tokenization 의존도를 review-cycle 한 layer 안에서 root-cause 제거한다 (Stage 3 implemented; `docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" 와 `docs/backlog/review.md` §"Review-cycle file-backed request input" 참조).
 
 **smoke driver 와 operator-direct 의 경계.** `scripts/smoke/invoke-review-cycle.ps1` 는 smoke driver 전용 thin wrapper 다 (`docs/backlog/operations.md` §"PowerShell smoke invocation quoting hardening" 의 (W) closeout). 본 wrapper 의 헤더 및 Pester contract (`tests/invoke-review-cycle-smoke.Tests.ps1`) 는 smoke driver use case 한정을 명시하며, parent process → wrapper 단계의 embedded ASCII double-quote 보존을 contract 에서 명시적으로 제외한다. 따라서 본 wrapper 를 operator 의 직접 invocation 대체 entrypoint 로 안내하지 않는다. operator 직접 호출은 위 quoting 규율 + `scripts/review-cycle.ps1` 의 정식 parameter 만 사용한다.
 
-**Stage 2 / Stage 3 후보의 위치 (2026-05-16 decision).** Stage 2 — 단순 operator-direct PowerShell wrapper 신설 (이전 candidate (X)) 과 cmd / batch helper — 는 `docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" §"Stage 2 / Stage 3 decision (2026-05-16)" 에서 **safe solution 으로 not adopt** 되었다 (parent → wrapper / helper argv 단계의 embedded ASCII double-quote / quote-heavy free-text fragility 를 honest 하게 보장하지 못한다). PS 7.3+ native argument passing 과 `-EncodedCommand` / `-EncodedArguments` launcher 는 official escape hatch 로 acknowledged 만 되었고 본 hardening 의 즉각 구현 대상은 아니다 — runtime dependency boundary 변경 / readability / debuggability 비용으로 별도 portability track (가능한 Python · Node porting 포함) 으로 분리되었다. Stage 3 — `scripts/review-cycle.ps1` 의 file-backed request input 채널 (`-ReviewRequestPath` 등; `docs/backlog/review.md` §"Review-cycle file-backed request input" 과의 통합 / 분리 결정 포함) — 가 **next primary implementation candidate** 로 elevation 되었으며, 별도 scoped goal 의 explicit user approval 까지 deferred 다. 본 §9 의 quoting 규율은 Stage 3 가 정식 채택 / 구현되기 전까지 그대로 적용한다.
+**Stage 2 / Stage 3 후보의 위치 (2026-05-16 decision; Stage 3 implemented).** Stage 2 — 단순 operator-direct PowerShell wrapper 신설 (이전 candidate (X)) 과 cmd / batch helper — 는 `docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" §"Stage 2 / Stage 3 decision (2026-05-16)" 에서 **safe solution 으로 not adopt** 되었다 (parent → wrapper / helper argv 단계의 embedded ASCII double-quote / quote-heavy free-text fragility 를 honest 하게 보장하지 못한다). PS 7.3+ native argument passing 과 `-EncodedCommand` / `-EncodedArguments` launcher 는 official escape hatch 로 acknowledged 만 되었고 본 hardening 의 즉각 구현 대상은 아니다 — runtime dependency boundary 변경 / readability / debuggability 비용으로 별도 portability track (가능한 Python · Node porting 포함) 으로 분리되었다. Stage 3 — `scripts/review-cycle.ps1` 의 file-backed request input 채널 (`-ReviewRequestPath`) — 는 본 라운드에서 implemented 되었다 (아래 §9b 참조; `docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" Status 와 `docs/backlog/review.md` §"Review-cycle file-backed request input" Status 도 함께 갱신). 위 §9 의 quoting 규율은 inline argv 사용 시에도 그대로 적용되며, complex / quote-heavy / multi-line / multilingual 본문은 §9b 의 file-backed 채널로 보내는 것을 권장한다.
+
+### 9b. File-backed review request input (-ReviewRequestPath) (Stage 3 implemented)
+
+`scripts/review-cycle.ps1` 의 `-ReviewRequestPath <path>` 인자는 free-text 본문 (`-Context` / `-Required inspection paths` / `-Review questions` / `-Constraints`) 을 argv 가 아닌 **request file** 로 전달한다. argv layer 의 quote / tokenization fragility 를 review-cycle 한 layer 안에서 root-cause 해소한다 (위 §9 의 incident 두 종류 — `PathTooLongException` / `-Reviewer` mis-binding — 의 재발 방지).
+
+**File location (containment).** request file 은 반드시 `<ProjectRoot>/log/review-requests/` 트리 안에 둔다. 그 외 경로는 review-cycle 이 fail-fast 거부한다 (`scripts/lib/path.ps1` 의 `Assert-InProjectLogReviewRequestsRoot`). `log/` 는 gitignored runtime tree 이므로 request file 도 commit 대상이 아니다.
+
+**File format.** request file 은 UTF-8 plain text Markdown 이며, 다음 4 개의 H2 heading 이 모두 들어 있어야 한다 (heading 텍스트는 input.md template 의 heading set 과 정확히 동일).
+
+```
+## Context
+
+<context body — 자유 형식, multi-line OK, ASCII double-quote / 한국어 / markdown bullets / numbered list 모두 허용>
+
+## Required inspection paths
+
+<paths body>
+
+## Review questions
+
+<questions body>
+
+## Constraints
+
+<constraints body>
+```
+
+각 section 의 body 는 다음 H2 heading 직전까지 (또는 EOF 까지) 의 모든 줄을 trim 한 텍스트로 사용한다. body 가 비어 있으면 fail-fast. heading 이 누락되면 fail-fast. 동일 required heading 이 두 번 나타나면 fail-fast.
+
+**Conflict rule.** `-ReviewRequestPath` 와 inline free-text 인자 (`-Context`, `-RequiredInspectionPaths`, `-ReviewQuestions`, `-Constraints`) 는 **mutually exclusive** 다. 둘 다 지정하면 review-cycle 이 fail-fast 거부한다 (`-ReviewRequestPath cannot be combined with inline free-text parameters: ...`). operator 는 한 호출당 둘 중 하나만 사용한다.
+
+**Provenance recording.** prepare 단계에서 request file 의 `path` (project-relative, forward-slash) 와 `sha256` 이 `meta.json.reviewRequest` 에 기록된다. 이는 어떤 request 본문이 어떤 run-id 의 input.md 로 expansion 되었는지의 binding 증거이며, `result.json.inputSha256` 의 input.md freshness 검증과 함께 audit 가능하게 한다.
+
+**예시 (shared / global 모드).**
+
+```powershell
+# 1. request 파일 작성 (한 번, 본문 자유 형식)
+New-Item -ItemType Directory -Force -Path log/review-requests | Out-Null
+@'
+## Context
+
+복잡한 review request 본문. multi-line, "embedded ASCII double-quote", 한국어 + ASCII mix
+가 자유롭게 들어갈 수 있다. argv tokenization 과 무관하다.
+
+## Required inspection paths
+
+scripts/review-cycle.ps1; tests/review-cycle-request.Tests.ps1; docs/OPERATOR_GUIDE_KR.md
+
+## Review questions
+
+1. file-backed request input 의 binding 이 정합한가?
+2. conflict rule 이 fail-fast 동작하는가?
+
+## Constraints
+
+Stage 3 implementation closeout. parameter contract 변경 금지.
+'@ | Out-File -FilePath log/review-requests/example.md -Encoding utf8
+
+# 2. review cycle 실행 — inline -Context / -ReviewQuestions / -Constraints / -RequiredInspectionPaths 는 생략
+powershell -NoProfile -ExecutionPolicy Bypass `
+    -File "$env:USERPROFILE\.claude\ai-harness-toolset\current\scripts\review-cycle.ps1" `
+    -Stage implementation `
+    -Purpose 'review change to scripts/review-cycle.ps1' `
+    -TargetFiles scripts/review-cycle.ps1 `
+    -ReviewRequestPath log/review-requests/example.md
+```
+
+위 here-string 은 운영자가 일회성으로 작성하는 file content 일 뿐, review-cycle 의 argv 는 단순한 single-line 값들로만 구성된다. embedded ASCII double-quote / multi-line / multilingual 본문은 file 안에만 존재하고 argv layer 를 거치지 않는다.
+
+**source repo 모드** 에서는 `-File scripts/review-cycle.ps1` 형태로 동일하게 사용한다 (`-ToolRoot (Get-Location).Path` 등 §9 dogfooding 절 참조). **legacy project-local copy mode** 도 같은 contract 다 (`.ai-harness/scripts/review-cycle.ps1` 경로만 다름).
+
+**inline channel 의 backward compatibility.** `-ReviewRequestPath` 미사용 시 inline `-Context` / `-RequiredInspectionPaths` / `-ReviewQuestions` / `-Constraints` 는 종전과 동일하게 동작한다 (Stage 1 docs-only quoting 규율 §9 참조). 짧고 quote-free 한 본문은 inline 으로도 안전하게 전달할 수 있으며, file-backed 채널은 complex / quote-heavy / multi-line / multilingual 본문에 권장된다.
 
 ---
 

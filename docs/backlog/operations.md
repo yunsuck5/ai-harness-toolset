@@ -107,7 +107,7 @@ decision boundary:
 
 ## Review-cycle invocation quoting hardening
 
-- **Status**: Stage 1 docs-only mitigation applied (commit `53403e9`). Stage 2 — operator-direct 전용 단순 PowerShell wrapper 후보 (이전 candidate (X)) 와 cmd / batch helper 후보 — **not adopted as a safe solution** (본 항목 §"Stage 2 / Stage 3 decision (2026-05-16)" 참조; 단순 wrapper / cmd helper 는 parent process → wrapper / helper argv 단계의 embedded ASCII double-quote / quote-heavy free-text fragility 를 honestly 보장하지 못한다). Stage 3 — `scripts/review-cycle.ps1` 의 file-backed request input 채널 (candidate (F); `docs/backlog/review.md` §"Review-cycle file-backed request input" 와 통합 / 분리 결정 포함) 이 **next primary implementation candidate** 로 elevation 되었으며, 별도 scoped goal 의 explicit user approval 까지 deferred 다. 본 entry 는 implementation closeout 이 아니다 — Stage 2 decision 기록 + Stage 3 scope alignment 까지의 docs-only round 다. `scripts/`, `scripts/lib/`, `scripts/smoke/`, `tests/`, `templates/`, `config/`, `snippets/`, global / user filesystem, `scripts/review-cycle.ps1` 의 parameter contract 변경은 본 round 의 boundary 밖이며 별도 scoped goal 의 대상이다.
+- **Status**: Stage 1 docs-only mitigation applied (commit `53403e9`). Stage 2 — operator-direct 전용 단순 PowerShell wrapper 후보 (이전 candidate (X)) 와 cmd / batch helper 후보 — **not adopted as a safe solution** (본 항목 §"Stage 2 / Stage 3 decision (2026-05-16)" 참조; 단순 wrapper / cmd helper 는 parent process → wrapper / helper argv 단계의 embedded ASCII double-quote / quote-heavy free-text fragility 를 honestly 보장하지 못한다). Stage 3 — `scripts/review-cycle.ps1` 의 file-backed request input 채널 (`-ReviewRequestPath`) — 은 본 라운드에서 **implemented** 되었다 (`scripts/review-cycle.ps1` 에 `-ReviewRequestPath` 파라미터 추가, `scripts/review-prepare.ps1` 가 `meta.json.reviewRequest` provenance 기록, `scripts/lib/path.ps1` 의 `Assert-InProjectLogReviewRequestsRoot` 신규 containment helper, `tests/review-cycle-request.Tests.ps1` 의 11 Pester 케이스, `docs/OPERATOR_GUIDE_KR.md` §9b / `README.md` / `docs/REVIEW_RESULT_CONTRACT.md` / `docs/backlog/review.md` 정합화). request 파일은 `<ProjectRoot>/log/review-requests/` 트리에 두며 (containment fail-fast), 4 H2 section (`## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`) 의 body 가 inline placeholder 를 대체한다. `-ReviewRequestPath` 와 inline free-text 인자는 mutually exclusive (둘 다 지정하면 fail-fast). PS 7.3+ native argument passing 과 `-EncodedCommand` / `-EncodedArguments` launcher 는 official escape hatch 로 acknowledged 만 되었으며 본 hardening 의 구현 대상이 아니다 — 별도 portability track (가능한 Python · Node porting 포함). 본 entry 는 Stage 1 + Stage 2 decision + Stage 3 implementation 까지의 hardening closeout 이다. global / user filesystem, `scripts/smoke/invoke-review-cycle.ps1` 의 operator-direct fallback 승격, 새 cmd / batch helper, PS 7.3+ requirement, EncodedCommand launcher, Python / Node porting 은 본 round 의 boundary 밖이며 별도 scoped goal 의 대상이다.
 - **Classification**: 운영자가 `scripts/review-cycle.ps1` 를 PowerShell 5.1 환경에서 직접 호출할 때의 argument-quoting reliability 문제. smoke driver 가 lifecycle script 를 호출하는 경로 (위 §"PowerShell smoke invocation quoting hardening") 도, review-cycle 내부 input channel 변경 (`docs/backlog/review.md` §"Review-cycle file-backed request input") 도 아닌, **operator → review-cycle.ps1 의 직접 invocation argv** 한 layer 만을 다룬다.
 
 ### Context
@@ -131,18 +131,19 @@ PowerShell 5.1 에서 `scripts/review-cycle.ps1` 를 free-text 인자와 함께 
 - **Operational friction.** 운영자가 동일 의미의 review request 를 wording / quoting 만 다르게 재시도해야 하는 시간 비용이 발생한다.
 - **Risk of confusing failure 분류.** wrapper-level invocation failure 를 (a) review-cycle 자체의 결함 또는 (b) Codex reviewer 실패로 오인할 risk 가 있다. 이는 위 §"PowerShell smoke invocation quoting hardening" 의 driver failure / smoke contract failure / Codex review failure 3 계층 분류와 같은 가족이며, operator 직접 invocation 도 동일 분류 위험을 공유한다.
 
-### Preferred direction
+### Direction (closeout)
 
-본 항목은 backlog candidate 이며, 다음은 구현 결정이 아닌 candidate direction 이다. 실제 채택 / 후보 선택은 별도 scoped goal 에서 결정한다.
+본 항목은 Stage 1 (docs-only quoting 규율) + Stage 2 decision (단순 wrapper / cmd helper not adopted; PS 7.3+ / EncodedCommand acknowledged but not selected) + Stage 3 implementation (`-ReviewRequestPath` Markdown channel) 로 closeout 되었다. 본 절의 bullet 은 합의된 최종 direction 이며, 더 이상 candidate 가 아니다.
 
-- **직접 invocation 에서 multi-line here-string / embedded ASCII double-quote 사용을 줄인다.** complex / quote-heavy review request 의 경우 직접 invocation 의 free-text argv 를 단순화 (single-line, single-quote, ASCII fallback wording) 하는 것이 가장 저비용 mitigation 이다.
-- **wrapper 또는 file-based input 채널 채택 검토.** review-cycle 외부에서 thin invocation wrapper 를 두는 후보, 또는 review-cycle 내부에 file-backed request input 채널 (`docs/backlog/review.md` §"Review-cycle file-backed request input" 후보 — `-ReviewRequestPath`) 을 도입하여 free-text argv 의존도를 줄이는 후보. 두 후보 모두 본 backlog 항목이 자동 승인하지 않는다.
-- **direct invocation 의 사용 권장도 조정.** runbook / operator guide 에서 complex review request (long context, multi-line, multilingual, quote-heavy) 의 경우 직접 invocation 을 권장 패턴에서 제외하고, wrapper 또는 file-based 채널로 안내한다.
+- **inline 사용 시의 quoting 규율 (Stage 1).** 직접 invocation 에서 inline `-Context` / `-RequiredInspectionPaths` / `-ReviewQuestions` / `-Constraints` 를 쓸 때 multi-line here-string / embedded ASCII double-quote / 백틱 / `$variable` 사용을 피하고 single-line / single-quote / ASCII fallback wording 으로 단순화한다. 운영자 docs: `docs/OPERATOR_GUIDE_KR.md` §9.
+- **file-backed input 채널 (Stage 3).** complex / quote-heavy / multi-line / multilingual 본문은 `-ReviewRequestPath <path>` 로 전달한다. request 파일은 `<ProjectRoot>/log/review-requests/<name>.md` (UTF-8 Markdown, 4 H2 section) 이며 inline 채널과 mutually exclusive 다. 운영자 docs: `docs/OPERATOR_GUIDE_KR.md` §9b.
+- **단순 wrapper / cmd helper (Stage 2) — not adopted.** parent → wrapper 의 argv 단계 fragility 를 보장하지 못하므로 채택하지 않는다. `scripts/smoke/invoke-review-cycle.ps1` 는 smoke-driver-only 그대로 유지된다.
+- **direct invocation 의 권장도.** runbook / operator guide 에서 complex review request (long context, multi-line, multilingual, quote-heavy) 의 경우 inline 사용을 권장 패턴에서 제외하고 Stage 3 의 `-ReviewRequestPath` 로 안내한다.
 
 ### Cross-reference
 
-- 위 §"PowerShell smoke invocation quoting hardening" — smoke driver layer 의 invocation hardening. 본 항목과 root cause (PowerShell 5.1 의 argument tokenization fragility) 를 공유하지만 layer 가 다르다 (smoke driver vs operator 직접 invocation). 두 항목을 한 batch 에 묶어서 구현하지 않는다.
-- `docs/backlog/review.md` §"Review-cycle file-backed request input" — review-cycle **내부** input channel 변경으로 동일 root cause 를 review-cycle 한 layer 안에서 해결하는 후보. 본 항목과 두 layer 가 묶이지 않으며 각각 별도 scoped goal 의 대상이다.
+- 위 §"PowerShell smoke invocation quoting hardening" — smoke driver layer 의 invocation hardening. 본 항목과 root cause (PowerShell 5.1 의 argument tokenization fragility) 를 공유하지만 layer 가 다르다 (smoke driver vs operator 직접 invocation). 두 항목은 별도 batch 로 closeout 되었다 (smoke 측은 commit `c183c6b` (W) wrapper, operator-direct 측은 본 항목의 Stage 1 / Stage 2 decision / Stage 3 implementation).
+- `docs/backlog/review.md` §"Review-cycle file-backed request input" — review-cycle **내부** input channel 변경으로 동일 root cause 를 review-cycle 한 layer 안에서 해결한 항목. 본 항목과 통합 closeout 되었다 (동일 channel, 동일 라운드 — `-ReviewRequestPath` 의 Markdown + fail-fast conflict + `log/review-requests/` containment 가 두 backlog item 의 합의된 final shape).
 
 ### Stage 2 / Stage 3 decision (2026-05-16)
 
@@ -160,24 +161,23 @@ PowerShell 5.1 에서 `scripts/review-cycle.ps1` 를 free-text 인자와 함께 
 - **PowerShell 7.3+ native argument passing.** `$PSNativeCommandArgumentPassing` (Standard / Legacy / Windows) 및 PS 7.3 의 native-argument 보존 동작은 PowerShell 5.1 의 fragility 를 한 layer 위에서 줄이는 official platform-level 가능성이다. 그러나 PS 7.3+ requirement 도입은 본 toolset 의 runtime dependency boundary (`docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`) 를 변경하며, 운영자의 PS install 가정과 channel 3 global stable install 의 호환성 평가, snippet / docs / Pester / smoke 전반의 정합화 비용을 수반한다. 본 batch 의 docs-only scope 를 벗어나며, **later portability track / possible Python · Node porting strategy 의 일부로 별도 기록**한다 (본 hardening item 의 즉각 구현 대상 아님).
 - **`-EncodedCommand` / `-EncodedArguments` launcher.** PowerShell 의 공식 escape hatch 로, free-text 본문을 base64 encoded UTF-16 payload 로 전달하여 parent shell 의 tokenization 을 bypass 한다. 그러나 launcher 가 base64 변환 / encoding 책임을 떠안으면 readability / debuggability 가 크게 저하되고 (사람이 읽지 못하는 invocation), 운영자 직접 호출 use case 와의 정합도 낮으며, 새로운 launcher 의 contract / Pester / docs 비용이 발생한다. 본 batch 에서 채택하지 않는다 (acknowledged escape hatch 로 기록만 남긴다).
 
-**Stage 3 (file-backed review request input) — next primary implementation candidate.**
+**Stage 3 (file-backed review request input) — implemented.**
 
-- Stage 3 는 `scripts/review-cycle.ps1` 에 file-backed request input 채널을 추가하여 free-text 본문 (`-Context`, `-ReviewQuestions`, `-Constraints`, `-RequiredInspectionPaths`) 을 argv 가 아닌 file 경로 하나로 전달한다. 후보 파라미터 이름은 `-ReviewRequestPath <path>` (또는 동등 — implementation 단계 결정). request 파일은 결정론적 local UTF-8 파일 (포맷 후보 — plain text / JSON / template; 정확한 결정은 implementation 단계).
-- 이 방향이 next primary implementation candidate 인 이유:
-  - argv layer 에서 quote-heavy / multi-line / multilingual free-text 를 제거하므로 PowerShell 5.1 의 tokenization fragility 의 root cause 가 review-cycle 한 layer 안에서 해소된다.
-  - request 파일은 freshness / binding 검증 (SHA-256 + `meta.json` 기록) 에 포함되어 reviewer 가 실제로 받은 input 텍스트가 read-only record 로 보존된다 (`docs/backlog/review.md` §"Review-cycle file-backed request input" §Candidate direction 의 D5 incident framing 과 정합).
-  - 미래의 Python / Node porting (별도 portability track) 에서도 file-based input 채널이 cross-language 로 자연스럽게 호환된다 — argv quoting 규약은 언어 / 런타임마다 다르지만 file 은 동일하게 읽힌다.
-  - PS 7.3+ requirement 나 EncodedCommand launcher 같은 platform-level 변경 없이 review-cycle 의 input channel 변경만으로 해소된다.
-- **여전히 deferred.** Stage 3 는 본 entry 와 `docs/backlog/review.md` §"Review-cycle file-backed request input" 의 두 backlog item 이 의미상 같은 채널을 의도하는지 / 통합인지 분리인지의 open decision (PLAN.md §12 OD-4) 을 비롯하여 다음 항목을 별도 implementation goal 에서 결정한다.
-  - `-ReviewRequestPath` (또는 동등) 의 정확한 파라미터 이름 / shape.
-  - request 파일의 포맷 (plain text / JSON / template) 과 minimal required fields.
-  - request 파일의 위치 규약 (예: `<ProjectRoot>/log/review-requests/<purpose-or-timestamp>.<ext>`) 과 containment 검증 (`Assert-InProjectLogRoot` 등 기존 경계와의 정합).
-  - 기존 `-Context` / `-ReviewQuestions` / `-Constraints` / `-RequiredInspectionPaths` 와의 공존 / mutually exclusive / 우선순위 / conflict 규칙.
-  - `review-prepare.ps1` / `review-input-verify.ps1` / `review-verify.ps1` 의 input channel 호환성과 binding 검증 흐름.
-  - Pester test 케이스 (single quote / double quote / backtick / comma / markdown bullet / Korean+ASCII mix / 강한 단어 / empty fields / 잘못된 JSON / 잘못된 UTF-8) 의 확정.
-  - `docs/OPERATOR_GUIDE_KR.md` / `README.md` / `docs/REVIEW_RESULT_CONTRACT.md` 등 docs 정합화 범위.
-  - 두 backlog item (`docs/backlog/operations.md` 본 항목 Stage 3 + `docs/backlog/review.md` §"Review-cycle file-backed request input") 의 통합 / 분리 최종 결정.
-- 본 elevation 자체가 Stage 3 의 구현, commit, push, criteria 변경 어느 것도 자동 승인하지 않는다.
+- Stage 3 는 본 라운드에서 채택되어 `scripts/review-cycle.ps1` 에 `-ReviewRequestPath <path>` 파라미터로 구현되었다. free-text 본문 (`-Context`, `-RequiredInspectionPaths`, `-ReviewQuestions`, `-Constraints`) 을 argv 가 아닌 request file 로 전달하므로 PowerShell 5.1 의 argv tokenization fragility 의 root cause 가 review-cycle 한 layer 안에서 해소된다.
+- 채택된 decisions (이전 deferred 결정들의 최종 형태):
+  - **파라미터 이름**: `-ReviewRequestPath`.
+  - **파일 포맷**: Markdown plain text (UTF-8). 결정 사유 — JSON 후보는 본문 안 multi-line / embedded double-quote / 한국어 에 대해 추가 escape layer 를 요구하나, Markdown H2 section + 본문 verbatim 방식은 escape 없이 원본을 그대로 보존한다 (Stage 3 의 root-cause 해소 목표와 직접 정합).
+  - **Required heading set**: input.md template 의 heading 과 정확히 동일 — `## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`. body 는 다음 H2 직전까지 (또는 EOF) 의 모든 줄 trim. fail-fast 조건: missing heading / empty body / duplicate heading.
+  - **파일 위치 규약**: `<ProjectRoot>/log/review-requests/<purpose-or-timestamp>.md`. `scripts/lib/path.ps1` 의 신규 helper `Assert-InProjectLogReviewRequestsRoot` 가 containment 를 강제하며 그 외 경로는 fail-fast 거부.
+  - **inline 채널과의 conflict 규칙**: `-ReviewRequestPath` 와 inline `-Context` / `-RequiredInspectionPaths` / `-ReviewQuestions` / `-Constraints` 는 **mutually exclusive** (둘 다 비어있지 않으면 fail-fast). 우선순위 / partial override 같은 silent merge 은 채택하지 않는다 — 명확한 entrypoint 분리가 audit 가능성을 보존한다.
+  - **`-TargetFiles` / `-TargetFilesPath` semantics**: 변경 없음. request 채널은 target 식별과 직교한다.
+  - **inline 채널의 backward compatibility**: `-ReviewRequestPath` 미사용 시 기존 inline 동작 그대로. Stage 1 docs-only quoting 규율 (`docs/OPERATOR_GUIDE_KR.md` §9) 은 inline 사용 시 그대로 적용된다.
+  - **review-prepare 와 binding**: prepare 단계에서 request file 의 `path` (project-relative, forward-slash) + `sha256` 이 `meta.json.reviewRequest` 에 기록된다. provenance binding 이며, reviewer 가 실제로 받은 input 텍스트의 freshness 는 `result.json.inputSha256` 가 input.md 단위에서 이미 다룬다 (`docs/REVIEW_RESULT_CONTRACT.md` "meta.json" 의 reviewRequest 절 참조).
+  - **review-input-verify / review-verify**: 별도 변경 없음. input.md 의 4 section 채움 여부는 review-input-verify 가 이미 검증하며, request file 의 본문이 input.md 의 placeholder 를 그대로 채우므로 기존 검증이 그대로 적용된다.
+  - **두 backlog item 의 관계**: 본 항목 (`docs/backlog/operations.md` §"Review-cycle invocation quoting hardening") 와 `docs/backlog/review.md` §"Review-cycle file-backed request input" 는 **통합 closeout** 된다 — 동일 channel 의 layer 별 framing 으로 보고 한 batch 에서 implementation closeout 했다.
+  - **Pester 케이스**: `tests/review-cycle-request.Tests.ps1` (11 case) — multi-line body, embedded ASCII double-quote, Korean+English mix, markdown bullets, missing heading, empty body, duplicate heading, outside-log containment, missing path, inline-vs-file conflict (Context / ReviewQuestions), inline-only backward compatibility.
+  - **운영자 docs**: `docs/OPERATOR_GUIDE_KR.md` §9b 가 사용법 / 예시를 다룬다. `README.md` "Single-shot review cycle" 가 high-level 안내를 다룬다.
+- 본 implementation 자체가 commit / push / global current/ refresh / criteria 변경 어느 것도 자동 승인하지 않는다.
 
 **Later portability / Python · Node porting (deferred, separate track).**
 
@@ -186,21 +186,19 @@ PowerShell 5.1 에서 `scripts/review-cycle.ps1` 를 free-text 인자와 함께 
 
 ### Non-goals
 
-- 본 항목은 backlog candidate 다. 즉각 wrapper / file-based input 도입은 자동 승인되지 않는다.
-- review subsystem 의 redesign 아님.
+- 본 라운드 closeout 후에도 review subsystem 의 redesign 은 본 항목 scope 가 아니다.
 - 광범위한 PowerShell quoting abstraction layer / cross-shell quoting helper / 범용 quoting framework 도입 아님.
 - verdict semantics 변경 아님.
-- `review-verify` binding 또는 freshness / hash 검증 규칙 변경 아님.
+- `review-verify` binding 또는 freshness / hash 검증 규칙 변경 아님 — Stage 3 implementation 도 review-verify 를 건드리지 않는다. `meta.json.reviewRequest` 는 provenance binding 일 뿐 freshness 검증 대상이 아니다.
 - background / detached review execution 도입 아님.
-- `scripts/review-cycle.ps1` 의 parameter contract 변경 아님 (file-based input 후보 채택 시 별도 scoped goal 의 대상).
+- `scripts/review-cycle.ps1` 의 parameter contract 변경 중 `-ReviewRequestPath` 도입 외의 항목 (예: 새 verdict mode, 새 reviewer, 새 sandbox 모드 등) 아님.
 - 단순 operator-direct PowerShell wrapper 신설 아님 (Stage 2 decision §"Stage 2 / Stage 3 decision (2026-05-16)" 에서 not adopted).
 - 새 cmd / batch helper 신설 아님 (같은 §에서 not adopted).
 - `scripts/smoke/invoke-review-cycle.ps1` 의 operator-direct fallback 승격 아님.
 - PowerShell 7.3+ requirement 도입 아님 (portability track 별도).
 - `-EncodedCommand` / `-EncodedArguments` launcher 도입 아님 (escape hatch acknowledged 만).
 - Python / Node 로의 porting 착수 아님 (portability track 별도).
-- 본 backlog 항목 자체는 본 라운드의 BF Level 3 status helper 라인 작업의 implementation 결정 / commit 결정 어느 것도 자동 승인하지 않는다.
-- 본 항목 implementation 은 별도 scoped goal 을 거친다.
+- 본 backlog 항목 자체는 commit / push / global current/ refresh / criteria 변경 어느 것도 자동 승인하지 않는다 — Stage 3 implementation 의 commit / push / global refresh 결정은 별도 explicit user approval.
 
 ---
 

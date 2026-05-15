@@ -97,6 +97,20 @@ parsing 실패 또는 Codex 실패 시 그 `<run-id>`는 failed/incomplete recor
 
 `review-prepare.ps1`이 만든 packet metadata. run-id, target path, target SHA-256, source HEAD, stage, purpose, reviewer config, freshness policy 등이 들어 있다. 형식은 `templates/review-meta.json`과 `scripts/review-prepare.ps1`이 함께 정한다. 이 contract는 meta.json을 새로 정의하지 않는다.
 
+operator 가 `scripts/review-cycle.ps1` 의 `-ReviewRequestPath` (Stage 3 file-backed request input) 를 사용한 경우, `meta.json` 에 optional `reviewRequest` block 이 추가된다. 이는 어떤 request file 본문이 input.md 로 expansion 되었는지의 provenance binding 이며, request 본문은 input.md 안에 그대로 보존되므로 별도 사본을 만들지 않는다.
+
+```json
+"reviewRequest": {
+  "path": "log/review-requests/<purpose-or-timestamp>.md",
+  "sha256": "<request-file-sha256>"
+}
+```
+
+- `path` — project-relative forward-slash path. 항상 `log/review-requests/` 하위 (review-cycle 의 `Assert-InProjectLogReviewRequestsRoot` containment 검증 통과).
+- `sha256` — request file 의 lowercase SHA-256 (prepare 시점).
+- 본 block 은 inline `-Context` / `-ReviewQuestions` / `-Constraints` / `-RequiredInspectionPaths` 사용 시 생성되지 않는다. inline 과 `-ReviewRequestPath` 는 review-cycle 이 mutually exclusive 로 강제하며, 둘 다 지정하면 fail-fast.
+- 본 block 의 정합성은 review-cycle/review-prepare 의 prepare 단계에서 한 번 기록되며, 이후 review-verify default mode / `-RequireResult` mode 의 자동 freshness/binding 검증 대상은 **아니다**. reviewer 가 실제로 본 input 의 freshness 는 `meta.json.targetSha256` + `meta.json.targetFiles[]` (default mode) 와 `result.json.inputSha256` (`-RequireResult` mode) 가 이미 다룬다.
+
 ### input.md
 
 `review-prepare.ps1`이 `templates/review-input.md`를 기반으로 렌더링한 reviewer 입력. reviewer는 이 파일을 보고 판단을 내린다. 이 contract는 input.md를 새로 정의하지 않는다.
