@@ -55,7 +55,7 @@ latest related commit: `8234bf1 Align snippets with shared global layout`.
 
 ## Review-cycle file-backed request input
 
-- **Status**: candidate
+- **Status**: candidate — **next primary implementation candidate** (2026-05-16). `docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" §"Stage 2 / Stage 3 decision (2026-05-16)" 가 단순 operator-direct PowerShell wrapper 와 cmd / batch helper 를 safe solution 으로 not adopt 하고, 본 항목의 file-backed request input 채널 (Stage 3) 을 next primary implementation candidate 로 elevation 했다. 두 backlog item 의 통합 / 분리, `-ReviewRequestPath` (또는 동등) 의 정확한 parameter 이름 / shape, request 파일 포맷 (plain text / JSON / template) / 위치 / containment / `-Context` 등 기존 채널과의 conflict 규칙, Pester case set, docs 정합화는 별도 scoped implementation goal 의 explicit user approval 까지 deferred 다. 본 Status 변경 자체가 어떤 구현, commit, push, criteria 변경도 자동 승인하지 않는다.
 
 ### Context
 
