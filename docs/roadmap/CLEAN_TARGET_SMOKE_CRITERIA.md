@@ -245,6 +245,8 @@ evidence 보고에 SC5 / SC5' 중 어느 쪽이 실행되었는지 명시한다.
 
 위 세 케이스는 stable global channel 3 materialization 직후 단일 라운드로 실행되었다. 재실행 / regression 추적은 본 절의 범위가 아니다.
 
+**Reaffirming round.** 별도 후속 round (global activation 의 latest repo HEAD 재동기화 직후) 에서 CH3-A 는 brief-init smoke 로, CH3-B / CH3-C 는 review-cycle smoke 로 재검증되어 동일하게 PASS 로 관찰되었다. CH3-B 의 verifier-half 도 본 reaffirming round 에서 함께 충족되었다 — `meta.json.toolRoot` 가 `%USERPROFILE%\.claude\ai-harness-toolset\current` 에 bind, `meta.json.projectRoot` 가 fixture 에 bind, `review-verify` default + `-RequireResult` 모두 PASS, `result.json.verdict` 가 valid vocabulary (`yes` / `no` / `yes with risk`) 안에 위치. CH3-C 의 isolation invariant (fixture/`log/` only runtime artifact, source repo / global `current/` payload / `%USERPROFILE%\.claude\AGENTS.md` 부재 / env var 모두 unchanged, fixture 에 `.ai-harness/` · `scripts/` · `config/` · `templates/` · `snippets/` payload 부재) 도 동일하게 관찰되었다. 재검증의 execution HEAD / fixture path / run-id 같은 per-run 세부는 본 절 본문이 아니라 per-run evidence 가 권한이다 (§4 항목 4 와 정합, `docs/backlog/operations.md` Long-lived docs commit hash hygiene 항목과도 정합). CH3-D 는 본 절 (II) 에 따라 여전히 deferred 다.
+
 ### (II) Future criteria — deferred items
 
 - **CH3-A / CH3-B / CH3-C 의 정식 criteria 화** — Pre / Action / Pass / Fail / Evidence 형식의 정식 SC 항목으로 편입하는 것은 후속 scoped 작업이다. 본 절의 (I) 는 그때까지의 observed-status 기록 역할만 한다.
