@@ -21,7 +21,7 @@
 - new human-facing docs are Korean by default (technical identifiers stay English)
 - evidence capture is a manual convention first (`docs/EVIDENCE_CONTRACT.md`) — no script, wrapper, or schema enforcement in MVP
 - chatlog retention is summary-first and resume-first (`docs/CHATLOG_CONTRACT.md`)
-- BRIEF (BF Level 3) is operator-local runtime state at `<ProjectRoot>/log/brief/BRIEF.md`; root `<ProjectRoot>/brief/` is forbidden for ai-harness usage and the target persistent footprint is `log/` only — canonical in `docs/BRIEF_CONTRACT.md`
+- Brief: target repo product canonical Brief is `<ProjectRoot>/brief/BRIEF.md`; `<ProjectRoot>/log/brief/BRIEF.md` is the current source-side primitive (`scripts/brief-init.ps1`) seed destination — an operator-local runtime artifact under `log/`, not promoted to product canonical. BF Level is save/restore capability maturity (not a path); BF Level 1/2 is manual save/restore discipline; BF Level 3 (deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer) remains future scoped work — canonical in `docs/BRIEF_CONTRACT.md`. (This entry supersedes the earlier "BRIEF (BF Level 3) is operator-local runtime state at `log/brief/BRIEF.md`; root `brief/` is forbidden" statement, which represented an intermediate BRIEF-posture reconciliation that has since been corrected.)
 - raw transcript retention is optional
 - handoff.md is an external Web/session handoff artifact, not a repo source artifact
 - context-pressure trigger / pre-compact capture is a future optional candidate, not MVP implementation
