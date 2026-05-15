@@ -1,322 +1,182 @@
-# Review Result Artifact Contract
+# Review Artifact Contract
 
-`log/review/<run-id>/` 아래에 reviewer 실행이 끝난 뒤 어떤 최소 형식으로 결과가 남는지 정의한다.
+본 문서는 한 번의 review task 가 어떤 artifact 로 닫히는지의 canonical contract 다. canonical artifact 는 두 파일이며 다른 sidecar 파일은 contract 의 일부가 아니다.
 
-이 문서는 **generated read-only record** 계약 문서다. `log/review/<run-id>/`의 4개 artifact (`meta.json`, `input.md`, `result.md`, `result.json`)는 모두 tooling 또는 호환되는 reviewer pipeline이 생성한 read-only 기록이다. 사람은 record를 inspect하고 다음 행동을 결정하지만, 그 안의 내용을 손으로 수정/보정/완성하지 않는다.
-
-기본 mode는 prepared packet freshness 검증을 유지하고, completed review record enforcement는 명시적 `-RequireResult` mode에서만 수행한다. MVP에서는 single-shot CLI `scripts/review-cycle.ps1`이 verdict parsing 성공 시 `result.json`을 자동으로 작성한다. parsing이 실패하면 `result.json`은 만들어지지 않고, 그 run은 failed/incomplete record로 디스크에 보존된다. 복구는 fresh run-id 재실행, reviewer prompt/tooling 수정, 또는 scoped fix 후 새 review로 수행하며, 기존 `<run-id>` 안의 artifact를 사람이 손으로 보정해 cycle을 닫지 않는다. review-run productization wrapper, watcher, hook, daemon, DB-backed history, retention automation은 포함하지 않는다.
-
-## 목적
-
-- reviewer (Codex CLI 또는 호환되는 reviewer pipeline)이 내린 최종 판단을 generated read-only record로 보존한다.
-- 어떤 input을 기준으로 판단했는지, 어떤 target을 검토했는지 hash binding으로 추적 가능하게 한다.
-- 사람이 읽고 판단할 수 있는 형식을 유지하되, 사람이 직접 작성해 채워 넣는 양식이 아니다.
-
-이 contract는 review result가 무엇을 보장하는가가 아니라, result 파일이 **어디에**, **어떤 이름으로**, **어떤 최소 필드로** 생성되는지에 관한 합의다.
-
-## 범위
-
-`log/review/<run-id>/`는 project-local runtime artifact 영역이다.
-
-- source repo 모드: `<repo-root>/log/review/<run-id>/`
-- target payload 모드: `<project-root>/log/review/<run-id>/`
-
-두 경우 모두 `log/`는 gitignored runtime artifact 트리이며 source snapshot에 포함하지 않는다.
-
-이 contract는 다음을 규정하지 **않는다**:
-
-- reviewer productization wrapper, watcher, git hook, daemon, workflow engine
-- multi-reviewer orchestration
-- review history DB 또는 index
-- review result schema 강제 검증
-- 자동 review result retention 정책 (auto-prune / rotate / expire / delete 등). Manual per-run-id retention 은 본 contract 의 `## Retention policy` 절에서 규정한다.
-- default review-verify mode에서 result.md / result.json을 실패 조건으로 만드는 것
-- evidence subsystem과의 cross-tree 보장
-- chatlog subsystem과의 cross-tree 보장
-
-`review-cycle.ps1` 은 single-shot CLI이며 위 productization wrapper 범주에 들어가지 않는다. cycle 이 result.json 을 작성하더라도 contract 의 minimum field set, verdict vocabulary, hash binding 의미는 그대로다.
-
-`scripts/review-run.ps1` 도 user-triggered single-shot CLI 이며 같은 범주다. run 은 prepared `log/review/<run-id>/` 의 reviewer 실행 + result 작성 + verify 만 담당하고 `meta.json` / `input.md` 를 mutate 하지 않는다. result.md / result.json 작성과 -RequireResult binding 검증은 본 contract 와 동일하게 따른다.
-
-## review / evidence / chatlog subsystem 경계
-
-`log/` 아래에는 세 종류의 트리가 공존한다. 책임이 서로 다르다.
-
-| 트리 | 책임 | 검증 주체 |
-|---|---|---|
-| `log/review/<run-id>/` | review packet과 freshness 검증, review result 보존 | `scripts/review-prepare.ps1`, `scripts/review-verify.ps1` (freshness; optional `-RequireResult` binding verification), 사람 (record inspection) |
-| `log/evidence/` | command 실행 사실, output, 재현 단서 보존 | 사람 (manual convention, `docs/EVIDENCE_CONTRACT.md`) |
-| `log/chatlog/` | session 작업 기록과 resume brief 보존 | 사람 (manual convention, `docs/CHATLOG_CONTRACT.md`) |
-
-- review subsystem은 evidence subsystem의 input이 아니며, output도 아니다.
-- review subsystem은 chatlog subsystem의 input이 아니며, output도 아니다.
-- 셋은 같은 `log/` 아래에 있지만 서로 enforce하지 않는다.
-
-review result가 evidence file이나 chatlog summary를 **참조**하는 것은 권장된다. 그러나 review subsystem이 evidence나 chatlog의 정합성을 담당하지는 않는다.
-
-## prepared review packet vs completed review record
-
-같은 `log/review/<run-id>/` 디렉터리는 시간에 따라 두 단계 상태를 가진다.
-
-**Prepared review packet** — `review-prepare.ps1` 또는 `review-cycle.ps1`의 prepare 단계 직후 상태:
-
-- `meta.json` required
-- `input.md` required
-- `result.md` absent 가능
-- `result.json` absent 가능
-
-**Completed review record** — reviewer 실행과 cycle의 자동 작성이 모두 끝난 뒤 상태:
-
-- `meta.json` required
-- `input.md` required
-- `result.md` required
-- `result.json` required
-
-정상 경로는 `review-cycle.ps1` single-shot path다. verdict parsing 성공 시 cycle이 같은 run-id 디렉터리에 `result.md`(Codex CLI가 작성)와 `result.json`(cycle이 작성)을 두고 `review-verify -RequireResult`까지 호출한다. 이 자동 작성은 user-triggered single-shot 안에서 일어난다.
-
-`review-prepare.ps1`은 `<run-id>` 단위로 write-once다. 같은 `<run-id>` 디렉터리가 이미 존재하면 prepare는 거부하고 seed된 `meta.json` / `input.md`를 덮어쓰지 않는다. 보완은 새 run-id로 재실행해서 한다.
-
-parsing 실패 또는 Codex 실패 시 그 `<run-id>`는 failed/incomplete record로 보존되며, 새 run-id로 다시 실행해 보완한다.
-
-## 권장 layout
-
-```
-<ProjectRoot>/log/review/<run-id>/
-  meta.json
-  input.md
-  result.md
-  result.json
-  target-files.list   informational snapshot of reviewed paths (mirrors meta.targetFiles[].path; not part of binding)
+```text
+<ProjectRoot>/log/review/<review-task-id>/
+  pass-01/
+    input.md
+    result.md
+  pass-02/
+    input.md
+    result.md
 ```
 
-같은 `<run-id>` 디렉터리 아래에 네 파일 (`meta.json`, `input.md`, `result.md`, `result.json`) 이 모두 존재할 때 그 review record는 completed로 본다. `target-files.list` 는 informational snapshot 이므로 completed 판단에 포함되지 않으며 `review-verify` 가 검증하지 않는다. 권위 source-of-truth 는 여전히 `meta.json.targetFiles[]` 이다. 이 snapshot 의 존재 덕분에 사용자는 외부 입력 `log/review-targets/<slug>.list` 를 prepare 직후 안전하게 삭제할 수 있다.
+`input.md` 는 operator-role AI (Claude Code) 가 작성한다. `result.md` 는 Codex reviewer 가 작성한다. script 는 위 두 파일에 대한 deterministic gate 만 담당하고, 의미 판단은 하지 않는다.
 
-## 파일 역할
+본 contract 는 source-of-truth 이며, `templates/review-input.md` · `templates/review-result.md` · `snippets/claude-skills/ai-harness-review/SKILL.md` · `docs/OPERATOR_GUIDE_KR.md` · `README.md` 는 이 contract 를 mirror 한다. 본문이 충돌하면 본 contract 가 우선한다.
 
-### meta.json
+## 1. Review task and pass directory
 
-`review-prepare.ps1`이 만든 packet metadata. run-id, target path, target SHA-256, source HEAD, stage, purpose, reviewer config, freshness policy 등이 들어 있다. 형식은 `templates/review-meta.json`과 `scripts/review-prepare.ps1`이 함께 정한다. 이 contract는 meta.json을 새로 정의하지 않는다.
+review record 는 두 단계 디렉터리로 닫힌다.
 
-operator 가 `scripts/review-cycle.ps1` 의 `-ReviewRequestPath` (Stage 3 file-backed request input) 를 사용한 경우, `meta.json` 에 optional `reviewRequest` block 이 추가된다. 이는 어떤 request file 본문이 input.md 로 expansion 되었는지의 provenance binding 이며, request 본문은 input.md 안에 그대로 보존되므로 별도 사본을 만들지 않는다.
+- `<review-task-id>` — 하나의 Claude Code `/goal` 작업 또는 하나의 review gate 단위. **Claude Code chat / session id 가 아니다.** 한 Claude Code 세션 안에서 서로 다른 주제의 `/goal` 이 여러 개 진행되면 각각 별도의 `<review-task-id>` 디렉터리를 사용한다. 자리: `<ProjectRoot>/log/review/<review-task-id>/`.
+- `pass-NN` — 같은 review task 안에서 corrective loop 의 각 Codex review attempt. 첫 review attempt 는 `pass-01`, 두 번째 attempt 는 `pass-02`, 이렇게 zero-padded 두 자리로 증가한다. 자리: `<ProjectRoot>/log/review/<review-task-id>/pass-NN/`.
+- canonical artifact per pass: 같은 `pass-NN/` 디렉터리 안의 `input.md` + `result.md` 한 쌍. 한 pass 의 record 는 외부 staging folder, sidecar JSON, hash sidecar 어디로도 분산되지 않는다.
+- `<ProjectRoot>/log/` 는 gitignored runtime tree 다. canonical artifact 도 commit 대상이 아니다.
+- 각 `pass-NN/` 디렉터리는 **write-once** 다. AI 또는 운영자가 같은 pass directory 안의 파일을 손으로 보정하여 review 를 닫지 않는다. 보완은 같은 `<review-task-id>/` 아래에 새 `pass-NN/` 를 만들어 수행한다.
+- 다른 review task 의 record 는 다른 `<review-task-id>/` 아래에 둔다. 한 task 의 corrective loop 와 다른 task 의 attempt 를 같은 `<review-task-id>/` 에 섞지 않는다.
 
-```json
-"reviewRequest": {
-  "path": "log/review-requests/<purpose-or-timestamp>.md",
-  "sha256": "<request-file-sha256>"
-}
-```
+## 2. `input.md` — AI-authored review request
 
-- `path` — project-relative forward-slash path. 항상 `log/review-requests/` 하위 (review-cycle 의 `Assert-InProjectLogReviewRequestsRoot` containment 검증 통과).
-- `sha256` — request file 의 lowercase SHA-256 (prepare 시점).
-- 본 block 은 inline `-Context` / `-ReviewQuestions` / `-Constraints` / `-RequiredInspectionPaths` 사용 시 생성되지 않는다. inline 과 `-ReviewRequestPath` 는 review-cycle 이 mutually exclusive 로 강제하며, 둘 다 지정하면 fail-fast.
-- 본 block 의 정합성은 review-cycle/review-prepare 의 prepare 단계에서 한 번 기록되며, 이후 review-verify default mode / `-RequireResult` mode 의 자동 freshness/binding 검증 대상은 **아니다**. reviewer 가 실제로 본 input 의 freshness 는 `meta.json.targetSha256` + `meta.json.targetFiles[]` (default mode) 와 `result.json.inputSha256` (`-RequireResult` mode) 가 이미 다룬다.
+`input.md` 는 reviewer 에게 전달되는 모든 입력을 한 파일로 담는다. 본문은 운영 자연어로 작성한다.
 
-### input.md
+required H2 heading set (정확 매치):
 
-`review-prepare.ps1`이 `templates/review-input.md`를 기반으로 렌더링한 reviewer 입력. reviewer는 이 파일을 보고 판단을 내린다. 이 contract는 input.md를 새로 정의하지 않는다.
+- `## Context`
+- `## Required inspection paths`
+- `## Review questions`
+- `## Constraints`
+- `## Final verdict`
 
-### result.md
+각 required heading 의 본문 (다음 required heading 직전까지 또는 EOF 까지) 은 비어 있지 않아야 한다. `## Final verdict` section 의 본문에는 정확히 `yes / no / yes with risk` 문자열이 포함되어야 한다.
 
-작성자: Codex CLI (`--output-last-message`로 `log/review/<run-id>/result.md`에 직접 기록). 출력 shape 참조용 template은 `templates/review-result.md`다.
+input.md 안에는 위 5 개의 required heading 외에 다음 informational section 을 추가로 둘 수 있다 (script 가 본문 검사 대상이 아니지만 reviewer 가 본문을 읽는다).
 
-`result.md`에 들어가는 정보:
+- `## Stage` — design | implementation | test | review | release.
+- `## Purpose` — 한 줄 의도.
+- `## Target files` — repo-relative path 의 bullet list. forward slash. reviewer 가 읽어야 할 코어 파일 집합.
 
-- verdict (`yes` / `no` / `yes with risk`)
-- 어떤 target을 보았는가 (path, SHA-256, run-id)
-- 어떤 input.md에 묶이는가 (input SHA-256)
-- findings, risks, required changes, notes
+`{{TOKEN}}` 형태의 unfilled template token, 또는 forbidden placeholder phrase (`Replace this placeholder`, `(Provide context here.)`, `(Provide review questions here.)`) 가 본문에 남아 있으면 `scripts/review-input-verify.ps1` 가 거부한다.
 
-### result.json
+작성 주체는 operator-role AI 다. 사용자는 자연어 의도만 표현하고 raw template 을 손으로 채우지 않는다. AI 는 conversation context · git status · diff · 사용자 의도 · 해당 작업의 scope 를 종합해 input.md 본문을 직접 작성한다.
 
-작성자: `review-cycle.ps1` 또는 `review-run.ps1` (verdict parsing 성공 시). 출력 shape 참조용 template은 `templates/review-result.json`이다. 두 script 모두 동일 schema/binding 으로 작성하며, run 은 prepared run-id 의 `meta.json` 값을 그대로 옮긴다.
+`input.md` 의 shape 기준은 `templates/review-input.md` 다.
 
-- `verdict`은 machine-readable 최종 판단이다. 값: `yes` / `no` / `yes with risk`.
-- `inputSha256`은 어떤 input.md를 기준으로 판단했는지 묶기 위한 값이다.
-- `resultMarkdownSha256`은 result.md와 result.json을 묶기 위한 값이다.
-- `targetPath`, `targetSha256`, `runId`, `stage`, `purpose`, `reviewer`는 cycle이 `meta.json`에서 옮겨 채운다.
+## 3. `result.md` — Codex-authored review result
 
-자동 일치 검증의 범위는 mode에 따라 다르다.
+`result.md` 는 Codex CLI 가 `--output-last-message log/review/<review-task-id>/pass-NN/result.md` 로 한 번 작성한다. operator-role AI 또는 운영자가 손으로 작성하지 않는다.
 
-- 기본 mode (`-RequireResult` 미지정): result artifact 자체를 요구하지 않으며 result.json 필드의 일치를 검증하지 않는다.
-- `-RequireResult` mode: 아래 "review-verify의 현재 책임과 한계" 절에 열거된 부분 집합 (`runId`, `targetSha256`, `inputSha256`, `resultMarkdownSha256`, `verdict`, `targetPath`, `createdAtUtc`, conditional `sourceHead`) 만 자동 검증한다. 그 외 필드 (`stage`, `purpose`, `reviewer`, `schemaVersion`, `notes` 등) 는 검증하지 않는다.
+required shape:
 
-## result.json 최소 필드
-
-```json
-{
-  "schemaVersion": 1,
-  "runId": "<run-id>",
-  "createdAtUtc": "yyyy-MM-ddTHH:mm:ss.fffffffZ",
-  "reviewer": "<reviewer>",
-  "verdict": "yes | no | yes with risk",
-  "targetPath": "<absolute-target-path>",
-  "targetSha256": "<target-sha256>",
-  "sourceHead": null,
-  "stage": "design | implementation | test | review | release",
-  "purpose": "<purpose>",
-  "inputSha256": "<input-md-sha256>",
-  "resultMarkdownSha256": "<result-md-sha256>",
-  "notes": []
-}
-```
-
-`templates/review-result.json`의 angle-bracket 값과 format string은 shape reference placeholder다. 실제 `result.json`은 `review-cycle.ps1`이 채워 생성한다.
-
-`createdAtUtc`는 ASCII digit `0-9`만 사용한다. Arabic-Indic digit (예: `٠`–`٩`) 등 다른 Unicode decimal digit은 거부된다. 7자리 fractional second는 canonical machine-readable contract의 일부이며, 시스템 시계가 100ns 단위 의미 있는 정밀도를 제공한다는 주장은 아니다.
-
-값 생성 규칙 (cycle이 자동 적용):
-
-- `schemaVersion`은 정수 `1`로 시작한다.
-- `verdict`은 `result.md`의 strict parser 결과 (위 세 값 중 하나).
-- `runId`, `targetPath`, `targetSha256`, `stage`, `purpose`, `reviewer`는 같은 디렉터리 `meta.json`에서 옮겨진다.
-- `inputSha256`은 같은 디렉터리 `input.md`의 실측 SHA-256.
-- `resultMarkdownSha256`은 같은 디렉터리 `result.md`의 실측 SHA-256.
-- `sourceHead`는 작성 시점의 git HEAD를 옮기되, Git이 없거나 HEAD를 알 수 없으면 `null`이다.
-- `notes`는 자유형 string 배열이다.
-
-## verdict 값
-
-result.md와 result.json 모두 다음 세 값만 사용한다:
-
-- `yes` — 검토 범위 내에서 진행 가능.
-- `no` — 검토 범위 내에서 진행 불가.
-- `yes with risk` — 진행은 가능하나 명시된 risk를 수반함.
-
-이 세 값은 `templates/review-input.md`의 final verdict 표기와 정렬되어 있다.
-
-## review-cycle 파서가 강제하는 result.md shape
-
-`scripts/review-cycle.ps1` 의 `Get-VerdictFromResultMd` 는 result.md 본문을 다음 규칙으로 strict 하게 parsing 한다. 이 규칙은 의도된 결정이며 deterministic review binding 을 보존하기 위함이다.
-
-- result.md 본문에 정확히 1개의 top-level `## Verdict` heading 이 있어야 한다. 0개 또는 2개 이상이면 verdict parsing 실패다.
-- 그 heading 다음의 첫 비어있지 않은 줄 (whitespace `Trim` 후) 이 정확히 다음 셋 중 하나여야 한다:
+- 정확히 1 개의 top-level `## Verdict` heading 이 있다.
+- `## Verdict` heading 다음의 첫 비어있지 않은 줄 (앞뒤 whitespace trim 후) 이 lowercase 정확히 다음 셋 중 하나다:
   - `yes`
   - `no`
   - `yes with risk`
-- 비교는 `ToLowerInvariant` 후 정확 일치다. inline 형식 (`Verdict: yes`, `Final verdict: yes`), prose 안의 verdict, heading 다음 줄에 verdict 와 다른 토큰을 함께 배치한 형태 등은 모두 거부된다.
-- parsing이 성공하지 못하면 `review-cycle.ps1`은 non-zero exit로 실패하고 `result.json`을 자동으로 작성하지 않는다. 실패한 `<run-id>`는 evidence로 보존되며 새 run-id로 재실행해 보완한다.
-- fuzzy / natural-language verdict extraction, inline form 수용, retry / auto-rewrite / auto-fix loop은 도입하지 않는다.
 
-reviewer-facing prompt 에 이 contract 를 명시적으로 노출하기 위해 `templates/review-input.md` 의 `## Final verdict` 섹션에 동일 규칙을 안내한다. template 안내가 본 contract 보다 우선한다는 의미가 아니며, 본 문서가 source-of-truth 이고 template 은 이를 mirror 한다.
+거부되는 형태 (의도된 strict parsing):
 
-## reviewer input freshness와 result artifact의 관계
+- 0 개 또는 2 개 이상의 `## Verdict` heading.
+- inline 형태 (`Verdict: yes`, `Final verdict: yes`).
+- prose 안에 verdict 토큰이 섞인 형태.
+- `## Verdict` heading 다음 줄에 verdict 와 다른 토큰이 함께 있는 형태.
+- `Yes`, `YES`, `yes.`, `yes with notes` 등 lowercase 정확 매치를 벗어나는 변형.
 
-- `meta.json.targetSha256`은 packet 생성 시점의 primary target file SHA-256이다.
-- `meta.json.targetFiles[]`는 multi-file change-set review 시 전체 reviewed 파일 set 을 repo-relative path + lowercase SHA-256 으로 기록한다. 단일 파일 review 시 primary entry 1개만 포함될 수 있다.
-- `review-verify.ps1` default mode 는 primary target (`targetSha256`) 일치 검증 후, `targetFiles[]` 가 비어있지 않으면 각 entry 의 현재 SHA-256 을 다시 계산해 일치하는지 검증한다. 첫 stale entry path 가 메시지에 포함된다 (`freshnessPolicy.type = "target-sha256-match"`).
-- 이 freshness 검증은 **reviewer 입력의 정합성**에 대한 것이다. result artifact 의 정합성에 대한 것이 아니다.
-- `result.json.inputSha256`은 result가 어떤 input.md를 보고 작성되었는지 묶기 위한 값이다.
-- `result.json.targetSha256` 은 result 작성 시점에 cycle이 `meta.json.targetSha256` 에서 그대로 옮긴 primary target binding 값이다. `meta.json` 의 값과 일치한다는 사실은 result 가 **같은 prepared review input 에 묶였다** 는 binding 정보일 뿐이며, 현재 target file 들이 그 SHA-256 과 같다는 보장은 아니다. multi-file freshness 는 `result.json` 이 mirror 하지 않으며, current target file freshness 는 여전히 `scripts/review-verify.ps1` default mode 로 확인해야 한다. result artifact 자체는 current target freshness 를 자동으로 보장하지 않는다.
+추가로 자유롭게 둘 수 있는 section (의무 아님):
 
-## review-verify의 현재 책임과 한계
+- `## Findings` — 권장. 발견 사항을 항목별로 기록.
+- `## Risks` — `yes with risk` 가 verdict 일 때 권장.
+- `## Notes` — 자유 형식 참고.
 
-`scripts/review-verify.ps1`은 두 가지 mode로 동작한다.
+`result.md` 의 shape 기준은 `templates/review-result.md` 다.
 
-### 기본 mode (`-RequireResult` 미지정)
+## 4. Script responsibility (deterministic gate only)
 
-prepared packet의 freshness를 검증한다.
+review pass 를 다루는 script 는 의미 판단을 하지 않는다. script 의 최소 책임:
 
-- run directory와 `meta.json` 존재 여부 검증
-- `meta.json.projectRoot`, `meta.json.projectLogRoot`가 현재 실행 환경과 일치하는지 검증
-- primary target file 존재와 ProjectRoot 내부 여부 검증
-- `meta.json.targetSha256`과 현재 primary target SHA-256 일치 검증
-- `meta.json.targetFiles[]`가 비어있지 않으면 각 entry 에 대해: repo-relative path 를 ProjectRoot 기준 절대 경로로 해석, ProjectRoot 외부 escape 거부, missing file 거부, 현재 SHA-256 과 entry SHA-256 일치 검증. 첫 stale path 가 실패 메시지에 포함됨
-- `result.md` 존재는 informational 출력만 한다. 실패 조건이 아니다.
-- `result.json` 존재 자체를 보지 않는다.
+1. pass directory `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` 가 `<ProjectRoot>/log/review/` 내부인지 containment 검증.
+2. `input.md` 의 5 개 required H2 heading 존재 여부와 본문 비어있지 않음 검증 (`scripts/review-input-verify.ps1` 의 contract).
+3. Codex CLI 를 `input.md` 에 대해 정확히 1 회 실행.
+4. 같은 pass directory 의 `result.md` 존재 검증.
+5. `result.md` 의 `## Verdict` heading 1 개 존재 + 다음 첫 비어있지 않은 줄이 `yes` / `no` / `yes with risk` 중 하나인지 검증.
+6. 위 모든 gate PASS 시 exit 0, 하나라도 실패 시 non-zero exit.
 
-기본 mode에서는 missing `result.md` / missing `result.json`을 실패 조건으로 만들지 않는다.
+script 가 하지 않는 일:
 
-기본 mode `review-verify`의 PASS는 reviewer 승인 완료를 의미하지 않는다. target artifact freshness / hash 검증 통과만을 의미한다. `result.md` / `result.json`이 없는 채로 PASS가 보고되더라도 reviewer 판단이 이루어졌다는 뜻은 아니다.
+- finding 의 의미 / 정당성 / 심각도 판단.
+- 수정 scope 또는 re-review 필요 여부 판단.
+- result 본문의 finding / risk 항목 자동 parsing 또는 후속 단계 트리거.
+- verdict 를 읽어 commit / push / publish / merge / release 자동 승인.
+- review request 본문을 여러 staging file 로 분산하는 staging step.
+- AI 가 자연어로 작성할 수 있는 본문을 JSON / hash / provenance 파일로 추가 분산.
 
-### `-RequireResult` mode (completed review record 검증)
+### 4a. Current script implementations vs canonical contract (transitional divergence)
 
-기본 mode 검증을 모두 통과한 뒤, completed review record의 binding을 추가 검증한다.
+본 contract 의 위 6 개 gate 가 review record 의 canonical operator-facing 책임이다. 그러나 현재의 script 구현 (`scripts/review-prepare.ps1`, `scripts/review-run.ps1`, `scripts/review-verify.ps1`) 은 본 단순화 직전 topology 의 잔재로 다음과 같은 추가 동작을 한다:
 
-- `input.md` 존재 검증
-- `result.md` 존재 검증 (missing이면 실패)
-- `result.json` 존재 검증 (missing이면 실패)
-- `result.json` JSON valid 검증
-- `result.json.runId`과 `meta.json.runId` 일치 검증
-- `result.json.targetSha256`과 `meta.json.targetSha256` 일치 검증
-- `result.json.inputSha256`과 실제 `input.md` SHA-256 일치 검증
-- `result.json.resultMarkdownSha256`과 실제 `result.md` SHA-256 일치 검증
-- `result.json.verdict`이 정확히 `yes` / `no` / `yes with risk` 중 하나인지 검증
-- `result.json.targetPath` 존재 / 비어있지 않음 검증, 그리고 `meta.json.targetPath`와 normalized full-path 비교 (`[System.IO.Path]::GetFullPath` 후 OrdinalIgnoreCase). source repo / target payload 모드 모두 절대경로 기준이며, 이번 batch에서는 repo-relative 표기는 지원하지 않는다.
-- `result.json.createdAtUtc` 존재 / 비어있지 않음 검증, 그리고 정확한 string shape `yyyy-MM-ddTHH:mm:ss.fffffffZ` (예: `2026-04-30T07:12:34.1234567Z`) 인지 검증. 이어서 동일 값이 `DateTimeOffset` parse 가능 여부와 parsed offset이 `TimeSpan.Zero` (UTC) 인지 추가 검증. `+00:00` 표기, 분수 초가 없는 `Z` 표기, RFC 1123 (`Thu, 30 Apr 2026 07:12:34 GMT`) 등 parseable한 UTC 표현이라도 정확한 contract shape이 아니면 거부한다. 현재 wall clock과의 비교나 `meta.json.createdAtUtc`와의 시간 순서 검증은 하지 않는다.
-- `meta.json.sourceHead`와 `result.json.sourceHead`가 **둘 다 non-empty** 인 경우에만 정확히 일치하는지 검증. meta 쪽이 null/empty이면 result 쪽 sourceHead는 null/empty / absent 모두 허용한다. short-hash prefix matching은 하지 않는다.
+- `review-prepare.ps1` 가 `<ProjectRoot>/log/review/<script-allocated-id>/` 형태의 **flat 한 단일 디렉터리** 를 allocate 한다 — 본 contract 의 `<review-task-id>/pass-NN/` 두 단계 layout 을 만들지 않는다. 한 script-allocated-id 는 운영자 / AI 가 conceptually 하나의 review task 의 한 pass 로 매핑한다.
+- `review-prepare.ps1` 가 같은 디렉터리에 `meta.json` (script-allocated-id / target SHA-256 / reviewerConfig 등) 와 `target-files.list` (target file path snapshot) 을 함께 작성한다.
+- `review-run.ps1` 가 그 `meta.json` 을 읽어 reviewer model 등을 결정한다 — `meta.json` 부재 시 fail. `-RunId` parameter 는 위 script-allocated-id 를 받는다.
+- `review-run.ps1` 가 Codex 실행 후 `result.json` 을 작성하고 `scripts/review-verify.ps1` 를 default mode + `-RequireResult` mode 로 호출해 hash binding 검증을 추가로 수행한다.
 
-`-RequireResult` mode가 여전히 검증하지 **않는** 것:
+이 추가 동작들은 script 의 **내부 implementation detail** 이며, 본 contract 가 보장하는 canonical operator-facing 책임은 위 6 개 gate 다. 본 contract 의 operator path 가 **아닌** 항목:
 
-- `result.json.sourceHead` required validation (meta가 null/empty이면 result도 null/empty 허용)
-- `result.json.sourceHead` short-hash prefix matching
-- `result.json.createdAtUtc` 시간 순서 / 현재 시각 비교
-- `result.json.stage` / `purpose` / `reviewer` / `schemaVersion` strict validation
-- `notes[]` schema enforcement
-- verdict 대소문자 / 공백 normalization (strict equality만 enforce)
-- default mode에서의 result artifact 요구
+- `<review-task-id>/pass-NN/` 두 단계 layout 대신 flat 한 `<script-allocated-id>/` 한 단계 layout (현재 script 가 emit 하는 형태).
+- `meta.json` / `target-files.list` / `result.json` sidecar.
+- `review-verify` 의 hash binding 결과.
 
-위 항목은 future candidate로 남긴다. SHA-256 binding과 위 metadata hardening v1이 MVP에서 completed-record binding의 authority다.
+이 transitional divergence — 즉 script 가 canonical contract 보다 단순한 단일 디렉터리 layout 과 추가 sidecar 를 emit 한다는 사실 — 은 `docs/backlog/review.md` 의 "Removed legacy review artifacts" 에 격리되어 있고, script alignment (canonical `<review-task-id>/pass-NN/` layout + sidecar 제거) 는 별도 scoped goal 의 대상이다. 운영자는 review record 의 정합성을 같은 review task 의 마지막 pass directory 의 input.md / result.md 두 파일과 위 6 개 gate 의 PASS / FAIL 로 판단하고, 같은 디렉터리에 남는 sidecar 는 disk 의 runtime noise 로 취급한다.
 
-## source snapshot에는 log/를 포함하지 않는다
+## 5. AI responsibility (semantic judgment)
 
-- `templates/`, `scripts/`, `config/`, `snippets/`, `docs/` 등 source 트리에는 review record 파일을 두지 않는다.
-- review record를 source repo에 commit하지 않는다.
-- review record가 참조하는 fixture는 `log/review/<run-id>/` 또는 `log/evidence/<scope>/<case>/` 안에서만 생성한다.
-- public release packaging이 도입되어도 `log/`는 항상 제외한다.
+operator-role AI 는 다음을 담당한다.
 
-## Retention policy
+1. 사용자의 자연어 의도와 승인 boundary 에서 review scope 를 잡고, 그 작업에 사용할 `<review-task-id>` 를 결정한다 (한 `/goal` 작업 또는 한 review gate 단위).
+2. `templates/review-input.md` 기준으로 `log/review/<review-task-id>/pass-NN/input.md` 본문을 직접 작성한다. target files / context / required inspection paths / review questions / constraints / final verdict instruction 을 모두 input.md 한 파일 안에 담는다. 첫 attempt 는 `pass-01`, 이후 corrective loop attempt 는 `pass-02`, `pass-03` ... 으로 증가한다.
+3. `result.md` 의 `## Verdict` 다음 첫 줄을 읽어 verdict 값을 확정.
+4. `## Findings` / `## Risks` / `## Notes` 본문을 읽고 finding 의 의미와 정당성, 수정 필요 scope, re-review 필요 여부를 판단.
+5. 필요한 수정이 사용자가 승인한 scope 안이면 수정 후 같은 `<review-task-id>` 아래에 새 `pass-NN` 를 만들어 re-review.
+6. 사용자에게 review task path, 최종 pass, verdict, corrective loop count, changed files / validation / risk / next decision 을 보고.
 
-`log/review/<run-id>/`의 retention 단위는 `<run-id>` 디렉터리 전체다. 사용자는 더 이상 필요하지 않은 run-id 디렉터리를 손으로 삭제한다. failed/incomplete record (parse 실패로 `result.json`이 없는 run 등)는 evidence로 보존되며, 보완은 새 run-id로 재실행해 만든다.
+AI 는 verdict 의 의미 정의를 바꾸지 않는다. `yes` / `no` / `yes with risk` 는 본 contract 의 vocabulary 다.
 
-- 각 `log/review/<run-id>/` 디렉터리는 자기 완결적인 review record다.
-- toolset은 자동 prune / rotate / expire / delete를 수행하지 않는다. daemon, watcher, git hook, scheduled cleanup도 제공하지 않는다.
-- source snapshot은 `log/`를 항상 제외한다 (위 절 참조).
-- 본 source repo의 `.gitignore`는 `log/`를 이미 무시한다. target project는 이 `.gitignore`를 자동으로 상속하지 않으므로, **target adopter는 target project의 `.gitignore`가 `log/`를 포함하도록 직접 보장해야 한다.** toolset은 target `.gitignore`를 만들거나 편집하지 않는다.
+## 6. Verdict vocabulary
 
-## non-goals
+다음 셋이 본 contract 의 vocabulary 다:
 
-이 contract가 다루지 않는 것:
+- `yes` — 본 review scope 안에서 진행 가능.
+- `no` — 본 review scope 안에서 진행 불가.
+- `yes with risk` — 진행은 가능하나 명시된 risk 를 수반.
 
-- review-run productization wrapper, watcher, git hook, daemon, workflow engine
-- multi-reviewer orchestration, fallback model use, retry loop, auto-fix loop
-- auto-commit, auto-push, auto-publish, auto-merge, auto-release, auto-deployment
-- review history DB 또는 index
-- review record 자동 retention 정책
-- result schema 자동 validator
-- default review-verify mode에서 result.md / result.json을 실패 조건으로 만드는 것
-- evidence subsystem과의 cross-tree 보장
-- chatlog subsystem과의 cross-tree 보장
-- CI integration, 스케쥴 기반 자동 실행
-- 다른 toolset과의 review result format 상호운용
-- public release packaging
+verdict 는 review scope 안의 판단만을 담는다. commit / push / publish / merge / release / deployment / upload / adoption / config mutation 의 자동 승인이 아니다. 다음 단계는 사용자가 별도 명시 결정으로 처리한다.
 
-`review-cycle.ps1` single-shot user-triggered CLI 는 위 항목들과 분리된다. cycle 이 Codex 를 1회 실행하고 result.json 을 작성하는 행위는 단일 user 호출 안에서만 일어나며, 위 productization 범주로 확장되지 않는다.
+## 7. Re-review on staleness
 
-## Future candidate
+같은 `pass-NN/` 안의 `input.md` 또는 `result.md` 가 작성된 뒤, 그 review 가 묶인 source / docs / template / snippet 중 어떤 것이라도 수정되면 그 pass 의 record 는 stale 이다. 사용자가 stale pass 의 verdict 를 후속 결정의 근거로 사용하지 않는다.
 
-아래 항목은 버리지 않는다. 다만 이번 MVP scope에서는 구현하지 않는다.
+수정 후 동일 review task 안에서 동일 의미의 review 가 필요하면 같은 `<review-task-id>/` 아래에 새 `pass-NN/` 를 만든다 — 같은 task 의 corrective loop 의 다음 attempt 다. 이전 pass directory 안의 파일을 손으로 보정하지 않는다.
 
-- `result.json.sourceHead` 무조건 required 검증 (현재는 meta / result 양쪽 모두 non-empty일 때만 비교).
-- `result.json.sourceHead` short hash / full hash prefix-match 정책.
-- `result.json.createdAtUtc` 시간 순서 / 현재 시각 비교.
-- `result.json.stage` / `purpose` / `reviewer` / `schemaVersion` strict 비교.
-- `result.json.notes[]` schema enforcement.
-- `result.json.targetFiles[]` mirror (현재 multi-file freshness 는 meta.json + review-verify default mode 단독 책임이며 result.json 은 primary target 만 미러).
-- `result.json.verdict` 을 읽어 후속 단계 (commit gate, push gate 등) 를 막는 productization wrapper.
-- review history aggregation.
-- 자동 review record retention 정책 (auto-prune, rotate, age cap, run-count cap, expire 등). 현재 retention 은 manual per-run-id deletion 으로 고정되어 있다.
-- `fix` 등 추가 stage enum.
-- `-Reviewer codex` 외 reviewer adapter.
+review 작업 자체가 바뀌면 (다른 `/goal` 또는 다른 review gate) 새 `<review-task-id>/` 를 사용한다 — 이전 task 의 pass 디렉터리를 재활용하지 않는다.
 
-이번 v1 metadata hardening으로 future candidate에서 빠진 항목:
+stale 판단의 책임은 operator-role AI 와 사용자에게 있다. 본 contract 는 stale 자동 detection 을 script 책임으로 두지 않는다.
 
-- `result.json.targetPath` 존재 + `meta.json.targetPath`와 normalized full-path match.
-- `result.json.createdAtUtc` 존재 + 정확한 string shape `yyyy-MM-ddTHH:mm:ss.fffffffZ` + parseable + UTC offset.
-- `result.json.sourceHead` conditional exact match (meta / result 양쪽 모두 non-empty인 경우에 한해).
+## 8. Source repo vs target payload, runtime artifact 경계
 
-## 향후 확장 시 고려 사항
+본 contract 의 `<ProjectRoot>` 는 target project 의 repo root 다. source repo 의 dogfooding 모드에서는 source repo 자체가 `<ProjectRoot>` 다.
 
-- 새 wrapper는 `log/review/<run-id>/result.md`, `result.json`을 만들거나 읽는 형태로 동작한다.
-- 새 schema가 도입되어도 본 contract의 최소 필드와 모순되지 않도록 한다.
-- 새 retention 정책은 `<run-id>` 단위 prune이 자연스럽게 가능하도록 설계한다.
-- review-verify 확장 시에도 freshness 검증 기본 동작은 유지한다.
+- source repo 의 `templates/` · `docs/` · `snippets/` · `config/` · `scripts/` · `tests/` 는 source-managed 다. review record 는 그 트리에 두지 않는다.
+- review record 는 항상 `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` 아래에만 만든다. `<ProjectRoot>/log/` 는 gitignored runtime tree 다.
+- public release packaging / source snapshot 은 `log/` 를 포함하지 않는다.
+- target project 의 `.gitignore` 는 `log/` 를 포함해야 한다. toolset 은 target `.gitignore` 를 자동으로 만들거나 편집하지 않는다.
+
+## 9. Retention
+
+retention 단위는 `<review-task-id>/` 디렉터리 전체, 또는 그 안의 개별 `pass-NN/` 디렉터리다. 더 이상 필요하지 않은 review task / pass 디렉터리는 사용자가 손으로 삭제한다. toolset 은 auto-prune / rotate / expire / schedule 을 제공하지 않는다.
+
+failed / incomplete pass (예: Codex 실패 또는 verdict parsing 실패로 `result.md` 가 contract 를 만족하지 못한 pass) 도 디렉터리 단위로 disk 에 그대로 남는다. 사용자가 같은 `<review-task-id>/` 아래에 새 `pass-NN/` 로 보완하고, 보존 가치를 판단해 이전 pass / 전체 task 를 유지하거나 삭제한다.
+
+## 10. Non-goals
+
+본 contract 가 다루지 않는 것:
+
+- canonical artifact 외의 sidecar 파일 (meta.json, target-files.list, result.json, 외부 staging folder 등) 에 대한 보장. 그런 파일은 본 contract 의 일부가 아니다.
+- review record 에 대한 hash binding / freshness sidecar / machine-readable verdict 사본의 자동 작성.
+- review history aggregation, DB, index, cross-run dashboard.
+- multi-reviewer orchestration, fallback model 자동 사용, retry / auto-fix loop.
+- review verdict 를 read 하여 commit / push / publish / merge / release / deployment 를 트리거하는 wrapper.
+- target project 의 `CLAUDE.md` / `AGENTS.md` / `.gitignore` / global filesystem 자동 변경.
+- daemon, watcher, scheduler, CI integration.
+- evidence / chatlog / brief subsystem 과의 cross-tree 보장.
+
+removed legacy artifact design 의 historical reason 은 `docs/backlog/review.md` 및 `docs/backlog/operations.md` 에 격리되어 있다. 그 항목은 operator path 가 아니며 normal workflow 의 일부도 아니다.

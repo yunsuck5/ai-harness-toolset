@@ -55,72 +55,39 @@ Legacy project-local copy mode (channel 5) — run from a target project root:
 powershell -NoProfile -ExecutionPolicy Bypass -File .ai-harness/scripts/log-init.ps1
 ```
 
-Review record retention is human-managed at `<run-id>` directory granularity. Full contract: `docs/REVIEW_RESULT_CONTRACT.md`.
+Review record retention is human-managed at `<review-task-id>/` directory (or per-`pass-NN/`) granularity. Full contract: `docs/REVIEW_RESULT_CONTRACT.md`.
 
-## Single-shot review cycle
+## Review artifact contract
 
-The default user-facing entrypoint for `코덱스 리뷰 진행해` is `review-cycle.ps1`. It runs one full cycle in a single command: prepare a packet, fill the input sections, verify input readiness, invoke Codex CLI once, parse the verdict, write `result.json`, and run both modes of `review-verify`.
+The canonical review artifact layout is one pass directory per Codex attempt, grouped under one task directory per review task:
 
-The script path depends on the resolved ToolRoot. In the current shared / global mode (channel 3) it is `$env:USERPROFILE\.claude\ai-harness-toolset\current\scripts\review-cycle.ps1`. The `scripts/review-cycle.ps1` form used in the examples below is the source-repo dogfooding path; the legacy project-local copy mode uses `.ai-harness/scripts/review-cycle.ps1`. The argument contract is identical across all three — `docs/OPERATOR_GUIDE_KR.md` §9 shows each form.
-
-Single-file target — pass the one repo-relative path directly with `-TargetFiles`:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-cycle.ps1 `
-    -Stage <design|implementation|test|review|release> `
-    -Purpose '<short purpose string>' `
-    -TargetFiles <single-relative-file> `
-    -Context '<context>' `
-    -RequiredInspectionPaths '<paths>' `
-    -ReviewQuestions '<questions>' `
-    -Constraints '<constraints>'
+```text
+<ProjectRoot>/log/review/<review-task-id>/
+  pass-01/
+    input.md   AI-authored from templates/review-input.md
+    result.md  Codex-authored
+  pass-02/    (only if the corrective loop adds another attempt)
+    input.md
+    result.md
 ```
 
-Two or more target files — write a newline-separated list file under `<project-root>/log/review-targets/` (one repo-relative path per line, forward slashes), then pass it with `-TargetFilesPath`:
+- `<review-task-id>` identifies one Claude Code `/goal` task or one review gate. It is **not** a Claude Code chat / session id. A single session may contain multiple `<review-task-id>` directories for different `/goal` tasks.
+- `pass-NN` (zero-padded two-digit) identifies one Codex review attempt inside the corrective loop for that task. The first attempt is `pass-01`; subsequent corrective passes are `pass-02`, `pass-03`, and so on.
+- Each `pass-NN/` is write-once. If the input or result is wrong or stale, allocate a fresh `pass-NN/` under the same `<review-task-id>/`; do not edit the old pass to close the review.
+- Current scripts emit a flat `log/review/<script-allocated-id>/` directory instead of the canonical two-level `<review-task-id>/pass-NN/` layout. This transitional divergence is documented in `docs/REVIEW_RESULT_CONTRACT.md` §4a and tracked in `docs/backlog/review.md` "Removed legacy review artifacts." Operators and AI map each script-allocated-id to one conceptual pass of one task in their reporting.
 
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-cycle.ps1 `
-    -Stage <design|implementation|test|review|release> `
-    -Purpose '<short purpose string>' `
-    -TargetFilesPath log/review-targets/<purpose-or-timestamp>.list `
-    -Context '<context>' `
-    -RequiredInspectionPaths '<paths>' `
-    -ReviewQuestions '<questions>' `
-    -Constraints '<constraints>'
-```
+`input.md` is authored by Claude Code (the operator-role AI). It contains the target files, context, required inspection paths, review questions, constraints, and the final verdict instruction, in five required H2 sections (`## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`, `## Final verdict`) plus recommended informational sections (`## Stage`, `## Purpose`, `## Target files`). The user does not type CLI arguments; the natural-language entrypoint is `docs/OPERATOR_GUIDE_KR.md` §7, and the skill that orchestrates the run is `snippets/claude-skills/ai-harness-review/SKILL.md`.
 
-- Single-shot, user-triggered. One Codex CLI execution per call. No retry, no fallback model use, no auto-fix loop.
-- Verdict (`yes` / `no` / `yes with risk`) does not approve commit, push, publish, merge, or release.
-- Provide `-TargetFiles` (single file) or `-TargetFilesPath` (multi-file list) for deterministic target selection. Joining multiple paths into a single comma-separated `-TargetFiles` value (for example `-TargetFiles "a.txt,b.txt"`) is rejected before any reviewer runs (`FAIL TargetFiles appears to be a comma-separated single string`); use `-TargetFilesPath` for two or more files. A literal filename containing a comma is allowed in the single-file shape.
-- Free-text argv quoting discipline (Stage 1 docs-only mitigation): on PowerShell 5.1, keep `-Context` / `-ReviewQuestions` / `-Constraints` / `-RequiredInspectionPaths` values single-line, single-quoted, and free of literal ASCII double-quote (`"`) characters. Multi-line here-strings and embedded double-quotes have caused wrapper-level failures (`PathTooLongException` in `review-prepare`, or `-Reviewer` mis-binding to a body token) before Codex CLI is invoked. `scripts/smoke/invoke-review-cycle.ps1` is smoke-driver-only and is not an operator-direct fallback. Stage 2 — a simple operator-direct PowerShell wrapper, or a cmd/batch helper — is **not adopted as a safe solution** (it cannot honestly guarantee embedded-double-quote / quote-heavy free-text robustness across the parent → wrapper argv boundary; see `docs/backlog/operations.md` §"Review-cycle invocation quoting hardening" §"Stage 2 / Stage 3 decision (2026-05-16)"). PowerShell 7.3+ native argument passing and `-EncodedCommand` / `-EncodedArguments` launchers are acknowledged official escape hatches but are not selected here (runtime dependency / readability cost; tracked under a later portability / possible Python · Node porting track).
-- File-backed review request input (`-ReviewRequestPath <path>`): for complex / quote-heavy / multi-line / multilingual requests, write the body into a Markdown file under `<ProjectRoot>/log/review-requests/` with four required H2 sections (`## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`) and pass the file path. The argv carries only the file path; embedded double-quotes and multi-line content live inside the file and never cross the argv boundary. `-ReviewRequestPath` is mutually exclusive with the inline free-text parameters above — supplying both fails fast. `meta.json.reviewRequest` records the project-relative path and SHA-256 of the request file for binding/auditability. Full format, containment rule, conflict rule, and an example are in `docs/OPERATOR_GUIDE_KR.md` §9b.
+`result.md` is authored by Codex CLI (`--output-last-message`). It must contain exactly one top-level `## Verdict` heading whose first non-empty body line is one of `yes`, `no`, `yes with risk` (lowercase, no qualifier, no inline form). Other sections (`## Findings`, `## Risks`, `## Notes`) are free-form.
 
-Cycle/result mechanics, parse failure semantics, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`. CLI/runtime dependency boundary: `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`. Multi-file list-file build steps and the full free-text argv quoting discipline: `docs/OPERATOR_GUIDE_KR.md` §9.
+The toolset script that drives a pass performs only deterministic gates: pass-directory containment under `<ProjectRoot>/log/review/`, the five required headings in `input.md`, exactly one Codex execution, the existence of `result.md`, and the `## Verdict` allowed-value check. It does not interpret findings, decide correction scope, or trigger commit / push / publish / merge / release.
 
-## Component scripts
+- Single-shot, user-triggered. One Codex CLI execution per `review-run.ps1` call. No retry, no fallback model use, no auto-fix loop.
+- Verdict (`yes` / `no` / `yes with risk`) does not approve commit, push, publish, merge, or release. The user decides the next action explicitly.
+- No external staging folders, no sidecar JSON, no hash-binding files, and no flat single-level run-id layout are part of the canonical contract. Earlier transitional artifact names (`meta.json`, `target-files.list`, `result.json`, `log/review-targets/`, `log/review-requests/`, flat `log/review/<run-id>/`) are retained only as removed-legacy historical reference in `docs/backlog/review.md` and `docs/backlog/operations.md`; they are not operator paths.
+- AI-to-Codex transport is Markdown inside `input.md`. Multi-line content, Korean, ASCII double-quotes, and bullet lists live inside the file. PowerShell argv quoting is not the transport.
 
-`review-prepare.ps1` creates a review packet without invoking Codex; `review-run.ps1` runs the reviewer for an already-prepared `log/review/<run-id>/` packet; `review-verify.ps1` checks an existing run.
-
-`review-cycle.ps1` is the one-shot path: prepare + run + verify in a single call. `review-run.ps1` is the run-only path for an existing prepared packet — use it when `log/review/<run-id>/input.md` is already seeded and edited (no new run-id is created and `meta.json` / `input.md` are not mutated). Compatible with the same result-binding contract as `review-cycle.ps1`.
-
-```powershell
-# review-prepare, single-file target
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 -TargetFiles <single-relative-file> -Stage <stage> -Purpose '<purpose>'
-
-# review-prepare, multi-file target via list file under log/review-targets/
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-prepare.ps1 -TargetFilesPath log/review-targets/<purpose-or-timestamp>.list -Stage <stage> -Purpose '<purpose>'
-
-# review-run, for an already-prepared run-id
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-run.ps1 -RunId <run-id>
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-run.ps1 -RunId <run-id> -Force
-
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 -RunId <run-id>
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/review-verify.ps1 -RunId <run-id> -RequireResult
-```
-
-`review-run.ps1` requires `meta.json` and `input.md` to exist under `log/review/<run-id>/`, calls `review-input-verify.ps1` before invoking Codex, executes Codex once in read-only sandbox, writes `result.md` / `result.json`, and runs `review-verify.ps1` in both default and `-RequireResult` modes. Existing `result.md` / `result.json` cause FAIL by default; pass `-Force` to overwrite. It does not mutate `meta.json` or `input.md`, does not touch `log/chatlog/` or `log/evidence/`, and does not approve commit, push, publish, merge, or release.
-
-Behavior, field set, and binding rules: `docs/REVIEW_RESULT_CONTRACT.md`.
+Full contract: `docs/REVIEW_RESULT_CONTRACT.md`. Day-to-day natural-language UX, modes A/B, and the acceptance checklist: `docs/OPERATOR_GUIDE_KR.md` §7, §10, §13. CLI / runtime dependency boundary: `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`.
 
 ## Evidence and chatlog
 
@@ -155,7 +122,7 @@ The marker text `AI_HARNESS_TOOLSET_GLOBAL` is the canonical form for both snipp
 
 ## Optional Claude Code skill
 
-`snippets/claude-skills/ai-harness-review/SKILL.md` is an optional, copy-only Claude Code skill template. It defines the natural-language entrypoint for `review-cycle.ps1` (for example, `현재 진행한 작업 코덱스 리뷰 진행해`) so the user does not need to type raw PowerShell. Adoption is a deliberate user action — copy it to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `~/.claude/skills/ai-harness-review/SKILL.md` (global, opt-in only). Nothing is auto-installed. Details: `docs/OPERATOR_GUIDE_KR.md` sections 7–8.
+`snippets/claude-skills/ai-harness-review/SKILL.md` is an optional, copy-only Claude Code skill template. It defines the natural-language entrypoint for the canonical two-step review flow — `scripts/review-prepare.ps1` → AI authors the pass `input.md` (canonical: `<review-task-id>/pass-NN/input.md`; current script emits flat `<script-allocated-id>/input.md` per `docs/REVIEW_RESULT_CONTRACT.md` §4a) → `scripts/review-run.ps1 -RunId <script-allocated-id>` — that natural-language triggers like `현재 진행한 작업 코덱스 리뷰 진행해` resolve to. Adoption is a deliberate user action — copy it to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `~/.claude/skills/ai-harness-review/SKILL.md` (global, opt-in only). Nothing is auto-installed. Details: `docs/OPERATOR_GUIDE_KR.md` sections 7–8.
 
 ## What this toolset does not do
 
@@ -183,5 +150,5 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 | `docs/OPERATOR_GUIDE_KR.md` | active operational | Current Korean operator guide for shared/global operation, CLI usage, legacy mode appendix, and acceptance checklist. |
 | `docs/POWERSHELL_POLICY.md` | active operational | Encoding, line-ending, file IO, and collection return rules. |
 | `docs/REVIEWER_CONFIG_POLICY.md` | active operational | Reviewer config location, precedence, defaults, and MVP reviewer boundary. |
-| `docs/REVIEW_RESULT_CONTRACT.md` | active operational | `result.md` / `result.json` minimum fields and `review-verify -RequireResult` binding rules. |
+| `docs/REVIEW_RESULT_CONTRACT.md` | active operational | Canonical review artifact contract — `log/review/<review-task-id>/pass-NN/input.md` (AI-authored) + `result.md` (Codex-authored) only; deterministic gates and verdict vocabulary. |
 | `docs/TOOLING_POSITION.md` | active reference | Position statements for adjacent tools. |

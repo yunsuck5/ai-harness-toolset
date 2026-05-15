@@ -1,206 +1,170 @@
 ---
 name: ai-harness-review
-description: Run an ai-harness-toolset review cycle on the user's current in-progress work. Trigger this skill on natural-language Korean or English intents that ask for a Codex / 코덱스 review of the current work, optionally preceded by a Claude self-review. Examples that should trigger this skill — "현재 진행한 작업 코덱스 리뷰 진행해", "지금까지 한 작업 리뷰해 줘", "코덱스로 리뷰 돌려", "현재 구현된 서버의 소켓 라이브러리를 니가 직접 리뷰하고, 그후에 코덱스 리뷰로 한번 더 리뷰 후 최종 결론 도출해", "review what I just did with codex", "self-review then codex review and give the final verdict". Do NOT trigger on `/review`, `/security-review`, or any non-ai-harness review. Do not require the user to provide review-cycle CLI arguments — derive them from the current work.
+description: Run an ai-harness-toolset review on the user's current in-progress work. Trigger this skill on natural-language Korean or English intents that ask for a Codex / 코덱스 review of the current work, optionally preceded by a Claude self-review. Examples that should trigger this skill — "현재 진행한 작업 코덱스 리뷰 진행해", "지금까지 한 작업 리뷰해 줘", "코덱스로 리뷰 돌려", "현재 구현된 서버의 소켓 라이브러리를 니가 직접 리뷰하고, 그후에 코덱스 리뷰로 한번 더 리뷰 후 최종 결론 도출해", "review what I just did with codex", "self-review then codex review and give the final verdict". Do NOT trigger on `/review`, `/security-review`, or any non-ai-harness review. Do not require the user to provide review CLI arguments — derive them from the current work.
 ---
 
 # ai-harness-review
 
-This skill runs the ai-harness-toolset single-shot review cycle (`review-cycle.ps1`) on the user's currently in-progress work. It is the natural-language entrypoint for the toolset's review flow. The user is not expected to type raw PowerShell arguments.
+This skill drives the ai-harness-toolset canonical review flow. The canonical review artifact layout is one pass directory per Codex attempt, grouped under one task directory per review task:
 
-This skill is the optional, copied counterpart to `snippets/CLAUDE_SNIPPET.md`. Adoption path: copy this file to `<ProjectRoot>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or to the user-global Claude skills directory `%USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md` (personal use, opt-in only). Do not create any global file automatically; copying a `SKILL.md` into `%USERPROFILE%\.claude\skills\` is an explicit user-approved global / user filesystem mutation. The AI-guided adoption / update / removal procedure is defined in `docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`.
+```text
+<ProjectRoot>/log/review/<review-task-id>/
+  pass-01/
+    input.md   AI-authored from templates/review-input.md
+    result.md  Codex-authored
+  pass-02/    (only if the corrective loop adds another attempt)
+    input.md
+    result.md
+```
+
+- `<review-task-id>` identifies one Claude Code `/goal` task or one review gate. It is **not** a Claude Code chat / session id. A single session may contain multiple `<review-task-id>` directories for different `/goal` tasks.
+- `pass-NN` (zero-padded two-digit) identifies one Codex review attempt inside the corrective loop for that task. The first attempt is `pass-01`; the next is `pass-02`; and so on.
+- Each `pass-NN/` is write-once. If the input or result is wrong or stale, allocate a new `pass-NN/` under the same `<review-task-id>/`; do not edit the old pass to close the review. If the underlying review task changes (different `/goal` or different gate), use a new `<review-task-id>/`.
+
+Source-of-truth for the contract is `docs/REVIEW_RESULT_CONTRACT.md`. This skill mirrors that contract. Current scripts emit a flat `log/review/<script-allocated-id>/` directory instead of the canonical two-level `<review-task-id>/pass-NN/` layout; that transitional divergence is documented in `docs/REVIEW_RESULT_CONTRACT.md` §4a and tracked in `docs/backlog/review.md` "Removed legacy review artifacts." Map each script-allocated-id to one conceptual pass of one task in your reporting.
+
+Adoption path: copy this file to `<ProjectRoot>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `%USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md` (user-global, opt-in). No file is auto-installed.
 
 ## Two supported intents
 
-Recognize and handle both of these without asking the user for CLI arguments. Each intent maps to a TargetFiles mode (defined in step 2 below): Mode A for current-work, Mode B for explicit subsystem.
-
-1. **Codex review only.** The user just wants a Codex review of the current work — no subsystem named.
+1. **Codex review only.** The user wants a Codex review of the current work with no subsystem named.
    - Examples: "현재 진행한 작업 코덱스 리뷰 진행해", "코덱스 리뷰 돌려", "review what I just did with codex".
-   - Skip any Claude-side review. Use TargetFiles **Mode A** (changed files). Go straight to step 2 and onward.
+   - Use Mode A target selection. Skip the Claude self-review.
 
-2. **Claude self-review, then Codex review, then a single final verdict.** The user names a subsystem and wants you to inspect it yourself first, then run the Codex cycle, then merge both into one final conclusion.
+2. **Claude self-review, then Codex review, then a single merged final verdict.** The user names a subsystem and wants you to read it yourself first, then run Codex, then merge into one verdict.
    - Examples: "현재 구현된 서버의 소켓 라이브러리를 니가 직접 리뷰하고, 그후에 코덱스 리뷰로 한번 더 리뷰 후 최종 결론 도출해", "self-review then codex review and give the final verdict".
-   - Use TargetFiles **Mode B** (tracked subsystem files). The subsystem is reviewed even if the working tree has no current changes.
-   - Run a focused Claude code-reading pass on the same TargetFiles before invoking `review-cycle.ps1`, summarize what you found in plain language, and feed those findings into the `-Context` and `-ReviewQuestions` arguments so Codex's pass benefits from your reading. After Codex returns, merge your reading and Codex's verdict into one final yes / no / yes with risk.
+   - Use Mode B target selection. The subsystem is reviewed even if the working tree has no current changes. Carry your own findings into the `## Context` and `## Review questions` sections of `input.md`. Merge both readings into one final verdict (`no` if either is `no`; `yes with risk` if either is `yes with risk`; only `yes` if both are `yes`).
 
-The two dimensions (review style: Codex-only vs self-review+Codex / target scope: Mode A vs Mode B) are in principle independent. The two example phrases above are the canonical pairings, but if the user clearly mixes them (for example, "이번에 만진 소켓 코드만 코덱스 리뷰" — Codex only + Mode B), follow what they said. If genuinely ambiguous, use the single clarification rule in step 2 below.
+Two dimensions (review style / target scope) are independent in principle. The canonical pairings above cover the usual case. If the user clearly mixes them, follow what they said.
 
 ## Required behavior
 
-You — Claude Code — perform every step below. The user does not type any PowerShell.
+You — Claude Code — perform every step below. The user does not type CLI arguments.
 
 ### 0. Preserve current context
 
-Do not abandon the conversation's working state. Do not restart, rebase, switch branch, stash, or reset. Do not modify source files for the purpose of running the review. The review reads what is already on disk.
+Do not abandon the conversation state. Do not restart, rebase, switch branch, stash, or reset. Do not edit source files just to make the review run. The review reads what is already on disk.
 
-### 1. Inspect repo state
+### 1. Inspect repo state and resolve roots
 
 - Run `git status --porcelain=v1` and `git diff` to see what is changed and untracked.
-- `<ProjectRoot>` is the target project repo root — the directory where `git status` is being run. Target-owned project source files and the runtime artifacts under the `<ProjectRoot>/log/` tree (gitignored operator-local state, including `log/brief/BRIEF.md`) both live under `<ProjectRoot>`.
-- Resolve `<ToolRoot>` — the location of the toolset's `scripts/`, `config/`, `templates/`, and `snippets/` — using this priority order. The first match wins.
+- `<ProjectRoot>` is the directory `git status` was run in.
+- Resolve `<ToolRoot>` using `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1 (channel 1 explicit `-ToolRoot` → channel 2 `AI_HARNESS_TOOL_ROOT` env var → channel 3 global stable install `%USERPROFILE%\.claude\ai-harness-toolset\current` → channel 4 source-repo dogfooding multi-marker → channel 5 legacy `<ProjectRoot>/.ai-harness/` → channel 6 stop). If channel 6 is reached, stop and tell the user the toolset is not available; do not auto-install.
 
-  1. **channel 1 — explicit `-ToolRoot`.** If a `-ToolRoot` path was explicitly provided, that path is `<ToolRoot>`. This skill does not ask the user for raw arguments, so this channel is normally inactive.
-  2. **channel 2 — `AI_HARNESS_TOOL_ROOT` env var (override / debug / development validation).** Otherwise, if the `AI_HARNESS_TOOL_ROOT` environment variable is set and points to an existing directory, that directory is `<ToolRoot>`. If the variable is set but the directory does not exist, that is an error — resolution fails fast and does not fall through to channel 3. This is an override of the default, not the default shared / global mechanism.
-  3. **channel 3 — global stable install (shared / global mode default).** Otherwise, if `%USERPROFILE%\.claude\ai-harness-toolset\current` exists and carries a complete payload (`scripts/review-cycle.ps1` present), that path is `<ToolRoot>`. This is the default connection for shared / global mode. If that directory is absent, skip to the next channel; if it exists but the payload is incomplete, stop and report a fail-fast — do not silently skip to a fallback channel.
-  4. **channel 4 — self-target / dogfooding mode (source repo operators only).** Otherwise, if `<ProjectRoot>` itself satisfies the ai-harness-toolset source repo multi-marker check — presence of all three of `scripts/verify-ps1.ps1`, `templates/review-input.md`, and `config/reviewer.json` — then `<ToolRoot>` equals `<ProjectRoot>`. Target consumers do not use this mode.
-  5. **channel 5 — project-local copy mode (transitional / legacy).** Otherwise, if the `<ProjectRoot>/.ai-harness/` directory exists, that directory is `<ToolRoot>`. Still supported for backward compatibility, but not the recommended adoption shape for new projects.
-  6. **channel 6 — Stop, do not install.** If none of the above resolved, stop and tell the user that the toolset is not available in this environment: no `-ToolRoot` argument, no `AI_HARNESS_TOOL_ROOT` env var, no global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, not a source repo, and no project-local copy. Do not attempt to install, copy, or download anything. Wait for the user to decide how to proceed (`docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md` documents the AI-guided adoption procedure that the user can explicitly trigger).
+### 2. Determine target files
 
-- The formal `<ToolRoot>` resolution contract is `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1. Natural-language trigger phrases (`코덱스 리뷰 진행해`, `review what I just did with codex`, and the other examples listed in the SKILL frontmatter `description`) are matched by Claude Code's skill engine against the frontmatter; the body text below is what the skill executes once triggered.
+Pick the smallest concrete file set the review should bind to.
 
-### 2. Determine TargetFiles
+**Mode A — current-work review.** Use when the user said "review the work I just did" with no subsystem named.
 
-Pick the smallest concrete set of files the review should bind to. There are two distinct modes — choose one based on the user's intent, do not mix them.
+- Target files = tracked changed file set from `git status --porcelain=v1` (modified / added / renamed / copied), excluding `log/`, generated artifacts, `.gitignore`-only changes, unrelated noise.
+- Untracked files are not auto-included. If the user clearly intends them, include them explicitly.
+- If the changed set is empty, stop and tell the user there is nothing to review. Do not silently fall back to Mode B.
 
-**Mode A — current-work review (changed-files mode).** Use this when the user's intent is "review the work I just did" with no specific subsystem named.
+**Mode B — explicit subsystem review.** Use when the user named a subsystem, module, library, or path — even with no current changes.
 
-- Examples that select Mode A: "현재 진행한 작업 코덱스 리뷰 진행해", "지금까지 한 작업 리뷰해 줘", "review what I just did".
-- TargetFiles = the tracked changed file set from `git status --porcelain=v1` (modified / added / renamed / copied), excluding `log/`, generated artifacts, `.gitignore`-only changes, and unrelated noise.
-- Untracked files are not auto-included by `review-cycle.ps1`. If the user clearly intends untracked files, list them explicitly in `-TargetFiles`.
-- If the changed set is empty, stop and tell the user there is nothing to review in Mode A. Do not silently fall back to Mode B. Do not invent target files.
+- Target files = tracked files matching the named subsystem, regardless of dirty state.
+  - Try a directory match first, then a filename-substring match in likely roots.
+  - Enumerate with `git ls-files`; exclude untracked / ignored.
+  - Exclude tests, fixtures, generated files, unrelated noise unless the user explicitly asked for them.
+- Current diff is supplementary context. Surface it in `## Context`, but do not let it shrink or expand the subsystem set.
 
-**Mode B — explicit subsystem review (named-scope mode).** Use this when the user names a subsystem, module, library, or path — even if there are no current changes. The review binds to the existing tracked files of that subsystem.
+**Single clarification rule.** Ask the user at most once, and only when (a) Mode B scope is too broad (>~20 files or unrelated trees), (b) Mode B name does not resolve, or (c) intent is genuinely ambiguous between Mode A and Mode B. After one clarification, proceed.
 
-- Examples that select Mode B: "현재 구현된 서버의 소켓 라이브러리를 니가 직접 리뷰하고, 그후에 코덱스 리뷰로 한번 더 리뷰 후 최종 결론 도출해", "auth 모듈 코덱스 리뷰", "review the websocket layer".
-- TargetFiles = tracked files in the repo that match the named subsystem, regardless of whether they are currently dirty.
-  - Resolve the name against the repo: try a directory match first (`scripts/sockets/`, `server/socket/`, etc.), then a filename-substring match within likely roots (`scripts/`, `src/`, `server/`, `lib/`).
-  - Use `git ls-files` to enumerate; do not include untracked or ignored files.
-  - Exclude tests, fixtures, generated files, and unrelated noise unless the user explicitly asked for them.
-- The current diff is supplementary context only. Surface it in `-Context`, but do not let it shrink or expand the subsystem set.
-- If the user named explicit file paths verbatim, honor that list as-is and skip the resolution heuristic.
+Common rules: use repo-relative forward-slash paths. Always exclude `log/`. The chosen target set is what `input.md`'s `## Target files` section will list and what the reviewer is asked to read.
 
-**Single clarification rule.** Ask the user at most once, and only when one of these conditions holds:
+### 3. Allocate the pass directory
 
-- Mode B subsystem scope is too broad (resolves to more than ~20 files, or spans clearly unrelated trees).
-- Mode B subsystem name does not resolve to any tracked file.
-- Intent itself is genuinely ambiguous between Mode A and Mode B.
+Pick a `<review-task-id>` for this work: a stable string identifying the `/goal` task or review gate (for example, `topology-simplification-2026-05-16`). Reuse the same `<review-task-id>` for every pass of the same task; pick a new one only when the task itself changes. Determine the `pass-NN` for this attempt: `pass-01` for the first Codex attempt of this task; `pass-02`, `pass-03`, ... for subsequent corrective-loop attempts.
 
-After one clarification, proceed without re-asking. Do not chain multiple clarification rounds. Do not ask the user to type CLI arguments — ask only the minimal question needed to disambiguate scope (e.g., "소켓 라이브러리는 `scripts/server/sockets/` 와 `lib/net/socket-*.ps1` 둘 다 있는데 어느 쪽?").
+Invoke `<ToolRoot>/scripts/review-prepare.ps1` once with the target file list, the chosen stage, and a short purpose string. The current script allocates a flat `<script-allocated-id>/` directory under `<ProjectRoot>/log/review/` instead of the canonical `<review-task-id>/pass-NN/` two-level path (see `docs/REVIEW_RESULT_CONTRACT.md` §4a transitional divergence). Capture the printed `<script-allocated-id>` from stdout; treat it as the disk-level handle for the conceptual `<review-task-id>/pass-NN/` you chose, and use it as `-RunId` in step 5. Report both names — the conceptual `<review-task-id>/pass-NN` and the on-disk `<script-allocated-id>` — to the user.
 
-**Common rules (both modes).**
+Hard rules for step 3:
 
-- Use repo-relative paths with forward slashes.
-- Exclude `log/` always.
-- The chosen TargetFiles list is what `-TargetFiles` and the freshness binding in `meta.json` will key off of. Pick it deliberately.
+- The seeded `input.md` is template guidance, not the actual review request. You will overwrite it in step 4. Do not invoke Codex yet.
+- Do not reuse an existing `<script-allocated-id>`. Let `review-prepare.ps1` allocate a fresh one for every pass.
 
-### 3. Build review-cycle arguments yourself
+### 4. Author the pass `input.md`
 
-The user must not be asked for these. Synthesize them from the conversation, the diff, and any active task or plan in this session.
+Open `<ProjectRoot>/log/review/<script-allocated-id>/input.md` (the file just seeded by step 3 for the conceptual `<review-task-id>/pass-NN/`) and overwrite its body with the actual review request. Keep `templates/review-input.md` as the shape reference.
 
-- `-Stage` — choose one of `design`, `implementation`, `test`, `review`, `release` based on what the current change actually is. Default to `implementation` for ordinary code changes.
-- `-Purpose` — one short line describing what the change is, in the user's working language. Quote a concrete artifact name when possible (e.g., `'review socket library implementation in scripts/server-sockets.ps1'`).
-- `-TargetFiles` / `-TargetFilesPath` — pick the shape based on the count from step 2:
-  - **Exactly one file:** pass the single repo-relative path with `-TargetFiles <path>`. A literal filename containing comma is allowed in this single-file shape (the script tolerates it as long as the path resolves to an existing file).
-  - **Two or more files:** write a newline-separated list file under `<ProjectRoot>/log/` (for example `log/review-targets/<purpose-or-timestamp>.list`) using repo-relative paths with forward slashes, then pass it with `-TargetFilesPath <list-file>`. Do **not** join multiple files into a single comma-separated `-TargetFiles` value — `review-cycle.ps1` rejects that shape with a `FAIL TargetFiles appears to be a comma-separated single string` diagnostic before any reviewer runs.
-- `-Context` — short paragraph of background the reviewer needs. If you ran a Claude self-review, include your own findings here in compressed form.
-- `-RequiredInspectionPaths` — paths Codex must read; usually the same as the chosen TargetFiles set, plus any directly coupled file the diff implies.
-- `-ReviewQuestions` — concrete questions you want Codex to answer. If you ran a Claude self-review, prioritize the open questions or doubts you could not resolve.
-- `-Constraints` — explicit constraints the reviewer must respect (project conventions, encoding rules, public API stability, etc.).
+The file must contain these required H2 headings (exact text), each with non-empty body:
 
-Do not invent runtime details (no fake commit hashes, no fake reviewer model names). If you do not know a value, leave it short and honest.
+- `## Context`
+- `## Required inspection paths`
+- `## Review questions`
+- `## Constraints`
+- `## Final verdict` — body must contain the literal string `yes / no / yes with risk`.
 
-### 4. Run review-cycle.ps1 exactly once
+Add these informational headings as well (recommended):
 
-Invoke the script in `-File` mode, never `-Command`. Use the shape that matches the TargetFiles count from step 3.
+- `## Stage` — one of `design`, `implementation`, `test`, `review`, `release`. Default `implementation` for ordinary code changes.
+- `## Purpose` — one short line in the user's working language. Name the artifact when possible.
+- `## Target files` — bulleted list of repo-relative forward-slash paths chosen in step 2.
 
-Single-file invocation:
+Author the body content yourself from conversation context, diff, and any active task or plan in this session. `scripts/review-input-verify.ps1` rejects unfilled `{{TOKEN}}` patterns and the forbidden-phrase substrings declared in its `$forbidden` array. Do not invent runtime details (no fake commit hashes, no fake reviewer model names).
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File <ToolRoot>/scripts/review-cycle.ps1 `
-    -Stage <stage> `
-    -Purpose '<purpose>' `
-    -TargetFiles <single-file> `
-    -Context '<context>' `
-    -RequiredInspectionPaths '<paths>' `
-    -ReviewQuestions '<questions>' `
-    -Constraints '<constraints>'
-```
+If you ran a Claude self-review (intent 2), summarize your own findings inside `## Context` and put your unresolved doubts into `## Review questions` so Codex's pass builds on your reading.
 
-Multi-file invocation (write a newline-separated list file under `<ProjectRoot>/log/` first, then point the script at it):
+### 5. Run the reviewer exactly once
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File <ToolRoot>/scripts/review-cycle.ps1 `
-    -Stage <stage> `
-    -Purpose '<purpose>' `
-    -TargetFilesPath log/review-targets/<purpose-or-timestamp>.list `
-    -Context '<context>' `
-    -RequiredInspectionPaths '<paths>' `
-    -ReviewQuestions '<questions>' `
-    -Constraints '<constraints>'
-```
+Invoke `<ToolRoot>/scripts/review-run.ps1 -RunId <script-allocated-id>` once. It calls `scripts/review-input-verify.ps1` against the `input.md` you wrote, invokes Codex CLI once (`--ask-for-approval never`, `--sandbox read-only`, `--output-last-message <script-allocated-id>/result.md`), and exits.
 
-Hard rules:
+Hard rules for step 5:
 
 - One invocation per user request. No retry on failure. No fallback model. No auto-fix loop.
-- Do not reuse an existing `<run-id>`. Let `review-cycle.ps1` allocate a fresh one.
-- Do not bypass `review-input-verify` or `review-verify`.
-- Never join multiple file paths into a single `-TargetFiles` value with commas. For two or more files, always go through `-TargetFilesPath`.
+- Do not bypass `scripts/review-input-verify.ps1`.
+- Do not edit `input.md` once `review-run.ps1` has started. If the input needs correction, allocate a new pass for the same `<review-task-id>` (go back to step 3 with a new `pass-NN`).
 
-Retry discipline on non-zero exit:
+If `review-run.ps1` exits non-zero, stop. Report the exit code and the last status line printed. Report whether `result.md` exists in the pass directory. Do not silently retry, even by adjusting argument shape — surface a corrected proposed invocation and wait for explicit go-ahead.
 
-- Stop immediately. Do not silently retry, even by adjusting the argument shape (for example, switching `-TargetFiles` to `-TargetFilesPath` after a wrapper-level failure).
-- Report the wrapper/invocation error: the exit code and the last `review-cycle:` line printed. If a `<run-id>` was allocated, report whether `result.md` and `result.json` exist for that run.
-- Treat any retry as a separate, scoped user decision. Surface the proposed corrected invocation to the user and wait for explicit go-ahead before re-invoking. A previous user approval to "run the review" does not authorize a retry after a wrapper failure.
+### 6. Read `result.md` and confirm the verdict
 
-### 5. Inspect result.md and result.json
+After clean exit, read `log/review/<script-allocated-id>/result.md` (= the canonical `<review-task-id>/pass-NN/result.md`):
 
-After exit 0, read both:
+- Confirm exactly one `## Verdict` heading exists.
+- Confirm the first non-empty line after `## Verdict` (whitespace-trimmed) is exactly one of `yes`, `no`, `yes with risk` — lowercase, no qualifier, no inline form.
+- Read `## Findings`, `## Risks` (if present), `## Notes` (if present) to understand reviewer reasoning.
 
-- `log/review/<run-id>/result.md` — the reviewer's free-form markdown. Look at the `## Verdict` section and any findings, risks, or required changes.
-- `log/review/<run-id>/result.json` — the machine record. Confirm `verdict` is exactly one of `yes`, `no`, `yes with risk`.
-
-If `result.json.verdict` is missing or any other value, treat the run as failed and report that. Do not paraphrase the verdict into a different word.
-
-### 6. Confirm review-verify -RequireResult
-
-`review-cycle.ps1` already runs both modes of `review-verify` before exiting 0, so a clean exit is sufficient. If you want to re-confirm explicitly, run:
-
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File <ToolRoot>/scripts/review-verify.ps1 -RunId <run-id> -RequireResult
-```
-
-A non-zero exit here means the binding is broken; report it and stop.
+If the verdict line is anything other than the three values, treat the run as failed and report it. Do not paraphrase or normalize the verdict into a different word.
 
 ### 7. Report the final verdict
 
-End your response to the user with a clearly labeled final verdict, exactly one of:
+End your response with a clearly labeled final verdict, exactly one of:
 
 - `yes`
 - `no`
 - `yes with risk`
 
-For intent 1 (Codex only), this is the value from `result.json.verdict`.
+For intent 1 (Codex only), this is the verdict line from `result.md`.
 
-For intent 2 (Claude self-review + Codex), produce a single merged final verdict using this rule:
+For intent 2 (Claude self-review + Codex), produce a single merged final verdict:
 
-- If either side is `no`, the merged verdict is `no`.
-- If either side is `yes with risk`, the merged verdict is `yes with risk`. Carry the named risks forward.
-- Only if both sides are `yes` is the merged verdict `yes`.
+- If either side is `no`, merged = `no`.
+- If either side is `yes with risk`, merged = `yes with risk`. Carry the named risks forward.
+- Only if both sides are `yes`, merged = `yes`.
 
-Always include in the report, kept visually distinct (separate sections or labeled lines — never collapsed into one verdict line):
+Always include in the report, kept visually distinct:
 
-1. **Wrapper / invocation error** — none, or the exit code plus the last `review-cycle:` line. Include whether a `<run-id>` was allocated and whether `result.md` / `result.json` exist for it.
-2. **Retry decision** — none, or what was retried, why, and whether explicit scoped re-approval was sought before the retry.
-3. **Final reviewer result** — `<run-id>`, path to `result.json`, and the Codex verdict verbatim from `result.json.verdict`.
-4. **review-verify outcome** — pass/fail of both default and `-RequireResult` modes (clean `review-cycle.ps1` exit 0 implies both passed, but state it explicitly).
-
-Then add:
-
-- if intent 2: your own self-review summary in 3–6 lines and the merged final verdict
-- the user's next decision points (the verdict does not approve commit, push, publish, merge, or release)
+1. **Entry-point error** — none, or the exit code plus the last status line. State whether a pass directory was allocated and whether `result.md` exists for it.
+2. **Retry decision** — none, or what was retried, why, and whether explicit scoped re-approval was sought.
+3. **Review task** — `<review-task-id>` for this work.
+4. **Final pass** — the final `pass-NN` (e.g., `pass-01`, `pass-03`) and its on-disk `<script-allocated-id>`, plus path to `result.md`.
+5. **Corrective loop count** — the number of passes consumed in this review task (1 if `pass-01` succeeded; N if the final pass was `pass-NN`).
+6. **Final reviewer result** — the Codex verdict verbatim from the final pass's `result.md`.
+7. For intent 2: your own self-review summary in 3–6 lines and the merged final verdict.
+8. The user's next decision points (the verdict does not approve commit, push, publish, merge, or release).
 
 ### 8. Never commit or push
 
-This skill must never run `git commit`, `git push`, `git tag`, `git merge`, or any release/publish command. The verdict is informational. The user decides commit / push / release explicitly, in a separate step, in their own words.
-
-If the user asks you to commit or push *after* seeing the verdict, that is a separate request handled outside this skill.
+This skill must never run `git commit`, `git push`, `git tag`, `git merge`, or any release / publish command. The verdict is informational. The user decides commit / push / release / adoption explicitly, in a separate request, in their own words.
 
 ## Failure handling
 
-- `review-cycle.ps1` non-zero exit: report the exit code and the last `review-cycle:` line printed. Do not retry without explicit scoped user approval — and even then, present the corrected invocation first and wait for go-ahead. This applies to every flavor of non-zero exit (CLI input shape, input-readiness, prepare error, Codex error, parse error, verify error).
-- Wrapper-level argument-shape failures (for example, `FAIL TargetFiles appears to be a comma-separated single string`): treat as a wrapper/invocation error. Do not silently re-invoke with a different argument shape; surface the failure and the corrected proposed invocation to the user, and wait for approval.
+- Entry-point non-zero exit: report exit code and the last status line. Do not retry without explicit scoped user approval; present the corrected invocation first and wait for go-ahead. This applies to every flavor (input-verify, Codex error, verdict parse error).
 - Codex CLI not installed or not on PATH: report that the CLI environment is not ready and point to `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`. Do not attempt to install anything.
-- Verdict parse failure: the failed `<run-id>` is preserved on disk. Report the path and stop. Do not edit files inside that `<run-id>` directory.
-- Stale review packet (a `targetFiles[]` SHA changed since prepare): report it as a stale-binding failure. Do not re-fabricate the packet.
+- Verdict parse failure: the failed pass directory is preserved on disk. Report its path (both the canonical `<review-task-id>/pass-NN` framing and the on-disk `<script-allocated-id>`) and stop. Do not edit files inside that pass directory.
+- If `input.md` and `result.md` both exist but the pass is older than the source / docs / template / snippet content it covers, that pass is stale. Allocate a fresh `pass-NN` under the same `<review-task-id>` (and a fresh on-disk `<script-allocated-id>`) rather than reusing the stale pass's verdict.
 
 ## Out of scope
 
@@ -208,5 +172,6 @@ If the user asks you to commit or push *after* seeing the verdict, that is a sep
 - Running multiple cycles to "average out" verdicts.
 - Translating the verdict into other vocabulary.
 - Auto-committing, auto-pushing, auto-merging, auto-releasing, auto-deploying.
-- Modifying `%USERPROFILE%\.claude\`, `%USERPROFILE%\.codex\`, `%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md` (or `%CODEX_HOME%\AGENTS.md` or `AGENTS.override.md` at the Codex user-global scope), project-root `CLAUDE.md` / `AGENTS.md`, or the user's git config. `%USERPROFILE%\.claude\AGENTS.md` is forbidden — the skill must not create it. Managed-block insert / replace in those global files is a separate explicit user-approved scope governed by `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6.
-- Cleaning up `log/review/<run-id>/` directories.
+- Modifying `%USERPROFILE%\.claude\`, `%USERPROFILE%\.codex\`, `%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md` (or `%CODEX_HOME%\AGENTS.md` or `AGENTS.override.md` at the Codex user-global scope), project-root `CLAUDE.md` / `AGENTS.md`, or the user's git config. `%USERPROFILE%\.claude\AGENTS.md` is forbidden. Managed-block insert / replace in those global files is a separate explicit user-approved scope (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6).
+- Cleaning up `log/review/<review-task-id>/` or `log/review/<review-task-id>/pass-NN/` directories.
+- Producing, reading, or relying on artifacts outside the canonical `input.md` + `result.md` pair (no `meta.json`, no sidecar `result.json`, no external staging folder is part of the canonical contract). If those files exist on disk from earlier transitional implementations, treat them as runtime noise, not as review record (`docs/backlog/review.md`).

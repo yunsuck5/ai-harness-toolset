@@ -37,25 +37,27 @@ The bullets above state the intended policy direction. The section below records
 
 `config/reviewer.json` must stay pure JSON with no comments. The per-key documentation lives in the adjacent schema `config/reviewer.schema.json`, which carries a `description` for every key covering its nominal meaning, where it is read, and its current runtime enforcement status.
 
-Current as-built status of each key:
+Current as-built status of each key (in terms of the canonical operator-facing flow — config → Codex invocation / `input.md`):
 
 | key | status |
 |---|---|
-| `model` | **Enforced** — flows config → `meta.json` → Codex CLI `--model`. |
-| `provider` | Metadata-only — recorded in `meta.json`, not passed to the Codex invocation. |
-| `fallbackModel` | Metadata-only — recorded in `meta.json`; the single-shot cycle does not use it. |
-| `reasoningEffort` | Metadata-only — recorded in `meta.json` and substituted into `input.md` as reviewer-visible prompt text; not a Codex CLI flag. |
-| `sandbox` | Metadata-only — recorded in `meta.json`; the Codex invocation hardcodes `--sandbox read-only`. |
+| `model` | **Enforced** — passed to the Codex CLI as `--model`. |
+| `provider` | Metadata-only — informational; not passed to the Codex invocation. |
+| `fallbackModel` | Metadata-only — kept for config-schema compatibility; the single-shot run does not use it. |
+| `reasoningEffort` | Metadata-only — config-schema compatibility; not surfaced into the canonical AI-authored `input.md` and not a Codex CLI flag. |
+| `sandbox` | Metadata-only — informational; the Codex invocation hardcodes `--sandbox read-only`. |
 | `timeoutSeconds` | **Metadata-only / unenforced** — see below. |
 | `outputFormat`, `resultFile` | Dead config — read by no script. |
 
+> The canonical operator-facing artifact set is exactly `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` + `result.md` (`docs/REVIEW_RESULT_CONTRACT.md`). Current script implementations may still emit a flat `log/review/<script-allocated-id>/` directory along with transitional sidecar files (`meta.json`, `target-files.list`, `result.json`) outside that canonical layout; those are removed-legacy design retained only as historical reference in `docs/backlog/review.md` "Removed legacy review artifacts" and are not operator paths.
+
 ### `timeoutSeconds` status
 
-`timeoutSeconds` is currently **metadata-only and unenforced**. `review-prepare.ps1` records it into `meta.json` `reviewerConfig.timeoutSeconds`, but no script reads it back: `Invoke-CodexExec` in `review-run.ps1` / `review-cycle.ps1` runs the Codex CLI with no process timeout. The value does not bound the Codex review process.
+`timeoutSeconds` is currently **metadata-only and unenforced**. The single-shot run executes the Codex CLI with no process timeout, so the value does not bound the Codex review process.
 
 `timeoutSeconds` is explicitly **not**:
 
-- a review quality or completeness guarantee — review validity is judged by complete run artifacts, valid result binding, and `review-verify -RequireResult`;
+- a review quality or completeness guarantee — review validity is judged by the canonical artifact pair (`input.md`, `result.md`) and the deterministic gates listed in `docs/REVIEW_RESULT_CONTRACT.md` §4;
 - the Claude Code harness tool timeout — that is a separate harness-level value that governs the shell tool call and can trigger harness auto-background conversion;
 - a background-conversion control — it has no effect on whether a run is foregrounded or backgrounded.
 
@@ -63,24 +65,26 @@ Whether to enforce, demote to explicit metadata-only, or remove `timeoutSeconds`
 
 ## Output location
 
-Reviewer output lives under `<project-root>/log/review/<run-id>/`. A root `codex-review-input.md` or `codex-review-result*.json` is forbidden.
+Reviewer output lives under `<project-root>/log/review/<review-task-id>/pass-NN/` (canonical two-level layout; current scripts emit flat `<project-root>/log/review/<script-allocated-id>/` per `docs/REVIEW_RESULT_CONTRACT.md` §4a transitional divergence). A root `codex-review-input.md` or `codex-review-result*.json` is forbidden.
 
 ## MVP reviewer boundary
 
 - `-Reviewer codex` is the only supported reviewer in MVP.
-- `review-cycle.ps1`은 user-triggered single-shot CLI이며, Codex CLI를 1회만 실행한다.
-- `fallbackModel`은 config 형식 호환을 위해 유지되며, 현재 cycle은 사용하지 않는다.
-- reviewer verdict는 commit / push / publish / merge / release / deployment 승인이 아니다.
+- The canonical review entry is the two-step `scripts/review-prepare.ps1` → AI authors the pass `input.md` (canonical: `<review-task-id>/pass-NN/input.md`; current script: `<script-allocated-id>/input.md`) → `scripts/review-run.ps1 -RunId <script-allocated-id>` flow. Codex CLI is invoked exactly once per `review-run.ps1` call.
+- `fallbackModel` is kept for config-schema compatibility; the single-shot run does not use it.
+- reviewer verdict is not approval for commit / push / publish / merge / release / deployment.
 
-Cycle 동작과 result 생성 contract는 `docs/REVIEW_RESULT_CONTRACT.md`에서 정의한다.
+Canonical artifact set and verdict semantics are defined in `docs/REVIEW_RESULT_CONTRACT.md`.
 
 ## Diagnostic Codex invocation reference
 
-For diagnosing Codex CLI invocation compatibility, the cycle-equivalent command shape is:
+For diagnosing Codex CLI invocation compatibility, the equivalent command shape (matching what `scripts/review-run.ps1` runs internally) is:
 
 ```powershell
-Get-Content -Raw -LiteralPath "log/review/<run-id>/input.md" |
-  codex --ask-for-approval never exec --sandbox read-only --model <model> -c web_search=disabled --output-last-message "log/review/<run-id>/result.md" -
+# Paths below use the current scripts' flat <script-allocated-id>/ form.
+# Canonical contract layout is <review-task-id>/pass-NN/ (REVIEW_RESULT_CONTRACT §1, §4a).
+Get-Content -Raw -LiteralPath "log/review/<script-allocated-id>/input.md" |
+  codex --ask-for-approval never exec --sandbox read-only --model <model> -c web_search=disabled --output-last-message "log/review/<script-allocated-id>/result.md" -
 ```
 
-`review-cycle.ps1` remains the normal path for completed review records. Result generation and verification semantics are defined in `docs/REVIEW_RESULT_CONTRACT.md`.
+The normal path for a completed review record is the two-step `review-prepare.ps1` + `review-run.ps1` flow. The canonical contract is `docs/REVIEW_RESULT_CONTRACT.md`.
