@@ -31,6 +31,7 @@
 - evidence artifact 의 canonical 위치는 `log/evidence/` 그대로다.
 - CL 의 fuller implementation (누적 work history 자동화, 자체 schema, retention, browse UI 등) 은 본 MVP scope 밖이다. MVP 에서는 CL 영역이 존재한다는 사실과 BF 가 path 로 CL 을 참조할 수 있다는 점만 정의한다.
 - BF 와 CL 의 책임은 **서로 교환 가능하지 않다**. BF 자리에 CL 을 옮기거나, CL 자리에 BF 의 짧은 brief 만 두는 것은 contract 위반이다.
+- 본 contract 의 "BF" 는 `log/chatlog/` 트리 안의 **session 단위 (volatile) Brief** 를 가리킨다. `docs/BRIEF_CONTRACT.md` 의 용어로는 BF Level 1/2 (`log/chatlog/current/resume.md` + companion `summary.md`) 에 해당한다. project 단위 durable restore state 인 `log/brief/BRIEF.md` (BF Level 3) 는 본 contract 의 대상이 아니라 `docs/BRIEF_CONTRACT.md` 가 source-of-truth 다. 두 자리는 coexist / no-mirror 관계이며 한쪽이 다른 쪽을 대체하지 않는다 (`docs/BRIEF_CONTRACT.md` 의 "log/chatlog/current/resume.md 와의 관계" 절 참조). `log/chatlog/current/resume.md` 도 `log/brief/BRIEF.md` 도 모두 `log/` 아래 operator-local runtime state 이며, repo-root `brief/` 같은 tracked source artifact 가 아니다 — repo root 에 `brief/` 디렉터리는 존재하지 않는다.
 
 ## chatlog의 위치와 독자
 
