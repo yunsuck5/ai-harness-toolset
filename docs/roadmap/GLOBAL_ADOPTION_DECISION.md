@@ -166,6 +166,38 @@ deterministic helper script (예: inspect-only, check-only) 는 후속 단계에
 <!-- END AI_HARNESS_TOOLSET_GLOBAL -->
 ```
 
+### Marker detection (counting rule)
+
+본 절은 위 marker 의 **detection algorithm** 을 명시한다. 본 절 이후의 모든 분기 (0 개, 정확히 1 개, 여러 개, incomplete pair, malformed, nested) 의 marker count 는 본 정의를 기준으로 판단한다.
+
+**Algorithm.** Walk the destination file line by line, maintaining a single `in_fence` boolean (initially `false`). For each line:
+
+1. If the line's trimmed content (leading / trailing ASCII whitespace removed) starts with at least three consecutive backticks (`` ``` ``) or three consecutive tildes (`~~~`), toggle `in_fence` and **do not count** this line as a marker. (This is the standard markdown fenced code block delimiter; the delimiter itself and every line inside the fence are excluded from counting.)
+2. Otherwise, if `in_fence` is `true`, **do not count** this line as a marker.
+3. Otherwise (line is outside any fenced code block), apply **whole-line trim match**: the line counts as a valid BEGIN marker if and only if its trimmed content is **exactly** the string `<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->`, with no other non-whitespace characters before or after on the same line. Similarly for END.
+
+The following occurrences of the marker text are therefore **not** valid markers and are **never** counted:
+
+- lines **inside any markdown fenced code block** (between matching ` ``` ` or `~~~` delimiters) — counted as code, not as marker delimiters. This is intentional, so that documentation files like this one can include a Recommended marker example in a fenced code block (see "Recommended marker" above, where the BEGIN / END lines appear inside ` ``` ` fence and must be ignored by detection).
+- **markdown inline code spans** (backticked text on a non-fence line, e.g., a sentence containing `` `<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->` ``) — the line's trimmed content includes surrounding prose or backticks, so whole-line trim match fails.
+- **prose / descriptive text** that mentions the marker as a literal example (e.g., a sentence that says "...delimited by `<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->` and `<!-- END AI_HARNESS_TOOLSET_GLOBAL -->`...") — surrounding non-whitespace on the same line prevents whole-line trim match.
+- any line where the marker text appears as part of a longer line, anywhere other than as the sole non-whitespace content.
+
+**Substring count** (naive count of marker text anywhere in the file, ignoring fences and line structure) is **not** the detection rule. It can produce false positives because the snippet bodies (`snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md`) intentionally quote the marker text within their description prose as inline literal documentation, and because this very §6 includes a fenced Recommended marker example whose BEGIN / END lines must be ignored by detection. The prose / fence quotation is by design — the documentation explains what the markers look like to a human reader, while the actual marker lines on a real destination file are the unfenced, unquoted lines that bracket the managed block.
+
+**Fence-pair pathology.** If `in_fence` remains `true` after walking the entire file (unbalanced fence — an odd number of ` ``` ` or `~~~` delimiter lines), the file is considered structurally malformed for managed-block purposes. The scanner reports an error and does not proceed; the file is treated as if its marker state were ambiguous, which falls into the manual-review condition below.
+
+**Decision-equivalent statements** (all bind by the same whole-line-outside-fence rule):
+
+- "matching marker pair" — exactly one whole-line BEGIN followed by exactly one whole-line END, both outside any fence, with no other whole-line BEGIN or END (outside any fence) anywhere in the file, and with the END appearing on a later line than the BEGIN.
+- "no markers" — zero whole-line BEGIN and zero whole-line END outside any fence.
+- "incomplete pair" — whole-line BEGIN count ≠ whole-line END count (both counted outside any fence).
+- "duplicated" — whole-line BEGIN count > 1 or whole-line END count > 1 (outside any fence).
+- "malformed" — whole-line END (outside any fence) appears before any whole-line BEGIN (outside any fence), or any other ordering violation, or the fence-pair pathology above.
+- "nested" — between a whole-line BEGIN and its paired whole-line END (both outside any fence) there exists another whole-line BEGIN or whole-line END outside any fence.
+
+Each of "incomplete pair", "duplicated", "malformed", "nested" is a fail-fast / manual-review condition (see the destination-state branches below). The detection rule does not change those branches; it only specifies the algorithm by which marker counts and ordering are determined.
+
 ### Update policy — global CLAUDE.md / AGENTS.md
 
 marker-bounded block 의 전면 교체가 standard 로 허용되는 적용 방식이다. whole-file overwrite 는 금지하며, marker-bounded block 바깥의 기존 사용자 / project 내용은 보존한다. 본 동작은 implicit / automatic mutation 이 아니라, §7 의 explicit user-approved global / user config mutation scope 에서만 수행된다. 즉 "global mutation 금지" 는 implicit / automatic / whole-file mutation 의 금지를 의미하며, explicit user-approved managed-block replacement 와 충돌하지 않는다.
