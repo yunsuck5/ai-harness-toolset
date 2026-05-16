@@ -16,16 +16,16 @@
 
 | Level | 의미 | 현재 상태 |
 |---|---|---|
-| BF Level 1 | manual save / restore discipline. operator (또는 operator role 의 AI agent) 가 durable restore 상태를 사람이 읽기 좋은 형태로 직접 작성하고, 새 session 진입 시 그 자리를 직접 다시 읽어 작업을 복원한다. 자동화 없음. | 운영 중. 사람 / AI agent 가 수행. |
-| BF Level 2 | 같은 manual save / restore discipline 을, snippet protocol 또는 합의된 자연어 trigger 로 더 일관되게 적용하는 단계. 여전히 자동화는 없고, agent 가 protocol 을 따른다는 의미만 있다. | 운영 중. snippet / protocol 채택 시 활성. |
-| BF Level 3 | **deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer** 의 자동화. agent 또는 사람이 BRIEF 본문을 직접 손편집하는 모델이 아니다. deterministic writer 가 BRIEF 의 갱신 / 점검 / 경고 / restore-offer 를 일관되게 수행한다. | **현재 미구현.** future scoped work. |
+| BF Level 1 | manual save / restore discipline. operator 는 BF 저장 / 복원 / 폐기의 **trigger / approve / reject / discard** 주체이며 BRIEF 본문을 손으로 편집하지 않는다. BRIEF 본문의 생성 / 갱신은 명시적 AI-assisted command flow (operator 의 trigger 시 agent 가 본문을 작성) 또는 deterministic tooling 이 담당하고, 새 session 진입 시 그 자리를 다시 읽어 작업을 복원한다. 자동화 없음. | 운영 중. operator trigger + agent (또는 tooling) 가 본문 작성. |
+| BF Level 2 | 같은 manual save / restore discipline 을, snippet protocol 또는 합의된 자연어 trigger 로 더 일관되게 적용하는 단계. operator 의 책임은 여전히 trigger / approve / reject / discard 이며, BRIEF 본문은 agent 가 protocol 을 따라 작성한다. 자동 detect / 자동 갱신 / restore-offer 자동화는 없다. | 운영 중. snippet / protocol 채택 시 활성. |
+| BF Level 3 | **deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer** 의 자동화. deterministic writer 또는 명시적 AI-assisted command flow 가 BRIEF 의 갱신 / 점검 / 경고 / restore-offer 를 일관되게 수행하며, operator 가 BRIEF 본문을 손편집하지 않는 점은 BF Level 1/2 와 동일하다. | **현재 미구현.** future scoped work. |
 
 핵심:
 
 - BF Level 은 maturity 다. 같은 자리에서 더 일관되고 더 deterministic 한 운영으로 올라가는 layer 다. Level 별로 다른 path 를 두지 않는다.
-- BF Level 3 의 목표는 **사람이 BRIEF 본문을 손편집하는 모델의 안정화가 아니다.** 반대로, BRIEF 의 유지 / 검증 / restore-offer 를 deterministic 하게 수행해 손편집 의존을 줄이는 방향이다.
+- BRIEF 본문은 어느 Level 에서도 **사람이 손으로 편집하는 모델에 의존하지 않는다.** operator 는 trigger / approve / reject / discard 의 주체이며, 본문 생성 / 갱신은 deterministic tooling 또는 명시적 AI-assisted command flow 가 담당한다 (clean decision memo D-BRIEF-8). BF Level 3 의 방향은 그 generation / update layer 자체를 deterministic 하게 만드는 것이며, BF Level 1/2 의 hand-edit 운영을 안정화하는 것이 아니다.
 - 현재 `scripts/brief-init.ps1` / `scripts/brief-check.ps1` / `scripts/brief-status.ps1` 는 BF Level 3 의 **full implementation 이 아니라** source-side primitive 다 (아래 §"source-side primitive 책임" 참조). 세 script 가 존재한다고 해서 BF Level 3 capability 가 갖춰진 상태는 아니다.
-- BF Level 1/2 에서 사람이 BRIEF 를 손으로 작성하는 부분은 BF Level 3 가 deterministic writer 로 흡수해야 할 대상이다. 본 contract 는 그 흡수의 완료를 강제하지 않는다.
+- BF Level 1/2 의 manual save 단계에서 agent 가 본문 작성을 담당하는 흐름은 BF Level 3 의 deterministic writer / 자동 restore-offer 가 흡수해야 할 대상이다. 본 contract 는 그 흡수의 완료를 강제하지 않는다.
 
 ## canonical Brief 자리 — project-local runtime under `<ProjectRoot>/log/`
 
@@ -169,7 +169,7 @@ forbidden behavior:
 - `.gitignore` 변경.
 - 글로벌 파일 변경 (`~/.claude/`, root `CLAUDE.md`, root `AGENTS.md`).
 - daemon / watcher / scheduler / hook / background process 등록.
-- BRIEF 내용 자동 생성 (template 의 placeholder 만 seed; 사람이 채운다 — 이 점은 본 primitive 의 한계이며, BF Level 3 가 흡수해야 할 대상이다).
+- BRIEF 내용 자동 생성 (`brief-init.ps1` 는 template 의 placeholder 만 seed 한다; 채워진 본문 / 후속 갱신은 본 primitive 의 책임이 아니다). 본 단계의 placeholder → 사실 채움은 BF Level 1/2 manual save discipline 의 explicit AI-assisted command flow (operator trigger / approve, agent writes) 또는 deterministic tooling 이 담당하며, BF Level 3 가 deterministic writer 로 흡수해야 할 대상이다 — operator 의 손편집에 의존하는 모델이 아니다.
 - commit / push / publish / merge / release 자동 실행.
 
 종료 코드는 file IO 결과만 반영한다. verdict 의미를 갖지 않는다.

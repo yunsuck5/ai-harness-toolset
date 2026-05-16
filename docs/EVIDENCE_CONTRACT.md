@@ -136,8 +136,8 @@ Write-Utf8NoBom -Path (Join-Path $caseDir 'notes.md') -Content "# Notes`n- Expec
 
 review subsystem은 별도 경로를 사용한다:
 
-- review packet은 `<ProjectRoot>/log/review/<run-id>/` 에 생성된다.
-- review packet의 freshness, hash 일치, project root 일치 등은 review-prepare / review-verify가 검증한다.
+- canonical review record는 `<ProjectRoot>/log/review/<review-task-id>/pass-NN/{input.md, result.md}` 두 단계 layout 에 생성된다 (`docs/REVIEW_RESULT_CONTRACT.md`).
+- review record 의 shape 검증, `## Verdict` 형식, `-RequireResult` binding 등은 `scripts/review-prepare.ps1` / `scripts/review-run.ps1` / `scripts/review-verify.ps1` / `scripts/review-input-verify.ps1` 가 담당한다.
 
 evidence는 review subsystem의 input이 아니며, output도 아니다. 두 트리는 같은 `log/` 아래에 있지만 책임이 다르다:
 

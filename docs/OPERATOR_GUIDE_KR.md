@@ -186,7 +186,7 @@ raw 명령을 그대로 외워서 매번 입력하는 것은 권장하지 않는
 
 ## 7b. BF save / restore-offer 자연어 UX (현재 snippet protocol)
 
-> **Note — source snippet alignment.** 본 절의 BF save / restore-offer protocol description 은 `docs/BRIEF_CONTRACT.md` / `docs/CHATLOG_CONTRACT.md` 의 현행 (3차 reconciliation) framing 을 따른다 — 즉 canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` 한 자리이고 root `<ProjectRoot>/brief/` 는 rejected, user-home operator-local runtime root 도 rejected, target persistent footprint 는 `<ProjectRoot>/log/` only 다. 본 docs round 의 boundary 상 source `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 본문은 이번 round 에서 갱신되지 않았고, 그 본문은 이전 (2차) reconciliation framing — target product canonical Brief 를 `<ProjectRoot>/brief/BRIEF.md` 로 두고 `<ProjectRoot>/log/brief/BRIEF.md` 를 not-canonical 로 분류한 wording — 을 그대로 가지고 있다. source snippet 의 refresh, 그리고 운영자가 이전에 destination `CLAUDE.md` / `AGENTS.md` 의 managed block 에 적용한 본문의 refresh 는 둘 다 사용자 명시 승인을 요구하는 별도 managed-block replacement step 이며 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6), ai-harness 는 그 적용을 자동으로 수행하지 않는다. 본 가이드 / contract docs 와 source snippet / destination managed block 의 framing 이 충돌하면, refresh 가 적용될 때까지 **현행 contract docs (`docs/BRIEF_CONTRACT.md`, `docs/CHATLOG_CONTRACT.md`) 의 framing 이 우선** 한다.
+> **Note — source snippet alignment.** 본 절의 BF save / restore-offer protocol description 과 source `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 본문은 모두 `docs/BRIEF_CONTRACT.md` / `docs/CHATLOG_CONTRACT.md` 의 현행 (3차 reconciliation) framing 을 따른다 — canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` 한 자리이고 root `<ProjectRoot>/brief/` 는 rejected, user-home operator-local runtime root 도 rejected, target persistent footprint 는 `<ProjectRoot>/log/` only 다. 운영자가 이전 라운드에 destination `CLAUDE.md` / `AGENTS.md` 의 managed block 에 적용한 본문은 그 시점의 snippet 본문을 그대로 가지고 있으며, source snippet 본문이 갱신된 뒤에도 자동으로 refresh 되지 않는다 — destination managed-block refresh 는 사용자 명시 승인을 요구하는 별도 managed-block replacement step 이다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6). 본 가이드 / contract docs / source snippet 본문과 destination managed block 의 framing 이 충돌하면, refresh 가 적용될 때까지 **현행 contract docs (`docs/BRIEF_CONTRACT.md`, `docs/CHATLOG_CONTRACT.md`) 의 framing 이 우선** 한다.
 
 `ai-harness-toolset` 의 일상 운용에서 사용자는 raw PowerShell 명령을 직접 입력하지 않고, Claude Code 안에서 자연어 의도를 표현한다. 채택된 snippet 이 활성화되어 있으면 Claude Code 는 그 protocol 에 따라 Brief artifact 를 갱신한다.
 
@@ -232,7 +232,7 @@ canonical Brief 가 없으면 **Chatlog 로 default-restore 하지 않는다.** 
 
 BF Level 은 path 가 아니라 **save / restore capability maturity** 다 (`docs/BRIEF_CONTRACT.md`).
 
-- BF Level 1/2 — manual save / restore discipline. operator (또는 operator role 의 agent) 가 protocol 을 따라 BRIEF 를 사람이 읽기 좋은 형태로 직접 작성 / 갱신하고, 새 session 진입 시 그 자리를 다시 읽어 작업을 복원한다. snippet protocol 의 BF save / restore-offer 흐름이 그 한 형태다.
+- BF Level 1/2 — manual save / restore discipline. Operator 는 BF 저장 / 복원 시점의 **trigger / approve / reject / discard** 주체이며, BRIEF 본문을 손으로 편집하지 않는다. BRIEF 본문의 생성 / 갱신은 명시적 AI-assisted command flow (snippet protocol 을 따르는 agent 의 직접 작성) 또는 deterministic tooling 이 담당하고, 새 session 진입 시 그 자리를 다시 읽어 작업을 복원한다. snippet protocol 의 BF save / restore-offer 흐름이 그 한 형태다.
 - BF Level 3 — deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer 의 자동화. **현재 미구현** 이며 future scoped work 다. 본 가이드 범위 밖이다.
 
 본 가이드 / 본 MVP 가 도입하지 않는 것:
@@ -243,7 +243,7 @@ BF Level 은 path 가 아니라 **save / restore capability maturity** 다 (`doc
 - Chatlog fuller implementation — 누적 work history 자동화, 자체 schema, retention, browse UI, RND-style heavy workflow — 는 본 가이드 범위 밖이며 later track 이다 (`docs/CHATLOG_CONTRACT.md`).
 - snippet protocol 의 writer destination 정합화는 더 이상 future scoped work 항목이 아니다. canonical Brief 자리 (`<project-root>/log/brief/BRIEF.md`) 와 primitive / contract 의 destination 이 이미 일치한다. (이전 라운드의 "target canonical (`brief/BRIEF.md`) 로 routing" 항목은 2차 reconciliation 의 잔재였으며, 3차 reconciliation 으로 자연 해소되었다 — `docs/BRIEF_CONTRACT.md` §"canonical Brief 자리" Historical lineage 참조.)
 
-위 7b 본문의 UX 는 현행 (3차 reconciliation) contract docs (`docs/BRIEF_CONTRACT.md`, `docs/CHATLOG_CONTRACT.md`) 의 framing 을 따른다. source `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 본문은 이번 라운드에서 갱신되지 않았고 2차 reconciliation framing 으로 남아 있다 — 따라서 본 7b 의 framing 과 source snippet 본문의 framing 은 일치하지 않는다. source snippet refresh 와 운영자가 destination `CLAUDE.md` / `AGENTS.md` 의 managed block 에 적용한 본문의 refresh 는 둘 다 사용자 명시 승인이 필요한 별도 managed-block replacement step 이다 (위 절두 note 참조). framing 충돌 시 현행 contract docs 가 우선이다.
+위 7b 본문의 UX 는 현행 (3차 reconciliation) contract docs (`docs/BRIEF_CONTRACT.md`, `docs/CHATLOG_CONTRACT.md`) 의 framing 을 따르고, source `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 본문도 같은 3차 framing 으로 정합화되어 있다. 운영자가 이전 라운드에 destination `CLAUDE.md` / `AGENTS.md` 의 managed block 에 적용한 본문은 그 시점의 snippet 을 가지고 있으며, source snippet 본문이 갱신된 뒤에도 자동으로 refresh 되지 않는다 — destination managed-block refresh 는 사용자 명시 승인이 필요한 별도 managed-block replacement step 이다 (위 절두 note 참조). framing 충돌 시 현행 contract docs 가 우선이다.
 
 ---
 

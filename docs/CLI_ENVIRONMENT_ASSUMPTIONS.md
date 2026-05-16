@@ -16,7 +16,7 @@ ai-harness-toolset의 CLI 환경 의존성은 동일 tier가 아니다. 아래 4
 
 Codex CLI는 shim 파일 확장자(`.ps1`, `.cmd`, `.exe`, extensionless)와 무관하게 stdin-pipe 방식으로 호출된다. Windows에서 npm으로 설치된 `codex.ps1` shim 또한 real CLI 로 취급되어 동일한 경로를 탄다. `$env:AI_HARNESS_CODEX_COMMAND` 는 PATH 가 아닌 위치의 shim 을 명시하는 escape hatch 이지 일상적인 wrapper 지정 수단이 아니다.
 
-테스트 격리용 stub-args-file protocol (`-CodexArgsFile`) 은 `tests/review-cycle.Tests.ps1` 전용이며 `$env:AI_HARNESS_CODEX_ARGS_FILE_STUB = '1'` 로만 활성화된다. 운영 환경에서는 이 환경 변수를 설정하지 않는다.
+테스트 격리용 stub-args-file protocol (`-CodexArgsFile`) 은 `tests/review-run.Tests.ps1` 전용이며 `$env:AI_HARNESS_CODEX_ARGS_FILE_STUB = '1'` 로만 활성화된다. 운영 환경에서는 이 환경 변수를 설정하지 않는다.
 
 ## Tier 3 — Optional convenience / provenance
 

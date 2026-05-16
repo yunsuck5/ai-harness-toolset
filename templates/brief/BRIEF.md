@@ -4,15 +4,15 @@
 
 이 template 은 source repo (`ai-harness-toolset`) 의 `templates/brief/BRIEF.md` 이며, source tree 의 tracked source artifact 다. 실제 canonical Brief artifact 는 그 project 의 `<ProjectRoot>/log/brief/BRIEF.md` 에 둔다 — 그 project 의 checkout 안 `<ProjectRoot>/log/` 트리 아래 operator-local runtime artifact 이며 target project 의 `.gitignore` 의 `log/` 규칙에 의해 기본적으로 ignored 된다 (commit / push / merge / release 대상이 아니다). "project-local" 은 그 project 의 checkout 안에 있다는 의미이지 "repo-tracked" 라는 의미가 아니며, "operator-local" 은 각 운영자의 local checkout 안의 instance 라는 의미이지 user-home 의 global state 라는 의미가 아니다. **root `<ProjectRoot>/brief/` 는 rejected** — canonical Brief 자리가 아니며 ai-harness 용도로 만들지 않는다. user-home operator-local runtime root (예: `%USERPROFILE%\.ai-harness\projects\<project-key>\...`) 도 canonical 자리가 아니다 (`docs/BRIEF_CONTRACT.md` §"canonical Brief 자리").
 
-`scripts/brief-init.ps1` 가 이 template 을 그 project 의 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`) 로 한 번 seed 한다. 이후 갱신은 사람이 손으로 한다. tooling 은 본문을 자동으로 채우거나 보정하지 않는다.
+`scripts/brief-init.ps1` 가 이 template 을 그 project 의 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`) 로 한 번 seed 한다. 이후 본문 채움 / 갱신은 BF Level 1/2 manual save discipline 에서 operator 의 trigger / approve 위에 agent (explicit AI-assisted command flow) 또는 deterministic tooling 이 수행한다 (`docs/BRIEF_CONTRACT.md` §"BF Level — save/restore capability maturity"). operator 는 trigger / approve / reject / discard 주체이며 BRIEF 본문을 손편집하지 않는다. `brief-init.ps1` 자체는 tooling 으로서 본문을 자동으로 채우거나 후속 갱신을 수행하지 않는다 — placeholder 만 seed 한다.
 
-채택 직후, 사용자는 아래 각 required section 에 들어 있는 한 줄짜리 replace-me sentinel 문장을 자기 project 의 사실로 교체한다. sentinel 의 정확한 문구는 각 required section 본문 안에 한 번씩만 등장한다. 본 preamble 에서는 sentinel 문구 자체를 인용하지 않는다 (`scripts/brief-check.ps1` 가 sentinel 문자열을 forbidden string 으로 거부하기 때문에, preamble 에서 인용하면 채워진 BRIEF 도 영구 FAIL 이 된다). sentinel 이 한 곳이라도 남아 있으면 `scripts/brief-check.ps1` 는 FAIL 한다.
+채택 직후, 각 required section 에 들어 있는 한 줄짜리 replace-me sentinel 문장을 그 project 의 사실로 교체한다 (operator trigger 위에 agent 가 작성하는 흐름). sentinel 의 정확한 문구는 각 required section 본문 안에 한 번씩만 등장한다. 본 preamble 에서는 sentinel 문구 자체를 인용하지 않는다 (`scripts/brief-check.ps1` 가 sentinel 문자열을 forbidden string 으로 거부하기 때문에, preamble 에서 인용하면 채워진 BRIEF 도 영구 FAIL 이 된다). sentinel 이 한 곳이라도 남아 있으면 `scripts/brief-check.ps1` 는 FAIL 한다.
 
 `> 안내` 형태의 한 줄 guidance 는 작성 보조 메모다. 사용자는 작성 후에도 guidance 를 남겨 둘 수 있고, project 에 더 적합한 형태로 바꾸어도 된다. 단, replace-me sentinel 문장은 반드시 제거해야 한다.
 
 `> optional` 표시가 붙은 section 은 필요할 때만 채운다. 표시가 없는 section 은 required 다. 내용이 없는 required section 은 `none` 으로 채워 둔다.
 
-heading set 은 `templates/session-resume.md` 와 동일하지만 의미 해석은 durable-project 지향이다 (`docs/BRIEF_CONTRACT.md` 의 interpretation table 참조). 임의의 새 top-level heading 은 만들지 않는다.
+heading set 의 권위 source 는 `docs/BRIEF_CONTRACT.md` 의 `BRIEF required / optional headings` 절이다. 의미 해석은 같은 contract 의 interpretation table 을 따른다 — durable-project 지향이며 session-단위 정보는 포함하지 않는다. 임의의 새 top-level heading 은 만들지 않는다.
 
 ## Current state
 

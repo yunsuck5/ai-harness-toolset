@@ -27,11 +27,11 @@
 - context-pressure trigger / pre-compact capture is a future optional candidate, not MVP implementation
 - dependency boundary is canonical in `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`
 - review result record contract is canonical in `docs/REVIEW_RESULT_CONTRACT.md`
-- `review-cycle.ps1` is the MVP user-facing review entrypoint
-- `review-cycle.ps1` uses strict verdict parsing; failed parse preserves the run as evidence
-- `review-prepare.ps1` is write-once per `<run-id>`: a pre-existing run directory is rejected and the seeded `meta.json` is never overwritten; recovery is a fresh run-id
-- `review-verify -RequireResult` validates completed-record binding
-- review record retention is human-managed at `<run-id>` directory granularity
+- The canonical user-facing review entry is the two-step `scripts/review-prepare.ps1` + `scripts/review-run.ps1` flow (the legacy single-shot `review-cycle.ps1` driver has been removed from the operator path; see `docs/backlog/review.md` "Removed legacy review artifacts" and `docs/roadmap/POST_MVP_PLAN.md` §10 Completed `c81fe45` for the historical reason)
+- `review-run.ps1` uses strict `## Verdict` parsing; failed parse preserves the failed `pass-NN/` on disk as evidence
+- each pass directory `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` is write-once: a pre-existing pass is rejected; recovery is allocating a fresh `pass-NN` under the same `<review-task-id>`
+- `review-verify -RequireResult` validates completed-record binding against the canonical `input.md` + `result.md` pair
+- review record retention is human-managed at `<review-task-id>/` directory (or per-`pass-NN/`) granularity
 - adoption smoke test, actual reviewer workflow test, and actual development workflow usage test are separate milestones
 - broader review result policies remain future candidates (`docs/REVIEW_RESULT_CONTRACT.md`)
 
