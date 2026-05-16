@@ -70,10 +70,10 @@ function Test-IsValidToolRootPayload {
         [string] $Path
     )
 
-    # A ToolRoot payload is valid when the primary entrypoint script is present.
+    # A ToolRoot payload is valid when the canonical entrypoint script is present.
     # An existing-but-incomplete payload is an operator error that must fail fast
     # rather than be silently skipped.
-    $entry = Join-Path -Path $Path -ChildPath 'scripts/review-cycle.ps1'
+    $entry = Join-Path -Path $Path -ChildPath 'scripts/review-prepare.ps1'
     return (Test-Path -LiteralPath $entry -PathType Leaf)
 }
 
@@ -120,7 +120,7 @@ function Get-ToolRoot {
     if (-not [string]::IsNullOrEmpty($StableToolRoot)) {
         if (Test-Path -LiteralPath $StableToolRoot -PathType Container) {
             if (-not (Test-IsValidToolRootPayload -Path $StableToolRoot)) {
-                throw ('Get-ToolRoot: channel 3 (global stable install): directory exists but payload is incomplete: {0}. Expected entrypoint scripts/review-cycle.ps1 was not found. Reinstall the global stable ToolRoot (delete-and-reinstall) or use -ToolRoot / AI_HARNESS_TOOL_ROOT to point at a complete payload.' -f $StableToolRoot)
+                throw ('Get-ToolRoot: channel 3 (global stable install): directory exists but payload is incomplete: {0}. Expected entrypoint scripts/review-prepare.ps1 was not found. Reinstall the global stable ToolRoot (delete-and-reinstall) or use -ToolRoot / AI_HARNESS_TOOL_ROOT to point at a complete payload.' -f $StableToolRoot)
             }
             return [System.IO.Path]::GetFullPath($StableToolRoot)
         }
@@ -241,7 +241,7 @@ function Assert-InProjectRoot {
     throw "Assert-InProjectRoot: path is outside ProjectRoot. Path=$full ProjectRoot=$projectNorm"
 }
 
-function Test-ValidRunId {
+function Test-ValidReviewTaskId {
     [CmdletBinding()]
     param(
         [string] $Value
@@ -252,52 +252,73 @@ function Test-ValidRunId {
     return ($Value -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$')
 }
 
-function Assert-ValidRunId {
+function Assert-ValidReviewTaskId {
     [CmdletBinding()]
     param(
         [string] $Value
     )
 
-    if (-not (Test-ValidRunId -Value $Value)) {
-        throw "Assert-ValidRunId: invalid RunId: '$Value'"
+    if (-not (Test-ValidReviewTaskId -Value $Value)) {
+        throw "Assert-ValidReviewTaskId: invalid ReviewTaskId: '$Value'"
     }
     return $true
 }
 
-function Assert-InProjectLogReviewRequestsRoot {
+function Test-ValidPass {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory = $true)]
-        [string] $Path,
-        [Parameter(Mandatory = $true)]
-        [string] $ProjectLogRoot
+        [string] $Value
     )
 
-    if ([string]::IsNullOrEmpty($ProjectLogRoot)) {
-        throw 'Assert-InProjectLogReviewRequestsRoot: -ProjectLogRoot is required.'
-    }
-
-    [void] (Assert-InProjectLogRoot -Path $Path -ProjectLogRoot $ProjectLogRoot)
-
-    $logFull = [System.IO.Path]::GetFullPath($ProjectLogRoot)
-    $reqBase = [System.IO.Path]::GetFullPath((Join-Path -Path $logFull -ChildPath 'review-requests'))
-    $full = [System.IO.Path]::GetFullPath($Path)
-
-    $sep = [System.IO.Path]::DirectorySeparatorChar
-    $baseNorm = $reqBase.TrimEnd($sep)
-    $cmp = [System.StringComparison]::OrdinalIgnoreCase
-
-    if ([string]::Equals($full, $baseNorm, $cmp)) {
-        return $true
-    }
-    $prefix = $baseNorm + $sep
-    if ($full.StartsWith($prefix, $cmp)) {
-        return $true
-    }
-    throw "Assert-InProjectLogReviewRequestsRoot: path is outside review-requests root. Path=$full ReviewRequestsRoot=$baseNorm"
+    if ([string]::IsNullOrEmpty($Value)) { return $false }
+    return ($Value -cmatch '^pass-(0[1-9]|[1-9][0-9])$')
 }
 
-function Assert-InReviewRunRoot {
+function Assert-ValidPass {
+    [CmdletBinding()]
+    param(
+        [string] $Value
+    )
+
+    if (-not (Test-ValidPass -Value $Value)) {
+        throw "Assert-ValidPass: invalid pass identifier (expected pass-NN with NN in 01..99): '$Value'"
+    }
+    return $true
+}
+
+function Get-ReviewTaskRoot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ProjectLogRoot,
+        [Parameter(Mandatory = $true)]
+        [string] $ReviewTaskId
+    )
+
+    [void] (Assert-ValidReviewTaskId -Value $ReviewTaskId)
+    $reviewBase = Join-Path -Path $ProjectLogRoot -ChildPath 'review'
+    $taskDir = Join-Path -Path $reviewBase -ChildPath $ReviewTaskId
+    return [System.IO.Path]::GetFullPath($taskDir)
+}
+
+function Get-ReviewPassDir {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ProjectLogRoot,
+        [Parameter(Mandatory = $true)]
+        [string] $ReviewTaskId,
+        [Parameter(Mandatory = $true)]
+        [string] $Pass
+    )
+
+    [void] (Assert-ValidPass -Value $Pass)
+    $taskDir = Get-ReviewTaskRoot -ProjectLogRoot $ProjectLogRoot -ReviewTaskId $ReviewTaskId
+    $passDir = Join-Path -Path $taskDir -ChildPath $Pass
+    return [System.IO.Path]::GetFullPath($passDir)
+}
+
+function Assert-InReviewRoot {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
@@ -307,7 +328,7 @@ function Assert-InReviewRunRoot {
     )
 
     if ([string]::IsNullOrEmpty($ProjectLogRoot)) {
-        throw 'Assert-InReviewRunRoot: -ProjectLogRoot is required.'
+        throw 'Assert-InReviewRoot: -ProjectLogRoot is required.'
     }
 
     [void] (Assert-InProjectLogRoot -Path $Path -ProjectLogRoot $ProjectLogRoot)
@@ -327,5 +348,30 @@ function Assert-InReviewRunRoot {
     if ($full.StartsWith($prefix, $cmp)) {
         return $true
     }
-    throw "Assert-InReviewRunRoot: path is outside review run root. Path=$full ReviewRoot=$baseNorm"
+    throw "Assert-InReviewRoot: path is outside review root. Path=$full ReviewRoot=$baseNorm"
+}
+
+function Get-NextPassName {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $TaskDir
+    )
+
+    if (-not (Test-Path -LiteralPath $TaskDir -PathType Container)) {
+        return 'pass-01'
+    }
+    $maxN = 0
+    $entries = Get-ChildItem -LiteralPath $TaskDir -Directory -ErrorAction SilentlyContinue
+    foreach ($entry in $entries) {
+        if ($entry.Name -cmatch '^pass-(0[1-9]|[1-9][0-9])$') {
+            $n = [int]$Matches[1]
+            if ($n -gt $maxN) { $maxN = $n }
+        }
+    }
+    $next = $maxN + 1
+    if ($next -gt 99) {
+        throw "Get-NextPassName: pass-NN range exhausted (max 99) under $TaskDir. Use a fresh ReviewTaskId."
+    }
+    return ('pass-{0:00}' -f $next)
 }

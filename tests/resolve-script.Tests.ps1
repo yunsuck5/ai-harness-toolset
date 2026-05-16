@@ -61,8 +61,6 @@ Describe 'Get-ToolRootSource' {
     }
 
     It 'AC-RS-SRC-3: returns implicit when -ToolRoot, env, and stable install are all absent' {
-        # Inject an absent stable path so the result does not depend on whether
-        # the host machine actually has a global stable install.
         Get-ToolRootSource -ToolRoot '' -StableToolRoot (script:AbsentStablePath) | Should -Be 'implicit'
     }
 
@@ -98,126 +96,24 @@ Describe 'Get-ToolRootSource' {
     }
 }
 
-Describe 'Resolve-CycleScript (D2: explicit ToolRoot suppresses PSScriptRoot fallback)' {
+Describe 'Resolve-RunScript (explicit ToolRoot suppresses PSScriptRoot fallback)' {
     BeforeEach { script:Clear-EnvToolRoot }
 
-    It 'AC-RS-CYC-EXPLICIT-OK: returns ToolRoot/RelativePath when it exists under explicit ToolRoot' {
-        $tool  = script:New-CaseDir -Name 'cyc-exp-ok-tool'
-        $local = script:New-CaseDir -Name 'cyc-exp-ok-local'
+    It 'AC-RS-RUN-EXPLICIT-OK: returns ToolRoot/RelativePath when it exists under explicit ToolRoot' {
+        $tool  = script:New-CaseDir -Name 'run-exp-ok-tool'
+        $local = script:New-CaseDir -Name 'run-exp-ok-local'
         $target = Join-Path $tool 'scripts/foo.ps1'
         script:Write-Utf8NoBomFile -Path $target -Content "# fake script`n"
 
-        $result = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit'
+        $result = Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit'
 
         ([System.IO.Path]::GetFullPath($result)) | Should -Be ([System.IO.Path]::GetFullPath($target))
     }
 
-    It 'AC-RS-CYC-EXPLICIT-MISSING: throws and does NOT fall back when missing under explicit ToolRoot' {
-        $tool  = script:New-CaseDir -Name 'cyc-exp-miss-tool'
-        $local = script:New-CaseDir -Name 'cyc-exp-miss-local'
-        # PSScriptRoot fallback exists but must be suppressed.
-        script:Write-Utf8NoBomFile -Path (Join-Path $local 'foo.ps1') -Content "# would be fallback`n"
-
-        $threw = $false
-        $msg = ''
-        try {
-            Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit' | Out-Null
-        }
-        catch {
-            $threw = $true
-            $msg = [string]$_.Exception.Message
-        }
-
-        $threw | Should -BeTrue
-        $msg | Should -Match 'review-cycle'
-        $msg | Should -Match 'explicit ToolRoot'
-        $msg | Should -Match ([regex]::Escape($tool))
-        $msg | Should -Match 'scripts/foo.ps1'
-    }
-
-    It 'AC-RS-CYC-EXPLICIT-MISSING-DIAG: explicit-source diagnostic names all three explicit sources' {
-        # The explicit-source set grew to three (-ToolRoot, AI_HARNESS_TOOL_ROOT,
-        # global stable install). The suppressed-fallback diagnostic must name all
-        # three so the operator can tell which explicit source is in play.
-        $tool  = script:New-CaseDir -Name 'cyc-exp-diag-tool'
-        $local = script:New-CaseDir -Name 'cyc-exp-diag-local'
-
-        $threw = $false
-        $msg = ''
-        try {
-            Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit' | Out-Null
-        }
-        catch {
-            $threw = $true
-            $msg = [string]$_.Exception.Message
-        }
-
-        $threw | Should -BeTrue
-        $msg | Should -Match '-ToolRoot'
-        $msg | Should -Match 'AI_HARNESS_TOOL_ROOT'
-        $msg | Should -Match 'global stable install'
-    }
-}
-
-Describe 'Resolve-CycleScript (D2: implicit ToolRoot allows PSScriptRoot fallback with warning)' {
-    BeforeEach { script:Clear-EnvToolRoot }
-
-    It 'AC-RS-CYC-IMPLICIT-OK: returns ToolRoot/RelativePath when it exists under implicit ToolRoot' {
-        $tool  = script:New-CaseDir -Name 'cyc-imp-ok-tool'
-        $local = script:New-CaseDir -Name 'cyc-imp-ok-local'
-        $target = Join-Path $tool 'scripts/foo.ps1'
-        script:Write-Utf8NoBomFile -Path $target -Content "# fake`n"
-
-        $result = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'implicit'
-
-        ([System.IO.Path]::GetFullPath($result)) | Should -Be ([System.IO.Path]::GetFullPath($target))
-    }
-
-    It 'AC-RS-CYC-IMPLICIT-FALLBACK: falls back to PSScriptRoot leaf when missing under implicit ToolRoot and emits WARN' {
-        $tool  = script:New-CaseDir -Name 'cyc-imp-fb-tool'
-        $local = script:New-CaseDir -Name 'cyc-imp-fb-local'
-        $fallback = Join-Path $local 'foo.ps1'
-        script:Write-Utf8NoBomFile -Path $fallback -Content "# fallback`n"
-
-        $informational = (& {
-            Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'implicit' 6>&1
-        } | Out-String -Width 8192)
-
-        # Strip line breaks so long paths that Out-String may have wrapped match cleanly.
-        $flat = ($informational -replace "`r?`n", ' ')
-
-        $flat | Should -Match 'WARN component script resolved via \$PSScriptRoot fallback'
-        $flat | Should -Match ([regex]::Escape($tool))
-        $flat | Should -Match 'scripts/foo.ps1'
-    }
-
-    It 'AC-RS-CYC-IMPLICIT-NOTFOUND: throws when missing under both ToolRoot and PSScriptRoot' {
-        $tool  = script:New-CaseDir -Name 'cyc-imp-nf-tool'
-        $local = script:New-CaseDir -Name 'cyc-imp-nf-local'
-
-        $threw = $false
-        $msg = ''
-        try {
-            Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'implicit' | Out-Null
-        }
-        catch {
-            $threw = $true
-            $msg = [string]$_.Exception.Message
-        }
-
-        $threw | Should -BeTrue
-        $msg | Should -Match 'review-cycle'
-        $msg | Should -Match 'required script not found'
-        $msg | Should -Match 'scripts/foo.ps1'
-    }
-}
-
-Describe 'Resolve-RunScript (D2 mirror, review-run prefix)' {
-    BeforeEach { script:Clear-EnvToolRoot }
-
-    It 'AC-RS-RUN-EXPLICIT-MISSING: throws with review-run prefix under explicit ToolRoot' {
+    It 'AC-RS-RUN-EXPLICIT-MISSING: throws and does NOT fall back when missing under explicit ToolRoot' {
         $tool  = script:New-CaseDir -Name 'run-exp-miss-tool'
         $local = script:New-CaseDir -Name 'run-exp-miss-local'
+        # PSScriptRoot fallback exists but must be suppressed.
         script:Write-Utf8NoBomFile -Path (Join-Path $local 'foo.ps1') -Content "# would be fallback`n"
 
         $threw = $false
@@ -233,31 +129,93 @@ Describe 'Resolve-RunScript (D2 mirror, review-run prefix)' {
         $threw | Should -BeTrue
         $msg | Should -Match 'review-run'
         $msg | Should -Match 'explicit ToolRoot'
+        $msg | Should -Match ([regex]::Escape($tool))
+        $msg | Should -Match 'scripts/foo.ps1'
     }
 
-    It 'AC-RS-RUN-IMPLICIT-FALLBACK: implicit fallback uses review-run WARN prefix' {
+    It 'AC-RS-RUN-EXPLICIT-DIAG: explicit-source diagnostic names all three explicit sources' {
+        $tool  = script:New-CaseDir -Name 'run-exp-diag-tool'
+        $local = script:New-CaseDir -Name 'run-exp-diag-local'
+
+        $threw = $false
+        $msg = ''
+        try {
+            Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit' | Out-Null
+        }
+        catch {
+            $threw = $true
+            $msg = [string]$_.Exception.Message
+        }
+
+        $threw | Should -BeTrue
+        $msg | Should -Match '-ToolRoot'
+        $msg | Should -Match 'AI_HARNESS_TOOL_ROOT'
+        $msg | Should -Match 'global stable install'
+    }
+}
+
+Describe 'Resolve-RunScript (implicit ToolRoot allows PSScriptRoot fallback with warning)' {
+    BeforeEach { script:Clear-EnvToolRoot }
+
+    It 'AC-RS-RUN-IMPLICIT-OK: returns ToolRoot/RelativePath when it exists under implicit ToolRoot' {
+        $tool  = script:New-CaseDir -Name 'run-imp-ok-tool'
+        $local = script:New-CaseDir -Name 'run-imp-ok-local'
+        $target = Join-Path $tool 'scripts/foo.ps1'
+        script:Write-Utf8NoBomFile -Path $target -Content "# fake`n"
+
+        $result = Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'implicit'
+
+        ([System.IO.Path]::GetFullPath($result)) | Should -Be ([System.IO.Path]::GetFullPath($target))
+    }
+
+    It 'AC-RS-RUN-IMPLICIT-FALLBACK: falls back to PSScriptRoot leaf when missing under implicit ToolRoot and emits WARN' {
         $tool  = script:New-CaseDir -Name 'run-imp-fb-tool'
         $local = script:New-CaseDir -Name 'run-imp-fb-local'
-        script:Write-Utf8NoBomFile -Path (Join-Path $local 'foo.ps1') -Content "# fallback`n"
+        $fallback = Join-Path $local 'foo.ps1'
+        script:Write-Utf8NoBomFile -Path $fallback -Content "# fallback`n"
 
-        $informational = & {
+        $informational = (& {
             Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'implicit' 6>&1
-        } | Out-String
+        } | Out-String -Width 8192)
 
-        $informational | Should -Match 'review-run: WARN'
+        $flat = ($informational -replace "`r?`n", ' ')
+
+        $flat | Should -Match 'WARN component script resolved via \$PSScriptRoot fallback'
+        $flat | Should -Match ([regex]::Escape($tool))
+        $flat | Should -Match 'scripts/foo.ps1'
+    }
+
+    It 'AC-RS-RUN-IMPLICIT-NOTFOUND: throws when missing under both ToolRoot and PSScriptRoot' {
+        $tool  = script:New-CaseDir -Name 'run-imp-nf-tool'
+        $local = script:New-CaseDir -Name 'run-imp-nf-local'
+
+        $threw = $false
+        $msg = ''
+        try {
+            Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'implicit' | Out-Null
+        }
+        catch {
+            $threw = $true
+            $msg = [string]$_.Exception.Message
+        }
+
+        $threw | Should -BeTrue
+        $msg | Should -Match 'review-run'
+        $msg | Should -Match 'required script not found'
+        $msg | Should -Match 'scripts/foo.ps1'
     }
 }
 
 Describe 'Caller contract (callsite consumption)' {
     BeforeEach { script:Clear-EnvToolRoot }
 
-    It 'AC-RS-CALL-1: Resolve-CycleScript default ToolRootSource is implicit (backward compat)' {
+    It 'AC-RS-CALL-1: Resolve-RunScript default ToolRootSource is implicit (backward compat)' {
         $tool  = script:New-CaseDir -Name 'call-default-tool'
         $local = script:New-CaseDir -Name 'call-default-local'
         script:Write-Utf8NoBomFile -Path (Join-Path $local 'foo.ps1') -Content "# default fallback`n"
 
         $informational = & {
-            Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local 6>&1
+            Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local 6>&1
         } | Out-String
 
         $informational | Should -Match 'WARN component script resolved via \$PSScriptRoot fallback'
@@ -268,28 +226,14 @@ Describe 'Caller contract (callsite consumption)' {
         $local = script:New-CaseDir -Name 'call-string-local'
         script:Write-Utf8NoBomFile -Path (Join-Path $tool 'scripts/foo.ps1') -Content "# fake`n"
 
-        $result = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit'
+        $result = Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit'
 
         $result | Should -BeOfType [string]
         [string]::IsNullOrEmpty($result) | Should -BeFalse
         Test-Path -LiteralPath $result -PathType Leaf | Should -BeTrue
     }
 
-    It 'AC-RS-CALL-3: Resolve-CycleScript output is a scalar (Count 1, [0] echoes the value, not null or empty)' {
-        $tool  = script:New-CaseDir -Name 'call-scalar-cyc-tool'
-        $local = script:New-CaseDir -Name 'call-scalar-cyc-local'
-        script:Write-Utf8NoBomFile -Path (Join-Path $tool 'scripts/foo.ps1') -Content "# fake`n"
-
-        $result = Resolve-CycleScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit'
-
-        $wrapped = @($result)
-        $wrapped.Count | Should -Be 1
-        $wrapped[0] | Should -Be $result
-        $result | Should -Not -BeNullOrEmpty
-        $result | Should -BeOfType [string]
-    }
-
-    It 'AC-RS-CALL-4: Resolve-RunScript output is a scalar (Count 1, [0] echoes the value, not null or empty)' {
+    It 'AC-RS-CALL-3: Resolve-RunScript output is a scalar (Count 1, [0] echoes the value, not null or empty)' {
         $tool  = script:New-CaseDir -Name 'call-scalar-run-tool'
         $local = script:New-CaseDir -Name 'call-scalar-run-local'
         script:Write-Utf8NoBomFile -Path (Join-Path $tool 'scripts/foo.ps1') -Content "# fake`n"

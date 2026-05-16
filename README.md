@@ -71,10 +71,9 @@ The canonical review artifact layout is one pass directory per Codex attempt, gr
     result.md
 ```
 
-- `<review-task-id>` identifies one Claude Code `/goal` task or one review gate. It is **not** a Claude Code chat / session id. A single session may contain multiple `<review-task-id>` directories for different `/goal` tasks.
-- `pass-NN` (zero-padded two-digit) identifies one Codex review attempt inside the corrective loop for that task. The first attempt is `pass-01`; subsequent corrective passes are `pass-02`, `pass-03`, and so on.
+- `<review-task-id>` identifies one Claude Code `/goal` task or one review gate. It is **not** a Claude Code chat / session id. A single session may contain multiple `<review-task-id>` directories for different `/goal` tasks. Operator / AI passes it explicitly via `scripts/review-prepare.ps1 -ReviewTaskId <id>`.
+- `pass-NN` (zero-padded two-digit) identifies one Codex review attempt inside the corrective loop for that task. The first attempt is `pass-01`; subsequent corrective passes are `pass-02`, `pass-03`, and so on. `review-prepare.ps1 -Pass <pass-NN>` selects it explicitly; omitting `-Pass` auto-allocates the next pass under the same task directory.
 - Each `pass-NN/` is write-once. If the input or result is wrong or stale, allocate a fresh `pass-NN/` under the same `<review-task-id>/`; do not edit the old pass to close the review.
-- Current scripts emit a flat `log/review/<script-allocated-id>/` directory instead of the canonical two-level `<review-task-id>/pass-NN/` layout. This transitional divergence is documented in `docs/REVIEW_RESULT_CONTRACT.md` §4a and tracked in `docs/backlog/review.md` "Removed legacy review artifacts." Operators and AI map each script-allocated-id to one conceptual pass of one task in their reporting.
 
 `input.md` is authored by Claude Code (the operator-role AI). It contains the target files, context, required inspection paths, review questions, constraints, and the final verdict instruction, in five required H2 sections (`## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`, `## Final verdict`) plus recommended informational sections (`## Stage`, `## Purpose`, `## Target files`). The user does not type CLI arguments; the natural-language entrypoint is `docs/OPERATOR_GUIDE_KR.md` §7, and the skill that orchestrates the run is `snippets/claude-skills/ai-harness-review/SKILL.md`.
 
@@ -84,7 +83,7 @@ The toolset script that drives a pass performs only deterministic gates: pass-di
 
 - Single-shot, user-triggered. One Codex CLI execution per `review-run.ps1` call. No retry, no fallback model use, no auto-fix loop.
 - Verdict (`yes` / `no` / `yes with risk`) does not approve commit, push, publish, merge, or release. The user decides the next action explicitly.
-- No external staging folders, no sidecar JSON, no hash-binding files, and no flat single-level run-id layout are part of the canonical contract. Earlier transitional artifact names (`meta.json`, `target-files.list`, `result.json`, `log/review-targets/`, `log/review-requests/`, flat `log/review/<run-id>/`) are retained only as removed-legacy historical reference in `docs/backlog/review.md` and `docs/backlog/operations.md`; they are not operator paths.
+- No external staging folders, no sidecar JSON, no hash-binding files, and no flat single-level run-id layout are part of the canonical contract. Historical references to removed-legacy artifact shapes live only in `docs/backlog/review.md` and `docs/backlog/operations.md` and are not operator paths.
 - AI-to-Codex transport is Markdown inside `input.md`. Multi-line content, Korean, ASCII double-quotes, and bullet lists live inside the file. PowerShell argv quoting is not the transport.
 
 Full contract: `docs/REVIEW_RESULT_CONTRACT.md`. Day-to-day natural-language UX, modes A/B, and the acceptance checklist: `docs/OPERATOR_GUIDE_KR.md` §7, §10, §13. CLI / runtime dependency boundary: `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`.
@@ -122,7 +121,7 @@ The marker text `AI_HARNESS_TOOLSET_GLOBAL` is the canonical form for both snipp
 
 ## Optional Claude Code skill
 
-`snippets/claude-skills/ai-harness-review/SKILL.md` is an optional, copy-only Claude Code skill template. It defines the natural-language entrypoint for the canonical two-step review flow — `scripts/review-prepare.ps1` → AI authors the pass `input.md` (canonical: `<review-task-id>/pass-NN/input.md`; current script emits flat `<script-allocated-id>/input.md` per `docs/REVIEW_RESULT_CONTRACT.md` §4a) → `scripts/review-run.ps1 -RunId <script-allocated-id>` — that natural-language triggers like `현재 진행한 작업 코덱스 리뷰 진행해` resolve to. Adoption is a deliberate user action — copy it to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `~/.claude/skills/ai-harness-review/SKILL.md` (global, opt-in only). Nothing is auto-installed. Details: `docs/OPERATOR_GUIDE_KR.md` sections 7–8.
+`snippets/claude-skills/ai-harness-review/SKILL.md` is an optional, copy-only Claude Code skill template. It defines the natural-language entrypoint for the canonical two-step review flow — `scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>]` → AI authors the pass `input.md` at `log/review/<review-task-id>/pass-NN/input.md` → `scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` — that natural-language triggers like `현재 진행한 작업 코덱스 리뷰 진행해` resolve to. Adoption is a deliberate user action — copy it to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `~/.claude/skills/ai-harness-review/SKILL.md` (global, opt-in only). Nothing is auto-installed. Details: `docs/OPERATOR_GUIDE_KR.md` sections 7–8.
 
 ## What this toolset does not do
 

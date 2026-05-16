@@ -42,15 +42,15 @@ BeforeAll {
 
     function script:New-StableInstall {
         # Builds a channel-3 global stable install dir. With -Valid it carries the
-        # entrypoint scripts/review-cycle.ps1 (a complete payload); without it the
-        # directory exists but the payload is incomplete.
+        # canonical entrypoint scripts/review-prepare.ps1 (a complete payload);
+        # without it the directory exists but the payload is incomplete.
         param(
             [string] $Name,
             [switch] $Valid
         )
         $root = script:New-CaseDir -Name $Name
         if ($Valid) {
-            script:Write-Utf8NoBomFile -Path (Join-Path $root 'scripts/review-cycle.ps1') -Content "# fake entrypoint`n"
+            script:Write-Utf8NoBomFile -Path (Join-Path $root 'scripts/review-prepare.ps1') -Content "# fake entrypoint`n"
         }
         return $root
     }
@@ -216,7 +216,7 @@ Describe 'Get-ToolRoot channel 3 (global stable install)' {
     }
 
     It 'AC-PATH-CH3-3: present-but-incomplete stable payload fails fast with a clear diagnostic' {
-        $stableInvalid = script:New-StableInstall -Name 'ch3-incomplete'   # no scripts/review-cycle.ps1
+        $stableInvalid = script:New-StableInstall -Name 'ch3-incomplete'   # no scripts/review-prepare.ps1
         # Project IS a valid dogfooding repo, proving channel 3 fails fast rather
         # than silently skipping to an available channel-4 fallback.
         $project = script:New-MultiMarkerSourceRepo -Name 'ch3-incomplete-project'
@@ -232,7 +232,7 @@ Describe 'Get-ToolRoot channel 3 (global stable install)' {
         $threw | Should -BeTrue -Because 'an existing but incomplete stable payload must fail fast, not silently skip'
         $msg | Should -Match 'channel 3'
         $msg | Should -Match 'payload is incomplete'
-        $msg | Should -Match 'review-cycle\.ps1'
+        $msg | Should -Match 'review-prepare\.ps1'
         $msg | Should -Match ([regex]::Escape($stableInvalid))
     }
 

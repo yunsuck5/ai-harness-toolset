@@ -21,7 +21,7 @@ This skill drives the ai-harness-toolset canonical review flow. The canonical re
 - `pass-NN` (zero-padded two-digit) identifies one Codex review attempt inside the corrective loop for that task. The first attempt is `pass-01`; the next is `pass-02`; and so on.
 - Each `pass-NN/` is write-once. If the input or result is wrong or stale, allocate a new `pass-NN/` under the same `<review-task-id>/`; do not edit the old pass to close the review. If the underlying review task changes (different `/goal` or different gate), use a new `<review-task-id>/`.
 
-Source-of-truth for the contract is `docs/REVIEW_RESULT_CONTRACT.md`. This skill mirrors that contract. Current scripts emit a flat `log/review/<script-allocated-id>/` directory instead of the canonical two-level `<review-task-id>/pass-NN/` layout; that transitional divergence is documented in `docs/REVIEW_RESULT_CONTRACT.md` §4a and tracked in `docs/backlog/review.md` "Removed legacy review artifacts." Map each script-allocated-id to one conceptual pass of one task in your reporting.
+Source-of-truth for the contract is `docs/REVIEW_RESULT_CONTRACT.md`. This skill mirrors that contract. The scripts emit the canonical two-level `<review-task-id>/pass-NN/` layout directly; the only on-disk record per pass is the `input.md` + `result.md` pair.
 
 Adoption path: copy this file to `<ProjectRoot>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `%USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md` (user-global, opt-in). No file is auto-installed.
 
@@ -75,18 +75,18 @@ Common rules: use repo-relative forward-slash paths. Always exclude `log/`. The 
 
 ### 3. Allocate the pass directory
 
-Pick a `<review-task-id>` for this work: a stable string identifying the `/goal` task or review gate (for example, `topology-simplification-2026-05-16`). Reuse the same `<review-task-id>` for every pass of the same task; pick a new one only when the task itself changes. Determine the `pass-NN` for this attempt: `pass-01` for the first Codex attempt of this task; `pass-02`, `pass-03`, ... for subsequent corrective-loop attempts.
+Pick a `<review-task-id>` for this work: a stable string identifying the `/goal` task or review gate (for example, `topology-simplification-2026-05-16`). Reuse the same `<review-task-id>` for every pass of the same task; pick a new one only when the task itself changes. Determine the `pass-NN` for this attempt: `pass-01` for the first Codex attempt of this task; `pass-02`, `pass-03`, ... for subsequent corrective-loop attempts. You may pass `-Pass <pass-NN>` explicitly, or omit it to let `review-prepare.ps1` auto-allocate the next pass under the same task directory.
 
-Invoke `<ToolRoot>/scripts/review-prepare.ps1` once with the target file list, the chosen stage, and a short purpose string. The current script allocates a flat `<script-allocated-id>/` directory under `<ProjectRoot>/log/review/` instead of the canonical `<review-task-id>/pass-NN/` two-level path (see `docs/REVIEW_RESULT_CONTRACT.md` §4a transitional divergence). Capture the printed `<script-allocated-id>` from stdout; treat it as the disk-level handle for the conceptual `<review-task-id>/pass-NN/` you chose, and use it as `-RunId` in step 5. Report both names — the conceptual `<review-task-id>/pass-NN` and the on-disk `<script-allocated-id>` — to the user.
+Invoke `<ToolRoot>/scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>] -Stage <stage> -Purpose <line>` once. The script creates the canonical pass directory `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` and seeds `input.md` from `templates/review-input.md`.
 
 Hard rules for step 3:
 
-- The seeded `input.md` is template guidance, not the actual review request. You will overwrite it in step 4. Do not invoke Codex yet.
-- Do not reuse an existing `<script-allocated-id>`. Let `review-prepare.ps1` allocate a fresh one for every pass.
+- The seeded `input.md` is the template body verbatim, not the actual review request. You will overwrite it in step 4. Do not invoke Codex yet.
+- Each `<review-task-id>/pass-NN/` is write-once. If a pass already exists for the chosen `pass-NN`, the script refuses; allocate a new `pass-NN` under the same `<review-task-id>`.
 
 ### 4. Author the pass `input.md`
 
-Open `<ProjectRoot>/log/review/<script-allocated-id>/input.md` (the file just seeded by step 3 for the conceptual `<review-task-id>/pass-NN/`) and overwrite its body with the actual review request. Keep `templates/review-input.md` as the shape reference.
+Open `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` (the file just seeded by step 3) and overwrite its body with the actual review request. Keep `templates/review-input.md` as the shape reference.
 
 The file must contain these required H2 headings (exact text), each with non-empty body:
 
@@ -108,7 +108,7 @@ If you ran a Claude self-review (intent 2), summarize your own findings inside `
 
 ### 5. Run the reviewer exactly once
 
-Invoke `<ToolRoot>/scripts/review-run.ps1 -RunId <script-allocated-id>` once. It calls `scripts/review-input-verify.ps1` against the `input.md` you wrote, invokes Codex CLI once (`--ask-for-approval never`, `--sandbox read-only`, `--output-last-message <script-allocated-id>/result.md`), and exits.
+Invoke `<ToolRoot>/scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` once. It calls `scripts/review-input-verify.ps1` against the `input.md` you wrote, invokes Codex CLI once (`--ask-for-approval never`, `--sandbox read-only`, `--output-last-message <review-task-id>/pass-NN/result.md`), validates the `## Verdict` shape, and exits.
 
 Hard rules for step 5:
 
@@ -120,7 +120,7 @@ If `review-run.ps1` exits non-zero, stop. Report the exit code and the last stat
 
 ### 6. Read `result.md` and confirm the verdict
 
-After clean exit, read `log/review/<script-allocated-id>/result.md` (= the canonical `<review-task-id>/pass-NN/result.md`):
+After clean exit, read `log/review/<review-task-id>/pass-NN/result.md`:
 
 - Confirm exactly one `## Verdict` heading exists.
 - Confirm the first non-empty line after `## Verdict` (whitespace-trimmed) is exactly one of `yes`, `no`, `yes with risk` — lowercase, no qualifier, no inline form.
@@ -149,7 +149,7 @@ Always include in the report, kept visually distinct:
 1. **Entry-point error** — none, or the exit code plus the last status line. State whether a pass directory was allocated and whether `result.md` exists for it.
 2. **Retry decision** — none, or what was retried, why, and whether explicit scoped re-approval was sought.
 3. **Review task** — `<review-task-id>` for this work.
-4. **Final pass** — the final `pass-NN` (e.g., `pass-01`, `pass-03`) and its on-disk `<script-allocated-id>`, plus path to `result.md`.
+4. **Final pass** — the final `pass-NN` (e.g., `pass-01`, `pass-03`) and the canonical path `log/review/<review-task-id>/pass-NN/result.md`.
 5. **Corrective loop count** — the number of passes consumed in this review task (1 if `pass-01` succeeded; N if the final pass was `pass-NN`).
 6. **Final reviewer result** — the Codex verdict verbatim from the final pass's `result.md`.
 7. For intent 2: your own self-review summary in 3–6 lines and the merged final verdict.
@@ -163,8 +163,8 @@ This skill must never run `git commit`, `git push`, `git tag`, `git merge`, or a
 
 - Entry-point non-zero exit: report exit code and the last status line. Do not retry without explicit scoped user approval; present the corrected invocation first and wait for go-ahead. This applies to every flavor (input-verify, Codex error, verdict parse error).
 - Codex CLI not installed or not on PATH: report that the CLI environment is not ready and point to `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`. Do not attempt to install anything.
-- Verdict parse failure: the failed pass directory is preserved on disk. Report its path (both the canonical `<review-task-id>/pass-NN` framing and the on-disk `<script-allocated-id>`) and stop. Do not edit files inside that pass directory.
-- If `input.md` and `result.md` both exist but the pass is older than the source / docs / template / snippet content it covers, that pass is stale. Allocate a fresh `pass-NN` under the same `<review-task-id>` (and a fresh on-disk `<script-allocated-id>`) rather than reusing the stale pass's verdict.
+- Verdict parse failure: the failed pass directory is preserved on disk. Report its canonical path `log/review/<review-task-id>/pass-NN/` and stop. Do not edit files inside that pass directory.
+- If `input.md` and `result.md` both exist but the pass is older than the source / docs / template / snippet content it covers, that pass is stale. Allocate a fresh `pass-NN` under the same `<review-task-id>` rather than reusing the stale pass's verdict.
 
 ## Out of scope
 
@@ -174,4 +174,4 @@ This skill must never run `git commit`, `git push`, `git tag`, `git merge`, or a
 - Auto-committing, auto-pushing, auto-merging, auto-releasing, auto-deploying.
 - Modifying `%USERPROFILE%\.claude\`, `%USERPROFILE%\.codex\`, `%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md` (or `%CODEX_HOME%\AGENTS.md` or `AGENTS.override.md` at the Codex user-global scope), project-root `CLAUDE.md` / `AGENTS.md`, or the user's git config. `%USERPROFILE%\.claude\AGENTS.md` is forbidden. Managed-block insert / replace in those global files is a separate explicit user-approved scope (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6).
 - Cleaning up `log/review/<review-task-id>/` or `log/review/<review-task-id>/pass-NN/` directories.
-- Producing, reading, or relying on artifacts outside the canonical `input.md` + `result.md` pair (no `meta.json`, no sidecar `result.json`, no external staging folder is part of the canonical contract). If those files exist on disk from earlier transitional implementations, treat them as runtime noise, not as review record (`docs/backlog/review.md`).
+- Producing, reading, or relying on any artifact outside the canonical `input.md` + `result.md` pair. Sidecar JSON, hash-binding files, and external staging folders are not part of the canonical contract. If such files exist on disk from earlier transitional implementations, treat them as runtime noise, not as review record (`docs/backlog/review.md`).

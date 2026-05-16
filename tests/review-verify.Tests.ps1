@@ -5,11 +5,6 @@ BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
     $script:ReviewVerifyScript = Join-Path $script:RepoRoot 'scripts/review-verify.ps1'
 
-    function script:Get-Sha256Lower {
-        param([string] $Path)
-        return ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant())
-    }
-
     function script:Write-Utf8NoBomFile {
         param(
             [string] $Path,
@@ -24,7 +19,7 @@ BeforeAll {
         [System.IO.File]::WriteAllText($resolved, $Content, $encoding)
     }
 
-    function script:New-PesterTestCaseRoot {
+    function script:New-VerifyCase {
         param([string] $CaseName)
         $caseRoot = Join-Path $TestDrive ('pester-review-verify-' + $CaseName)
         if (Test-Path -LiteralPath $caseRoot) {
@@ -34,189 +29,118 @@ BeforeAll {
         return ([System.IO.Path]::GetFullPath($caseRoot))
     }
 
-    function script:New-MetaPayload {
-        param(
-            [string] $ProjectRoot,
-            [string] $RunId,
-            [string] $TargetPath,
-            [string] $TargetSha256,
-            $SourceHead = $null,
-            $TargetFiles = $null
-        )
-        $logRoot = [System.IO.Path]::GetFullPath((Join-Path $ProjectRoot 'log'))
-        $tfArray = @()
-        if ($null -ne $TargetFiles) {
-            $tfArray = @($TargetFiles)
-        }
-        return [ordered]@{
-            schemaVersion      = 1
-            runId              = $RunId
-            createdAtUtc       = (Get-Date).ToUniversalTime().ToString('o')
-            projectRoot        = $ProjectRoot
-            toolRoot           = $ProjectRoot
-            projectLogRoot     = $logRoot
-            targetPath         = $TargetPath
-            targetRelativePath = 'target.txt'
-            targetSha256       = $TargetSha256
-            targetFiles        = $tfArray
-            stage              = 'design'
-            purpose            = 'pester regression'
-            reviewer           = 'codex'
-            sourceHead         = $SourceHead
-            reviewerConfig     = [ordered]@{
-                provider        = 'openai'
-                model           = 'gpt-5.5'
-                fallbackModel   = 'gpt-5.4'
-                reasoningEffort = 'medium'
-                timeoutSeconds  = 300
-                sandbox         = 'read-only'
-            }
-            freshnessPolicy    = [ordered]@{
-                type    = 'target-sha256-match'
-                failure = 'fail'
-            }
-        }
+    function script:Build-FilledInput {
+        $body = @()
+        $body += '# Review Input'
+        $body += ''
+        $body += '## Stage'
+        $body += ''
+        $body += 'implementation'
+        $body += ''
+        $body += '## Purpose'
+        $body += ''
+        $body += 'pester verify.'
+        $body += ''
+        $body += '## Target files'
+        $body += ''
+        $body += '- pester/target.txt'
+        $body += ''
+        $body += '## Context'
+        $body += ''
+        $body += 'pester context line.'
+        $body += ''
+        $body += '## Required inspection paths'
+        $body += ''
+        $body += 'pester inspection path.'
+        $body += ''
+        $body += '## Review questions'
+        $body += ''
+        $body += 'pester review question.'
+        $body += ''
+        $body += '## Constraints'
+        $body += ''
+        $body += 'pester constraint.'
+        $body += ''
+        $body += '## Final verdict'
+        $body += ''
+        $body += 'yes / no / yes with risk'
+        $body += ''
+        return ($body -join "`n")
     }
 
-    function script:Initialize-FreshPacket {
+    function script:Build-ResultMd {
+        param([string] $Verdict = 'yes')
+        $body = @()
+        $body += '# Review Result'
+        $body += ''
+        $body += '## Verdict'
+        $body += ''
+        $body += $Verdict
+        $body += ''
+        $body += '## Findings'
+        $body += ''
+        $body += 'No blocking findings.'
+        $body += ''
+        return ($body -join "`n")
+    }
+
+    function script:Initialize-CanonicalPass {
         param(
             [string] $CaseName,
-            [string] $RunId = '20260430-120000-aaaaaa',
-            [string] $TargetContent = "pester target body`n",
-            $MetaSourceHead = $null
+            [string] $ReviewTaskId = 'verify-task',
+            [string] $Pass = 'pass-01',
+            [switch] $WithResult,
+            [string] $Verdict = 'yes',
+            [string] $ResultBodyOverride
         )
-        $projectRoot = script:New-PesterTestCaseRoot -CaseName $CaseName
+        $projectRoot = script:New-VerifyCase -CaseName $CaseName
+        $passDir = Join-Path $projectRoot ('log/review/' + $ReviewTaskId + '/' + $Pass)
+        $null = New-Item -ItemType Directory -Path $passDir -Force
+        $inputPath = Join-Path $passDir 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content (script:Build-FilledInput)
 
-        $targetPath = Join-Path $projectRoot 'target.txt'
-        script:Write-Utf8NoBomFile -Path $targetPath -Content $TargetContent
-        $resolvedTarget = [System.IO.Path]::GetFullPath($targetPath)
-        $targetSha = script:Get-Sha256Lower -Path $resolvedTarget
-
-        $runDir = Join-Path $projectRoot ('log/review/' + $RunId)
-        $null = New-Item -ItemType Directory -Path $runDir -Force
-
-        $meta = script:New-MetaPayload `
-            -ProjectRoot $projectRoot `
-            -RunId $RunId `
-            -TargetPath $resolvedTarget `
-            -TargetSha256 $targetSha `
-            -SourceHead $MetaSourceHead
-
-        $metaPath = Join-Path $runDir 'meta.json'
-        $metaJson = $meta | ConvertTo-Json -Depth 32
-        script:Write-Utf8NoBomFile -Path $metaPath -Content $metaJson
-
-        $inputPath = Join-Path $runDir 'input.md'
-        script:Write-Utf8NoBomFile -Path $inputPath -Content "# Review Input`n- Run ID: $RunId`n"
+        $resultPath = Join-Path $passDir 'result.md'
+        if ($WithResult -or -not [string]::IsNullOrEmpty($ResultBodyOverride)) {
+            $content = ''
+            if (-not [string]::IsNullOrEmpty($ResultBodyOverride)) {
+                $content = $ResultBodyOverride
+            }
+            else {
+                $content = script:Build-ResultMd -Verdict $Verdict
+            }
+            script:Write-Utf8NoBomFile -Path $resultPath -Content $content
+        }
 
         return [pscustomobject]@{
-            ProjectRoot = $projectRoot
-            RunId       = $RunId
-            RunDir      = $runDir
-            TargetPath  = $resolvedTarget
-            TargetSha   = $targetSha
-            MetaPath    = $metaPath
-            InputPath   = $inputPath
+            ProjectRoot   = $projectRoot
+            ReviewTaskId  = $ReviewTaskId
+            Pass          = $Pass
+            PassDir       = $passDir
+            InputPath     = $inputPath
+            ResultPath    = $resultPath
         }
-    }
-
-    function script:Add-ResultArtifacts {
-        param(
-            [pscustomobject] $Packet,
-            [string] $Verdict = 'yes',
-            [string] $TargetShaOverride = '',
-            [string] $RunIdOverride = '',
-            [switch] $SkipResultMarkdown,
-            [switch] $OmitTargetPath,
-            [switch] $EmptyTargetPath,
-            [string] $TargetPathOverride = '',
-            [switch] $OmitCreatedAtUtc,
-            [switch] $EmptyCreatedAtUtc,
-            [string] $CreatedAtUtcOverride = '',
-            [string] $SourceHead = ''
-        )
-
-        $resultMdPath = Join-Path $Packet.RunDir 'result.md'
-        if (-not $SkipResultMarkdown) {
-            script:Write-Utf8NoBomFile -Path $resultMdPath -Content "# Review Result`nVerdict: $Verdict`n"
-        }
-
-        $inputSha = script:Get-Sha256Lower -Path $Packet.InputPath
-        $resultMdSha = ''
-        if (Test-Path -LiteralPath $resultMdPath -PathType Leaf) {
-            $resultMdSha = script:Get-Sha256Lower -Path $resultMdPath
-        }
-
-        $effectiveTargetSha = $Packet.TargetSha
-        if (-not [string]::IsNullOrEmpty($TargetShaOverride)) {
-            $effectiveTargetSha = $TargetShaOverride
-        }
-        $effectiveRunId = $Packet.RunId
-        if (-not [string]::IsNullOrEmpty($RunIdOverride)) {
-            $effectiveRunId = $RunIdOverride
-        }
-
-        $effectiveTargetPath = $Packet.TargetPath
-        if (-not [string]::IsNullOrEmpty($TargetPathOverride)) {
-            $effectiveTargetPath = $TargetPathOverride
-        }
-        if ($EmptyTargetPath) {
-            $effectiveTargetPath = ''
-        }
-
-        $effectiveCreatedAt = (Get-Date).ToUniversalTime().ToString('o')
-        if (-not [string]::IsNullOrEmpty($CreatedAtUtcOverride)) {
-            $effectiveCreatedAt = $CreatedAtUtcOverride
-        }
-        if ($EmptyCreatedAtUtc) {
-            $effectiveCreatedAt = ''
-        }
-
-        $obj = [ordered]@{
-            schemaVersion        = 1
-            runId                = $effectiveRunId
-            targetSha256         = $effectiveTargetSha
-            inputSha256          = $inputSha
-            resultMarkdownSha256 = $resultMdSha
-            verdict              = $Verdict
-        }
-        if (-not $OmitTargetPath) {
-            $obj.targetPath = $effectiveTargetPath
-        }
-        if (-not $OmitCreatedAtUtc) {
-            $obj.createdAtUtc = $effectiveCreatedAt
-        }
-        if (-not [string]::IsNullOrEmpty($SourceHead)) {
-            $obj.sourceHead = $SourceHead
-        }
-
-        $resultJsonPath = Join-Path $Packet.RunDir 'result.json'
-        script:Write-Utf8NoBomFile -Path $resultJsonPath -Content (($obj | ConvertTo-Json -Depth 32))
     }
 
     function script:Invoke-ReviewVerify {
         param(
             [string] $ProjectRoot,
-            [string] $RunId,
+            [string] $ReviewTaskId,
+            [string] $Pass,
             [string] $ToolRoot,
-            [switch] $OmitToolRoot,
             [switch] $RequireResult
         )
         $procArgs = @(
             '-NoProfile',
             '-ExecutionPolicy', 'Bypass',
             '-File', $script:ReviewVerifyScript,
-            '-RunId', $RunId,
+            '-ReviewTaskId', $ReviewTaskId,
+            '-Pass', $Pass,
             '-ProjectRoot', $ProjectRoot
         )
-        if (-not $OmitToolRoot) {
-            if ([string]::IsNullOrEmpty($ToolRoot)) {
-                # Default to ProjectRoot so meta.toolRoot fixture (which sets
-                # toolRoot = ProjectRoot) matches at runtime under the D6 binding check.
-                $ToolRoot = $ProjectRoot
-            }
-            $procArgs += @('-ToolRoot', $ToolRoot)
+        if ([string]::IsNullOrEmpty($ToolRoot)) {
+            $ToolRoot = $script:RepoRoot
         }
+        $procArgs += @('-ToolRoot', $ToolRoot)
         if ($RequireResult) { $procArgs += '-RequireResult' }
 
         $combined = & powershell.exe @procArgs 2>&1
@@ -230,422 +154,156 @@ BeforeAll {
     }
 }
 
-Describe 'review-verify default mode' {
-    It 'AC1: passes for a fresh packet' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac1'
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId
-        $result.ExitCode | Should -Be 0
-        $result.Output | Should -Match 'review-verify: PASS'
+Describe 'review-verify default mode (canonical)' {
+    It 'AC-VF1: passes when only canonical input.md is present (no sidecars required)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'vf1'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'review-verify: PASS'
+        $r.Output | Should -Match 'result.md not present'
     }
 
-    It 'AC2: fails when target file is stale (sha mismatch)' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac2'
-        script:Write-Utf8NoBomFile -Path $packet.TargetPath -Content "pester target body MUTATED`n"
+    It 'AC-VF2: fails when input.md is missing' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'vf2'
+        Remove-Item -LiteralPath $packet.InputPath -Force
 
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL stale'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'input\.md missing'
     }
 
-    It 'AC5: rejects RunId containing path traversal' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac5'
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId '../evil'
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL invalid RunId'
+    It 'AC-VF3: fails when input.md is shape-invalid' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'vf3'
+        script:Write-Utf8NoBomFile -Path $packet.InputPath -Content "# Review Input`n"   # no required headings
+
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'input\.md shape invalid'
     }
 
-    It 'AC15: passes when result.md and result.json are absent' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac15'
-        Test-Path -LiteralPath (Join-Path $packet.RunDir 'result.md')   | Should -BeFalse
-        Test-Path -LiteralPath (Join-Path $packet.RunDir 'result.json') | Should -BeFalse
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId
-        $result.ExitCode | Should -Be 0
-        $result.Output | Should -Match 'review-verify: PASS'
-        $result.Output | Should -Match 'result.md not present'
-    }
-}
-
-Describe 'review-verify -RequireResult mode' {
-    It 'AC16: passes when result.md and result.json are valid and bound to meta' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac16'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Be 0
-        $result.Output | Should -Match 'result.json present and binding verified'
-        $result.Output | Should -Match 'review-verify: PASS'
+    It 'AC-VF4: rejects ReviewTaskId containing path traversal' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'vf4'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId '../escape' -Pass $packet.Pass
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'invalid ReviewTaskId'
     }
 
-    It 'AC17: fails when result.md is missing' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac17'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -SkipResultMarkdown
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.md missing'
+    It 'AC-VF5: rejects Pass that is not pass-NN shape' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'vf5'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass 'pass-1'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'invalid Pass'
     }
 
-    It 'AC18: fails when result.json targetSha256 does not match meta' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac18'
-        $bogusSha = '0000000000000000000000000000000000000000000000000000000000000000'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -TargetShaOverride $bogusSha
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json targetSha256 mismatch'
+    It 'AC-VF6: passes when result.md is also present (informational, default mode)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'vf6' -WithResult -Verdict 'yes'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'result.md present'
+        $r.Output | Should -Match 'review-verify: PASS'
     }
 
-    It 'AC18b: fails when result.json inputSha256 does not match disk-recomputed input.md SHA' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac18b'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes'
-
-        # Mutate input.md after result.json is bound so the on-disk SHA diverges
-        # from the inputSha256 stored in result.json.
-        script:Write-Utf8NoBomFile -Path $packet.InputPath -Content "# Review Input`n- Run ID: $($packet.RunId)`nmutated after binding`n"
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json inputSha256 mismatch'
-    }
-
-    It 'AC18c: fails when result.json resultMarkdownSha256 does not match disk-recomputed result.md SHA' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac18c'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes'
-
-        # Mutate result.md after result.json is bound so the on-disk SHA diverges
-        # from the resultMarkdownSha256 stored in result.json.
-        $resultMdPath = Join-Path $packet.RunDir 'result.md'
-        script:Write-Utf8NoBomFile -Path $resultMdPath -Content "# Review Result`nVerdict: yes`nmutated after binding`n"
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json resultMarkdownSha256 mismatch'
-    }
-
-    It 'AC18d: fails when result.json is present but contains malformed JSON' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac18d'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes'
-
-        # Overwrite the bound result.json with an intentionally malformed payload.
-        # result.md and input.md remain bound; only the JSON is corrupted.
-        $resultJsonPath = Join-Path $packet.RunDir 'result.json'
-        Test-Path -LiteralPath $resultJsonPath -PathType Leaf | Should -BeTrue
-        script:Write-Utf8NoBomFile -Path $resultJsonPath -Content "{ this is not valid json"
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json invalid JSON'
-    }
-
-    It 'AC19: fails when result.json verdict is not in the allowed set' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac19'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'maybe'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json verdict invalid'
-    }
-
-    It 'AC20: fails when result.json targetPath is missing' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac20-missing'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -OmitTargetPath
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json targetPath missing or empty'
-    }
-
-    It 'AC20b: fails when result.json targetPath is empty' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac20-empty'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -EmptyTargetPath
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json targetPath missing or empty'
-    }
-
-    It 'AC21: fails when result.json targetPath does not match meta.targetPath after normalization' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac21'
-        $bogusPath = Join-Path $packet.ProjectRoot 'not-the-target.txt'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -TargetPathOverride $bogusPath
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json targetPath mismatch'
-    }
-
-    It 'AC21b: passes when result.json targetPath matches meta.targetPath in different separator form' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac21b'
-        $altPath = $packet.TargetPath.Replace('\', '/')
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -TargetPathOverride $altPath
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Be 0
-        $result.Output | Should -Match 'review-verify: PASS'
-    }
-
-    It 'AC22: fails when result.json createdAtUtc has exact shape but calendar-invalid value' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac22-unparseable'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-02-30T07:12:34.1234567Z'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not parseable'
-    }
-
-    It 'AC22b: fails when createdAtUtc uses a non-Z offset shape' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac22-nonutc'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T12:00:00+09:00'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
-    }
-
-    It 'AC22c: fails when result.json createdAtUtc is empty' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac22-empty'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -EmptyCreatedAtUtc
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json createdAtUtc missing or empty'
-    }
-
-    It 'AC25: passes when createdAtUtc uses exact yyyy-MM-ddTHH:mm:ss.fffffffZ shape' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac25'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T07:12:34.1234567Z'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Be 0
-        $result.Output | Should -Match 'review-verify: PASS'
-    }
-
-    It 'AC26: fails when createdAtUtc has no fractional seconds' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac26'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T07:12:34Z'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
-    }
-
-    It 'AC27: fails when createdAtUtc uses +00:00 instead of Z' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac27'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T07:12:34.1234567+00:00'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
-    }
-
-    It 'AC28: fails when createdAtUtc is a parseable UTC string in non-contract shape' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac28'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride 'Thu, 30 Apr 2026 07:12:34 GMT'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
-    }
-
-    It 'AC29: fails when createdAtUtc uses lowercase z' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac29'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride '2026-04-30T07:12:34.1234567z'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
-    }
-
-    It 'AC30: fails when createdAtUtc uses non-ASCII decimal digits' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac30'
-        $arabicIndicBase = 0x0660
-        $sb = New-Object System.Text.StringBuilder
-        foreach ($ch in '2026-04-30T07:12:34.1234567Z'.ToCharArray()) {
-            if ($ch -ge '0' -and $ch -le '9') {
-                $offset = [int][char]$ch - [int][char]'0'
-                [void]$sb.Append([char]($arabicIndicBase + $offset))
-            }
-            else {
-                [void]$sb.Append($ch)
-            }
-        }
-        $arabicIndicTimestamp = $sb.ToString()
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -CreatedAtUtcOverride $arabicIndicTimestamp
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json createdAtUtc not exact UTC shape'
-    }
-
-    It 'AC23: fails when both meta.sourceHead and result.sourceHead are non-empty and mismatch' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac23' -MetaSourceHead 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -SourceHead 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL result\.json sourceHead mismatch'
-    }
-
-    It 'AC23b: passes when both sourceHead values are non-empty and match exactly' {
-        $sha = 'cccccccccccccccccccccccccccccccccccccccc'
-        $packet = script:Initialize-FreshPacket -CaseName 'ac23b' -MetaSourceHead $sha
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes' -SourceHead $sha
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Be 0
-        $result.Output | Should -Match 'review-verify: PASS'
-    }
-
-    It 'AC24: passes when meta.sourceHead is null and result.sourceHead is absent' {
-        $packet = script:Initialize-FreshPacket -CaseName 'ac24'
-        script:Add-ResultArtifacts -Packet $packet -Verdict 'yes'
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -RequireResult
-        $result.ExitCode | Should -Be 0
-        $result.Output | Should -Match 'review-verify: PASS'
+    It 'AC-VF7: pass directory not found is reported as FAIL (no implicit creation)' {
+        $project = script:New-VerifyCase -CaseName 'vf7'
+        # Create just the log/review/ root so containment checks pass.
+        $null = New-Item -ItemType Directory -Path (Join-Path $project 'log/review') -Force
+        $r = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId 'never-prepared' -Pass 'pass-01'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'pass directory not found'
     }
 }
 
-Describe 'review-verify default mode targetFiles[]' {
-    It 'AC31: passes when all targetFiles[] entries are fresh' {
-        $projectRoot = script:New-PesterTestCaseRoot -CaseName 'ac31'
+Describe 'review-verify -RequireResult mode (canonical)' {
+    It 'AC-VF-RR1: passes on canonical input.md + result.md alone (no meta.json / result.json needed)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-pass' -WithResult -Verdict 'yes'
 
-        $primaryPath = Join-Path $projectRoot 'target.txt'
-        script:Write-Utf8NoBomFile -Path $primaryPath -Content "primary body`n"
-        $primaryFull = [System.IO.Path]::GetFullPath($primaryPath)
-        $primarySha = script:Get-Sha256Lower -Path $primaryFull
+        # Prove there are no sidecars on disk.
+        Test-Path -LiteralPath (Join-Path $packet.PassDir 'meta.json')         -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $packet.PassDir 'result.json')       -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $packet.PassDir 'target-files.list') -PathType Leaf | Should -BeFalse
 
-        $sub = Join-Path $projectRoot 'src'
-        $null = New-Item -ItemType Directory -Path $sub -Force
-        $extraPath = Join-Path $sub 'extra.txt'
-        script:Write-Utf8NoBomFile -Path $extraPath -Content "extra body`n"
-        $extraSha = script:Get-Sha256Lower -Path ([System.IO.Path]::GetFullPath($extraPath))
-
-        $runId = '20260506-200000-ac31aa'
-        $runDir = Join-Path $projectRoot ('log/review/' + $runId)
-        $null = New-Item -ItemType Directory -Path $runDir -Force
-
-        $tf = @(
-            [ordered]@{ path = 'target.txt';     sha256 = $primarySha }
-            [ordered]@{ path = 'src/extra.txt';  sha256 = $extraSha }
-        )
-
-        $meta = script:New-MetaPayload `
-            -ProjectRoot $projectRoot `
-            -RunId $runId `
-            -TargetPath $primaryFull `
-            -TargetSha256 $primarySha `
-            -TargetFiles $tf
-
-        $metaPath = Join-Path $runDir 'meta.json'
-        $metaJson = $meta | ConvertTo-Json -Depth 32
-        script:Write-Utf8NoBomFile -Path $metaPath -Content $metaJson
-
-        $inputPath = Join-Path $runDir 'input.md'
-        script:Write-Utf8NoBomFile -Path $inputPath -Content "# Review Input`n"
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $projectRoot -RunId $runId
-        $result.ExitCode | Should -Be 0
-        $result.Output | Should -Match 'review-verify: PASS'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'verdict shape valid'
+        $r.Output | Should -Match 'verdict=yes'
+        $r.Output | Should -Match 'review-verify: PASS'
     }
 
-    It 'AC32: fails when one targetFiles[] entry is stale and reports the stale path' {
-        $projectRoot = script:New-PesterTestCaseRoot -CaseName 'ac32'
-
-        $primaryPath = Join-Path $projectRoot 'target.txt'
-        script:Write-Utf8NoBomFile -Path $primaryPath -Content "primary body`n"
-        $primaryFull = [System.IO.Path]::GetFullPath($primaryPath)
-        $primarySha = script:Get-Sha256Lower -Path $primaryFull
-
-        $sub = Join-Path $projectRoot 'src'
-        $null = New-Item -ItemType Directory -Path $sub -Force
-        $extraPath = Join-Path $sub 'extra.txt'
-        script:Write-Utf8NoBomFile -Path $extraPath -Content "extra body`n"
-        $extraSha = script:Get-Sha256Lower -Path ([System.IO.Path]::GetFullPath($extraPath))
-
-        $runId = '20260506-200000-ac32aa'
-        $runDir = Join-Path $projectRoot ('log/review/' + $runId)
-        $null = New-Item -ItemType Directory -Path $runDir -Force
-
-        $tf = @(
-            [ordered]@{ path = 'target.txt';    sha256 = $primarySha }
-            [ordered]@{ path = 'src/extra.txt'; sha256 = $extraSha }
-        )
-
-        $meta = script:New-MetaPayload `
-            -ProjectRoot $projectRoot `
-            -RunId $runId `
-            -TargetPath $primaryFull `
-            -TargetSha256 $primarySha `
-            -TargetFiles $tf
-
-        $metaPath = Join-Path $runDir 'meta.json'
-        $metaJson = $meta | ConvertTo-Json -Depth 32
-        script:Write-Utf8NoBomFile -Path $metaPath -Content $metaJson
-
-        $inputPath = Join-Path $runDir 'input.md'
-        script:Write-Utf8NoBomFile -Path $inputPath -Content "# Review Input`n"
-
-        script:Write-Utf8NoBomFile -Path $extraPath -Content "extra body MUTATED`n"
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $projectRoot -RunId $runId
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL targetFiles stale: src/extra\.txt'
-    }
-}
-
-Describe 'review-verify D6 toolRoot binding' {
-    It 'AC-VF-TR-MATCH: passes when -ToolRoot matches meta.toolRoot' {
-        $packet = script:Initialize-FreshPacket -CaseName 'tr-match'
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -ToolRoot $packet.ProjectRoot
-        $result.ExitCode | Should -Be 0 -Because $result.Output
-        $result.Output | Should -Match 'review-verify: PASS'
+    It 'AC-VF-RR2: passes when verdict is "no"' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-no' -WithResult -Verdict 'no'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'verdict=no'
     }
 
-    It 'AC-VF-TR-MISMATCH: fails when -ToolRoot points elsewhere than meta.toolRoot' {
-        $packet = script:Initialize-FreshPacket -CaseName 'tr-mismatch'
-        $otherTool = Join-Path $TestDrive 'pester-review-verify-tr-mismatch-other-tool'
-        $null = New-Item -ItemType Directory -Path $otherTool -Force
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -ToolRoot ([System.IO.Path]::GetFullPath($otherTool))
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL toolRoot mismatch'
+    It 'AC-VF-RR3: passes when verdict is "yes with risk"' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-ywr' -WithResult -Verdict 'yes with risk'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'verdict=yes with risk'
     }
 
-    It 'AC-VF-TR-META-MISSING: fails when meta.json is missing the toolRoot field' {
-        $packet = script:Initialize-FreshPacket -CaseName 'tr-meta-missing'
-
-        # Rewrite meta.json without the toolRoot field.
-        $meta = script:New-MetaPayload `
-            -ProjectRoot $packet.ProjectRoot `
-            -RunId $packet.RunId `
-            -TargetPath $packet.TargetPath `
-            -TargetSha256 $packet.TargetSha
-        $hash = @{}
-        foreach ($prop in $meta.GetEnumerator()) {
-            if ($prop.Key -ne 'toolRoot') { $hash[$prop.Key] = $prop.Value }
-        }
-        $metaJson = $hash | ConvertTo-Json -Depth 32
-        script:Write-Utf8NoBomFile -Path $packet.MetaPath -Content $metaJson
-
-        $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -ToolRoot $packet.ProjectRoot
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL meta\.toolRoot missing'
+    It 'AC-VF-RR4: fails when result.md is missing' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-missing'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'result\.md missing'
     }
 
-    It 'AC-VF-TR-RUNTIME-FAIL: fails when no ToolRoot channel resolves at runtime' {
-        $packet = script:Initialize-FreshPacket -CaseName 'tr-runtime-fail'
+    It 'AC-VF-RR5: fails when result.md has no "## Verdict" heading' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-noverdict'
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content "# Review Result`n`nNo verdict heading.`n"
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'verdict shape invalid'
+        $r.Output | Should -Match 'no "## Verdict" heading found'
+    }
 
-        $savedEnv = $env:AI_HARNESS_TOOL_ROOT
-        $env:AI_HARNESS_TOOL_ROOT = $null
-        try {
-            # No -ToolRoot, no env, no dogfooding markers, no legacy .ai-harness/ -> channel 5 throw -> FAIL.
-            $result = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -RunId $packet.RunId -OmitToolRoot
-        }
-        finally {
-            $env:AI_HARNESS_TOOL_ROOT = $savedEnv
-        }
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'FAIL toolRoot binding could not be re-resolved at runtime'
+    It 'AC-VF-RR6: fails when result.md has two "## Verdict" headings' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-twoverdict'
+        $body = "# Review Result`n`n## Verdict`n`nyes`n`n## Verdict`n`nyes`n"
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content $body
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'verdict shape invalid'
+        $r.Output | Should -Match 'multiple "## Verdict" headings'
+    }
+
+    It 'AC-VF-RR7: fails when verdict line is not in the allowed set' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-maybe'
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content "# Review Result`n`n## Verdict`n`nmaybe`n"
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'verdict shape invalid'
+        $r.Output | Should -Match 'not one of yes / no / yes with risk'
+    }
+
+    It 'AC-VF-RR8: fails when verdict line is title-cased ("Yes")' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-titlecase'
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content "# Review Result`n`n## Verdict`n`nYes`n"
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'verdict shape invalid'
+    }
+
+    It 'AC-VF-RR9: fails on inline verdict form ("Verdict: yes")' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-inline'
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content "# Review Result`n`nVerdict: yes`n"
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'verdict shape invalid'
+        $r.Output | Should -Match 'no "## Verdict" heading found'
+    }
+
+    It 'AC-VF-RR10: legacy sidecar artifacts present in pass dir do not change the verdict' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-legacy-noise' -WithResult -Verdict 'yes'
+        # Write legacy sidecars as on-disk noise. The contract says these are not part of the record.
+        script:Write-Utf8NoBomFile -Path (Join-Path $packet.PassDir 'meta.json')         -Content '{"legacy":true}'
+        script:Write-Utf8NoBomFile -Path (Join-Path $packet.PassDir 'result.json')       -Content '{"legacy":true}'
+        script:Write-Utf8NoBomFile -Path (Join-Path $packet.PassDir 'target-files.list') -Content "x.txt`n"
+
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'review-verify: PASS'
     }
 }

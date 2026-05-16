@@ -24,10 +24,10 @@ The forbidden destination is `%USERPROFILE%\.claude\AGENTS.md`. That path is not
 
 ## Role neutrality
 
-This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-cycle.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
+This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-prepare.ps1` / `review-run.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
 
-- When acting as **reviewer**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<run-id>/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form the verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict.
-- The operator-side protocols described below — BF save triggers, new-session restore-offer, `review-cycle.ps1` execution discipline — apply only when acting as **operator**. Do not perform them when reading a review packet, when auditing existing artifacts, or when supervising another agent's work.
+- When acting as **reviewer**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/pass-NN/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form the verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict.
+- The operator-side protocols described below — BF save triggers, new-session restore-offer, `review-prepare` / `review-run` execution discipline — apply only when acting as **operator**. Do not perform them when reading a review packet, when auditing existing artifacts, or when supervising another agent's work.
 - Nothing in this payload forces accept / approve. Nothing in it weakens reviewer independence. Nothing in it permits whole-file overwrite of a global instruction file.
 
 ## Project layout
@@ -71,18 +71,16 @@ Runtime artifact paths under `<ProjectRoot>`:
 
 - `<ProjectRoot>/log/` — runtime output root. `log/` must not be committed;
   ensure the target project's `.gitignore` includes it.
-- `<ProjectRoot>/log/review/<run-id>/` — review records. Inspect them and
-  report the verdict.
+- `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` — canonical review record. Inspect `input.md` + `result.md` and report the verdict.
 - Keep `log/review/`, `log/evidence/`, and `log/chatlog/` separate.
 
 Reviewer config lives at `<ToolRoot>/config/reviewer.json`.
 
 ## Review flow
 
-- Default user-facing entrypoint is the single-shot CLI `<ToolRoot>/scripts/review-cycle.ps1`. Run it once per user-triggered review request.
-- `review-cycle.ps1` runs Codex CLI exactly once per call and stops.
-- The component scripts `<ToolRoot>/scripts/review-prepare.ps1` and `<ToolRoot>/scripts/review-verify.ps1` are available for explicit, deliberate use (preparing a packet without immediately running Codex, or verifying an existing run). Stale review packets (any `targetFiles[]` entry whose SHA-256 changed since prepare) must fail.
-- Reviewer artifacts live only under `<ProjectRoot>/log/review/<run-id>/`. Do not create a root `codex-review-input.md` or root `codex-review-result*.json`.
+- The canonical operator entry points are two scripts, called in order: `<ToolRoot>/scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>] -Stage <stage> -Purpose <line>` allocates the pass directory and seeds `input.md` from `templates/review-input.md`; then `<ToolRoot>/scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` runs Codex CLI exactly once and writes `result.md`.
+- `<ToolRoot>/scripts/review-verify.ps1 -ReviewTaskId <id> -Pass <pass-NN> [-RequireResult]` is the post-hoc canonical-artifact check. It does not invoke Codex.
+- Reviewer artifacts live only under `<ProjectRoot>/log/review/<review-task-id>/pass-NN/`, as the two canonical files `input.md` + `result.md`. Do not create root-level review inputs or results outside that pass directory, and do not invent sidecar JSON, hash-binding files, or external staging folders. Anything beyond the canonical pair is outside the contract.
 
 ## Result verdict vocabulary
 
@@ -162,7 +160,7 @@ These triggers exercise BF Level 1/2 capability — manual save discipline. They
 
 ## Execution discipline
 
-- Run lifecycle commands — `review-cycle.ps1` and its Codex review in particular — in the foreground, and wait for completion. Do not spawn detached background work, and do not run a review and other work in parallel.
+- Run lifecycle commands — `review-prepare.ps1` / `review-run.ps1` and the Codex review in particular — in the foreground, and wait for completion. Do not spawn detached background work, and do not run a review and other work in parallel.
 - A timeout or budget is only an operating allowance for a foreground attempt; it is not a correctness guarantee. Never raise a timeout as a way to make a review "valid." Review validity is judged by complete run artifacts, valid result binding, and `review-verify -RequireResult` — not by how the run was launched.
 - Review scope is set by the review purpose and the artifact boundary. Never shrink it artificially to avoid a long-running or background run.
 - If the harness silently auto-converts a foreground run to background, do not report it as a clean foreground execution. Report that the auto-conversion happened.

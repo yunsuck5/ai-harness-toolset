@@ -1,20 +1,29 @@
 ﻿[CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
-    [string] $RunId,
+    [string] $ReviewTaskId,
+
+    [string] $Pass,
 
     [string] $Reviewer = 'codex',
+    [string] $Model,
     [string] $ProjectRoot,
-    [string] $ToolRoot,
-    [switch] $Force
+    [string] $ToolRoot
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+if ([string]::IsNullOrEmpty($ReviewTaskId)) {
+    Write-Host 'review-run: FAIL -ReviewTaskId is required.'
+    exit 1
+}
+if ([string]::IsNullOrEmpty($Pass)) {
+    Write-Host 'review-run: FAIL -Pass is required (e.g., pass-01).'
+    exit 1
+}
+
 . (Join-Path $PSScriptRoot 'lib/encoding.ps1')
 . (Join-Path $PSScriptRoot 'lib/path.ps1')
-. (Join-Path $PSScriptRoot 'lib/hash.ps1')
 . (Join-Path $PSScriptRoot 'lib/json.ps1')
 . (Join-Path $PSScriptRoot 'lib/resolve-script.ps1')
 
@@ -94,13 +103,39 @@ function Get-VerdictFromResultMd {
         $candidate = $lines[$i].Trim()
         if ([string]::IsNullOrEmpty($candidate)) { continue }
 
-        $lower = $candidate.ToLowerInvariant()
-        if ($lower -eq 'yes' -or $lower -eq 'no' -or $lower -eq 'yes with risk') {
-            return $lower
+        # Lowercase-exact match per docs/REVIEW_RESULT_CONTRACT.md §3.
+        # `Yes`, `YES`, `Yes with risk` etc. are rejected — must match what
+        # review-verify.ps1 Test-VerdictShape accepts.
+        if ($candidate -ceq 'yes' -or $candidate -ceq 'no' -or $candidate -ceq 'yes with risk') {
+            return $candidate
         }
         return ''
     }
     return ''
+}
+
+function Get-ReviewerModel {
+    param(
+        [string] $ExplicitModel,
+        [string] $ToolPath
+    )
+
+    if (-not [string]::IsNullOrEmpty($ExplicitModel)) {
+        return $ExplicitModel
+    }
+
+    $configPath = Join-Path -Path $ToolPath -ChildPath 'config/reviewer.json'
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        $cfg = Read-JsonFile -Path $configPath
+        if ($null -ne $cfg -and $null -ne $cfg.PSObject.Properties['model']) {
+            $m = [string]$cfg.model
+            if (-not [string]::IsNullOrEmpty($m)) {
+                return $m
+            }
+        }
+    }
+
+    return 'gpt-5.5'
 }
 
 if ($Reviewer -ne 'codex') {
@@ -109,10 +144,18 @@ if ($Reviewer -ne 'codex') {
 }
 
 try {
-    [void] (Assert-ValidRunId -Value $RunId)
+    [void] (Assert-ValidReviewTaskId -Value $ReviewTaskId)
 }
 catch {
-    Write-Host ('review-run: FAIL invalid RunId: {0}' -f $RunId)
+    Write-Host ('review-run: FAIL invalid ReviewTaskId: {0}' -f $ReviewTaskId)
+    exit 1
+}
+
+try {
+    [void] (Assert-ValidPass -Value $Pass)
+}
+catch {
+    Write-Host ('review-run: FAIL invalid Pass: {0}' -f $Pass)
     exit 1
 }
 
@@ -120,73 +163,40 @@ $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 $tool    = Get-ToolRoot -ToolRoot $ToolRoot -ProjectRoot $project
 $logRoot = Get-ProjectLogRoot -ProjectRoot $project
 
-$runDir = Join-Path -Path $logRoot -ChildPath ('review/' + $RunId)
+$passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Pass $Pass
 try {
-    [void] (Assert-InReviewRunRoot -Path $runDir -ProjectLogRoot $logRoot)
+    [void] (Assert-InReviewRoot -Path $passDir -ProjectLogRoot $logRoot)
 }
 catch {
-    Write-Host ('review-run: FAIL run directory outside review root: {0}' -f $runDir)
+    Write-Host ('review-run: FAIL pass directory outside review root: {0}' -f $passDir)
     exit 1
 }
 
-if (-not (Test-Path -LiteralPath $runDir -PathType Container)) {
-    Write-Host ('review-run: FAIL run not prepared; run review-prepare first: {0}' -f $runDir)
+if (-not (Test-Path -LiteralPath $passDir -PathType Container)) {
+    Write-Host ('review-run: FAIL pass directory not prepared; run review-prepare first: {0}' -f $passDir)
     exit 1
 }
 
-$metaPath = Join-Path -Path $runDir -ChildPath 'meta.json'
-if (-not (Test-Path -LiteralPath $metaPath -PathType Leaf)) {
-    Write-Host ('review-run: FAIL meta.json not found: {0}' -f $metaPath)
-    exit 1
-}
-
-$inputPath = Join-Path -Path $runDir -ChildPath 'input.md'
+$inputPath = Join-Path -Path $passDir -ChildPath 'input.md'
 if (-not (Test-Path -LiteralPath $inputPath -PathType Leaf)) {
     Write-Host ('review-run: FAIL input.md not found: {0}' -f $inputPath)
     exit 1
 }
 
-$meta = $null
-try {
-    $meta = Read-JsonFile -Path $metaPath
-}
-catch {
-    Write-Host ('review-run: FAIL meta.json invalid JSON: {0}' -f $metaPath)
+$resultMdPath = Join-Path -Path $passDir -ChildPath 'result.md'
+if (Test-Path -LiteralPath $resultMdPath -PathType Leaf) {
+    Write-Host ('review-run: FAIL result.md already exists in pass directory: {0}. Each pass is write-once; allocate a new pass-NN under the same ReviewTaskId for another attempt.' -f $resultMdPath)
     exit 1
 }
 
-$model = ''
-if ($null -ne $meta.PSObject.Properties['reviewerConfig']) {
-    $rc = $meta.reviewerConfig
-    if ($null -ne $rc -and $null -ne $rc.PSObject.Properties['model']) {
-        $model = [string]$rc.model
-    }
-}
+$model = Get-ReviewerModel -ExplicitModel $Model -ToolPath $tool
 if ([string]::IsNullOrEmpty($model)) {
-    Write-Host 'review-run: FAIL reviewer model missing in meta.json'
+    Write-Host 'review-run: FAIL reviewer model could not be resolved (config/reviewer.json missing model field and no -Model override).'
     exit 1
-}
-
-$resultMdPath = Join-Path -Path $runDir -ChildPath 'result.md'
-$resultJsonPath = Join-Path -Path $runDir -ChildPath 'result.json'
-$existingResultMd = Test-Path -LiteralPath $resultMdPath -PathType Leaf
-$existingResultJson = Test-Path -LiteralPath $resultJsonPath -PathType Leaf
-if (($existingResultMd -or $existingResultJson) -and -not $Force) {
-    Write-Host ('review-run: FAIL existing result.md/result.json present; pass -Force to overwrite or start a new review run with a fresh run-id.')
-    exit 1
-}
-if ($Force) {
-    if ($existingResultMd) {
-        Remove-Item -LiteralPath $resultMdPath -Force -ErrorAction Stop
-    }
-    if ($existingResultJson) {
-        Remove-Item -LiteralPath $resultJsonPath -Force -ErrorAction Stop
-    }
 }
 
 $toolRootSource = Get-ToolRootSource -ToolRoot $ToolRoot
 $verifyInputScript = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-input-verify.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
-$verifyScript      = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-verify.ps1'       -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
 
 $verifyInputArgs = @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass',
@@ -196,7 +206,7 @@ $verifyInputArgs = @(
 & powershell.exe @verifyInputArgs
 $verifyInputExit = $LASTEXITCODE
 if ($verifyInputExit -ne 0) {
-    Write-Host ('review-run: FAIL input.md not ready (review-input-verify exit {0}). Edit input.md to fill the required sections, or start a new review run with corrected CLI arguments.' -f $verifyInputExit)
+    Write-Host ('review-run: FAIL input.md not ready (review-input-verify exit {0}). Allocate a new pass-NN under the same ReviewTaskId with a corrected input.md.' -f $verifyInputExit)
     exit 1
 }
 
@@ -213,91 +223,17 @@ if (-not (Test-Path -LiteralPath $resultMdPath -PathType Leaf)) {
 
 $verdict = Get-VerdictFromResultMd -Path $resultMdPath
 if ([string]::IsNullOrEmpty($verdict)) {
-    Write-Host ('review-run: FAIL. Could not parse verdict from {0}. result.json was not created. The failed run is preserved for inspection; start a new review run after fixing the reviewer output, prompt/tooling, or source issue.' -f $resultMdPath)
+    Write-Host ('review-run: FAIL. Could not parse verdict from {0}. The failed pass is preserved on disk; allocate a new pass-NN under the same ReviewTaskId after fixing the reviewer output, prompt, or tooling.' -f $resultMdPath)
     exit 1
 }
 
-$inputSha = Get-FileSha256 -Path $inputPath
-$resultMdSha = Get-FileSha256 -Path $resultMdPath
-$invariant = [System.Globalization.CultureInfo]::InvariantCulture
-$createdAt = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ss.fffffffZ', $invariant)
+$relPass = (Resolve-ProjectRelativePath -Path $passDir -ProjectRoot $project) -replace '\\', '/'
+$relResult = (Resolve-ProjectRelativePath -Path $resultMdPath -ProjectRoot $project) -replace '\\', '/'
 
-$metaSourceHead = $null
-if ($null -ne $meta.PSObject.Properties['sourceHead']) {
-    $metaSourceHead = $meta.sourceHead
-}
-$metaTargetSha = ''
-if ($null -ne $meta.PSObject.Properties['targetSha256']) {
-    $metaTargetSha = [string]$meta.targetSha256
-}
-$metaTargetPath = ''
-if ($null -ne $meta.PSObject.Properties['targetPath']) {
-    $metaTargetPath = [string]$meta.targetPath
-}
-$metaStage = ''
-if ($null -ne $meta.PSObject.Properties['stage']) {
-    $metaStage = [string]$meta.stage
-}
-$metaPurpose = ''
-if ($null -ne $meta.PSObject.Properties['purpose']) {
-    $metaPurpose = [string]$meta.purpose
-}
-$metaReviewer = ''
-if ($null -ne $meta.PSObject.Properties['reviewer']) {
-    $metaReviewer = [string]$meta.reviewer
-}
-
-$resultObj = [ordered]@{
-    schemaVersion        = 1
-    runId                = $RunId
-    createdAtUtc         = $createdAt
-    reviewer             = $metaReviewer
-    verdict              = $verdict
-    targetPath           = $metaTargetPath
-    targetSha256         = $metaTargetSha
-    sourceHead           = $metaSourceHead
-    stage                = $metaStage
-    purpose              = $metaPurpose
-    inputSha256          = $inputSha
-    resultMarkdownSha256 = $resultMdSha
-    notes                = @()
-}
-
-Write-JsonFile -Path $resultJsonPath -Value $resultObj
-
-$verifyDefaultArgs = @(
-    '-NoProfile', '-ExecutionPolicy', 'Bypass',
-    '-File', $verifyScript,
-    '-RunId', $RunId,
-    '-ProjectRoot', $project,
-    '-ToolRoot', $tool
-)
-& powershell.exe @verifyDefaultArgs
-$verifyDefaultExit = $LASTEXITCODE
-if ($verifyDefaultExit -ne 0) {
-    Write-Host ('review-run: FAIL review-verify default exit {0}' -f $verifyDefaultExit)
-    exit 1
-}
-
-$verifyRequireArgs = @(
-    '-NoProfile', '-ExecutionPolicy', 'Bypass',
-    '-File', $verifyScript,
-    '-RunId', $RunId,
-    '-ProjectRoot', $project,
-    '-ToolRoot', $tool,
-    '-RequireResult'
-)
-& powershell.exe @verifyRequireArgs
-$verifyRequireExit = $LASTEXITCODE
-if ($verifyRequireExit -ne 0) {
-    Write-Host ('review-run: FAIL review-verify -RequireResult exit {0}' -f $verifyRequireExit)
-    exit 1
-}
-
-Write-Host 'review-run: PASS'
-Write-Host ('run-id: {0}' -f $RunId)
+Write-Host ('review-run: PASS')
+Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
+Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('verdict: {0}' -f $verdict)
-$relRun = (Resolve-ProjectRelativePath -Path $resultJsonPath -ProjectRoot $project) -replace '\\', '/'
-Write-Host ('result: {0}' -f $relRun)
-Write-Host 'review-verify: PASS'
+Write-Host ('pass-dir: {0}' -f $relPass)
+Write-Host ('result: {0}' -f $relResult)
 exit 0

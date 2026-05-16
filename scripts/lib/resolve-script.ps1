@@ -72,21 +72,6 @@ function Resolve-ScriptUnderToolRoot {
     throw ('{0}: required script not found: {1}. Tried under ToolRoot={2} and via $PSScriptRoot fallback={3}.' -f $CallerLabel, $RelativePath, $Tool, $local)
 }
 
-function Resolve-CycleScript {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $Tool,
-        [Parameter(Mandatory = $true)]
-        [string] $RelativePath,
-        [Parameter(Mandatory = $true)]
-        [string] $LocalDir,
-        [ValidateSet('explicit', 'implicit')]
-        [string] $ToolRootSource = 'implicit'
-    )
-    return Resolve-ScriptUnderToolRoot -Tool $Tool -RelativePath $RelativePath -LocalDir $LocalDir -ToolRootSource $ToolRootSource -CallerLabel 'review-cycle'
-}
-
 function Resolve-RunScript {
     [CmdletBinding()]
     param(

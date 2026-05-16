@@ -5,20 +5,6 @@ BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
     $script:ReviewPrepareScript = Join-Path $script:RepoRoot 'scripts/review-prepare.ps1'
 
-    function script:Write-Utf8NoBomFile {
-        param(
-            [string] $Path,
-            [string] $Content
-        )
-        $parent = Split-Path -LiteralPath $Path
-        if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
-            $null = New-Item -ItemType Directory -Path $parent -Force
-        }
-        $resolved = [System.IO.Path]::GetFullPath($Path)
-        $encoding = New-Object System.Text.UTF8Encoding($false)
-        [System.IO.File]::WriteAllText($resolved, $Content, $encoding)
-    }
-
     function script:New-PrepareCaseRoot {
         param([string] $CaseName)
         $caseRoot = Join-Path $TestDrive ('pester-review-prepare-' + $CaseName)
@@ -29,19 +15,14 @@ BeforeAll {
         return ([System.IO.Path]::GetFullPath($caseRoot))
     }
 
-    function script:Get-Sha256Lower {
-        param([string] $Path)
-        return ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant())
-    }
-
     function script:Invoke-ReviewPrepare {
         param(
             [string] $ProjectRoot,
-            [string] $TargetPath,
-            [string[]] $TargetFiles,
-            [string] $RunId,
-            [string] $Stage = 'design',
-            [string] $Purpose = 'pester regression'
+            [string] $ReviewTaskId,
+            [string] $Pass,
+            [string] $Stage = 'implementation',
+            [string] $Purpose = 'pester prepare',
+            [string[]] $ExtraArgs
         )
         $procArgs = @(
             '-NoProfile',
@@ -51,23 +32,14 @@ BeforeAll {
             '-Purpose', $Purpose,
             '-ProjectRoot', $ProjectRoot,
             '-ToolRoot', $script:RepoRoot,
-            '-RunId', $RunId
+            '-ReviewTaskId', $ReviewTaskId
         )
-        if (-not [string]::IsNullOrEmpty($TargetPath)) {
-            $procArgs += @('-TargetPath', $TargetPath)
+        if (-not [string]::IsNullOrEmpty($Pass)) {
+            $procArgs += @('-Pass', $Pass)
         }
-        if ($null -ne $TargetFiles -and $TargetFiles.Count -gt 0) {
-            $listDir = Join-Path $ProjectRoot 'log/staging'
-            if (-not (Test-Path -LiteralPath $listDir -PathType Container)) {
-                $null = New-Item -ItemType Directory -Path $listDir -Force
-            }
-            $listPath = Join-Path $listDir ('pester-prepare-targets-' + ([guid]::NewGuid().ToString('N')) + '.list')
-            $listContent = ($TargetFiles -join "`n") + "`n"
-            $enc = New-Object System.Text.UTF8Encoding($false)
-            [System.IO.File]::WriteAllText($listPath, $listContent, $enc)
-            $procArgs += @('-TargetFilesPath', $listPath)
+        if ($null -ne $ExtraArgs -and $ExtraArgs.Count -gt 0) {
+            $procArgs += $ExtraArgs
         }
-
         $combined = & powershell.exe @procArgs 2>&1
         $exitCode = $LASTEXITCODE
         $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
@@ -78,317 +50,158 @@ BeforeAll {
     }
 }
 
-Describe 'review-prepare targetFiles' {
-    It 'AC-PR1: single -TargetPath writes targetFiles[] with one primary entry' {
+Describe 'review-prepare canonical layout' {
+    It 'AC-PR1: explicit -Pass pass-01 creates canonical pass directory and seeds input.md from template' {
         $project = script:New-PrepareCaseRoot -CaseName 'pr1'
-        $targetPath = Join-Path $project 'target.txt'
-        script:Write-Utf8NoBomFile -Path $targetPath -Content "single body`n"
-        $expectedSha = script:Get-Sha256Lower -Path $targetPath
+        $taskId  = 'topology-simplification-2026-05-16'
 
-        $runId = '20260506-110000-pr1aaa'
-        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetPath $targetPath -RunId $runId -Stage 'design'
-        $result.ExitCode | Should -Be 0
+        $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'review-prepare: PASS'
+        $r.Output | Should -Match ('review-task-id: ' + [regex]::Escape($taskId))
+        $r.Output | Should -Match 'pass: pass-01'
 
-        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
-        Test-Path -LiteralPath $metaPath -PathType Leaf | Should -BeTrue
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        Test-Path -LiteralPath $passDir -PathType Container | Should -BeTrue
 
-        $metaText = [System.IO.File]::ReadAllText($metaPath, (New-Object System.Text.UTF8Encoding($false)))
-        $meta = $metaText | ConvertFrom-Json
+        $inputPath = Join-Path $passDir 'input.md'
+        Test-Path -LiteralPath $inputPath -PathType Leaf | Should -BeTrue
 
-        $meta.targetSha256 | Should -Be $expectedSha
-        $meta.targetFiles | Should -Not -BeNullOrEmpty
-        @($meta.targetFiles).Count | Should -Be 1
-        @($meta.targetFiles)[0].path | Should -Be 'target.txt'
-        @($meta.targetFiles)[0].sha256 | Should -Be $expectedSha
-    }
-
-    It 'AC-PR2: -TargetFiles multi writes repo-relative forward-slash paths and lowercase hashes' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr2'
-        $sub = Join-Path $project 'src'
-        $null = New-Item -ItemType Directory -Path $sub -Force
-        $a = Join-Path $project 'a.txt'
-        $b = Join-Path $sub 'b.txt'
-        $c = Join-Path $sub 'c.txt'
-        script:Write-Utf8NoBomFile -Path $a -Content "a body`n"
-        script:Write-Utf8NoBomFile -Path $b -Content "b body`n"
-        script:Write-Utf8NoBomFile -Path $c -Content "c body`n"
-        $shaA = script:Get-Sha256Lower -Path $a
-        $shaB = script:Get-Sha256Lower -Path $b
-        $shaC = script:Get-Sha256Lower -Path $c
-
-        $runId = '20260506-110000-pr2aaa'
-        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetFiles @($a, $b, $c) -RunId $runId -Stage 'implementation'
-        $result.ExitCode | Should -Be 0
-
-        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
-        $metaText = [System.IO.File]::ReadAllText($metaPath, (New-Object System.Text.UTF8Encoding($false)))
-        $meta = $metaText | ConvertFrom-Json
-
-        $files = @($meta.targetFiles)
-        $files.Count | Should -Be 3
-        $files[0].path | Should -Be 'a.txt'
-        $files[0].sha256 | Should -Be $shaA
-        $files[1].path | Should -Be 'src/b.txt'
-        $files[1].sha256 | Should -Be $shaB
-        $files[2].path | Should -Be 'src/c.txt'
-        $files[2].sha256 | Should -Be $shaC
-
-        $meta.targetPath | Should -Match 'a\.txt$'
-        $meta.targetSha256 | Should -Be $shaA
-    }
-
-    It 'AC-PR-CONTAINMENT-1: -TargetFilesPath under <project>/scripts/foo.list is rejected (outside ProjectLogRoot)' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr-containment-1'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "containment body`n"
-
-        $scriptsDir = Join-Path $project 'scripts'
-        $null = New-Item -ItemType Directory -Path $scriptsDir -Force
-        $badList = Join-Path $scriptsDir 'foo.list'
         $enc = New-Object System.Text.UTF8Encoding($false)
-        [System.IO.File]::WriteAllText($badList, ($target + "`n"), $enc)
+        $body = [System.IO.File]::ReadAllText($inputPath, $enc)
+        # Body comes from templates/review-input.md
+        $templatePath = Join-Path $script:RepoRoot 'templates/review-input.md'
+        $expected = [System.IO.File]::ReadAllText($templatePath, $enc)
+        $body | Should -Be $expected
+    }
 
-        $runId = '20260506-110000-prc1aa'
+    It 'AC-PR2: pass auto-allocation picks pass-01 first, then pass-02 on the next call' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr2'
+        $taskId  = 'pass-allocation-task'
+
+        $first = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId
+        $first.ExitCode | Should -Be 0 -Because $first.Output
+        $first.Output | Should -Match 'pass: pass-01'
+
+        $second = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId
+        $second.ExitCode | Should -Be 0 -Because $second.Output
+        $second.Output | Should -Match 'pass: pass-02'
+
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-02/input.md')) -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-PR3: pass-NN write-once — re-running with the same -Pass fails and preserves prior pass body' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr3'
+        $taskId  = 'write-once-task'
+
+        $first = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $first.ExitCode | Should -Be 0 -Because $first.Output
+
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+
+        # Operator hand-edits input.md after seeding (this is the normal authoring step).
+        [System.IO.File]::WriteAllText($inputPath, "edited body`n", $enc)
+        $beforeRetry = [System.IO.File]::ReadAllText($inputPath, $enc)
+
+        $second = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $second.ExitCode | Should -Not -Be 0
+        $second.Output | Should -Match 'pass directory already exists'
+        $second.Output | Should -Match 'write-once'
+
+        $afterRetry = [System.IO.File]::ReadAllText($inputPath, $enc)
+        $afterRetry | Should -Be $beforeRetry
+    }
+
+    It 'AC-PR4: review-task-id is operator-supplied (not auto-derived from a session id)' {
+        # The script must require -ReviewTaskId explicitly. There is no fallback
+        # that derives the id from a Claude Code chat / session id, environment
+        # variable, or git state. Omitting -ReviewTaskId fails before any
+        # filesystem mutation.
+        $project = script:New-PrepareCaseRoot -CaseName 'pr4'
         $procArgs = @(
-            '-NoProfile',
-            '-ExecutionPolicy', 'Bypass',
+            '-NoProfile', '-ExecutionPolicy', 'Bypass',
             '-File', $script:ReviewPrepareScript,
-            '-Stage', 'design',
-            '-Purpose', 'pester containment',
+            '-Stage', 'implementation',
+            '-Purpose', 'no taskid',
             '-ProjectRoot', $project,
-            '-ToolRoot', $script:RepoRoot,
-            '-RunId', $runId,
-            '-TargetFilesPath', $badList
+            '-ToolRoot', $script:RepoRoot
         )
         $combined = & powershell.exe @procArgs 2>&1
         $exitCode = $LASTEXITCODE
         $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
-
-        $exitCode | Should -Not -Be 0
-        $text | Should -Match 'TargetFilesPath outside ProjectLogRoot'
-
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        Test-Path -LiteralPath $runDir -PathType Container | Should -BeFalse
+        $exitCode | Should -Not -Be 0 -Because $text
+        # No log/review subtree created.
+        Test-Path -LiteralPath (Join-Path $project 'log/review') -PathType Container | Should -BeFalse
     }
 
-    It 'AC-PR-CONTAINMENT-2: -TargetFilesPath outside the project entirely is rejected' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr-containment-2'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "containment body`n"
+    It 'AC-PR5: invalid -Pass value (not pass-NN shape) is rejected before any directory is created' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr5'
+        $taskId  = 'invalid-pass-task'
 
-        $tempDir = Join-Path ([System.IO.Path]::GetTempPath()) ('pester-prepare-out-' + ([guid]::NewGuid().ToString('N')))
-        $null = New-Item -ItemType Directory -Path $tempDir -Force
-        $badList = Join-Path $tempDir 'foo.list'
+        $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-1'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'invalid Pass'
+
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId)) -PathType Container | Should -BeFalse
+    }
+
+    It 'AC-PR6: invalid -ReviewTaskId (path traversal) is rejected' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr6'
+        $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId '../escape' -Pass 'pass-01'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'invalid ReviewTaskId'
+    }
+
+    It 'AC-PR7: legacy -TargetFilesPath / -ReviewRequestPath parameters are not accepted' {
+        # The canonical operator path does not stage target files or review
+        # requests via external sidecar files. The script must not accept these
+        # legacy parameter names.
+        $project = script:New-PrepareCaseRoot -CaseName 'pr7'
+        $taskId  = 'no-legacy-task'
+
+        $sidecar = Join-Path $project 'log/staging/foo.list'
+        $parent = Split-Path -LiteralPath $sidecar
+        $null = New-Item -ItemType Directory -Path $parent -Force
         $enc = New-Object System.Text.UTF8Encoding($false)
-        [System.IO.File]::WriteAllText($badList, ($target + "`n"), $enc)
+        [System.IO.File]::WriteAllText($sidecar, "x.txt`n", $enc)
 
-        try {
-            $runId = '20260506-110000-prc2aa'
-            $procArgs = @(
-                '-NoProfile',
-                '-ExecutionPolicy', 'Bypass',
-                '-File', $script:ReviewPrepareScript,
-                '-Stage', 'design',
-                '-Purpose', 'pester containment',
-                '-ProjectRoot', $project,
-                '-ToolRoot', $script:RepoRoot,
-                '-RunId', $runId,
-                '-TargetFilesPath', $badList
-            )
-            $combined = & powershell.exe @procArgs 2>&1
-            $exitCode = $LASTEXITCODE
-            $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        $r1 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -ExtraArgs @('-TargetFilesPath', $sidecar)
+        $r1.ExitCode | Should -Not -Be 0
 
-            $exitCode | Should -Not -Be 0
-            $text | Should -Match 'TargetFilesPath outside ProjectLogRoot'
-
-            $runDir = Join-Path $project ('log/review/' + $runId)
-            Test-Path -LiteralPath $runDir -PathType Container | Should -BeFalse
-        }
-        finally {
-            if (Test-Path -LiteralPath $tempDir -PathType Container) {
-                Remove-Item -LiteralPath $tempDir -Recurse -Force
-            }
-        }
+        $r2 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-02' -ExtraArgs @('-ReviewRequestPath', $sidecar)
+        $r2.ExitCode | Should -Not -Be 0
     }
 
-    It 'AC-PR-WRITEONCE-1: pre-existing run directory is rejected and seeded meta.json is not overwritten' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr-writeonce-1'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "writeonce body`n"
+    It 'AC-PR8: only canonical artifact (input.md) is written — no meta.json / target-files.list / result.json sidecars' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr8'
+        $taskId  = 'no-sidecar-task'
 
-        $runId = '20260506-110000-pwo1aa'
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        $null = New-Item -ItemType Directory -Path $runDir -Force
+        $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $r.ExitCode | Should -Be 0 -Because $r.Output
 
-        $sentinelMeta = Join-Path $runDir 'meta.json'
-        $sentinelContent = '{"sentinel":"untouched"}'
-        script:Write-Utf8NoBomFile -Path $sentinelMeta -Content $sentinelContent
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        Test-Path -LiteralPath (Join-Path $passDir 'input.md')          -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $passDir 'meta.json')         -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $passDir 'target-files.list') -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $passDir 'result.json')       -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $passDir 'result.md')         -PathType Leaf | Should -BeFalse
 
-        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetPath $target -RunId $runId -Stage 'design'
-
-        $result.ExitCode | Should -Not -Be 0
-        $result.Output | Should -Match 'run directory already exists'
-        $result.Output | Should -Match 'fresh run-id'
-
-        $afterText = [System.IO.File]::ReadAllText($sentinelMeta, (New-Object System.Text.UTF8Encoding($false)))
-        $afterText | Should -Be $sentinelContent
-
-        $inputPath = Join-Path $runDir 'input.md'
-        Test-Path -LiteralPath $inputPath -PathType Leaf | Should -BeFalse
+        # No legacy staging trees are created in log/.
+        Test-Path -LiteralPath (Join-Path $project 'log/review-targets')  -PathType Container | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project 'log/review-requests') -PathType Container | Should -BeFalse
     }
 
-    It 'AC-PR3: comma in target path is preserved as a single entry (B2 regression)' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr3'
-        $sub = Join-Path $project 'docs'
-        $null = New-Item -ItemType Directory -Path $sub -Force
-        $commaPath = Join-Path $sub 'a,b.md'
-        script:Write-Utf8NoBomFile -Path $commaPath -Content "comma body`n"
-        $expectedSha = script:Get-Sha256Lower -Path $commaPath
+    It 'AC-PR9: pass directories for different ReviewTaskIds are isolated' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr9'
 
-        $runId = '20260506-110000-pr3aaa'
-        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetFiles @($commaPath) -RunId $runId -Stage 'design'
-        $result.ExitCode | Should -Be 0
+        $a = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId 'task-alpha' -Pass 'pass-01'
+        $a.ExitCode | Should -Be 0 -Because $a.Output
+        $b = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId 'task-beta' -Pass 'pass-01'
+        $b.ExitCode | Should -Be 0 -Because $b.Output
 
-        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
-        $metaText = [System.IO.File]::ReadAllText($metaPath, (New-Object System.Text.UTF8Encoding($false)))
-        $meta = $metaText | ConvertFrom-Json
-
-        $files = @($meta.targetFiles)
-        $files.Count | Should -Be 1
-        $files[0].path | Should -Be 'docs/a,b.md'
-        $files[0].sha256 | Should -Be $expectedSha
-    }
-
-    It 'AC-PR-NOGIT-1: non-Git ProjectRoot + explicit -TargetFiles records meta.sourceHead = null' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr-nogit-1'
-        $targetPath = Join-Path $project 'target.txt'
-        script:Write-Utf8NoBomFile -Path $targetPath -Content "nogit body 1`n"
-
-        $runId = '20260506-110000-pn1aaa'
-        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetFiles @($targetPath) -RunId $runId -Stage 'design'
-        $result.ExitCode | Should -Be 0 -Because $result.Output
-
-        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
-        Test-Path -LiteralPath $metaPath -PathType Leaf | Should -BeTrue
-        $enc = New-Object System.Text.UTF8Encoding($false)
-        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
-
-        $meta.PSObject.Properties['sourceHead'] | Should -Not -BeNullOrEmpty
-        $meta.sourceHead | Should -Be $null
-    }
-
-    It 'AC-PR-TARGETLIST-SNAPSHOT-1: single -TargetPath writes target-files.list snapshot matching meta.targetFiles[].path' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr-snap-1'
-        $targetPath = Join-Path $project 'target.txt'
-        script:Write-Utf8NoBomFile -Path $targetPath -Content "snapshot single body`n"
-
-        $runId = '20260506-110000-prs1aa'
-        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetPath $targetPath -RunId $runId -Stage 'design'
-        $result.ExitCode | Should -Be 0 -Because $result.Output
-
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        $snapshotPath = Join-Path $runDir 'target-files.list'
-        Test-Path -LiteralPath $snapshotPath -PathType Leaf | Should -BeTrue
-
-        $enc = New-Object System.Text.UTF8Encoding($false)
-        $bytes = [System.IO.File]::ReadAllBytes($snapshotPath)
-        $bytes.Length | Should -BeGreaterThan 0
-        ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should -BeFalse
-
-        $snapshotText = [System.IO.File]::ReadAllText($snapshotPath, $enc)
-        $snapshotText | Should -Be "target.txt`n"
-
-        $metaPath = Join-Path $runDir 'meta.json'
-        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
-        $metaPaths = @(@($meta.targetFiles) | ForEach-Object { [string]$_.path })
-        $snapshotLines = @($snapshotText -split "`n" | Where-Object { -not [string]::IsNullOrEmpty($_) })
-        $snapshotLines.Count | Should -Be $metaPaths.Count
-        for ($i = 0; $i -lt $metaPaths.Count; $i++) {
-            $snapshotLines[$i] | Should -Be $metaPaths[$i]
-        }
-    }
-
-    It 'AC-PR-TARGETLIST-SNAPSHOT-2: multi -TargetFilesPath writes target-files.list snapshot in meta order' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr-snap-2'
-        $sub = Join-Path $project 'src'
-        $null = New-Item -ItemType Directory -Path $sub -Force
-        $a = Join-Path $project 'a.txt'
-        $b = Join-Path $sub 'b.txt'
-        $c = Join-Path $sub 'c.txt'
-        script:Write-Utf8NoBomFile -Path $a -Content "snap a`n"
-        script:Write-Utf8NoBomFile -Path $b -Content "snap b`n"
-        script:Write-Utf8NoBomFile -Path $c -Content "snap c`n"
-
-        $runId = '20260506-110000-prs2aa'
-        $result = script:Invoke-ReviewPrepare -ProjectRoot $project -TargetFiles @($a, $b, $c) -RunId $runId -Stage 'implementation'
-        $result.ExitCode | Should -Be 0 -Because $result.Output
-
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        $snapshotPath = Join-Path $runDir 'target-files.list'
-        Test-Path -LiteralPath $snapshotPath -PathType Leaf | Should -BeTrue
-
-        $enc = New-Object System.Text.UTF8Encoding($false)
-        $snapshotText = [System.IO.File]::ReadAllText($snapshotPath, $enc)
-        $snapshotText | Should -Be "a.txt`nsrc/b.txt`nsrc/c.txt`n"
-
-        $metaPath = Join-Path $runDir 'meta.json'
-        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
-        $metaPaths = @(@($meta.targetFiles) | ForEach-Object { [string]$_.path })
-        $metaPaths.Count | Should -Be 3
-        $snapshotLines = @($snapshotText -split "`n" | Where-Object { -not [string]::IsNullOrEmpty($_) })
-        $snapshotLines.Count | Should -Be $metaPaths.Count
-        for ($i = 0; $i -lt $metaPaths.Count; $i++) {
-            $snapshotLines[$i] | Should -Be $metaPaths[$i]
-        }
-    }
-
-    It 'AC-PR-NOGIT-2: git executable unavailable -> review-prepare succeeds with sourceHead = null' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr-nogit-2'
-        $targetPath = Join-Path $project 'target.txt'
-        script:Write-Utf8NoBomFile -Path $targetPath -Content "nogit body 2`n"
-
-        $listDir = Join-Path $project 'log/staging'
-        if (-not (Test-Path -LiteralPath $listDir -PathType Container)) {
-            $null = New-Item -ItemType Directory -Path $listDir -Force
-        }
-        $listPath = Join-Path $listDir ('pester-prepare-targets-nogit-' + ([guid]::NewGuid().ToString('N')) + '.list')
-        $enc = New-Object System.Text.UTF8Encoding($false)
-        [System.IO.File]::WriteAllText($listPath, ($targetPath + "`n"), $enc)
-
-        $runId = '20260506-110000-pn2aaa'
-        $psExe = (Get-Command powershell.exe -ErrorAction Stop).Source
-        $sanitizedPath = Join-Path $env:SystemRoot 'System32'
-
-        $procArgs = @(
-            '-NoProfile', '-ExecutionPolicy', 'Bypass',
-            '-File', $script:ReviewPrepareScript,
-            '-Stage', 'design',
-            '-Purpose', 'pester nogit',
-            '-ProjectRoot', $project,
-            '-ToolRoot', $script:RepoRoot,
-            '-RunId', $runId,
-            '-TargetFilesPath', $listPath
-        )
-
-        $previousPath = $env:PATH
-        try {
-            $env:PATH = $sanitizedPath
-            $combined = & $psExe @procArgs 2>&1
-            $exitCode = $LASTEXITCODE
-        }
-        finally {
-            $env:PATH = $previousPath
-        }
-
-        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
-        $exitCode | Should -Be 0 -Because $text
-
-        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
-        Test-Path -LiteralPath $metaPath -PathType Leaf | Should -BeTrue
-        $meta = [System.IO.File]::ReadAllText($metaPath, $enc) | ConvertFrom-Json
-
-        $meta.PSObject.Properties['sourceHead'] | Should -Not -BeNullOrEmpty
-        $meta.sourceHead | Should -Be $null
+        Test-Path -LiteralPath (Join-Path $project 'log/review/task-alpha/pass-01/input.md') -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project 'log/review/task-beta/pass-01/input.md')  -PathType Leaf | Should -BeTrue
     }
 }

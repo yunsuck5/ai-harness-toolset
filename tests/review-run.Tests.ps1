@@ -105,8 +105,23 @@ BeforeAll {
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
                 $body += 'exit 0'
             }
+            'verdict-yes-with-risk' {
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes with risk`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 0'
+            }
             'no-verdict' {
                 $body += '$content = "# Review Result`r`n`r`nNo Verdict heading present.`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 0'
+            }
+            'verdict-maybe' {
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nmaybe`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 0'
+            }
+            'verdict-title-yes' {
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nYes`r`n"'
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
                 $body += 'exit 0'
             }
@@ -123,22 +138,21 @@ BeforeAll {
     function script:Invoke-ReviewPrepare {
         param(
             [string] $ProjectRoot,
-            [string] $RunId,
-            [string] $TargetPath,
-            [string] $Stage = 'implementation',
-            [string] $Purpose = 'pester review-run prepare'
+            [string] $ReviewTaskId,
+            [string] $Pass
         )
         $procArgs = @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
             '-File', $script:PrepareScript,
-            '-Stage', $Stage,
-            '-Purpose', $Purpose,
+            '-Stage', 'implementation',
+            '-Purpose', 'pester review-run prepare',
             '-ProjectRoot', $ProjectRoot,
             '-ToolRoot', $script:RepoRoot,
-            '-RunId', $RunId,
-            '-Reviewer', 'codex',
-            '-TargetFiles', $TargetPath
+            '-ReviewTaskId', $ReviewTaskId
         )
+        if (-not [string]::IsNullOrEmpty($Pass)) {
+            $procArgs += @('-Pass', $Pass)
+        }
         $combined = & powershell.exe @procArgs 2>&1
         $exitCode = $LASTEXITCODE
         $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
@@ -148,35 +162,70 @@ BeforeAll {
         }
     }
 
+    function script:Build-FilledInput {
+        $body = @()
+        $body += '# Review Input'
+        $body += ''
+        $body += '## Stage'
+        $body += ''
+        $body += 'implementation'
+        $body += ''
+        $body += '## Purpose'
+        $body += ''
+        $body += 'pester run.'
+        $body += ''
+        $body += '## Target files'
+        $body += ''
+        $body += '- pester/target.txt'
+        $body += ''
+        $body += '## Context'
+        $body += ''
+        $body += 'pester context line.'
+        $body += ''
+        $body += '## Required inspection paths'
+        $body += ''
+        $body += 'pester inspection path.'
+        $body += ''
+        $body += '## Review questions'
+        $body += ''
+        $body += 'pester review question.'
+        $body += ''
+        $body += '## Constraints'
+        $body += ''
+        $body += 'pester constraint.'
+        $body += ''
+        $body += '## Final verdict'
+        $body += ''
+        $body += 'yes / no / yes with risk'
+        $body += ''
+        return ($body -join "`n")
+    }
+
     function script:Set-InputFilled {
         param([string] $InputPath)
-        $enc = New-Object System.Text.UTF8Encoding($false)
-        $text = [System.IO.File]::ReadAllText($InputPath, $enc)
-        $text = $text.Replace('(Replace this placeholder with review context.)', 'pester run context line.')
-        $text = $text.Replace('(Replace this placeholder with paths the reviewer must inspect.)', 'pester run inspection path.')
-        $text = $text.Replace('(Replace this placeholder with review questions.)', 'pester run review question.')
-        $text = $text.Replace('(Replace this placeholder with explicit constraints.)', 'pester run constraint.')
-        [System.IO.File]::WriteAllText($InputPath, $text, $enc)
+        script:Write-Utf8NoBomFile -Path $InputPath -Content (script:Build-FilledInput)
     }
 
     function script:Invoke-ReviewRun {
         param(
             [string] $ProjectRoot,
-            [string] $RunId,
+            [string] $ReviewTaskId,
+            [string] $Pass,
             [string] $StubPath,
             [string] $Reviewer = 'codex',
-            [switch] $Force
+            [string] $Model
         )
         $procArgs = @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
             '-File', $script:RunScript,
-            '-RunId', $RunId,
+            '-ReviewTaskId', $ReviewTaskId,
+            '-Pass', $Pass,
             '-Reviewer', $Reviewer,
             '-ProjectRoot', $ProjectRoot,
             '-ToolRoot', $script:RepoRoot
         )
-        if ($Force) {
-            $procArgs += '-Force'
+        if (-not [string]::IsNullOrEmpty($Model)) {
+            $procArgs += @('-Model', $Model)
         }
 
         $previousEnv = $env:AI_HARNESS_CODEX_COMMAND
@@ -201,291 +250,188 @@ BeforeAll {
     }
 }
 
-Describe 'review-run' {
-    It 'AC-RR1: happy path on a prepared run produces result.md/result.json, PASS, and both review-verify modes succeed' {
+Describe 'review-run canonical pass directory' {
+    It 'AC-RR1: happy path on a prepared pass writes canonical result.md with the verdict' {
         $project = script:New-RunCase -CaseName 'rr1'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "rr1 body`n"
-
-        $runId = '20260510-120000-rr1aaa'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -RunId $runId -TargetPath $target
+        $taskId  = 'rr1-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        $inputPath = Join-Path $project ('log/review/' + $runId + '/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr1-yes' -Mode 'verdict-yes'
-        $r = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Be 0 -Because $r.Output
         $r.Output | Should -Match 'review-run: PASS'
         $r.Output | Should -Match 'verdict: yes'
-        $r.Output | Should -Match 'review-verify: PASS'
 
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        Test-Path -LiteralPath (Join-Path $runDir 'result.md')   -PathType Leaf | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeTrue
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
 
-        $resultJson = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
-        $resultJson.verdict | Should -Be 'yes'
-        $resultJson.runId | Should -Be $runId
-
-        $meta = [System.IO.File]::ReadAllText((Join-Path $runDir 'meta.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
-        $expectedTargetSha   = (Get-FileHash -LiteralPath $target                            -Algorithm SHA256).Hash.ToLowerInvariant()
-        $expectedInputSha    = (Get-FileHash -LiteralPath $inputPath                         -Algorithm SHA256).Hash.ToLowerInvariant()
-        $expectedResultMdSha = (Get-FileHash -LiteralPath (Join-Path $runDir 'result.md')   -Algorithm SHA256).Hash.ToLowerInvariant()
-
-        $resultJson.schemaVersion                   | Should -Be 1
-        $resultJson.stage                           | Should -Be ([string]$meta.stage)
-        $resultJson.purpose                         | Should -Be ([string]$meta.purpose)
-        $resultJson.reviewer                        | Should -Be ([string]$meta.reviewer)
-        ($resultJson.targetPath -replace '\\', '/') | Should -Be ($meta.targetPath -replace '\\', '/')
-        $resultJson.targetSha256                    | Should -Be $expectedTargetSha
-        $resultJson.targetSha256                    | Should -Be ([string]$meta.targetSha256)
-        $resultJson.inputSha256                     | Should -Be $expectedInputSha
-        $resultJson.resultMarkdownSha256            | Should -Be $expectedResultMdSha
-        $resultJson.createdAtUtc                    | Should -Match '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}Z$'
-        $resultJson.sourceHead                      | Should -Be $meta.sourceHead
-        $resultJson.PSObject.Properties.Name        | Should -Contain 'notes'
+        # Canonical contract: only input.md + result.md.
+        Test-Path -LiteralPath (Join-Path $passDir 'meta.json')         -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $passDir 'result.json')       -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $passDir 'target-files.list') -PathType Leaf | Should -BeFalse
     }
 
-    It 'AC-RR2: missing run directory fails before Codex and produces no result artifact' {
+    It 'AC-RR2: missing pass directory fails before invoking Codex' {
         $project = script:New-RunCase -CaseName 'rr2'
         $stub = script:Write-CodexStub -StubName 'rr2-yes' -Mode 'verdict-yes'
 
-        $runId = '20260510-120000-rr2aaa'
-        $r = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId 'no-such-task' -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'review-run: FAIL run not prepared'
-
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        Test-Path -LiteralPath $runDir -PathType Container | Should -BeFalse
+        $r.Output | Should -Match 'pass directory not prepared'
     }
 
-    It 'AC-RR3: missing input.md fails before Codex and produces no result artifact' {
+    It 'AC-RR3: missing input.md inside an otherwise-prepared pass dir fails before Codex' {
         $project = script:New-RunCase -CaseName 'rr3'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "rr3 body`n"
-
-        $runId = '20260510-120000-rr3aaa'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -RunId $runId -TargetPath $target
+        $taskId  = 'rr3-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        $inputPath = Join-Path $project ('log/review/' + $runId + '/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
         Remove-Item -LiteralPath $inputPath -Force
 
         $stub = script:Write-CodexStub -StubName 'rr3-yes' -Mode 'verdict-yes'
-        $r = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'review-run: FAIL input\.md not found'
+        $r.Output | Should -Match 'input\.md not found'
 
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        Test-Path -LiteralPath (Join-Path $runDir 'result.md')   -PathType Leaf | Should -BeFalse
-        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
-    It 'AC-RR4: placeholder-only input.md fails through review-input-verify and does not call Codex' {
+    It 'AC-RR4: placeholder-only input.md fails through review-input-verify and Codex is not invoked' {
         $project = script:New-RunCase -CaseName 'rr4'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "rr4 body`n"
-
-        $runId = '20260510-120000-rr4aaa'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -RunId $runId -TargetPath $target
+        $taskId  = 'rr4-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
+        # input.md is the unmodified seeded template, which still contains {{AI_TO_FILL_*}} tokens.
         $stub = script:Write-CodexStub -StubName 'rr4-yes' -Mode 'verdict-yes'
-        $r = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'review-run: FAIL input\.md not ready'
+        $r.Output | Should -Match 'input\.md not ready'
         $r.Output | Should -Match 'review-input-verify'
 
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        Test-Path -LiteralPath (Join-Path $runDir 'result.md')   -PathType Leaf | Should -BeFalse
-        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeFalse
-        Test-Path -LiteralPath (Join-Path $runDir 'result.md.argv.txt') -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
-    It 'AC-RR5: missing or empty meta.reviewerConfig.model fails before Codex' {
+    It 'AC-RR5: result.md already present blocks re-run for the same pass (write-once)' {
         $project = script:New-RunCase -CaseName 'rr5'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "rr5 body`n"
-
-        $runId = '20260510-120000-rr5aaa'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -RunId $runId -TargetPath $target
+        $taskId  = 'rr5-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        $metaPath = Join-Path $project ('log/review/' + $runId + '/meta.json')
-        $enc = New-Object System.Text.UTF8Encoding($false)
-        $metaText = [System.IO.File]::ReadAllText($metaPath, $enc)
-        $meta = $metaText | ConvertFrom-Json
-        $meta.reviewerConfig.model = ''
-        $rewritten = ($meta | ConvertTo-Json -Depth 32)
-        $rewritten = $rewritten -replace "`r`n", "`n"
-        [System.IO.File]::WriteAllText($metaPath, $rewritten, $enc)
-
-        $inputPath = Join-Path $project ('log/review/' + $runId + '/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr5-yes' -Mode 'verdict-yes'
-        $r = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub
-        $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'review-run: FAIL reviewer model missing'
-
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        Test-Path -LiteralPath (Join-Path $runDir 'result.md')   -PathType Leaf | Should -BeFalse
-        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeFalse
-    }
-
-    It 'AC-RR6: existing result.md/result.json blocks re-run without -Force and preserves prior record' {
-        $project = script:New-RunCase -CaseName 'rr6'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "rr6 body`n"
-
-        $runId = '20260510-120000-rr6aaa'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -RunId $runId -TargetPath $target
-        $prep.ExitCode | Should -Be 0 -Because $prep.Output
-
-        $inputPath = Join-Path $project ('log/review/' + $runId + '/input.md')
-        script:Set-InputFilled -InputPath $inputPath
-
-        $stub = script:Write-CodexStub -StubName 'rr6-yes' -Mode 'verdict-yes'
-        $first = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub
+        $first = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $first.ExitCode | Should -Be 0 -Because $first.Output
 
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        $resultMdBefore = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.md'),   (New-Object System.Text.UTF8Encoding($false)))
-        $resultJsBefore = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.json'), (New-Object System.Text.UTF8Encoding($false)))
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $before = [System.IO.File]::ReadAllText($resultMd, $enc)
 
-        $second = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub
+        $second = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $second.ExitCode | Should -Not -Be 0
-        $second.Output | Should -Match 'review-run: FAIL existing result\.md/result\.json present'
-        $second.Output | Should -Match '-Force'
+        $second.Output | Should -Match 'result\.md already exists'
+        $second.Output | Should -Match 'write-once'
 
-        $resultMdAfter = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.md'),   (New-Object System.Text.UTF8Encoding($false)))
-        $resultJsAfter = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.json'), (New-Object System.Text.UTF8Encoding($false)))
-        $resultMdAfter | Should -Be $resultMdBefore
-        $resultJsAfter | Should -Be $resultJsBefore
+        $after = [System.IO.File]::ReadAllText($resultMd, $enc)
+        $after | Should -Be $before
     }
 
-    It 'AC-RR7: -Force overwrites existing result.md/result.json and records the new verdict' {
-        $project = script:New-RunCase -CaseName 'rr7'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "rr7 body`n"
-
-        $runId = '20260510-120000-rr7aaa'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -RunId $runId -TargetPath $target
+    It 'AC-RR6: verdict parse failure preserves the failed pass on disk; no legacy result.json is written' {
+        $project = script:New-RunCase -CaseName 'rr6'
+        $taskId  = 'rr6-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        $inputPath = Join-Path $project ('log/review/' + $runId + '/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
-        $stubYes = script:Write-CodexStub -StubName 'rr7-yes' -Mode 'verdict-yes'
-        $first = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stubYes
-        $first.ExitCode | Should -Be 0 -Because $first.Output
-
-        $stubNo = script:Write-CodexStub -StubName 'rr7-no' -Mode 'verdict-no'
-        $second = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stubNo -Force
-        $second.ExitCode | Should -Be 0 -Because $second.Output
-        $second.Output | Should -Match 'verdict: no'
-
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        $resultJson = [System.IO.File]::ReadAllText((Join-Path $runDir 'result.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
-        $resultJson.verdict | Should -Be 'no'
-
-        $meta = [System.IO.File]::ReadAllText((Join-Path $runDir 'meta.json'), (New-Object System.Text.UTF8Encoding($false))) | ConvertFrom-Json
-        $expectedTargetSha   = (Get-FileHash -LiteralPath $target                            -Algorithm SHA256).Hash.ToLowerInvariant()
-        $expectedInputSha    = (Get-FileHash -LiteralPath $inputPath                         -Algorithm SHA256).Hash.ToLowerInvariant()
-        $expectedResultMdSha = (Get-FileHash -LiteralPath (Join-Path $runDir 'result.md')   -Algorithm SHA256).Hash.ToLowerInvariant()
-
-        $resultJson.schemaVersion                   | Should -Be 1
-        $resultJson.runId                           | Should -Be $runId
-        $resultJson.stage                           | Should -Be ([string]$meta.stage)
-        $resultJson.purpose                         | Should -Be ([string]$meta.purpose)
-        $resultJson.reviewer                        | Should -Be ([string]$meta.reviewer)
-        ($resultJson.targetPath -replace '\\', '/') | Should -Be ($meta.targetPath -replace '\\', '/')
-        $resultJson.targetSha256                    | Should -Be $expectedTargetSha
-        $resultJson.targetSha256                    | Should -Be ([string]$meta.targetSha256)
-        $resultJson.inputSha256                     | Should -Be $expectedInputSha
-        $resultJson.resultMarkdownSha256            | Should -Be $expectedResultMdSha
-        $resultJson.createdAtUtc                    | Should -Match '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{7}Z$'
-        $resultJson.sourceHead                      | Should -Be $meta.sourceHead
-        $resultJson.PSObject.Properties.Name        | Should -Contain 'notes'
-    }
-
-    It 'AC-RR8: verdict parse failure does not create result.json and preserves the failed run' {
-        $project = script:New-RunCase -CaseName 'rr8'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "rr8 body`n"
-
-        $runId = '20260510-120000-rr8aaa'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -RunId $runId -TargetPath $target
-        $prep.ExitCode | Should -Be 0 -Because $prep.Output
-
-        $inputPath = Join-Path $project ('log/review/' + $runId + '/input.md')
-        script:Set-InputFilled -InputPath $inputPath
-
-        $stub = script:Write-CodexStub -StubName 'rr8-nv' -Mode 'no-verdict'
-        $r = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub
+        $stub = script:Write-CodexStub -StubName 'rr6-nv' -Mode 'no-verdict'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'Could not parse verdict'
-        $r.Output | Should -Match 'result\.json was not created'
 
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        Test-Path -LiteralPath $runDir                              -PathType Container | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path $runDir 'result.md')      -PathType Leaf      | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path $runDir 'result.json')    -PathType Leaf      | Should -BeFalse
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        Test-Path -LiteralPath $passDir                       -PathType Container | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf      | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $passDir 'result.json') -PathType Leaf    | Should -BeFalse
     }
 
-    It 'AC-RR9: review-verify -RequireResult succeeds independently after review-run PASS' {
-        $project = script:New-RunCase -CaseName 'rr9'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "rr9 body`n"
+    It 'AC-RR7: corrective loop — pass-02 can run cleanly when pass-01 verdict was no' {
+        $project = script:New-RunCase -CaseName 'rr7'
+        $taskId  = 'rr7-task'
 
-        $runId = '20260510-120000-rr9aaa'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -RunId $runId -TargetPath $target
+        $prep1 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep1.ExitCode | Should -Be 0
+        $input1 = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $input1
+
+        $stubNo = script:Write-CodexStub -StubName 'rr7-no' -Mode 'verdict-no'
+        $r1 = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stubNo
+        $r1.ExitCode | Should -Be 0 -Because $r1.Output
+        $r1.Output | Should -Match 'verdict: no'
+
+        # Allocate the next pass.
+        $prep2 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId
+        $prep2.ExitCode | Should -Be 0 -Because $prep2.Output
+        $prep2.Output | Should -Match 'pass: pass-02'
+        $input2 = Join-Path $project ('log/review/' + $taskId + '/pass-02/input.md')
+        script:Set-InputFilled -InputPath $input2
+
+        $stubYes = script:Write-CodexStub -StubName 'rr7-yes' -Mode 'verdict-yes'
+        $r2 = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-02' -StubPath $stubYes
+        $r2.ExitCode | Should -Be 0 -Because $r2.Output
+        $r2.Output | Should -Match 'verdict: yes'
+
+        # Both passes exist on disk independently.
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-02/result.md')) -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-RR8: non-codex reviewer fails with the MVP boundary message' {
+        $project = script:New-RunCase -CaseName 'rr8'
+        $taskId  = 'rr8-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-
-        $inputPath = Join-Path $project ('log/review/' + $runId + '/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr8-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Reviewer 'claude'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'only -Reviewer codex is supported'
+    }
+
+    It 'AC-RR10: title-cased verdict ("Yes") is rejected by review-run, same as review-verify' {
+        $project = script:New-RunCase -CaseName 'rr10'
+        $taskId  = 'rr10-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr10-title' -Mode 'verdict-title-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'Could not parse verdict'
+
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-RR9: invalid -Pass (not pass-NN) is rejected before any Codex invocation' {
+        $project = script:New-RunCase -CaseName 'rr9'
+        $taskId  = 'rr9-task'
 
         $stub = script:Write-CodexStub -StubName 'rr9-yes' -Mode 'verdict-yes'
-        $r = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub
-        $r.ExitCode | Should -Be 0 -Because $r.Output
-
-        $verifyArgs = @(
-            '-NoProfile', '-ExecutionPolicy', 'Bypass',
-            '-File', $script:VerifyScript,
-            '-RunId', $runId,
-            '-ProjectRoot', $project,
-            '-ToolRoot', $script:RepoRoot,
-            '-RequireResult'
-        )
-        $combined = & powershell.exe @verifyArgs 2>&1
-        $verifyExit = $LASTEXITCODE
-        $verifyText = ($combined | ForEach-Object { [string]$_ }) -join "`n"
-        $verifyExit | Should -Be 0 -Because $verifyText
-        $verifyText | Should -Match 'review-verify: PASS'
-        $verifyText | Should -Match 'result\.json present and binding verified'
-    }
-
-    It 'AC-RR10: non-codex reviewer fails with the MVP boundary message' {
-        $project = script:New-RunCase -CaseName 'rr10'
-        $target = Join-Path $project 'a.txt'
-        script:Write-Utf8NoBomFile -Path $target -Content "rr10 body`n"
-
-        $runId = '20260510-120000-rr10aa'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -RunId $runId -TargetPath $target
-        $prep.ExitCode | Should -Be 0 -Because $prep.Output
-
-        $inputPath = Join-Path $project ('log/review/' + $runId + '/input.md')
-        script:Set-InputFilled -InputPath $inputPath
-
-        $stub = script:Write-CodexStub -StubName 'rr10-yes' -Mode 'verdict-yes'
-        $r = script:Invoke-ReviewRun -ProjectRoot $project -RunId $runId -StubPath $stub -Reviewer 'claude'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-1' -StubPath $stub
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'review-run: FAIL only -Reviewer codex is supported'
-
-        $runDir = Join-Path $project ('log/review/' + $runId)
-        Test-Path -LiteralPath (Join-Path $runDir 'result.md')   -PathType Leaf | Should -BeFalse
-        Test-Path -LiteralPath (Join-Path $runDir 'result.json') -PathType Leaf | Should -BeFalse
+        $r.Output | Should -Match 'invalid Pass'
     }
 }

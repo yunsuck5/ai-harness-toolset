@@ -101,22 +101,25 @@ script 가 하지 않는 일:
 - review request 본문을 여러 staging file 로 분산하는 staging step.
 - AI 가 자연어로 작성할 수 있는 본문을 JSON / hash / provenance 파일로 추가 분산.
 
-### 4a. Current script implementations vs canonical contract (transitional divergence)
+### 4a. Script entry points (canonical)
 
-본 contract 의 위 6 개 gate 가 review record 의 canonical operator-facing 책임이다. 그러나 현재의 script 구현 (`scripts/review-prepare.ps1`, `scripts/review-run.ps1`, `scripts/review-verify.ps1`) 은 본 단순화 직전 topology 의 잔재로 다음과 같은 추가 동작을 한다:
+본 contract 의 6 개 gate 는 두 entry point 로 닫힌다.
 
-- `review-prepare.ps1` 가 `<ProjectRoot>/log/review/<script-allocated-id>/` 형태의 **flat 한 단일 디렉터리** 를 allocate 한다 — 본 contract 의 `<review-task-id>/pass-NN/` 두 단계 layout 을 만들지 않는다. 한 script-allocated-id 는 운영자 / AI 가 conceptually 하나의 review task 의 한 pass 로 매핑한다.
-- `review-prepare.ps1` 가 같은 디렉터리에 `meta.json` (script-allocated-id / target SHA-256 / reviewerConfig 등) 와 `target-files.list` (target file path snapshot) 을 함께 작성한다.
-- `review-run.ps1` 가 그 `meta.json` 을 읽어 reviewer model 등을 결정한다 — `meta.json` 부재 시 fail. `-RunId` parameter 는 위 script-allocated-id 를 받는다.
-- `review-run.ps1` 가 Codex 실행 후 `result.json` 을 작성하고 `scripts/review-verify.ps1` 를 default mode + `-RequireResult` mode 로 호출해 hash binding 검증을 추가로 수행한다.
+- `scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>] -Stage <stage> -Purpose <line>`
+  - canonical pass directory `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` 를 발급한다.
+  - 그 안에 `templates/review-input.md` 본문을 그대로 옮긴 `input.md` 를 seed 한다.
+  - `-Pass` 가 생략되면 같은 task directory 안의 기존 `pass-NN` 을 스캔해 다음 번호를 할당한다 (`pass-01`, `pass-02`, ...).
+  - pass directory 가 이미 존재하면 write-once 위반으로 거부한다.
+- `scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>`
+  - 같은 pass directory 의 `input.md` 를 `scripts/review-input-verify.ps1` 로 검증한 뒤 Codex CLI 를 정확히 1 회 실행해 같은 pass directory 의 `result.md` 를 작성한다.
+  - reviewer model 은 `-Model` 명시 → `config/reviewer.json` 의 `model` → built-in default 순으로 해소된다. canonical record 안에는 model / hash / source HEAD 같은 sidecar 가 저장되지 않는다.
+  - `result.md` 의 `## Verdict` shape 를 검증한 뒤 PASS / FAIL 을 반환한다.
+- `scripts/review-verify.ps1 -ReviewTaskId <id> -Pass <pass-NN> [-RequireResult]`
+  - default mode: `input.md` 존재 + shape 만 검증.
+  - `-RequireResult`: `input.md` shape + `result.md` 존재 + `## Verdict` shape 까지 검증한다.
+  - canonical artifact 두 파일만으로 PASS 가 결정되며, 어떤 sidecar JSON / hash binding 파일도 요구하지 않는다.
 
-이 추가 동작들은 script 의 **내부 implementation detail** 이며, 본 contract 가 보장하는 canonical operator-facing 책임은 위 6 개 gate 다. 본 contract 의 operator path 가 **아닌** 항목:
-
-- `<review-task-id>/pass-NN/` 두 단계 layout 대신 flat 한 `<script-allocated-id>/` 한 단계 layout (현재 script 가 emit 하는 형태).
-- `meta.json` / `target-files.list` / `result.json` sidecar.
-- `review-verify` 의 hash binding 결과.
-
-이 transitional divergence — 즉 script 가 canonical contract 보다 단순한 단일 디렉터리 layout 과 추가 sidecar 를 emit 한다는 사실 — 은 `docs/backlog/review.md` 의 "Removed legacy review artifacts" 에 격리되어 있고, script alignment (canonical `<review-task-id>/pass-NN/` layout + sidecar 제거) 는 별도 scoped goal 의 대상이다. 운영자는 review record 의 정합성을 같은 review task 의 마지막 pass directory 의 input.md / result.md 두 파일과 위 6 개 gate 의 PASS / FAIL 로 판단하고, 같은 디렉터리에 남는 sidecar 는 disk 의 runtime noise 로 취급한다.
+운영자 / AI 는 `<review-task-id>` 를 사용자의 `/goal` 작업 또는 review gate 단위로 직접 결정한다. Claude Code chat / session id 를 자동으로 받아 쓰지 않는다.
 
 ## 5. AI responsibility (semantic judgment)
 
@@ -170,7 +173,7 @@ failed / incomplete pass (예: Codex 실패 또는 verdict parsing 실패로 `re
 
 본 contract 가 다루지 않는 것:
 
-- canonical artifact 외의 sidecar 파일 (meta.json, target-files.list, result.json, 외부 staging folder 등) 에 대한 보장. 그런 파일은 본 contract 의 일부가 아니다.
+- canonical artifact 외의 sidecar 파일 (sidecar JSON, hash binding 파일, 외부 staging folder 등) 에 대한 보장. 그런 파일은 본 contract 의 일부가 아니다.
 - review record 에 대한 hash binding / freshness sidecar / machine-readable verdict 사본의 자동 작성.
 - review history aggregation, DB, index, cross-run dashboard.
 - multi-reviewer orchestration, fallback model 자동 사용, retry / auto-fix loop.
