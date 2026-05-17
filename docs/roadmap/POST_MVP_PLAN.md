@@ -254,7 +254,7 @@ canonical review task/pass topology refactor (a5d94a5 contract alignment + c81fe
 
 1. `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 확정 — **§10 Completed 에 기록된 대로 이미 충족됨.** global install / update / validation / self-adoption operating model 이 current source-of-truth 로 확정되어 있다. 본 step 은 이후 단계의 baseline checkpoint 로 남기며, remaining work 는 step 3 부터다 (step 2 는 아래 항목 참조).
 2. manual global activation / controlled global materialization 으로 global behavior validation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §7.2 의 four-axis: global entrypoint / ToolRoot·ProjectRoot 분리 / target footprint / runtime artifact 위치) — **§10 Completed 에 기록된 대로 d557580 baseline 시점의 기존 evidence 로 이미 충족됨.** 본 closeout 은 step 3–7 어느 것도 자동 승인하지 않으며, `docs/backlog/operations.md` 항목의 status 도 변경하지 않는다.
-3. validation result 를 기준으로 install / update implementation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5).
+3. validation result 를 기준으로 install / update implementation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5). 본 step 의 작업은 `GLOBAL_INSTALL_UPDATE_MODEL.md` 의 subordinate 인 `docs/roadmap/global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` 를 따른다.
 4. install / update validation.
 5. `ai-harness-toolset` self-adoption (`GLOBAL_INSTALL_UPDATE_MODEL.md` §9).
 6. post-MVP closeout 결정.

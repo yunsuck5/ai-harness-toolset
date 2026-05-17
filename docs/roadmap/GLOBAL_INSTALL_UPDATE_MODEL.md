@@ -21,6 +21,8 @@
 
 본 문서는 위 문서들을 삭제하거나 rewrite 하지 않는다.
 
+Step 3-specific install / update implementation planning 은 본 문서의 **subordinate** 인 `docs/roadmap/global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` 가 안내한다. 그 가이드는 본 문서를 **대체하지 않으며**, 본 문서가 더 구체적인 영역에서는 본 문서가 우선한다.
+
 ### Path notation
 
 - global Claude install layer 경로는 항상 `%USERPROFILE%\.claude` 로 표기한다. expanded example 이 필요하면 `C:\Users\<USER>\.claude` 처럼 placeholder 를 쓴다. 실제 Windows 사용자 폴더명은 본 문서에 쓰지 않는다.
