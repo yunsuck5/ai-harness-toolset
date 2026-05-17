@@ -21,7 +21,7 @@ This skill drives the ai-harness-toolset canonical review flow. The canonical re
 - `pass-NN` (zero-padded two-digit) identifies one Codex review attempt inside the corrective loop for that task. The first attempt is `pass-01`; the next is `pass-02`; and so on.
 - Each `pass-NN/` is write-once. If the input or result is wrong or stale, allocate a new `pass-NN/` under the same `<review-task-id>/`; do not edit the old pass to close the review. If the underlying review task changes (different `/goal` or different gate), use a new `<review-task-id>/`.
 
-Source-of-truth for the contract is `docs/REVIEW_RESULT_CONTRACT.md`. This skill mirrors that contract. The scripts emit the canonical two-level `<review-task-id>/pass-NN/` layout directly; the only on-disk record per pass is the `input.md` + `result.md` pair.
+The scripts emit the canonical two-level `<review-task-id>/pass-NN/` layout directly; the only on-disk record per pass is the `input.md` + `result.md` pair.
 
 Adoption path: copy this file to `<ProjectRoot>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `%USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md` (user-global, opt-in). No file is auto-installed.
 
@@ -49,7 +49,7 @@ Do not abandon the conversation state. Do not restart, rebase, switch branch, st
 
 - Run `git status --porcelain=v1` and `git diff` to see what is changed and untracked.
 - `<ProjectRoot>` is the directory `git status` was run in.
-- Resolve `<ToolRoot>` using `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1 (channel 1 explicit `-ToolRoot` → channel 2 `AI_HARNESS_TOOL_ROOT` env var → channel 3 global stable install `%USERPROFILE%\.claude\ai-harness-toolset\current` → channel 4 source-repo dogfooding multi-marker → channel 5 legacy `<ProjectRoot>/.ai-harness/` → channel 6 stop). If channel 6 is reached, stop and tell the user the toolset is not available; do not auto-install.
+- Resolve `<ToolRoot>` in this channel order: explicit `-ToolRoot` argument → `AI_HARNESS_TOOL_ROOT` env var → global stable install `%USERPROFILE%\.claude\ai-harness-toolset\current` (absent skips to the next channel; present but incomplete fails fast) → `<ProjectRoot>/.ai-harness/` fallback → explicit error. If no channel resolves, stop and tell the user the toolset is not available; do not auto-install.
 
 ### 2. Determine target files
 
@@ -86,7 +86,7 @@ Hard rules for step 3:
 
 ### 4. Author the pass `input.md`
 
-Open `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` (the file just seeded by step 3) and overwrite its body with the actual review request. Keep `templates/review-input.md` as the shape reference.
+Open `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` (the file just seeded by step 3) and overwrite its body with the actual review request.
 
 The file must contain these required H2 headings (exact text), each with non-empty body:
 
@@ -113,14 +113,17 @@ Invoke `<ToolRoot>/scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` on
 Hard rules for step 5:
 
 - One invocation per user request. No retry on failure. No fallback model. No auto-fix loop.
+- Run `review-run.ps1` in the foreground and wait for completion. Do not spawn it as detached or background work, and do not run the review concurrently with other work. A timeout or budget is only an operating allowance for a foreground attempt; it is not a correctness guarantee, and review validity is judged by complete run artifacts, valid result binding, and the step-6 verification, not by how the run was launched.
 - Do not bypass `scripts/review-input-verify.ps1`.
 - Do not edit `input.md` once `review-run.ps1` has started. If the input needs correction, allocate a new pass for the same `<review-task-id>` (go back to step 3 with a new `pass-NN`).
 
 If `review-run.ps1` exits non-zero, stop. Report the exit code and the last status line printed. Report whether `result.md` exists in the pass directory. Do not silently retry, even by adjusting argument shape — surface a corrected proposed invocation and wait for explicit go-ahead.
 
-### 6. Read `result.md` and confirm the verdict
+### 6. Verify the canonical artifacts and confirm the verdict
 
-After clean exit, read `log/review/<review-task-id>/pass-NN/result.md`:
+After step 5 exits cleanly, invoke `<ToolRoot>/scripts/review-verify.ps1 -ReviewTaskId <id> -Pass <pass-NN> -RequireResult` once. This is the post-hoc canonical-artifact check; it does **not** invoke Codex. It re-validates `input.md` shape and the `## Verdict` shape inside `result.md`. If it exits non-zero, stop and report the exit code and the last status line. Do not edit files in the pass directory to make it pass.
+
+After `review-verify.ps1` exits cleanly, read `log/review/<review-task-id>/pass-NN/result.md`:
 
 - Confirm exactly one `## Verdict` heading exists.
 - Confirm the first non-empty line after `## Verdict` (whitespace-trimmed) is exactly one of `yes`, `no`, `yes with risk` — lowercase, no qualifier, no inline form.
@@ -162,7 +165,7 @@ This skill must never run `git commit`, `git push`, `git tag`, `git merge`, or a
 ## Failure handling
 
 - Entry-point non-zero exit: report exit code and the last status line. Do not retry without explicit scoped user approval; present the corrected invocation first and wait for go-ahead. This applies to every flavor (input-verify, Codex error, verdict parse error).
-- Codex CLI not installed or not on PATH: report that the CLI environment is not ready and point to `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md`. Do not attempt to install anything.
+- Codex CLI not installed or not on PATH: report that the CLI environment is not ready (the Codex CLI must be installed and resolvable on the user's PATH). Do not attempt to install anything.
 - Verdict parse failure: the failed pass directory is preserved on disk. Report its canonical path `log/review/<review-task-id>/pass-NN/` and stop. Do not edit files inside that pass directory.
 - If `input.md` and `result.md` both exist but the pass is older than the source / docs / template / snippet content it covers, that pass is stale. Allocate a fresh `pass-NN` under the same `<review-task-id>` rather than reusing the stale pass's verdict.
 
@@ -172,6 +175,6 @@ This skill must never run `git commit`, `git push`, `git tag`, `git merge`, or a
 - Running multiple cycles to "average out" verdicts.
 - Translating the verdict into other vocabulary.
 - Auto-committing, auto-pushing, auto-merging, auto-releasing, auto-deploying.
-- Modifying `%USERPROFILE%\.claude\`, `%USERPROFILE%\.codex\`, `%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md` (or `%CODEX_HOME%\AGENTS.md` or `AGENTS.override.md` at the Codex user-global scope), project-root `CLAUDE.md` / `AGENTS.md`, or the user's git config. `%USERPROFILE%\.claude\AGENTS.md` is forbidden. Managed-block insert / replace in those global files is a separate explicit user-approved scope (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6).
+- Modifying `%USERPROFILE%\.claude\`, `%USERPROFILE%\.codex\`, `%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md` (or `%CODEX_HOME%\AGENTS.md` or `AGENTS.override.md` at the Codex user-global scope), project-root `CLAUDE.md` / `AGENTS.md`, or the user's git config. `%USERPROFILE%\.claude\AGENTS.md` is forbidden. Managed-block insert / replace in those global files is a separate explicit user-approved scope.
 - Cleaning up `log/review/<review-task-id>/` or `log/review/<review-task-id>/pass-NN/` directories.
-- Producing, reading, or relying on any artifact outside the canonical `input.md` + `result.md` pair. Sidecar JSON, hash-binding files, and external staging folders are not part of the canonical contract. If such files exist on disk from earlier transitional implementations, treat them as runtime noise, not as review record (`docs/backlog/review.md`).
+- Producing, reading, or relying on any artifact outside the canonical `input.md` + `result.md` pair. Sidecar JSON, hash-binding files, and external staging folders are not part of the canonical contract. If such files exist on disk, treat them as runtime noise, not as review record.
