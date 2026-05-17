@@ -103,9 +103,8 @@ function Get-VerdictFromResultMd {
         $candidate = $lines[$i].Trim()
         if ([string]::IsNullOrEmpty($candidate)) { continue }
 
-        # Lowercase-exact match per docs/REVIEW_RESULT_CONTRACT.md §3.
-        # `Yes`, `YES`, `Yes with risk` etc. are rejected — must match what
-        # review-verify.ps1 Test-VerdictShape accepts.
+        # Lowercase-exact verdict match. `Yes`, `YES`, `Yes with risk` etc. are
+        # rejected — must match what review-verify.ps1 Test-VerdictShape accepts.
         if ($candidate -ceq 'yes' -or $candidate -ceq 'no' -or $candidate -ceq 'yes with risk') {
             return $candidate
         }
