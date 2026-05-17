@@ -2,7 +2,7 @@
 
 이 파일은 `log/review/<review-task-id>/pass-NN/result.md` 의 형식 기준이다. Codex CLI 가 `--output-last-message` 로 같은 pass directory 에 결과를 작성한다. operator-role AI (Claude Code) 가 `result.md` 본문을 읽고 finding / risk / required change 의 의미를 판단한다.
 
-`<review-task-id>` 는 하나의 Claude Code `/goal` 작업 또는 하나의 review gate 단위이며 Claude Code chat / session id 가 아니다. `pass-NN` 는 같은 review task 의 corrective loop 안에서의 각 Codex review attempt 다 (`docs/REVIEW_RESULT_CONTRACT.md`).
+`<review-task-id>` 는 하나의 Claude Code `/goal` 작업 또는 하나의 review gate 단위이며 Claude Code chat / session id 가 아니다. `pass-NN` 는 같은 review task 의 corrective loop 안에서의 각 Codex review attempt 다.
 
 결과는 본 한 파일로 닫힌다. 다른 sidecar 파일은 canonical contract 의 일부가 아니다.
 
