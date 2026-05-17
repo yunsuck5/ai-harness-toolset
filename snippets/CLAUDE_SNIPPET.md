@@ -19,57 +19,24 @@ The forbidden destination is `%USERPROFILE%\.claude\AGENTS.md`. That path is not
 - Adopting or updating this payload in any destination above is an explicit, user-approved global / user config mutation, never an implicit or automatic action.
 - If the marker pair is already present, only the block between the markers may be replaced. Inserting the block into an existing file that has no marker, and creating a missing destination file, are each separate explicit-approval boundaries.
 - An incomplete marker pair, duplicated markers, or a malformed block is a fail-fast / manual-review condition: stop and do not edit the file.
-- The full marker-state apply policy is governed by `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6.
 
 ## Role neutrality
 
 This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-prepare.ps1` / `review-run.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
 
 - When acting as **reviewer** or **auditor**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/pass-NN/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form any verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict.
-- The operator-side protocols described below — BF save triggers, new-session restore-offer, `review-prepare` / `review-run` execution discipline — apply only when acting as **operator**. Do not perform them when reading a review packet, when auditing existing artifacts, or when supervising another agent's work.
+- The operator-side protocols described below — BF save triggers, new-session restore-offer, `review-prepare` / `review-run` execution discipline — apply only when acting as **operator**.
 - Nothing in this payload forces accept / approve. Nothing in it weakens reviewer independence. Nothing in it permits whole-file overwrite of a global instruction file.
 
 ## Project layout
 
-Path layout uses two conceptual roots: `<ToolRoot>` is where the toolset's own
-`scripts/`, `config/`, `templates/`, and `snippets/` live, and `<ProjectRoot>`
-is the target project repo root. Toolset-owned source/config/template/snippet
-files live under `<ToolRoot>`. Target-owned project files and runtime artifacts
-live under `<ProjectRoot>`.
+`<ToolRoot>` is where the toolset's own `scripts/`, `config/`, `templates/`, and `snippets/` live. `<ProjectRoot>` is the target project repo root. Toolset-owned files live under `<ToolRoot>`; target-owned project files and runtime artifacts live under `<ProjectRoot>`.
 
-The toolset supports three modes. They differ only in where `<ToolRoot>` resolves
-to.
-
-- **Shared / global mode** — preferred direction. `<ToolRoot>` is independent of
-  `<ProjectRoot>`. The default mechanism is a global stable install at
-  `%USERPROFILE%\.claude\ai-harness-toolset\current`, materialized once and
-  shared across projects. The `AI_HARNESS_TOOL_ROOT` environment variable is an
-  override of that default — for debug / development validation, for example
-  pointing at a development checkout of `ai-harness-toolset` — and is not the
-  default mechanism. In either case the target project does not carry a copy of
-  the toolset payload.
-- **Project-local copy mode** — transitional / legacy. `<ToolRoot>` is
-  `<ProjectRoot>/.ai-harness/`, a copied payload sitting alongside the
-  target's own source. Still supported for backward compatibility but not the
-  recommended adoption shape for new projects.
-- **Self-target / dogfooding mode** — source repo operators only. `<ToolRoot>`
-  and `<ProjectRoot>` are the same path (the `ai-harness-toolset` source repo
-  itself). Target consumers do not use this mode.
-
-`<ToolRoot>` is resolved per invocation in this channel order (see
-`docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` for the formal contract):
-explicit `-ToolRoot` argument → `AI_HARNESS_TOOL_ROOT` env var (override / debug
-/ development validation) → global stable install
-`%USERPROFILE%\.claude\ai-harness-toolset\current` (absent skips to the next
-channel; present but incomplete fails fast) → dogfooding multi-marker on
-`<ProjectRoot>` → legacy `<ProjectRoot>/.ai-harness/` → explicit error. For the
-AI-guided adoption / update procedure, see
-`docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`.
+`<ToolRoot>` is resolved per invocation in this channel order: explicit `-ToolRoot` argument → `AI_HARNESS_TOOL_ROOT` env var (override) → global stable install `%USERPROFILE%\.claude\ai-harness-toolset\current` (absent skips to the next channel; present but incomplete fails fast) → `<ProjectRoot>/.ai-harness/` fallback → explicit error.
 
 Runtime artifact paths under `<ProjectRoot>`:
 
-- `<ProjectRoot>/log/` — runtime output root. `log/` must not be committed;
-  ensure the target project's `.gitignore` includes it.
+- `<ProjectRoot>/log/` — runtime output root. `log/` must not be committed; ensure the target project's `.gitignore` includes it.
 - `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` — canonical review record. Inspect `input.md` + `result.md` and report the verdict.
 - Keep `log/review/`, `log/evidence/`, and `log/chatlog/` separate.
 
@@ -77,7 +44,7 @@ Reviewer config lives at `<ToolRoot>/config/reviewer.json`.
 
 ## Review flow
 
-- The canonical operator entry points are two scripts, called in order: `<ToolRoot>/scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>] -Stage <stage> -Purpose <line>` allocates the pass directory and seeds `input.md` from `templates/review-input.md`; then `<ToolRoot>/scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` runs Codex CLI exactly once and writes `result.md`.
+- The canonical operator entry points are two scripts, called in order: `<ToolRoot>/scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>] -Stage <stage> -Purpose <line>` allocates the pass directory and seeds `input.md`; then `<ToolRoot>/scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` runs Codex CLI exactly once and writes `result.md`.
 - `<ToolRoot>/scripts/review-verify.ps1 -ReviewTaskId <id> -Pass <pass-NN> [-RequireResult]` is the post-hoc canonical-artifact check. It does not invoke Codex.
 - Reviewer artifacts live only under `<ProjectRoot>/log/review/<review-task-id>/pass-NN/`, as the two canonical files `input.md` + `result.md`. Do not create root-level review inputs or results outside that pass directory, and do not invent sidecar JSON, hash-binding files, or external staging folders. Anything beyond the canonical pair is outside the contract.
 
@@ -94,23 +61,18 @@ A reviewer verdict does not approve commit, push, publish, merge, release, uploa
 ## Brief
 
 - **Brief** is a project's durable restore source-of-truth. The current operator — or a new AI agent session — reads it first as a local restore entrypoint when (re)starting work. It is not a shared project handoff document.
-- **Canonical Brief** = `<ProjectRoot>/log/brief/BRIEF.md`. That single path is the canonical reading position for any session. It is a **project-local, operator-local, source-control-excluded** runtime artifact under `<ProjectRoot>/log/` (gitignored by default and not a commit / push target). "Project-local" means it lives inside that project's checkout, not in a user-home directory; "operator-local" means each operator's local checkout state, not user-home global state.
-- **Rejected locations**: root `<ProjectRoot>/brief/BRIEF.md` is not the canonical Brief. Any user-home operator-local runtime root (e.g. `%USERPROFILE%\.ai-harness\projects\<project-key>\...`) is also not the canonical Brief.
-- **BF Level** is save/restore capability maturity, not a file path.
-  - **BF Level 1/2** — manual save/restore discipline. The operator is the trigger / approve / reject / discard owner and does not hand-edit the Brief. Brief content is produced or updated by an explicit AI-assisted command flow (the agent writes the file directly when the operator triggers a save) or by deterministic tooling. The BF save protocol below codifies this flow.
-  - **BF Level 3** — deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer. Currently **unimplemented**; future scoped work. The agent does not claim BF Level 3 capability.
-- `<ToolRoot>/templates/brief/BRIEF.md` is the source-side template. `<ToolRoot>/scripts/brief-init.ps1` seeds the canonical Brief at `<ProjectRoot>/log/brief/BRIEF.md` one-shot and refuses to overwrite an existing file. `<ToolRoot>/scripts/brief-check.ps1` validates BRIEF shape only (required heading set, no unfilled placeholders) at the same canonical path. `<ToolRoot>/scripts/brief-status.ps1` is a read-only helper that reports file presence, delegates shape validation to `brief-check.ps1`, and on shape PASS prints the first non-empty body line under each required Brief heading with Korean labels for use as deterministic input to the manual restore-offer flow. All three are **narrow source-side primitives**, not the full BF Level 3 capability.
-- `brief-check.ps1` PASS or FAIL is **not** a reviewer verdict. It does not approve or block commit, push, publish, merge, release, upload, or adoption.
-- Brief is not a review input or a review output. It is not a commit gate, push gate, or release gate.
-- The toolset does **not** automatically mutate the project's `.gitignore`. The canonical Brief lives under `<ProjectRoot>/log/` which is expected to be gitignored by default; treating it as untracked is the standing assumption.
+- **Canonical Brief** = `<ProjectRoot>/log/brief/BRIEF.md`. That single path is the canonical reading position for any session. It is a project-local, operator-local runtime artifact under `<ProjectRoot>/log/` (gitignored by default and not a commit / push target).
+- **Rejected locations**: root `<ProjectRoot>/brief/BRIEF.md` is not the canonical Brief. Any user-home operator-local runtime root is also not the canonical Brief.
+- The operator is the trigger / approve / reject / discard owner and does not hand-edit the Brief. Brief content is written or updated by the agent (an explicit AI-assisted command flow on operator trigger) or by deterministic tooling.
+- BF Level 3 — automated Brief management — is not implemented in this toolset. Do not claim that capability.
+- Brief shape validation is a narrow primitive only. It is not a reviewer verdict and does not approve or block commit, push, merge, release, or adoption.
+- The toolset does not automatically mutate the project's `.gitignore`. Treating the canonical Brief as untracked under `<ProjectRoot>/log/` is the standing assumption.
 
 ## Chatlog
 
 - **Chatlog ≠ Brief.** Chatlog is the history / decision rationale / Brief reconstruction evidence area at `<ProjectRoot>/log/chatlog/`. It is **not** the current restore source and is **not** the default-restore target for a new session.
 - The current restore source is **Brief** (`<ProjectRoot>/log/brief/BRIEF.md`).
 - Chatlog may be consulted when Brief is missing, corrupted, or stale, as **reconstruction evidence only**. Chatlog is never promoted into Brief's seat.
-- `<ProjectRoot>/log/chatlog/current/resume.md` and `<ProjectRoot>/log/chatlog/current/summary.md` are **failed intermediate / legacy migration source / deprecation candidate**, not canonical BF Level 1/2 artifacts. Do not update them as the BF save target. Reading them for legacy wording during Brief reconstruction is acceptable.
-- Chatlog fuller implementation (cumulative history layout, retention, browse UI) is later track and not in scope here.
 
 ## New session restore-offer
 
@@ -128,7 +90,7 @@ Missing-file handling:
 
 ## BF save / checkpoint protocol
 
-Treat any of the following user phrases as BF Level 1/2 (manual save) intent (Korean, verbatim):
+Treat any of the following user phrases as manual save intent (Korean, verbatim):
 
 - `현재 진행 지점을 복구 시점으로 저장해`
 - `BF 저장해`
@@ -140,12 +102,11 @@ Treat any of the following user phrases as BF Level 1/2 (manual save) intent (Ko
 When detected:
 
 1. Inspect repo state.
-2. Update `<ProjectRoot>/log/brief/BRIEF.md` (canonical Brief — project-local runtime artifact, gitignored under `log/`) with current state, last completed action, next single action, do-not-do, pending user decision. This is BF Level 1/2 manual save discipline as an AI-assisted command flow: the operator triggers via one of the phrases above and approves the result; the agent writes the file directly using the canonical heading set defined in `docs/BRIEF_CONTRACT.md`; the operator does not hand-edit the file. Do not create `<ProjectRoot>/brief/` — that root location is rejected.
+2. Update `<ProjectRoot>/log/brief/BRIEF.md` (canonical Brief — project-local runtime artifact, gitignored under `log/`) with current state, last completed action, next single action, do-not-do, pending user decision. The operator triggers and approves; the agent writes the file directly; the operator does not hand-edit it. Do not create `<ProjectRoot>/brief/` — that root location is rejected.
 3. Keep Brief compact and reference review / evidence / Chatlog details by path only — do not inline review payloads, evidence body, or cumulative Chatlog content into Brief.
-4. Do **not** write to `log/chatlog/current/resume.md` or `log/chatlog/current/summary.md` as part of this protocol. Those are legacy / deprecation candidates and are not the BF save target.
-5. Report the updated file and any remaining risks.
+4. Report the updated file and any remaining risks.
 
-These triggers exercise BF Level 1/2 capability — manual save discipline. They do **not** invoke any deterministic writer, daemon, watcher, scheduler, or BF Level 3 automation. Those remain future scoped work.
+These triggers exercise manual save discipline only. They do not invoke any deterministic writer, daemon, watcher, scheduler, or BF Level 3 automation.
 
 ## Forbidden in this toolset
 
@@ -164,7 +125,6 @@ These triggers exercise BF Level 1/2 capability — manual save discipline. They
 - Review scope is set by the review purpose and the artifact boundary. Never shrink it artificially to avoid a long-running or background run.
 - If the harness silently auto-converts a foreground run to background, do not report it as a clean foreground execution. Report that the auto-conversion happened.
 - An auto-converted run is still acceptable as conditional review evidence only when the session waited for it with no parallel work, the run artifacts are complete, the result binding is valid, and `review-verify -RequireResult` passes. Output loss, incomplete artifacts, a missing result, stale binding, or a `review-verify` failure disqualifies it as closeout evidence.
-- Background execution by itself does not invalidate review quality or result validity. What is forbidden is detached background work, parallel background work, silent (unreported) background conversion, evidence ambiguity, and output loss — not the conversion event alone.
 - If a run leaves temp output clutter, report its path. Delete it only after separate explicit user approval.
 
 ## Other rules
