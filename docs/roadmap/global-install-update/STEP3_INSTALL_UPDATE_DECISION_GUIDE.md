@@ -302,3 +302,134 @@ target project 에 대한 footprint 결정은 다음을 보존한다 (`GLOBAL_IN
 - install / update / restore 의 actual 실행, global / user filesystem mutation, target adoption, commit / push / publish / merge / release.
 
 본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply 는 사용자 명시 결정으로 처리한다 (§8 와 정합).
+
+---
+
+## 11. Recorded 3-1 install metadata contract decision
+
+본 절은 §6 canonical decomposition 의 두 번째 단계 — **3-1 global install metadata contract** — 의 결정 shape 를 repo source-of-truth 로 anchor 한다. 본 anchor 는 §10 의 3-0 layer layout decision 위에 build 되며, 부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` §5 (global install metadata) 의 minimum field set 을 baseline 으로 채택한다. 본 anchor 는 §5 (Layer separation), §7 (Carry-forward caveats), §10 (3-0 anchor) 의 결정을 약화하지 않는다.
+
+본 anchor 는 schema 의 contract 의미 (field 분류 / lifecycle / restore semantics / boundary) 만 기록한다. 실제 schema 파일 작성, JSON validator, writer / reader implementation, dispatcher 통합, payload integrity manifest design 은 본 anchor 의 범위 밖이며 후속 sub-step (3-3 ~ 3-5) 또는 별도 scoped goal 의 일이다.
+
+본 anchor 는 implementation, install / update / restore 의 actual 실행, global / user filesystem mutation, target adoption, commit / push / publish / merge / release / Step 4 validation 어느 것도 자동 승인하지 않는다.
+
+### 11.1 Minimum field set (parent §5.2 baseline)
+
+부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` §5.2 의 14-field set 을 minimum required 의 baseline 으로 채택한다. 본 anchor 는 본 set 에 field 를 추가하거나 제거하지 않는다.
+
+- `schemaVersion`
+- `tool`
+- `installMode` (`git-url` | `local-clone`)
+- `repoUrl`
+- `sourcePath`
+- `toolRoot`
+- `branch`
+- `remote`
+- `installedHead`
+- `lastUpdatedHead`
+- `installedAt`
+- `lastUpdatedAt`
+- `targetFootprintPolicy` (현행값 `log-only` — 3차 reconciliation 기준; 부모 §5.2 와 정합)
+- `managedBy` (현행값 `claude-code`)
+
+**Mode-conditional required.**
+
+- `repoUrl` 은 `installMode == git-url` 일 때 required.
+- `sourcePath` 는 `installMode == local-clone` 일 때 required.
+- 사용되지 않는 mode 의 field 가 absent 인지 `null` 인지의 표현은 3-3 / 3-4 단계 writer / reader 결정이며 본 anchor 가 fix 하지 않는다.
+
+### 11.2 Metadata instance location and canonical filename
+
+본 anchor 는 §10.4 의 boundary 를 그대로 유지하며 filename 을 1 개로 fix 한다.
+
+- **위치**: global install area 의 `current/` 와 **sibling** (예: `%USERPROFILE%\.claude\ai-harness-toolset\install.json`).
+- **format**: JSON.
+- **canonical filename**: **`install.json`** (본 STEP3 guide §5 example 과 일관).
+- **금지**:
+  - `current/` **안** 에 두지 않는다 (§5, §10.2).
+  - target project **안** 에 두지 않는다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §5.1, §10.3).
+  - source repo 의 tracked instance 로 두지 않는다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §5.1; source repo 에는 schema / example 만 허용).
+  - user-home 의 ai-harness-specific 별도 root (예: `%USERPROFILE%\.ai-harness\...`) 에 두지 않는다.
+
+부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` §5.1 의 placeholder `install-metadata.json` 은 본 anchor 의 filename 결정과 다르지만, 부모 §5.1 본문이 "정확한 파일명 / 위치는 implementation 단계에서 확정한다" 로 placeholder 임을 명시하므로 부모 본문 mutation 없이 본 STEP3 guide 의 canonical 결정이 우선한다 (`docs/roadmap/README.md` §5 의 subordinate-specifies-more-concretely boundary 와 정합). 부모 본문의 placeholder 는 alternative naming example 로 historical 보존되며, 본 anchor 와 충돌 시 본 §11 이 우선한다.
+
+### 11.3 `schemaVersion` semantics
+
+- type: integer.
+- initial value: `1` (현행 baseline schema 의 version).
+- bump policy: field add / remove / 의미 변경 시 monotonically increment.
+- reader 동작: unknown / 미지원 `schemaVersion` 은 **fail-fast**. silent 하게 default 또는 lowest known 으로 downgrade 하지 않는다.
+- migration writer (bump 시 기존 metadata 의 자동 conversion 절차) 는 본 anchor 의 범위 밖 — 별도 scoped decision.
+
+### 11.4 Restore semantics
+
+본 anchor 는 §3 + §7 #1 의 binary choice 중 **(b) user-specified ref-only restore** 를 채택한다.
+
+- restore 호출 시 사용자가 명시한 ref (commit SHA / tag / branch) 를 dispatch source 로 사용한다.
+- metadata 는 source / ref **descriptive** 만 유지한다. metadata 의 `repoUrl` / `branch` / `sourcePath` / `toolRoot` 는 "어디서 ref 를 받아올지" 의 dispatch hint 로만 사용한다.
+- metadata-derived known-good ref 의 **자동 추출 / 자동 fallback 금지** (§7 #1 의 명시 wording 과 정합).
+- known-good metadata field (예: `knownGoodHead`, `lastKnownGoodAt`) 는 본 anchor 에 도입하지 않는다. 도입은 §7 #1 (a) option 채택의 별도 scoped decision 이며, 그 결정은 본 anchor 와 분리된다.
+
+본 (b) 채택의 근거: (a) known-good metadata 채택은 writer / state-machine layer 를 도입하며 `POST_MVP_PLAN.md` §5 의 "automatic decision-maker 금지" 와 충돌 risk; (b) 는 metadata 를 단순 descriptive 로 유지하며 §7 #1 의 "자동 추출 금지" wording 과 자연 정렬한다.
+
+### 11.5 Lifecycle
+
+| action | metadata write | metadata read |
+|---|---|---|
+| **install (최초)** | 14 required field 모두 write. `installedHead == lastUpdatedHead`. `installedAt == lastUpdatedAt`. | (해당 없음 — 신규 instance) |
+| **update — "업데이트 받아"** | `lastUpdatedHead`, `lastUpdatedAt` 갱신. `installedHead`, `installedAt` 보존. | `installMode` dispatch (`git-url`: `repoUrl` / `branch` / `remote` / `toolRoot`; `local-clone`: `sourcePath` / `toolRoot`). 부모 §4.2 / §4.3 와 정합. |
+| **update — "현재 최신 버전 기준으로"** | source 의 current HEAD 사용. `lastUpdatedHead`, `lastUpdatedAt` 갱신. 나머지 보존. | `installMode` dispatch (source 는 건드리지 않음). 부모 §4.4 와 정합. |
+| **restore (§11.4 의 (b))** | restore 진행 중 metadata 변경 없음 (read-only). 성공적 re-materialization 완료 후 `lastUpdatedHead`, `lastUpdatedAt` 갱신 (update path 와 동일). | dispatch hint 로 `repoUrl` / `sourcePath` / `toolRoot` 사용. ref 는 사용자 명시. |
+| **source-cut change (`installMode` / `repoUrl` / `sourcePath` / `toolRoot` / `branch` / `remote` 변경)** | 본 라운드 update / restore 의 자동 변경 대상 **아니다**. **별도 explicit user-approved scope** 가 필요하다. | — |
+
+본 lifecycle 은 §3 의 source-authoritative overwrite materialization 원칙과 정합한다 — metadata 는 destination diff 를 분석하지 않으며, source HEAD 의 변화를 그대로 기록한다.
+
+### 11.6 Deferred items (3-1 에서 fix 하지 않음)
+
+본 anchor 는 다음을 fix 하지 않는다. 각각은 후속 단계 또는 별도 scoped decision 으로 carry 된다.
+
+- **payload integrity manifest**: algorithm / 위치 / 이름 / schema 가 본 anchor 의 범위 밖. metadata schema 본체에 inline field 로 들어가지 않으며, 별도 동행 manifest 형태로 분리된다 (`docs/backlog/operations.md` "Aggregate digest reproducibility — install/update verification scope debt" 항목과 정합). manifest 의 위치는 §10.4 boundary (sibling-of-`current/`) 와 정합해야 한다.
+- **payload completeness marker (entrypoint set)**: channel 3 활성 조건의 marker 는 dispatcher (3-4) 의 영역이며 metadata schema 의 영역이 아니다.
+- **installer 관련 field** (예: `installerRoot`): §10.5 의 installer materialization deferred 와 connection. installer materialization default 가 결정되기 전까지 본 anchor 에 도입하지 않는다.
+- **source-cache 관련 field**: §10.5 의 source-cache layer 미도입과 정합. layer 가 도입되지 않으면 metadata field 도 도입하지 않는다.
+- **`schemaVersion` migration writer**: bump 시 migration 절차는 별도 scoped decision.
+
+### 11.7 Forbidden fields and semantics
+
+본 anchor 는 다음을 metadata schema 에 도입하는 것을 **금지** 한다 (별도 scoped decision 이 명시적으로 허용하기 전까지).
+
+- `releaseVersion`, `releaseTag`, GitHub Release asset checksum, package registry 식별자 — §4 drift exclusion.
+- user-edit preservation flag (target 의 user 편집 보존을 위한 conditional skip / merge 의도) — §4 drift exclusion.
+- 자동 managed-block apply trigger field (예: "metadata write 시 global `CLAUDE.md` 도 함께 갱신" 같은 자동화 표시) — `GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_INSTALL_UPDATE_MODEL.md` §1 / §12 / §10.6 의 boundary 와 충돌.
+- 자동 skill refresh trigger field — `GLOBAL_ADOPTION_PROCEDURE.md` 의 별도 절차와 충돌.
+- `payloadRoot`, `installerRoot`, `metadataPath` 같은 **self-reference layer-fix field** — §7 #3 의 planning-example 단계 wording 과 정합; 도입은 별도 scoped decision.
+- `knownGoodHead`, `lastKnownGoodAt` 같은 **known-good 자동 field** — §11.4 의 (b) restore semantics 와 충돌.
+- daemon / watcher / scheduler 식별자 — `POST_MVP_PLAN.md` §5 / §8 의 forbidden 항목과 정합.
+
+위 항목은 본 anchor 가 명시적으로 거부하는 set 이며, 향후 schema 변경이 본 set 의 어느 항목이라도 도입하려면 별도 scoped goal 의 explicit user-approved decision 이 필요하다.
+
+### 11.8 본 anchor 의 scope 와 non-goals
+
+본 anchor 는 다음을 **포함한다**.
+
+- §11.1 의 14-field minimum baseline (mode-conditional required 포함).
+- §11.2 의 metadata instance location + canonical filename `install.json`.
+- §11.3 의 `schemaVersion` semantics.
+- §11.4 의 restore (b) user-specified ref-only.
+- §11.5 의 lifecycle.
+- §11.6 의 deferred items.
+- §11.7 의 forbidden fields / semantics.
+
+본 anchor 는 다음을 **포함하지 않는다.**
+
+- 실제 schema 파일 (JSON Schema 등) 의 작성 / commit.
+- writer / reader implementation, JSON validator, dispatcher 통합.
+- payload integrity manifest 의 algorithm / 위치 / 이름 결정.
+- `current/` payload completeness marker 의 entrypoint set 확정.
+- `schemaVersion` bump migration writer.
+- install / update / restore 의 actual 실행, global / user filesystem mutation, target adoption.
+- commit / push / publish / merge / release.
+- Step 4 validation.
+- 부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` 본문 mutation (filename reconciliation 은 본 §11.2 안에서 닫는다).
+
+본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / payload refresh 는 사용자 명시 결정으로 처리한다 (§8, §10.7 와 정합).
