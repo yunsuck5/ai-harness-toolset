@@ -585,3 +585,103 @@ CH3-B reaffirming round 의 driver-failure 사례는 본 backlog 의 "PowerShell
 - 본 backlog entry 의 존재로 `scripts/review-run.ps1` / `scripts/review-verify.ps1` / `templates/review-result.md` 본문이 변경되지 않는다.
 - past round 들의 result.md 를 retroactive 하게 normalize 하는 작업도 자동 승인하지 않는다 — past round artifact 는 write-once 며 별도 scoped goal 의 대상이 아니다.
 - 본 항목 implementation 은 별도 scoped goal 을 거친다.
+
+---
+
+## Path normalization edge-case hardening
+
+- **Status**: candidate (future hardening). 즉시 implementation 승인 아님.
+- **Classification**: install-pipeline 의 `-InstallArea` path normalization invariant 의 edge-case coverage. STEP3 guide §16.5 (`install.json.toolRoot` = cache absolute path) contract 의 robustness 보강에 관한 debt 다.
+
+### Context
+
+Step 3 git-url minimum source acquisition round (commit `8eecae0`) 에서 `metadata.toolRoot` 가 relative `-InstallArea` 입력 시 relative path 로 기록되던 §16.5 contract drift 가 수정되었다. `scripts/lib/install-pipeline-core.ps1` 의 5 path / dir helper (`Get-InstallPipelineSourceCacheDir`, `Get-InstallPipelineCurrentDir`, `Get-InstallPipelineMetadataPath`, `Get-InstallPipelineManifestPath`, `Get-InstallPipelineMarkerPath`) 모두 `Join-Path` 결과를 `[System.IO.Path]::GetFullPath()` 로 wrap 하고, `Invoke-InstallMaterialization` 진입 직후 local `$InstallArea` 도 동일 normalize 적용. 신규 regression `AC-IP-GITURL-TOOLROOT-ABS-1` 가 corrective scope 의 대표 case 를 검증한다.
+
+본 regression 의 검증 범위:
+
+- 대표 case: `./<leaf>` (현재 디렉터리 기준 leaf-only) relative path 입력 시 git-url `install` 의 `metadata.toolRoot` 가 absolute `<absArea>/source-cache` path 임을 확인.
+
+### Remaining edge cases (현 regression 범위 밖)
+
+본 backlog 가 후속 hardening 대상으로 보존하는 edge case enumeration:
+
+- **`../` 포함 relative path** — `..` segment 가 포함된 `-InstallArea` (예: `../sibling-area`). `[System.IO.Path]::GetFullPath()` 가 일반적으로 처리하나, fixture 시점의 cwd 의존성 검증이 필요.
+- **drive-relative path** — Windows 의 drive-relative form (예: `X:foo` — drive X 의 current directory 기준 `foo`). 운영 환경에서 흔치 않으나 동작 invariant 미검증.
+- **UNC path** — `\\server\share\...` 형태. `GetFullPath` 가 UNC 를 그대로 보존하지만 cache directory / git operations 의 UNC 동작 invariant 미검증 (e.g., authentication, network drop 시 fail-fast 보장).
+- **symlink / junction** — `-InstallArea` 가 NTFS symlink / directory junction 인 경우. `GetFullPath` 는 symlink 를 resolve 하지 않으나 git operations 의 동작 변동 가능성 (e.g., junction loop, locked symlink target) 미검증.
+- **helper-level absolute path assertion 확대** — 현 regression 은 `metadata.toolRoot` 만 검증. 나머지 4 helper (`Get-InstallPipelineCurrentDir`, `Get-InstallPipelineMetadataPath`, `Get-InstallPipelineManifestPath`, `Get-InstallPipelineMarkerPath`) 의 return value 가 absolute path 임을 직접 assert 하는 helper-level regression 부재.
+
+### Candidate direction
+
+후보는 상호 배타 아니며 일부 또는 전부 채택 가능하다. 본 backlog 단계에서는 결정하지 않는다.
+
+- **(X) `tests/install-pipeline.Tests.ps1` 에 edge-case regression 추가** — `AC-IP-GITURL-TOOLROOT-ABS-2/3/...` 형태로 enumerate. `../` 와 helper-level assertion 은 TestDrive 안에서 cover 가능; UNC / symlink / junction 은 Windows admin / dev mode 요구로 fixture 제약 명시.
+- **(Y) `docs/roadmap/global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §16.5 / §16.7 에 supported / unsupported InstallArea path shape 명시** — supported shape (relative `./<leaf>`, `../<sibling>`, absolute drive path) vs unsupported shape (UNC unless authenticated, symlink with implicit resolve 의존성) 의 contract 정합화.
+- **(Z) unsupported path fail-fast contract 검토** — 명시적으로 unsupported 한 shape 에 대해 entry 또는 lib 에서 fail-fast detection 추가 여부. 본 단계에서는 implementation 결정 아님.
+
+### Non-goals
+
+- 본 backlog entry 의 존재로 `tests/install-pipeline.Tests.ps1`, `scripts/install-pipeline.ps1`, `scripts/lib/install-pipeline-core.ps1`, STEP3 guide §16 본문 어느 것도 자동 변경되지 않는다.
+- `[System.IO.Path]::GetFullPath()` 외 별도 normalization library / canonicalization helper 의 도입을 자동 승인하지 않는다.
+- actual global / user filesystem 의 path 검증 (e.g., `%USERPROFILE%\.claude\ai-harness-toolset\current` 의 path shape audit) 어느 것도 자동 승인하지 않는다.
+- 본 항목 implementation 은 별도 scoped goal 을 거친다.
+
+---
+
+## Review subsystem no-exec / no-write reviewer contract
+
+- **Status**: candidate (future hardening). 즉시 implementation 승인 아님.
+- **Classification**: review subsystem 의 reviewer role boundary 명문화에 관한 contract debt 다. canonical `## Verdict` shape contract (`docs/REVIEW_RESULT_CONTRACT.md`) 의 변경이 아니라, reviewer 가 어떤 actions 를 수행하지 **않는지** 의 명시적 framing 의 후속 정리.
+
+### Core framing
+
+본 후보 backlog 가 명문화 후보로 제안하는 reviewer role boundary:
+
+- Codex reviewer 는 **read-only reasoning reviewer** 다.
+- Codex reviewer 는 **Pester / compile / script execution 을 수행하지 않는다**. mutating validation (예: Pester suite run, `scripts/verify-ps1.ps1` 실행, git operations) 은 reviewer 의 책임이 아니다.
+- Codex reviewer 는 **`result.md` 를 write tool 로 직접 작성하지 않는다**. `result.md` 의 on-disk materialization 은 별도 mechanism (`scripts/review-run.ps1` 의 `--output-last-message` flag, 또는 후속 deterministic local script) 의 책임이다.
+- **validation 은 Claude Code 가 local operator 로 실행한다.** Pester / verify-ps1 / fixture commands 모두 operator 가 review-run 호출 이전에 (또는 이후에) 실행하고 그 결과를 input.md 의 Context / Validation section 에 evidence 로 첨부한다.
+- reviewer 는 **operator-provided validation evidence + diff + docs contract + test coverage** 를 검토 대상으로 한다. reviewer 가 그 evidence 의 truthfulness 를 cross-execute 하지는 않는다 — operator 의 정직한 reporting 에 의존한다.
+- `result.md` artifact materialization 은 deterministic local script 가 담당하는 방향으로 정리한다 (현재는 Codex CLI `--output-last-message` 가 reviewer 의 final message 를 그대로 file 로 dump 하는 형태 — 이 contract 가 wrapper/fence hygiene 항목 의 후속 보강과도 연관).
+
+### Context
+
+Step 3 git-url round (commit `8eecae0`) 의 5 review pass 에서 Codex reviewer 가 반복적으로 다음 note 를 raise 했다:
+
+- pass-01 / pass-02 / pass-03: 일부 pass 의 result.md 에서 Codex 가 stdout-only response 로 verdict 를 보고 (sandbox 가 write tool 호출 reject).
+- pass-04 / pass-05: `scripts/verify-ps1.ps1` 또는 mutating Pester 의 직접 재실행이 sandbox policy 로 차단됨을 명시.
+
+이 note 들은 **commit risk 가 아니다** — operator 가 별도로 verify-ps1 + Pester 를 실행하여 evidence 를 보강했고, 본 round 의 5 pass 모두 그 evidence 위에 verdict 가 안정적으로 도출되었다. 그러나 매 round 마다 동일 note 가 raised 되는 것은 **reviewer role boundary 가 contract 로 명문화되어 있지 않다** 는 운영 신호다.
+
+이전 backlog 항목 "Review result wrapper / fence artifact hygiene" 과 본 항목의 관계:
+
+- wrapper / fence hygiene 항목은 `result.md` artifact 의 **on-disk shape / rendering** 의 후속 정리 (Codex sandbox 가 write tool 을 reject 했을 때 fenced wrapper 가 발생할 수 있는 narrow scenario).
+- 본 no-exec / no-write 항목은 더 상위의 **reviewer role boundary** — reviewer 가 어떤 actions 를 수행하지 않는다는 contract 자체.
+- 두 항목은 연관되어 있지만 단일 항목으로 합치지 **않는다**. wrapper hygiene 은 artifact-level fix candidate; 본 항목은 contract-level role definition candidate. 후속 scoped goal 에서 둘이 함께 다뤄질 수는 있으나 backlog 단계에서는 분리 보존.
+
+### Candidate direction
+
+후보는 상호 배타 아니며 일부 또는 전부 채택 가능하다. 본 backlog 단계에서는 결정하지 않는다.
+
+- **(P) `docs/REVIEW_RESULT_CONTRACT.md` 에 no-exec / no-write reviewer role 명문화** — "reviewer 는 read-only reasoning reviewer 이며 mutating commands 를 실행하지 않고 `result.md` 를 write tool 로 작성하지 않는다" framing 의 추가. 후속 sub-section 으로 operator-provided validation evidence 의 형식 명시.
+- **(Q) reviewer prompt / `snippets/claude-skills/ai-harness-review/SKILL.md` 문구에서 direct execution / direct write expectations 제거** — 현재 SKILL.md 에 reviewer 가 `Invoke Codex CLI exactly once` 등 implementation 단계 wording 이 포함되어 있다면, reviewer 의 role 이 "reasoning" 임을 분명히 하는 wording 으로 정리.
+- **(R) `scripts/review-run.ps1` 또는 review input contract 에 operator-provided validation evidence 형식 lint** — input.md 의 Context / Validation section 에 "Pester N/N PASS", "verify-ps1 PASS", "git diff --check clean" 같은 evidence 가 포함되어 있는지의 lint-only check (성공 / 실패의 verdict 검증과는 분리; commit blocking 아님).
+
+### Cross-reference
+
+- `docs/REVIEW_RESULT_CONTRACT.md` — canonical `## Verdict` shape contract. 본 항목의 (P) 후보 implementation 위치.
+- `scripts/review-run.ps1` — Codex CLI invocation (`--ask-for-approval never --sandbox read-only --output-last-message`). 본 항목의 (R) 후보 implementation 위치.
+- `scripts/review-input-verify.ps1` — input.md shape validation. 본 항목의 (R) lint 후보 implementation 위치.
+- `snippets/claude-skills/ai-harness-review/SKILL.md` — reviewer skill 의 자연어 trigger / 절차. 본 항목의 (Q) 후보 implementation 위치.
+- `templates/review-input.md` — input.md template. 본 항목의 (R) lint 후보의 evidence section 의 baseline.
+- "Review result wrapper / fence artifact hygiene" backlog 항목 — 본 항목의 sibling. wrapper hygiene 은 artifact-level, 본 항목은 contract-level role definition.
+
+### Non-goals
+
+- 본 항목은 candidate 다. (P) / (Q) / (R) 어느 후보 implementation 도 자동 승인하지 않는다.
+- canonical `## Verdict` shape contract 의 변경 / 약화가 아니다.
+- 본 backlog entry 의 존재로 `scripts/review-run.ps1` / `scripts/review-verify.ps1` / `scripts/review-input-verify.ps1` / `templates/review-result.md` / `templates/review-input.md` / `snippets/claude-skills/ai-harness-review/SKILL.md` 본문이 변경되지 않는다.
+- Codex reviewer 의 CLI invocation arguments (`--ask-for-approval`, `--sandbox`, `--output-last-message` 등) 의 변경을 자동 승인하지 않는다.
+- `result.md` writer ownership 의 변경 implementation (예: Codex 가 작성 → local script 가 작성) 을 자동 승인하지 않는다 — 본 backlog 는 framing direction 의 후보 기록.
+- past round 들의 result.md / input.md 를 retroactive 하게 normalize 하는 작업도 자동 승인하지 않는다 — past round artifact 는 write-once 며 별도 scoped goal 의 대상이 아니다.
+- 본 항목 implementation 은 별도 scoped goal 을 거친다.
