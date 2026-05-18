@@ -621,3 +621,57 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - install / update / restore 의 actual 실행, global / user filesystem mutation, target adoption, commit / push / publish / merge / release, Step 4 validation.
 
 본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / payload refresh 는 사용자 명시 결정으로 처리한다 (§8, §10.7, §11.8 와 정합).
+
+---
+
+## 13. Recorded 3-8 minimal docs closeout
+
+본 절은 §6 canonical decomposition 의 마지막 sub-step — **3-8 minimal docs closeout** — 을 수행한다. Step 3 의 현재 완료 상태를 한 자리에 모으고, 남은 deferred scope 를 분리해 기록한다. 본 절의 존재로 어떤 새 implementation, validation, adoption, release, publish, global / user filesystem mutation, commit / push / merge / release 도 자동 승인되지 않는다.
+
+§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에 그대로 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다.
+
+### 13.1 Completed
+
+본 라운드까지 누적된 Step 3 의 anchored decisions + skeleton implementation + dry-run coverage 의 commit 시리즈:
+
+- **3-0 layer layout decision** — §10 anchor. commit `c055ea5`.
+- **3-1 install metadata contract** — §11 anchor. commit `bb9b832`.
+- **3-2~3-5 runtime pipeline contract grouping** — §12 anchor (resolver / materialization / dispatcher / verify boundary 와 4 canonical action labels, source-cut detection-only, dogfooding 보호, key failure cases, out-of-pipeline categories). commit `f11ed27`.
+- **temp-only install-pipeline skeleton implementation** — `scripts/install-pipeline.ps1` (CLI entry), `scripts/lib/install-pipeline-core.ps1` (library), `tests/install-pipeline.Tests.ps1` (Pester tests) 3 파일 신규. local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action 을 `$TestDrive` fixture 기준으로 end-to-end 동작. install.json (§11.1 14-field schema), source-cut detection-only, dogfooding silent-mutation 보호, forbidden InstallArea guard (`%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` 및 descendants), git-archive 기반 ref-specific materialization 포함. commit `84d1126`.
+- **3-7 dry-run coverage extension** — install → update-current → restore 연속 flow + per-step metadata + invariant 9 fields 비-드리프트 (`installedAt` 보존, `lastUpdatedAt` lifecycle 포함), source-cut 거부 후 `current/` byte-identity 보존, dogfooding `update-source` 거부 후 source repo HEAD 무변경, `%USERPROFILE%\.codex` reject, `%USERPROFILE%\.claude` descendant reject + 디렉터리 미생성. 5 신규 Pester tests. commit `3bff209`.
+
+본 commit 시리즈의 최신 HEAD: `3bff2093ee3cfb0996633007efed717b64ace631`.
+
+본 라운드까지의 implementation surface 는 §10.2 의 `current/` runtime-payload-only, §11.1 의 14-field install metadata, §11.4 의 (b) user-specified ref-only restore, §11.7 의 forbidden enumeration, §12.2 의 4 canonical action labels, §12.7 의 source-cut detection-only, §12.8 의 dogfooding 보호, §12.10 의 out-of-pipeline categories 와 1:1 정합한다. Pester 전체 suite 는 본 closeout 작성 시점에 회귀 없이 통과한다.
+
+### 13.2 Deferred (Step 3 outside / Step 4+ 영역)
+
+다음 항목은 본 §13 closeout 이 **자동 승인하지 않는** deferred scope 다. 각 항목은 별도 scoped goal 의 explicit user-approved decision 으로 진행한다.
+
+- **git-url mode 의 실제 source acquisition / network fetch** — 현 skeleton 은 local-clone mode 의 local git repo 만 다룬다. git-url mode 의 `git clone` / `git fetch` / `git pull` / clone recovery 의 실제 implementation, credential / auth handling, network failure 처리는 별도 scoped goal (`GLOBAL_INSTALL_UPDATE_MODEL.md` §2.1 / §4.2 와 정합).
+- **payload integrity manifest / payload completeness marker** — §12.6 / §11.6 의 deferred 항목 그대로. manifest algorithm / 위치 / 이름, completeness marker 의 entrypoint set 확정은 `docs/backlog/operations.md` "Aggregate digest reproducibility — install/update verification scope debt" 와 함께 별도 scoped goal.
+- **3-6 managed block / skill replace boundary** — §6 / §10.6 / §11.7 / §12.10 의 enumeration 그대로. global instruction file managed-block apply, Claude skill SKILL.md install / update / removal 의 boundary 정의 / 진단 helper 의 정합화는 별도 scoped goal (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`).
+- **Step 4 actual install / update validation** — `POST_MVP_PLAN.md` §11 step 4. 본 §13 closeout 이 자동 승인하지 않는다.
+- **Actual global / user filesystem apply** — global stable install (`%USERPROFILE%\.claude\ai-harness-toolset\current\`) 의 실제 materialize / refresh, install metadata instance write, managed-block apply, Claude skill assets install 어느 것도 본 commit 시리즈로 자동 승인되지 않는다.
+- **source-cut path 의 실제 처리** — §12.7 의 detection-only 가 본 skeleton 의 boundary; 실제 handling (재install / metadata 갱신 / new install 등) 은 별도 scoped goal.
+- **dogfooding enforcement mechanism 의 final shape** — 현 skeleton 은 `-AllowDogfoodSource` switch 패턴. 실제 운영의 warning prompt / flag / confirm UX 결정은 별도 scoped goal.
+- **`schemaVersion` bump migration writer** — §11.3 / §11.6 그대로 deferred.
+- **post-MVP closeout 결정 (`POST_MVP_PLAN.md` §11 step 6)**, **`ai-harness-toolset` self-adoption (`POST_MVP_PLAN.md` §11 step 5)**, **new GJMNet clean adoption (`POST_MVP_PLAN.md` §11 step 7)** — 모두 별도 scoped goal.
+
+### 13.3 본 closeout 의 boundary
+
+본 §13 은 다음을 **포함한다**.
+
+- §13.1 의 Step 3 completed 누적 기록 (anchor / skeleton / dry-run coverage 의 commit 시리즈).
+- §13.2 의 deferred scope 분리 기록.
+
+본 §13 은 다음을 **포함하지 않는다**.
+
+- 신규 implementation / 새 contract field 도입 / source code 변경 / tests 변경.
+- §6 canonical decomposition 의 ordering / numbering 변경.
+- 부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` 본문 mutation (본 closeout 은 STEP3 guide subordinate scope 안에서 닫는다; 부모 docs 의 변경은 본 closeout 의 영역이 아니다).
+- 다른 roadmap docs / backlog docs / global filesystem mutation (단, `POST_MVP_PLAN.md` §10 Completed 의 본 closeout 진입 entry 는 본 closeout 의 sibling 작업으로 같은 라운드에 함께 진행될 수 있다 — 본 entry 의 추가도 새 contract 도입이 아니라 누적 진행 사실의 기록이다).
+- actual global / user filesystem mutation, target adoption, commit / push / publish / merge / release.
+- Step 4 validation 의 시작.
+
+본 §13 은 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. closeout 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / payload refresh / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 와 정합).
