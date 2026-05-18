@@ -683,3 +683,265 @@ Describe 'install-pipeline 3-7 dry-run coverage extension' {
         Test-Path -LiteralPath $forbidden | Should -BeFalse
     }
 }
+
+Describe 'install-pipeline §15 payload-manifest + payload-marker contract' {
+    It 'AC-IP-MANIFEST-1: install writes payload-manifest.json + payload-marker.json with correct shape' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'manifest-1' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'manifest-1'
+        $proj = script:New-ProjectRoot -CaseName 'manifest-1'
+
+        $r = script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $manifestPath = Join-Path $area 'payload-manifest.json'
+        $markerPath   = Join-Path $area 'payload-marker.json'
+        Test-Path -LiteralPath $manifestPath -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath $markerPath   -PathType Leaf | Should -BeTrue
+
+        # Both sit beside current/ — not inside it.
+        Test-Path -LiteralPath (Join-Path $area 'current/payload-manifest.json') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $area 'current/payload-marker.json')   | Should -BeFalse
+
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $manifest = [System.IO.File]::ReadAllText($manifestPath, $utf8NoBom) | ConvertFrom-Json
+        $manifest.schemaVersion | Should -Be 1
+        $manifest.tool          | Should -Be 'ai-harness-toolset'
+        $manifest.head          | Should -Be $src.Head
+        $manifest.payloadRoots  | Should -Be @('config','scripts','snippets','templates')
+        @($manifest.files).Count | Should -BeGreaterThan 0
+        # Every payload root must contribute at least one entry (the marker.txt seeded by the fixture).
+        foreach ($root in 'config','scripts','snippets','templates') {
+            @($manifest.files | Where-Object { $_.path -eq "$root/marker.txt" }).Count | Should -Be 1
+        }
+        # Files must be sorted ascending by path for determinism.
+        $paths = @($manifest.files | ForEach-Object { $_.path })
+        $sortedPaths = @($paths | Sort-Object)
+        for ($i = 0; $i -lt $paths.Count; $i++) {
+            $paths[$i] | Should -Be $sortedPaths[$i]
+        }
+
+        $marker = [System.IO.File]::ReadAllText($markerPath, $utf8NoBom) | ConvertFrom-Json
+        $marker.schemaVersion | Should -Be 1
+        $marker.tool          | Should -Be 'ai-harness-toolset'
+        $marker.head          | Should -Be $src.Head
+        $marker.manifestPath  | Should -Be 'payload-manifest.json'
+        $marker.payloadRoots  | Should -Be @('config','scripts','snippets','templates')
+    }
+
+    It 'AC-IP-MANIFEST-2: per-file sha256 in manifest matches actual current/ files' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'manifest-2' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'manifest-2'
+        $proj = script:New-ProjectRoot -CaseName 'manifest-2'
+
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        $currentDir = Join-Path $area 'current'
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $manifest = [System.IO.File]::ReadAllText((Join-Path $area 'payload-manifest.json'), $utf8NoBom) | ConvertFrom-Json
+        foreach ($entry in @($manifest.files)) {
+            $abs = Join-Path $currentDir ($entry.path -replace '/', [System.IO.Path]::DirectorySeparatorChar)
+            $bytes = [System.IO.File]::ReadAllBytes($abs)
+            $sha = [System.Security.Cryptography.SHA256]::Create()
+            try { $hashBytes = $sha.ComputeHash($bytes) } finally { $sha.Dispose() }
+            $hex = ([System.BitConverter]::ToString($hashBytes)).Replace('-','').ToLowerInvariant()
+            [long]$bytes.LongLength | Should -Be ([long]$entry.size) -Because "size mismatch for $($entry.path)"
+            $hex | Should -Be ([string]$entry.sha256).ToLowerInvariant() -Because "sha256 mismatch for $($entry.path)"
+        }
+    }
+
+    It 'AC-IP-MANIFEST-3: verify hook reports tampered file via Invoke-InstallPipelineVerify' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'manifest-3' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'manifest-3'
+        $proj = script:New-ProjectRoot -CaseName 'manifest-3'
+
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # Tamper one file's bytes (size preserved → forces sha256 mismatch path).
+        $tamper = Join-Path $area 'current/config/marker.txt'
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $original = [System.IO.File]::ReadAllText($tamper, $utf8NoBom)
+        $sameLength = 'X' * $original.Length
+        [System.IO.File]::WriteAllText($tamper, $sameLength, $utf8NoBom)
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'manifest sha256 mismatch.*config/marker.txt').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-MANIFEST-4: verify hook reports missing file referenced by manifest' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'manifest-4' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'manifest-4'
+        $proj = script:New-ProjectRoot -CaseName 'manifest-4'
+
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        Remove-Item -LiteralPath (Join-Path $area 'current/scripts/marker.txt') -Force
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'manifest entry missing on disk: scripts/marker.txt').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-MANIFEST-5: verify hook reports extra file not in manifest' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'manifest-5' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'manifest-5'
+        $proj = script:New-ProjectRoot -CaseName 'manifest-5'
+
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        $extra = Join-Path $area 'current/config/extra-file.txt'
+        [System.IO.File]::WriteAllText($extra, 'extra', (New-Object System.Text.UTF8Encoding($false)))
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'extra file on disk not in manifest: config/extra-file.txt').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-MANIFEST-6: verify hook reports missing marker' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'manifest-6' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'manifest-6'
+        $proj = script:New-ProjectRoot -CaseName 'manifest-6'
+
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        Remove-Item -LiteralPath (Join-Path $area 'payload-marker.json') -Force
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'marker missing').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-MANIFEST-7: update-current rewrites manifest+marker so verify passes against new HEAD' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'manifest-7' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'manifest-7'
+        $proj = script:New-ProjectRoot -CaseName 'manifest-7'
+
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        $headV2 = script:Add-FixtureCommit -SourceRoot $src.Root -MarkerSuffix 'v2'
+
+        $r = script:Invoke-InstallPipeline -Params @{
+            Action='update-current'; InstallArea=$area; SourcePath=$src.Root;
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $manifest = [System.IO.File]::ReadAllText((Join-Path $area 'payload-manifest.json'), $utf8NoBom) | ConvertFrom-Json
+        $marker   = [System.IO.File]::ReadAllText((Join-Path $area 'payload-marker.json'),   $utf8NoBom) | ConvertFrom-Json
+        $manifest.head | Should -Be $headV2
+        $marker.head   | Should -Be $headV2
+
+        # Every manifest entry must reflect the v2 content. The fixture's marker.txt is "marker-<root>-v2".
+        foreach ($root in 'config','scripts','snippets','templates') {
+            $entry = $manifest.files | Where-Object { $_.path -eq "$root/marker.txt" }
+            $entry | Should -Not -BeNullOrEmpty
+            $abs = Join-Path $area "current/$root/marker.txt"
+            $disk = [System.IO.File]::ReadAllText($abs, $utf8NoBom)
+            $disk | Should -Be "marker-$root-v2"
+        }
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeTrue -Because (($vr.errors) -join '; ')
+    }
+
+    It 'AC-IP-MANIFEST-8: restore writes manifest+marker bound to the restored ref' {
+        $src    = script:New-FixtureSourceRepo -CaseName 'manifest-8' -MarkerSuffix 'v1'
+        $headV1 = $src.Head
+        $area   = script:New-InstallArea -CaseName 'manifest-8'
+        $proj   = script:New-ProjectRoot -CaseName 'manifest-8'
+
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        [void] (script:Add-FixtureCommit -SourceRoot $src.Root -MarkerSuffix 'v2')
+
+        $r = script:Invoke-InstallPipeline -Params @{
+            Action='restore'; InstallArea=$area; SourcePath=$src.Root; Ref=$headV1;
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $manifest = [System.IO.File]::ReadAllText((Join-Path $area 'payload-manifest.json'), $utf8NoBom) | ConvertFrom-Json
+        $marker   = [System.IO.File]::ReadAllText((Join-Path $area 'payload-marker.json'),   $utf8NoBom) | ConvertFrom-Json
+        $manifest.head | Should -Be $headV1
+        $marker.head   | Should -Be $headV1
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeTrue -Because (($vr.errors) -join '; ')
+    }
+
+    It 'AC-IP-MANIFEST-10: verify hook reports marker.payloadRoots mismatch (§15.3 / §15.4 contract)' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'manifest-10' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'manifest-10'
+        $proj = script:New-ProjectRoot -CaseName 'manifest-10'
+
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        $markerPath = Join-Path $area 'payload-marker.json'
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $marker = [System.IO.File]::ReadAllText($markerPath, $utf8NoBom) | ConvertFrom-Json
+        # Tamper payloadRoots: drop the last entry.
+        $marker.payloadRoots = @('config','scripts','snippets')
+        $json = $marker | ConvertTo-Json -Depth 10
+        [System.IO.File]::WriteAllText($markerPath, $json, $utf8NoBom)
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'marker.payloadRoots mismatch').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-MANIFEST-9: no manifest/marker written under any forbidden global path during the round' {
+        # Sanity check: this round's tests never touch %USERPROFILE%\.claude or
+        # %USERPROFILE%\.codex. Confirm those ai-harness-toolset materializations
+        # do not exist as a side-effect of the test fixtures.
+        $userProfile = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
+        $claudeArea = Join-Path $userProfile '.claude/ai-harness-toolset'
+        if (Test-Path -LiteralPath $claudeArea -PathType Container) {
+            # If the user has a legitimate global install, manifest/marker may exist
+            # from a separate scope. We only check that THIS test run did not create
+            # a new pester-* directory under it (TestDrive is elsewhere).
+            $pesterDirs = Get-ChildItem -LiteralPath $claudeArea -Directory -Force -ErrorAction SilentlyContinue |
+                Where-Object { $_.Name -match '^pester-' }
+            @($pesterDirs).Count | Should -Be 0
+        }
+        $codexArea = Join-Path $userProfile '.codex/ai-harness-toolset'
+        Test-Path -LiteralPath $codexArea -PathType Container | Should -BeFalse
+    }
+}

@@ -628,7 +628,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 
 본 절은 §6 canonical decomposition 의 9 번째 sub-step — **3-8 minimal docs closeout** — 을 수행한다. Step 3 의 현재 완료 상태를 한 자리에 모으고, 남은 deferred scope 를 분리해 기록한다. 본 절의 존재로 어떤 새 implementation, validation, adoption, release, publish, global / user filesystem mutation, commit / push / merge / release 도 자동 승인되지 않는다.
 
-§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에, 3-6 boundary 의 § anchor 는 §14 에 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다. 본 §13 작성 시점에는 3-6 § anchor (§14) 가 아직 작성되지 않았으나, 후속 3-6 anchor 라운드에서 본 §13.1 의 Completed 에 3-6 entry 가 추가되었다 (§14 작성 라운드 — 본 closeout 의 sibling 갱신).
+§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에, 3-6 boundary 의 § anchor 는 §14 에, payload integrity manifest + payload completeness marker minimum contract 는 §15 에 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다. 본 §13 작성 시점에는 §14 / §15 가 아직 작성되지 않았으나, 후속 anchor 라운드 (3-6 anchor 라운드, manifest / marker minimum contract 라운드) 에서 본 §13.1 의 Completed 와 §13.2 의 Deferred 가 함께 갱신되었다.
 
 ### 13.1 Completed
 
@@ -639,7 +639,8 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - **3-2~3-5 runtime pipeline contract grouping** — §12 anchor (resolver / materialization / dispatcher / verify boundary 와 4 canonical action labels, source-cut detection-only, dogfooding 보호, key failure cases, out-of-pipeline categories). commit `f11ed27`.
 - **temp-only install-pipeline skeleton implementation** — `scripts/install-pipeline.ps1` (CLI entry), `scripts/lib/install-pipeline-core.ps1` (library), `tests/install-pipeline.Tests.ps1` (Pester tests) 3 파일 신규. local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action 을 `$TestDrive` fixture 기준으로 end-to-end 동작. install.json (§11.1 14-field schema), source-cut detection-only, dogfooding silent-mutation 보호, forbidden InstallArea guard (`%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` 및 descendants), git-archive 기반 ref-specific materialization 포함. commit `84d1126`.
 - **3-7 dry-run coverage extension** — install → update-current → restore 연속 flow + per-step metadata + invariant 9 fields 비-드리프트 (`installedAt` 보존, `lastUpdatedAt` lifecycle 포함), source-cut 거부 후 `current/` byte-identity 보존, dogfooding `update-source` 거부 후 source repo HEAD 무변경, `%USERPROFILE%\.codex` reject, `%USERPROFILE%\.claude` descendant reject + 디렉터리 미생성. 5 신규 Pester tests. commit `3bff209`.
-- **3-6 managed-block / skill replace boundary anchor** — §14 anchor (boundary statement, in-scope / out-of-scope enumeration, deferred items). §7 #2 carry-forward caveat 의 §anchor 정착 + §10.6 / §11.7 / §12.10 enumeration 의 상위 §종합 자리. install / update automation core (§12 의 4 action) ≠ managed-block / skill replace apply (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 scope 분리를 한 줄 boundary 로 anchor. 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 boundary 정의에 한정되며 actual managed-block / skill apply 또는 진단 helper / actual writer 의 도입을 자동 승인하지 않는다.
+- **3-6 managed-block / skill replace boundary anchor** — §14 anchor (boundary statement, in-scope / out-of-scope enumeration, deferred items). §7 #2 carry-forward caveat 의 §anchor 정착 + §10.6 / §11.7 / §12.10 enumeration 의 상위 §종합 자리. install / update automation core (§12 의 4 action) ≠ managed-block / skill replace apply (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 scope 분리를 한 줄 boundary 로 anchor. commit `9cf2000` (`Anchor Step 3 3-6 managed-block boundary`). 본 anchor 는 boundary 정의에 한정되며 actual managed-block / skill apply 또는 진단 helper / actual writer 의 도입을 자동 승인하지 않는다.
+- **payload integrity manifest + payload completeness marker minimum contract + temp-only implementation + dry-run tests** — §15 anchor + `scripts/lib/install-pipeline-core.ps1` 구현 + `tests/install-pipeline.Tests.ps1` 9 신규 tests. backlog "Aggregate digest reproducibility" candidate (b) per-file manifest 채택; `payload-manifest.json` (sibling-of-`current/`, JSON UTF-8 no-BOM, per-file `{path, size, sha256}` sorted ascending) + `payload-marker.json` (sibling-of-`current/`, presence flag + integrity binding). write hook 은 materialization 직후 / metadata write 이전 단계로, verify hook 은 `Invoke-InstallPipelineVerify` 안의 metadata 검증과 함께 manifest per-file diff (tamper / missing / extra) + marker presence + head cross-binding 을 fail-fast. 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action 만 cover 하며 git-url mode actual network fetch / actual global install area mutation / entrypoint set finalize / aggregate digest algorithm (candidate (a)) / schema bump migration writer / 외부 검증 tool / channel 3 활성 hook 의 actual implementation / target adoption 은 자동 승인하지 않는다.
 
 본 commit 시리즈의 최신 HEAD: `3bff2093ee3cfb0996633007efed717b64ace631` (3-7 dry-run coverage extension 시점). 본 §14 anchor 가 commit 되면 HEAD 는 그 후속 commit hash 로 carry — 본 §13.1 의 commit hash 표기는 본 §14 anchor 의 commit 시점에 갱신되지 않으며 ("baseline commit hash 는 review context only" — §7 #6 와 정합), 위 3-7 시점의 baseline 표기로 historical 보존된다.
 
@@ -650,7 +651,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 다음 항목은 본 §13 closeout 이 **자동 승인하지 않는** deferred scope 다. 각 항목은 별도 scoped goal 의 explicit user-approved decision 으로 진행한다.
 
 - **git-url mode 의 실제 source acquisition / network fetch** — 현 skeleton 은 local-clone mode 의 local git repo 만 다룬다. git-url mode 의 `git clone` / `git fetch` / `git pull` / clone recovery 의 실제 implementation, credential / auth handling, network failure 처리는 별도 scoped goal (`GLOBAL_INSTALL_UPDATE_MODEL.md` §2.1 / §4.2 와 정합).
-- **payload integrity manifest / payload completeness marker** — §12.6 / §11.6 의 deferred 항목 그대로. manifest algorithm / 위치 / 이름, completeness marker 의 entrypoint set 확정은 `docs/backlog/operations.md` "Aggregate digest reproducibility — install/update verification scope debt" 와 함께 별도 scoped goal.
+- **payload integrity manifest / payload completeness marker 의 후속 deferred 항목** — §15 anchor 가 minimum contract (per-file manifest + presence marker) 와 temp-only local-clone implementation + dry-run tests 를 정착시키므로 본 §13.2 의 deferred 잔여는 §15.6 의 6 항목 (entrypoint set finalize, aggregate digest algorithm (candidate (a)) 의 별도 도입, manifest / marker schema bump migration writer, manifest 외부 검증 tool / linter, `Get-ToolRoot` channel 3 활성 hook 의 actual implementation, target adoption / external target 에 대한 manifest / marker) 으로 좁아진다. 모두 별도 scoped goal 의 explicit user-approved decision 으로 진행한다 (`docs/backlog/operations.md` "Aggregate digest reproducibility — install/update verification scope debt" 와 정합).
 - **3-6 boundary 의 후속 implementation 항목** — §14 anchor 가 boundary 정의를 마치므로 본 §13.2 의 deferred 잔여는 §14.4 의 5 항목 (boundary 진단 helper / check-only helper 의 도입 여부 + spec + 위치 + 이름, managed-block apply 의 actual writer surface, Claude skill install / update / removal 의 actual writer surface, boundary violation detection mechanism, 3-6 의 implementation-level closeout) 으로 좁아진다. 본 항목들은 boundary 정의가 아니라 boundary 의 후속 implementation / helper 단계이며, 모두 별도 scoped goal (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 explicit user-approved decision 으로 진행한다.
 - **Step 4 actual install / update validation** — `POST_MVP_PLAN.md` §11 step 4. 본 §13 closeout 이 자동 승인하지 않는다.
 - **Actual global / user filesystem apply** — global stable install (`%USERPROFILE%\.claude\ai-harness-toolset\current\`) 의 실제 materialize / refresh, install metadata instance write, managed-block apply, Claude skill assets install 어느 것도 본 commit 시리즈로 자동 승인되지 않는다.
@@ -759,3 +760,137 @@ managed-block / skill replace apply (GLOBAL_ADOPTION_DECISION.md §6 / GLOBAL_AD
 - install / update / restore 의 actual 실행, global / user filesystem mutation, target adoption, commit / push / publish / merge / release / Step 4 validation.
 
 본 anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / managed-block apply / skill install / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 / §13.3 와 정합).
+
+---
+
+## 15. Recorded payload integrity manifest + payload completeness marker contract
+
+본 절은 §12.6 (3-5 verify path) 와 §11.6 (3-1 deferred items — payload integrity manifest, payload completeness marker) 에서 deferred 로 carry 되어 있던 두 항목 — **payload integrity manifest** 와 **payload completeness marker** — 의 최소 contract 를 anchor 한다. 본 anchor 는 install-pipeline temp-only skeleton (`scripts/install-pipeline.ps1` + `scripts/lib/install-pipeline-core.ps1`) 안에서 동작하는 contract 를 기록하며, actual `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` mutation 어느 것도 자동 승인하지 않는다.
+
+본 anchor 는 §10 (3-0 layer layout) / §11 (3-1 install metadata contract) / §12 (3-2~3-5 runtime pipeline grouping) / §14 (3-6 managed-block / skill replace boundary) 위에 build 되며 그 결정을 약화하지 않는다. `docs/backlog/operations.md` 의 "Aggregate digest reproducibility — install/update verification scope debt" 항목과 정합하며, 본 anchor 는 그 backlog candidate (a) / (b) 중 **(b) per-file manifest** 를 채택한다. (a) deterministic aggregate digest algorithm 의 문서화 / 도입은 본 anchor 가 자동 승인하지 않으며, 별도 scoped goal 의 대상이다.
+
+본 anchor 는 schema 의 contract 의미 (위치 / 이름 / 필드 / lifecycle / verify hook / failure 의미 / boundary) 만 기록한다. 실제 JSON Schema 파일 작성, validator implementation, network-based git-url mode 의 manifest 처리, payload completeness marker 의 entrypoint set finalize (= 어떤 구체 entrypoint 파일이 channel 3 활성 조건의 marker 안에 enumerate 되어야 하는지) 는 본 anchor 의 범위 밖이며 후속 scoped goal 의 일이다.
+
+### 15.1 Algorithm choice (backlog candidate (b))
+
+`docs/backlog/operations.md` "Aggregate digest reproducibility" 의 후보 (a) aggregate digest 와 (b) per-file manifest 중 **(b)** 를 채택한다.
+
+근거:
+
+- (a) 는 정렬 규칙 / 경로 정규화 / 줄바꿈 / BOM 처리 / 해시 결합 순서를 모두 명문화해야 하며, 한 항목이라도 변하면 expected digest 가 바뀐다. 본 backlog 항목이 직접 지목한 "재현 / 검증 불가" 문제의 원인이다.
+- (b) 는 파일 단위 SHA-256 비교라서 단일 algorithm 결정으로 재현 가능하며, manifest schema 가 곧 검증 contract 다.
+- (b) 채택은 (a) 의 도입을 금지하지 않는다. 후속 scoped goal 에서 (a) 를 도입하려면 본 §15 의 (b) 와 공존하거나 superseded note 를 두는 별도 scoped decision 이 필요하다 — 본 anchor 는 그 decision 을 자동 승인하지 않는다.
+
+### 15.2 Payload integrity manifest
+
+본 anchor 가 정의하는 manifest 의 최소 contract.
+
+- **canonical filename**: `payload-manifest.json`.
+- **위치**: global install area 의 `current/` 와 **sibling** (§10.4 boundary 와 정합 — `current/` 안에 두지 않는다, target project 안에 두지 않는다, source repo 의 tracked instance 로 두지 않는다, user-home 의 ai-harness-specific 별도 root 에 두지 않는다).
+- **format**: JSON, UTF-8 no-BOM (`install.json` 과 동일 convention).
+- **field set (minimum required)**:
+
+  | 필드 | 의미 |
+  |---|---|
+  | `schemaVersion` | manifest schema 버전. initial value `1`. unknown 값은 reader fail-fast (silent downgrade 금지 — §11.3 와 동일 semantics). |
+  | `tool` | `ai-harness-toolset` (constant). install.json `tool` 과 일치. |
+  | `head` | manifest 생성 시점의 source HEAD commit SHA. install.json `lastUpdatedHead` 와 일치해야 한다 (verify 에서 검사). |
+  | `createdAt` | manifest 생성 UTC 시각 (ISO 8601 `yyyy-MM-ddTHH:mm:ssZ`). |
+  | `payloadRoots` | runtime payload root 이름 배열. constant `["config","scripts","snippets","templates"]` (§10.1 와 정합). |
+  | `files` | manifest 본체 — `{ path, size, sha256 }` object 배열. `path` 는 forward-slash relative path from `current/` (예: `config/marker.txt`). `size` 는 byte 단위. `sha256` 은 lowercase hex (no separator). 배열은 `path` ascending sort (determinism 보장). |
+
+- **entry 대상**: `current/<payloadRoots[i]>/**` 아래의 모든 regular file. directory 자체는 entry 가 아니다 (path 가 file path 인 경우만 enumerate).
+- **금지**:
+  - manifest 에 destination 의 diff 정보 / patch 정보 / user-edit metadata 도입 (§4 drift exclusion 과 정합).
+  - manifest 에 release identifier (`releaseVersion`, `releaseTag` 등) 도입 (§11.7 forbidden enumeration 과 정합).
+  - manifest 를 `current/` 안에 두는 것 (§10.2 와 정합).
+
+### 15.3 Payload completeness marker
+
+본 anchor 가 정의하는 marker 의 최소 contract.
+
+- **canonical filename**: `payload-marker.json`.
+- **위치**: global install area 의 `current/` 와 **sibling** (§10.4 boundary 와 정합).
+- **format**: JSON, UTF-8 no-BOM.
+- **field set (minimum required)**:
+
+  | 필드 | 의미 |
+  |---|---|
+  | `schemaVersion` | marker schema 버전. initial value `1`. unknown 값은 reader fail-fast. |
+  | `tool` | `ai-harness-toolset` (constant). |
+  | `head` | marker 생성 시점의 source HEAD commit SHA. install.json `lastUpdatedHead` 와 일치해야 한다. |
+  | `createdAt` | marker 생성 UTC 시각. |
+  | `manifestPath` | manifest 의 sibling 경로 — constant `payload-manifest.json`. |
+  | `payloadRoots` | constant `["config","scripts","snippets","templates"]`. manifest 의 `payloadRoots` 와 일치해야 한다. |
+
+- **semantic**: marker 의 존재 == 본 라운드의 materialization 이 manifest 작성까지 완료되었다는 presence flag. marker 가 부재하면 channel 3 활성은 fail-fast 의 근거가 된다 (§11.6 의 "channel 3 활성 조건의 marker" framing 과 정합).
+- **entrypoint set finalize 는 본 anchor 의 범위 밖**: marker 는 본 anchor 에서 **단순 presence flag + integrity binding** 이다. "어떤 구체 entrypoint 파일이 marker 안에 enumerate 되어야 channel 3 가 활성되는가" 의 finalize 는 별도 scoped goal (§11.6 / §12.6 의 deferred 항목 그대로). 본 anchor 는 entrypoint set 도입을 자동 승인하지 않으며, 도입을 자동 금지하지도 않는다.
+- **금지**:
+  - marker 에 user-edit preservation flag / 자동 managed-block apply trigger / 자동 skill refresh trigger 도입 (§11.7 / §14.3 와 정합).
+  - marker 를 `current/` 안에 두는 것 (§10.2 와 정합).
+
+### 15.4 Lifecycle (write / verify hook)
+
+manifest / marker 의 lifecycle 은 §12.1 pipeline 의 metadata write 단계와 verify 단계에 정합 hook 된다.
+
+- **write hook (materialization 직후, metadata write 이전)**:
+  1. `Invoke-InstallMaterialization` 가 `current/` 의 payload root 들을 source ref 기준으로 deterministic overwrite materialize.
+  2. 본 hook 가 `current/` 아래의 모든 regular file 을 enumerate 하고 `path` ascending sort 한 뒤 각 file 의 size + SHA-256 을 계산.
+  3. manifest 와 marker 를 sibling-of-`current/` 자리에 write (둘 다 JSON UTF-8 no-BOM).
+  4. 그 뒤에 install.json (metadata) 를 write — install.json 의 `installedHead` / `lastUpdatedHead` 와 manifest / marker 의 `head` 가 일치해야 한다.
+- **verify hook (`Invoke-InstallPipelineVerify` 안)**:
+  1. metadata read (§12.6 의 metadata binding 검증 그대로).
+  2. manifest read — schemaVersion / tool / head / payloadRoots constant 검증.
+  3. manifest 의 `files` 각 entry 에 대해 `current/<path>` 의 실제 size + SHA-256 을 재계산하여 비교. 불일치 / missing entry / extra entry 모두 verify error.
+  4. marker read — schemaVersion / tool / head / manifestPath / payloadRoots constant 검증.
+  5. marker.head == manifest.head == metadata.lastUpdatedHead 의 cross-binding 검증.
+- **failure semantics**:
+  - manifest 부재 / unreadable / unknown schemaVersion / head mismatch / files mismatch → verify error 로 보고 (fail-fast; silent skip 금지).
+  - marker 부재 / unreadable / unknown schemaVersion / head mismatch → verify error 로 보고.
+  - manifest 와 marker 가 모두 부재면 두 error 모두 report (어느 한쪽의 부재로 다른 쪽 검증을 skip 하지 않는다).
+
+### 15.5 Mode coverage
+
+본 anchor 가 cover 하는 mode 와 cover 하지 않는 mode 의 분리.
+
+- **cover (본 anchor 의 contract 가 적용되는 범위)**:
+  - local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action — 본 라운드의 implementation 이 모두 manifest + marker 를 write / verify 한다.
+- **not cover (별도 scoped goal)**:
+  - git-url mode 의 actual network fetch 경로 (clone / fetch / pull / clone recovery). 본 anchor 의 manifest contract 는 git-url mode 에도 동일하게 적용 가능한 schema 이지만, network-based source 처리의 implementation 은 별도 scoped goal (STEP3 guide §13.2 deferred 의 "git-url mode 의 actual source acquisition / network fetch" 와 정합).
+  - source-cut path 의 실제 처리 후의 manifest 재작성 (§12.7 의 detection-only boundary 와 정합).
+  - actual global install area (`%USERPROFILE%\.claude\ai-harness-toolset\current`) 에 대한 manifest / marker write — actual mutation 은 별도 explicit user-approved scope (§10.6 / §14 와 정합).
+
+### 15.6 Deferred items (본 anchor 의 범위 밖)
+
+본 anchor 는 다음을 fix 하지 않는다.
+
+- **entrypoint set finalize** (§11.6 / §12.6 의 deferred 항목 그대로). marker 가 단순 presence flag 인지 / 어떤 entrypoint 파일을 enumerate 해야 하는지의 final decision 은 후속 scoped goal.
+- **aggregate digest algorithm** (backlog candidate (a)). 본 anchor 가 (b) per-file manifest 만 채택하므로, (a) 는 별도 scoped goal 의 대상.
+- **manifest / marker schema version bump migration writer** (§11.3 와 동일 framing — bump 시 기존 manifest 의 자동 conversion 절차).
+- **manifest 외부 검증 tool / linter / 자동 검사 mechanism**. backlog "Aggregate digest reproducibility" §Non-goals 와 정합.
+- **payload-marker.json 의 channel 3 활성 조건 hook 의 actual implementation** — `Get-ToolRoot` channel 3 resolver 가 marker 부재를 fail-fast 조건으로 사용할지의 결정은 별도 scoped goal.
+- **target adoption / external target 에 대한 manifest / marker** — target project 는 payload destination 이 아니다 (§5 / §10.3 / §14 와 정합).
+
+### 15.7 본 anchor 의 scope 와 non-goals
+
+본 anchor 는 다음을 **포함한다**.
+
+- §15.1 의 algorithm choice (backlog candidate (b) per-file manifest 채택).
+- §15.2 의 manifest contract (filename / 위치 / format / field set / 금지).
+- §15.3 의 marker contract (filename / 위치 / format / field set / semantic / 금지).
+- §15.4 의 lifecycle (write hook + verify hook + failure semantics).
+- §15.5 의 mode coverage (local-clone cover, git-url / source-cut / actual global apply 별도 scoped).
+- §15.6 의 deferred items (entrypoint set finalize, aggregate digest algorithm, schema bump migration writer, 외부 검증 tool, channel 3 활성 hook 의 actual, target adoption).
+
+본 anchor 는 다음을 **포함하지 않는다**.
+
+- actual global / user filesystem mutation (`%USERPROFILE%\.claude\ai-harness-toolset\current` 또는 그 sibling 의 manifest / marker write).
+- git-url mode 의 actual network fetch 동작 implementation.
+- source-cut path 의 실제 처리.
+- managed-block apply / Claude skill install / update / removal.
+- Step 4 validation 시작.
+- 부모 root-level docs (`GLOBAL_INSTALL_UPDATE_MODEL.md`, `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`) 본문 mutation. 본 anchor 는 STEP3 guide subordinate scope 안에서 닫는다.
+- §6 canonical decomposition 의 ordering / numbering 변경. manifest / marker contract 는 §6 의 9 단계 중 어느 단일 sub-step 의 재정의가 아니라 §11.6 / §12.6 deferred 의 closeout 이다.
+- commit / push / publish / merge / release / adoption.
+
+본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc / test mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 / §13.3 / §14.5 와 정합).
