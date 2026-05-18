@@ -628,7 +628,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 
 본 절은 §6 canonical decomposition 의 9 번째 sub-step — **3-8 minimal docs closeout** — 을 수행한다. Step 3 의 현재 완료 상태를 한 자리에 모으고, 남은 deferred scope 를 분리해 기록한다. 본 절의 존재로 어떤 새 implementation, validation, adoption, release, publish, global / user filesystem mutation, commit / push / merge / release 도 자동 승인되지 않는다.
 
-§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에, 3-6 boundary 의 § anchor 는 §14 에, payload integrity manifest + payload completeness marker minimum contract 는 §15 에, git-url mode minimum source acquisition contract 는 §16 에, source-cut path actual handling decision anchor 는 §17 에 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다. 본 §13 작성 시점에는 §14 / §15 / §16 / §17 가 아직 작성되지 않았으나, 후속 anchor 라운드 (3-6 anchor / manifest+marker minimum contract / git-url minimum source acquisition / source-cut path decision anchor) 에서 본 §13.1 의 Completed 와 §13.2 의 Deferred 가 함께 갱신되었다.
+§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에, 3-6 boundary 의 § anchor 는 §14 에, payload integrity manifest + payload completeness marker minimum contract 는 §15 에, git-url mode minimum source acquisition contract 는 §16 에, source-cut path actual handling decision anchor 는 §17 에, dogfooding enforcement final shape decision anchor 는 §18 에 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다. 본 §13 작성 시점에는 §14 / §15 / §16 / §17 / §18 가 아직 작성되지 않았으나, 후속 anchor 라운드 (3-6 anchor / manifest+marker minimum contract / git-url minimum source acquisition / source-cut path decision anchor / dogfooding enforcement final shape) 에서 본 §13.1 의 Completed 와 §13.2 의 Deferred 가 함께 갱신되었다.
 
 ### 13.1 Completed
 
@@ -642,7 +642,8 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - **3-6 managed-block / skill replace boundary anchor** — §14 anchor (boundary statement, in-scope / out-of-scope enumeration, deferred items). §7 #2 carry-forward caveat 의 §anchor 정착 + §10.6 / §11.7 / §12.10 enumeration 의 상위 §종합 자리. install / update automation core (§12 의 4 action) ≠ managed-block / skill replace apply (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 scope 분리를 한 줄 boundary 로 anchor. commit `9cf2000` (`Anchor Step 3 3-6 managed-block boundary`). 본 anchor 는 boundary 정의에 한정되며 actual managed-block / skill apply 또는 진단 helper / actual writer 의 도입을 자동 승인하지 않는다.
 - **payload integrity manifest + payload completeness marker minimum contract + temp-only implementation + dry-run tests** — §15 anchor + `scripts/lib/install-pipeline-core.ps1` 구현 + `tests/install-pipeline.Tests.ps1` 9 신규 tests. backlog "Aggregate digest reproducibility" candidate (b) per-file manifest 채택; `payload-manifest.json` (sibling-of-`current/`, JSON UTF-8 no-BOM, per-file `{path, size, sha256}` sorted ascending) + `payload-marker.json` (sibling-of-`current/`, presence flag + integrity binding). write hook 은 materialization 직후 / metadata write 이전 단계로, verify hook 은 `Invoke-InstallPipelineVerify` 안의 metadata 검증과 함께 manifest per-file diff (tamper / missing / extra) + marker presence + head cross-binding 을 fail-fast. commit `1273afe` (`Anchor Step 3 payload manifest and marker minimum contract`). 본 anchor 는 local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action 만 cover 하며 git-url mode actual network fetch / actual global install area mutation / entrypoint set finalize / aggregate digest algorithm (candidate (a)) / schema bump migration writer / 외부 검증 tool / channel 3 활성 hook 의 actual implementation / target adoption 은 자동 승인하지 않는다.
 - **git-url mode minimum source acquisition contract + temp-only implementation + dry-run tests** — §16 anchor + `scripts/lib/install-pipeline-core.ps1` 구현 + `scripts/install-pipeline.ps1` entry wiring + `tests/install-pipeline.Tests.ps1` 9 신규 tests (AC-IP-GITURL-*). §10.5 의 deferred source-cache layer 결정을 reassessment 결과로 §16 에서 채택 — canonical location `<InstallArea>/source-cache/` (sibling-of-`current/`), normal-clone format, single-cache-per-InstallArea. per-action lifecycle: install → `git clone -q`, update-source → `git fetch -q origin <branch>` + resolve `origin/<branch>`, update-current → cache-local `git rev-parse HEAD` (no network), restore → cache-local `git rev-parse --verify <user-ref>^{commit}` (no network). failure preservation: fetch / resolve / clone 실패가 모두 materialization 이전 단계라 deliverable artifact (install.json / manifest / marker / current/) 의 byte-identity 가 보존된다. tuple.toolRoot = cache absolute path (§16.5 — install.json `toolRoot` 와 정합); tuple.sourceLocation = URL (user-facing identifier). `Invoke-InstallPipelineNativeGit` helper 가 `$ErrorActionPreference` 를 함수 scope 내 'Continue' 로 pin 해 NativeCommandError-on-stderr 가 LASTEXITCODE-driven throw 를 preempt 하는 PS 5.1 quirk 를 우회. test fixture 는 `git clone --bare -q` 로 만든 local bare repo 만 사용 (`-RepoUrl` = bare absolute path; file:// URL 도 동등하게 동작하나 path 만 사용). 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 credential / auth handling / clone recovery / multi-cache / per-ref subdirectory / bare cache / cache identity verification / fetch retry / submodule / actual global apply / source-cut path 실제 처리 / schemaVersion migration writer / Step 4 시작 / managed-block apply / Claude skill install/update/removal / 외부 GitHub network reachability 의존 test 어느 것도 자동 승인하지 않는다.
-- **Step 3 source-cut path actual handling decision anchor** — §17 anchor. §12.7 detection-only / dispatcher non-process / STOP behavior 위에서, source-cut path 의 actual handling 을 **`deferred with exact boundary`** 로 고정한다. `explicit unsupported fail-fast now` 도 `minimum support now` 도 채택하지 않는다 — future implementation 가능성은 보존하되 본 라운드의 자동 승인은 거부. 본 anchor 는 (a) 3 concept (local-clone mode / git-url mode / source-cut path) 의 boundary separation 을 본 자리에서 한 번 종합 — local-clone / git-url 은 mutually exclusive 한 두 mode 이며 source-cut 은 세 번째 mode 가 아니라 metadata mutation class. (b) §12.7 의 6 trigger field (`installMode` / `repoUrl` / `sourcePath` / `toolRoot` / `branch` / `remote`) 를 본 anchor 에 복제 anchor (재정의 아님). (c) §17.4 in-scope behavior 보존 (§12.7 unchanged + 3-7 dry-run 의 byte-identity case 유지). (d) §17.5 deferred boundary 8 항목 enumeration — 재install handler / metadata mutation writer / new install path 및 cutover 절차 / approve UX / source-cache lifecycle on mode change / `schemaVersion` source-cut-related field 추가 / dogfooding mode interaction enforcement / source-cut 처리 후 manifest+marker 재작성 절차. (e) §17.6 forbidden enumeration. 본 anchor 는 docs-only 이며 `scripts/install-pipeline.ps1` / `scripts/lib/install-pipeline-core.ps1` / `tests/install-pipeline.Tests.ps1` 어느 것도 변경하지 않는다. 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 source-cut handler 의 신규 implementation, install-pipeline 의 source-cut 자동 처리, 신규 Pester test 추가, metadata in-place mutation, actual global apply, managed-block apply, Claude skill install / update / removal, Step 4 validation 시작, snapshot / manifest 생성, commit / push 어느 것도 자동 승인하지 않는다.
+- **Step 3 source-cut path actual handling decision anchor** — §17 anchor. §12.7 detection-only / dispatcher non-process / STOP behavior 위에서, source-cut path 의 actual handling 을 **`deferred with exact boundary`** 로 고정한다. `explicit unsupported fail-fast now` 도 `minimum support now` 도 채택하지 않는다 — future implementation 가능성은 보존하되 본 라운드의 자동 승인은 거부. 본 anchor 는 (a) 3 concept (local-clone mode / git-url mode / source-cut path) 의 boundary separation 을 본 자리에서 한 번 종합 — local-clone / git-url 은 mutually exclusive 한 두 mode 이며 source-cut 은 세 번째 mode 가 아니라 metadata mutation class. (b) §12.7 의 6 trigger field (`installMode` / `repoUrl` / `sourcePath` / `toolRoot` / `branch` / `remote`) 를 본 anchor 에 복제 anchor (재정의 아님). (c) §17.4 in-scope behavior 보존 (§12.7 unchanged + 3-7 dry-run 의 byte-identity case 유지). (d) §17.5 deferred boundary 8 항목 enumeration — 재install handler / metadata mutation writer / new install path 및 cutover 절차 / approve UX / source-cache lifecycle on mode change / `schemaVersion` source-cut-related field 추가 / dogfooding mode interaction enforcement / source-cut 처리 후 manifest+marker 재작성 절차. (e) §17.6 forbidden enumeration. 본 anchor 는 docs-only 이며 `scripts/install-pipeline.ps1` / `scripts/lib/install-pipeline-core.ps1` / `tests/install-pipeline.Tests.ps1` 어느 것도 변경하지 않는다. 본 anchor 의 commit hash 는 commit `9308f3d` (`Anchor Step 3 source-cut path actual handling decision`). 본 anchor 는 source-cut handler 의 신규 implementation, install-pipeline 의 source-cut 자동 처리, 신규 Pester test 추가, metadata in-place mutation, actual global apply, managed-block apply, Claude skill install / update / removal, Step 4 validation 시작, snapshot / manifest 생성, commit / push 어느 것도 자동 승인하지 않았다.
+- **Step 3 dogfooding enforcement final shape decision anchor** — §18 anchor. §12.8 의 마지막 문장 ("본 boundary 의 정확한 enforcement mechanism (warning prompt / `--allow-dogfood-mutation` flag 등) 은 implementation 시점에 결정 — 본 anchor 가 fix 하지 않는다") 의 closeout 으로, dogfooding enforcement final shape 를 docs-only 로 고정. 5 명제 anchor — (1) explicit-flag bypass 모델 (`-AllowDogfoodSource` switch); warning-only / interactive prompt / env var / config file bypass 거부, (2) strict mode confinement — local-clone mode 에만 적용, git-url 은 구조적으로 dogfooding-irrelevant (§16.2 source-cache 가 InstallArea 안), (3) action × mode × dogfooding boundary matrix (§18.4 — install ALLOWED, update-source BLOCKED-default / explicit-confirm-required via flag, update-current ALLOWED, restore ALLOWED git-archive 한정), (4) 5 tree separation invariant (source repo working tree / global current / InstallArea / source-cache / ProjectRoot.log 의 비-overlap), (5) docs-only 결정 — 현행 skeleton 의 as-built 동작 (`Test-InstallPipelineDogfoodingSource`, `-AllowDogfoodSource` switch, 3-7 dry-run "dogfooding `update-source` 거부 후 source repo HEAD 무변경" Pester case) 을 final shape 로 anchor. dogfooding detection 의 두 detection point 분리 — invocation-time ToolRoot resolution (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` D1 channel 4) 와 action-time source-side dogfooding (`Test-InstallPipelineDogfoodingSource` 의 `SourcePath == ProjectRoot` + `Test-IsSourceRepoRoot` 조건) 의 별개 detection 의미. §18.6 deferred items 8 항목 enumeration (dirty source guard / restore implementation 변경 시 재anchor / install 의 explicit-confirm 도입 여부 / source-cut × dogfooding interaction (§17.5 와 정합) / dogfooding enforcement actual implementation 확장 / bypass audit log / Claude Code agent-driven invocation 의 dogfooding boundary / InstallArea placement 의 source-repo subtree 거부 enforcement). §18.7 forbidden enumeration. 본 anchor 는 docs-only 이며 `scripts/install-pipeline.ps1` / `scripts/lib/install-pipeline-core.ps1` / `tests/install-pipeline.Tests.ps1` 어느 것도 변경하지 않는다. 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 dogfooding enforcement 의 신규 implementation, install-pipeline 의 새 함수 / 새 flag 추가, 신규 Pester test 추가, metadata schema 변경, actual global apply, managed-block apply, Claude skill install / update / removal, Step 4 validation 시작, snapshot / manifest 생성, commit / push 어느 것도 자동 승인하지 않는다.
 
 본 commit 시리즈의 최신 HEAD: `3bff2093ee3cfb0996633007efed717b64ace631` (3-7 dry-run coverage extension 시점). 본 §14 anchor 가 commit 되면 HEAD 는 그 후속 commit hash 로 carry — 본 §13.1 의 commit hash 표기는 본 §14 anchor 의 commit 시점에 갱신되지 않으며 ("baseline commit hash 는 review context only" — §7 #6 와 정합), 위 3-7 시점의 baseline 표기로 historical 보존된다.
 
@@ -658,7 +659,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - **Step 4 actual install / update validation** — `POST_MVP_PLAN.md` §11 step 4. 본 §13 closeout 이 자동 승인하지 않는다.
 - **Actual global / user filesystem apply** — global stable install (`%USERPROFILE%\.claude\ai-harness-toolset\current\`) 의 실제 materialize / refresh, install metadata instance write, managed-block apply, Claude skill assets install 어느 것도 본 commit 시리즈로 자동 승인되지 않는다.
 - **source-cut path 의 실제 처리** — §17 anchor 가 본 항목을 **`deferred with exact boundary`** 로 정착시키므로 본 §13.2 의 deferred 잔여는 §17.5 의 8 항목 (재install handler / metadata mutation writer / new install path 및 cutover 절차 / approve UX / source-cache lifecycle on mode change / `schemaVersion` source-cut-related field 추가 / dogfooding mode interaction enforcement / source-cut 처리 후 manifest+marker 재작성 절차) 으로 좁아진다. §12.7 의 resolver detection-only / dispatcher non-process / STOP behavior 는 그대로 유지된다 (§17.4). 본 항목들은 별도 scoped goal 의 explicit user-approved decision 으로만 진행한다 (`docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` §4 와 정합).
-- **dogfooding enforcement mechanism 의 final shape** — 현 skeleton 은 `-AllowDogfoodSource` switch 패턴. 실제 운영의 warning prompt / flag / confirm UX 결정은 별도 scoped goal.
+- **dogfooding enforcement mechanism 의 final shape** — §18 anchor 가 본 항목을 docs-only 로 정착시키므로 본 §13.2 의 deferred 잔여는 §18.6 의 8 항목 (dirty source guard / restore implementation 변경 시 재anchor / install 의 explicit-confirm 도입 여부 / source-cut × dogfooding interaction (§17.5 와 정합) / dogfooding enforcement actual implementation 확장 / bypass audit log / Claude Code agent-driven invocation 의 dogfooding boundary / InstallArea placement 의 source-repo subtree 거부 enforcement) 으로 좁아진다. §12.8 의 dogfooding mode boundary 정의와 §12.9 의 "dogfooding mutation risk" failure case 형태는 그대로 유지되며 본 final shape 는 explicit-flag bypass (`-AllowDogfoodSource` switch) — warning-only / interactive prompt / env var / config file bypass 거부. 본 항목들은 별도 scoped goal 의 explicit user-approved decision 으로만 진행한다.
 - **`schemaVersion` bump migration writer** — §11.3 / §11.6 그대로 deferred.
 - **post-MVP closeout 결정 (`POST_MVP_PLAN.md` §11 step 6)**, **`ai-harness-toolset` self-adoption (`POST_MVP_PLAN.md` §11 step 5)**, **new GJMNet clean adoption (`POST_MVP_PLAN.md` §11 step 7)** — 모두 별도 scoped goal.
 
@@ -1119,3 +1120,133 @@ invocation params 가 위 field 중 어느 하나라도 metadata 와 다르면 s
 - actual global / user filesystem mutation, target adoption, commit / push / publish / merge / release / Step 4 validation.
 
 본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 / §13.3 / §14.5 / §15.7 / §16.8 와 정합).
+
+---
+
+## 18. Recorded Step 3 dogfooding enforcement final shape decision anchor
+
+본 절은 §12.8 (Dogfooding mode boundary) 의 마지막 문장 ("본 boundary 의 정확한 enforcement mechanism (warning prompt / `--allow-dogfood-mutation` flag 등) 은 implementation 시점에 결정 — 본 anchor 가 fix 하지 않는다") 과 §13.2 deferred 의 "dogfooding enforcement mechanism 의 final shape" 항목에 대한 **decision anchor** 다. 본 anchor 는 dogfooding mode 에서의 silent-mutation 보호의 **final shape** 를 docs-only 로 고정한다.
+
+본 anchor 는 §10 (3-0 layer layout) / §11 (3-1 install metadata contract) / §12 (3-2~3-5 runtime pipeline grouping) / §14 (3-6 managed-block / skill replace boundary) / §15 (manifest + marker minimum contract) / §16 (git-url mode minimum source acquisition contract) / §17 (source-cut path actual handling decision anchor) 위에 build 되며 그 결정을 약화하지 않는다. 본 anchor 는 dogfooding enforcement 의 신규 implementation, install-pipeline 에 새 함수 / 새 flag 추가, 신규 Pester test 추가, actual `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` mutation, Step 4 validation 어느 것도 자동 승인하지 않는다.
+
+### 18.1 Decision
+
+dogfooding enforcement 의 final shape 는 다음 5 개 명제로 docs-only 고정된다.
+
+- **explicit-flag bypass 모델** — silent mutation 위험 action 은 default fail-fast STOP 이며, 사용자 명시 flag (`-AllowDogfoodSource`) 가 있을 때만 진행한다. warning-only mode (메시지 출력 후 그대로 진행), 자동 stash / 자동 commit / 자동 dirty-tree cleanup, interactive prompt 어느 것도 final shape 가 아니다.
+- **strict mode confinement** — dogfooding enforcement 는 **local-clone mode 에만 적용** 된다. git-url mode 의 source 는 `<InstallArea>/source-cache/` 의 normal clone 이므로 user dev checkout 과 구조적으로 분리되어 있다 (§16.2 / §16.5 와 정합). git-url mode 에서는 dogfooding detection 이 발생하지 않는다.
+- **action × mode 별 boundary 명시** — `install` / `update-source` / `update-current` / `restore` 4 action 각각에 대해 dogfooding mode 에서의 allowed / blocked / explicit-confirm-required 결정이 §18.4 에서 한 자리에 enumerate 된다.
+- **5 tree separation invariant** — source repo working tree, global current, InstallArea, source-cache, ProjectRoot.log 이 서로 섞이지 않는 invariant 를 §18.3 에서 한 자리에 anchor 한다.
+- **docs-only anchor** — 본 anchor 는 신규 implementation / 새 함수 / 새 test / 새 flag 어느 것도 도입하지 않는다. 현행 skeleton (`-AllowDogfoodSource` switch, `Test-InstallPipelineDogfoodingSource` helper, 3-7 dry-run coverage extension 의 "dogfooding `update-source` 거부 후 source repo HEAD 무변경" Pester case) 의 as-built 행동을 final shape 로 anchor 한다.
+
+`warning-then-proceed` 모델도 `interactive prompt` 모델도 본 anchor 의 final shape 가 **아니다** — 이유: (a) prompt 는 non-interactive operation (CI / scripted invocation / Claude Code agent-driven invocation) 을 깨뜨린다. (b) warning-only 는 silent mutation 의 실질 방지가 되지 않는다 — warning 출력 후에도 mutation 이 진행되면 사용자가 stop 할 수 있는 명시 boundary 가 없다. (c) explicit flag 는 shell history / agent invocation log 에 그대로 남아 audit / replay 가능한 명시 결정 기록이다.
+
+### 18.2 Dogfooding detection (re-anchor of §12.8)
+
+dogfooding mode 의 정의는 §12.8 의 "source repo = ToolRoot = ProjectRoot, user dev checkout" 그대로다. 본 anchor 는 그 정의의 두 detection point 를 한 자리에 anchor 한다.
+
+- **runtime ToolRoot resolution** — `SHARED_GLOBAL_INVOCATION_CONTRACT.md` §4 D1 의 channel 4 (dogfooding marker). 즉 `Get-ToolRoot` 가 channel 1 / 2 / 3 으로 resolve 되지 않고 ProjectRoot 가 D3 multi-marker (`scripts/verify-ps1.ps1`, `templates/review-input.md`, `config/reviewer.json`) 를 모두 만족할 때 `ToolRoot = ProjectRoot`. 본 detection 은 invocation-time 의 ToolRoot 결정에 한정되며, install-pipeline action 의 dogfooding 보호와 직접 연결되지는 않는다 (install-pipeline 은 자체적으로 `Test-InstallPipelineDogfoodingSource` 로 source-side dogfooding 을 검사).
+- **install-pipeline source-side dogfooding** — `Test-InstallPipelineDogfoodingSource` 의 contract: (a) `SourcePath` 와 `ProjectRoot` 가 모두 directory, (b) full-path normalized 비교에서 `SourcePath == ProjectRoot` (case-insensitive on Windows), (c) `Test-IsSourceRepoRoot(SourcePath)` true. `Test-IsSourceRepoRoot` 의 marker 는 `SHARED_GLOBAL_INVOCATION_CONTRACT.md` §4 D3 의 multi-marker 와 동일한 3 file (`scripts/verify-ps1.ps1`, `templates/review-input.md`, `config/reviewer.json`) 의 **AND** 조건이다 — 셋 모두 존재해야 source repo root 로 판정 (현행 `scripts/lib/path.ps1` 의 `Test-IsSourceRepoRoot` 함수). 위 (a) / (b) / (c) 가 모두 true 면 dogfooding source. 본 contract 는 현행 `scripts/lib/install-pipeline-core.ps1` 의 as-built 동작이며, 본 anchor 는 이를 변경하지 않는다.
+
+위 두 detection 의 분리는 **invocation-time ToolRoot resolution** 과 **action-time source-side dogfooding** 이 별개 concept 임을 명시한다. 사용자가 channel 1 / 2 / 3 으로 ToolRoot 를 resolve 한 상태에서도 (예: 글로벌 install 의 `current/` 가 ToolRoot 인 상태) install-pipeline 에 `-SourcePath <user dev checkout>` 을 직접 넘기면 action-time dogfooding detection 이 발생한다. 두 detection 이 모두 false 일 때만 dogfooding 보호가 적용되지 않는다.
+
+### 18.3 Tree separation invariants
+
+dogfooding mode 의 semantic 정합을 위해 다음 5 tree 가 서로 다른 path subtree 여야 한다 — 본 anchor 가 design intent invariant 로 anchor 한다. install-pipeline 의 어느 action 도 본 invariant 를 자체적으로 위배하지 않는다 (= as-built pipeline 의 destination 은 항상 InstallArea 의 `current/` 이며 source repo working tree 가 아니다). 단, 본 invariant 의 enforcement 는 현행 skeleton 이 일부만 강제하며 (아래 InstallArea 항목 참조), full enforcement 는 §18.6 의 deferred 범위에 속한다.
+
+- **source repo working tree** — dogfooding mode 의 `SourcePath == ProjectRoot`. **pipeline 은 어떤 action 에서도 source repo 의 git-tracked ref content 를 mutate 하지 않는다** — `git archive` 는 ref-specific snapshot 을 만들 뿐 working tree 를 건드리지 않는다. `update-source` 의 fetch/pull 만이 잠재적 mutation 경로 (remote ref / `.git/` 갱신) 이며, 이 경로가 §18.4 의 explicit-flag 보호의 대상이다.
+- **global current** (`<InstallArea>/current/`) — materialization 의 destination. as-built pipeline 의 destination 은 항상 본 path 다. 본 path 가 source repo working tree subtree 안에 있게 되는 경우 (InstallArea 가 source repo subtree 에 위치한 경우) 는 본 anchor 의 semantic invariant 가 invariant 로 권고하는 분리 상태가 아니다 — 그 경우에도 destination 의 write 는 untracked path 에 일어나므로 git-tracked ref content 는 변하지 않으나, 5 tree 의 path 분리는 깨진다 (full enforcement 는 §18.6 의 deferred 범위).
+- **InstallArea** — `current/` + `install.json` + `payload-manifest.json` + `payload-marker.json` + (git-url only) `source-cache/` 의 parent directory. as-built guard 는 `scripts/install-pipeline.ps1` 의 `Assert-NotForbiddenInstallArea` 함수 — 본 함수는 (a) `%USERPROFILE%\.claude` 와 (b) `%USERPROFILE%\.codex` 와 (c) global stable install scope (`<%USERPROFILE%>\.claude\ai-harness-toolset` 와 그 parent) descendant 만 reject 한다. **source repo working tree subtree 안에 InstallArea 를 두는 placement 는 본 함수가 자동 거부하지 않는다** — Pester `$TestDrive` fixture 는 `$TestDrive` 자체가 source repo 외부이므로 본 invariant 와 충돌하지 않으나, 사용자가 직접 InstallArea 를 source repo 안에 두는 경우 (예: 운영자 오류) 의 자동 거부는 별도 scoped goal (§18.6) 의 대상이다.
+- **source-cache** (`<InstallArea>/source-cache/`, git-url only) — git-url mode 의 cache. local-clone mode 에서는 source-cache 가 만들어지지 않으며, 따라서 dogfooding mode 와도 무관하다. git-url mode 가 dogfooding 과 만나는 경우는 구조적으로 발생하지 않는다 (§18.1 의 strict mode confinement 와 정합).
+- **ProjectRoot.log** (`<ProjectRoot>/log/`) — runtime artifact tree (BRIEF / Chatlog / Evidence / Review). source repo 의 `.gitignore` 가 `log/` 를 ignore 하므로 source-managed file 과 섞이지 않는다 (`TOOLROOT_PROJECTROOT_AUDIT.md` §5.1 와 정합). install-pipeline 의 어느 action 도 `<ProjectRoot>/log/` 에 write 하지 않는다 — pipeline 의 destination 은 InstallArea 의 `current/` 뿐이며 ProjectRoot 의 runtime artifact 와 분리된다.
+
+### 18.4 Action × mode × dogfooding boundary
+
+dogfooding mode 에서의 4 action 각각의 allowed / blocked / explicit-confirm-required 결정을 한 자리에 anchor 한다. 본 매트릭스는 현행 `scripts/install-pipeline.ps1` + `scripts/lib/install-pipeline-core.ps1` 의 as-built 동작이며, 본 anchor 는 그 동작을 final shape 로 고정한다.
+
+| action | local-clone (dogfooding source) | local-clone (non-dogfooding source) | git-url | 비고 |
+|---|---|---|---|---|
+| **install** | **ALLOWED** — `git archive` read-only. metadata 의 `sourcePath` 가 user dev checkout 이 됨; 이후 `update-source` 가 §18.4 의 fail-fast 진입점이 됨. | ALLOWED | ALLOWED | install 은 source mutation 을 일으키지 않으며, dogfooding metadata 가 기록되는 행위 자체는 silent mutation 이 아니다. |
+| **update-source** | **BLOCKED (default)** — `-AllowDogfoodSource` flag 부재 시 fail-fast STOP (§12.8 / §12.9). flag 있을 때만 진행 = **explicit-confirm-required**. | ALLOWED — fetch/pull 의 대상이 user dev checkout 이 아닌 일반 local-clone source 이므로 silent mutation 위험이 §18 의 보호 대상이 아니다. | ALLOWED — fetch 의 대상이 `<InstallArea>/source-cache/` 의 cache, user dev checkout 이 아님 (§16.3). | 본 row 가 §18 의 핵심 보호 지점. |
+| **update-current** | **ALLOWED** — `git rev-parse HEAD` + `git archive` 모두 read-only. source 의 fetch/pull 을 수행하지 않으므로 dogfooding 에서도 안전. | ALLOWED | ALLOWED | §12.8 의 "`update-current` 는 source 를 건드리지 않으므로 dogfooding 에서도 그대로 허용" 와 정합. |
+| **restore** | **ALLOWED (git-archive 기반 한정)** — 현행 implementation 은 `git rev-parse --verify <user-ref>^{commit}` + `git archive <ref>` 로 destination 을 ref-specific 하게 re-materialize 하며, source working tree 를 건드리지 않는다. 만약 future implementation 이 `git checkout <ref>` 같은 working-tree-mutating 경로로 변경되면, 그 변경은 본 anchor 의 final shape 를 변경하는 별도 scoped decision 의 대상이다. | ALLOWED | ALLOWED | §12.8 의 "restore 의 user-specified `--ref` 가 user dev checkout 의 working tree 를 변경할 가능성이 있으면 동일 보호 적용" 의 implementation-time 결정을 본 anchor 가 git-archive 기반으로 고정. checkout-based restore 는 본 anchor 가 자동 승인하지 않는다. |
+
+본 매트릭스의 BLOCKED row 의 enforcement 절차 (§18.5 의 bypass mechanism 과 정합):
+
+1. resolver 가 invocation 의 `sourceLocation` / `projectRoot` 로 dogfooding source 를 감지.
+2. dispatcher 가 action 분기 안에서 dogfooding source + `-AllowDogfoodSource` 부재 + `update-source` 의 3 조건이 모두 참이면 §12.9 의 "dogfooding mutation risk" failure case 발생.
+3. exit non-zero + 명시 사유 message + 다음 사용자 행동 안내 (e.g., "explicit `-AllowDogfoodSource` flag 를 명시할 때만 진행").
+4. destination artifact (`current/` / `install.json` / `payload-manifest.json` / `payload-marker.json`) 의 byte-identity 보존 (§12.4 atomicity + §15.4 metadata-write-이전 hook + §16.4 fetch-이전 단계 invariant 와 정합).
+
+### 18.5 Bypass mechanism — `-AllowDogfoodSource` final shape
+
+본 anchor 는 §18.4 의 BLOCKED row 의 bypass 를 다음 한 mechanism 으로 고정한다.
+
+- **mechanism**: install-pipeline CLI 의 `-AllowDogfoodSource` switch (현행 as-built; `scripts/install-pipeline.ps1` 의 parameter). 사용자가 명시적으로 본 switch 를 invocation 에 포함할 때만 BLOCKED row 의 진행을 허용한다.
+- **scope**: 본 switch 는 **`update-source` action 의 dogfooding source case 에만 적용** 된다. 본 switch 가 다른 action 의 동작을 변경하지 않는다 — `install` / `update-current` / `restore` 는 본 switch 와 무관하게 동일 동작 (§18.4).
+- **non-mechanism (rejected)**:
+  - interactive prompt (e.g., `Read-Host`) — non-interactive operation (CI / scripted / Claude Code agent-driven) 을 깨뜨림.
+  - warning-only message (mutation 이 그대로 진행되는 형태) — silent mutation 의 실질 방지가 아님.
+  - environment variable bypass (e.g., `$env:AI_HARNESS_ALLOW_DOGFOOD = '1'`) — process-environment 의 잔재 effect 가 후속 invocation 에 의도치 않게 carry 됨.
+  - config file bypass (e.g., `config/dogfood.json` 의 `allow=true`) — config 변경이 source repo 의 tracked state 로 commit 되어 audit / replay 의 명시성을 약화시킴.
+- **future flag name / surface 변경**: 본 anchor 는 `-AllowDogfoodSource` 라는 현행 switch 이름 / surface 를 final shape 로 anchor 한다. 이름 / surface 의 후속 변경 (예: `-AllowDogfoodMutation`, `--allow-dogfood-source`, subcommand 분리 등) 은 별도 scoped decision 의 대상이다 — 본 anchor 가 자동 승인하지 않는다.
+
+### 18.6 Deferred items (별도 explicit user-approved goal 의 대상)
+
+본 anchor 는 다음 항목을 fix 하지 않는다. 각각은 별도 scoped goal 의 explicit user-approved decision 으로만 진행한다.
+
+- **dirty source working tree guard** — `-AllowDogfoodSource` flag 가 있어도 source working tree 가 dirty / mid-rebase / mid-merge / detached HEAD 인 상태에서 `update-source` 를 추가 보호할지의 결정 / 형태. 본 anchor 는 reproducibility risk 의 추가 guard 도입을 자동 승인하지 않는다 (§12.9 "기타 failure case" 의 dirty / mid-rebase reproducibility risk 의 implementation-time 결정 그대로).
+- **restore implementation strategy 변경 시의 dogfooding 보호 재anchor** — 만약 future implementation 이 `restore` 를 git-archive 기반에서 checkout-based / worktree-based 로 변경하면, working tree mutation 경로가 발생하므로 §18.4 의 restore row 가 BLOCKED row 가 된다. 그 시점의 anchor 는 별도 scoped decision 의 대상.
+- **install 의 dogfooding source 에 대한 explicit-confirm 도입 여부** — 현행 anchor 는 `install` 을 ALLOWED 로 둔다 (read-only git-archive). 그러나 dogfooding metadata 가 자동 기록되는 행위 자체에 대해 explicit confirmation 을 요구하는 future shape 는 별도 scoped decision 의 대상.
+- **source-cut path 와 dogfooding mode 의 interaction enforcement** — §17.5 의 동일 항목 그대로 deferred. 본 anchor 가 source-cut handling 의 actual implementation 을 도입하지 않으므로 두 anchor 의 interaction enforcement 도 동시에 deferred.
+- **dogfooding enforcement 의 actual implementation 확장** — `Test-InstallPipelineDogfoodingSource` 의 detection 범위 확장 (예: symlink / junction / case-fold path / UNC path 등의 edge case), `Assert-NotForbiddenInstallArea` 와의 추가 cross-check, 신규 Pester test 추가는 별도 scoped goal.
+- **InstallArea placement 의 source-repo subtree 거부 enforcement** — `Assert-NotForbiddenInstallArea` 가 source repo working tree subtree 안의 InstallArea placement 를 자동 reject 하도록 확장할지의 결정. 본 anchor 는 그 확장을 자동 승인하지 않는다 — 운영 규약 (사용자가 InstallArea 를 source repo 외부에 둠) 으로 §18.3 의 5 tree separation invariant 가 유지되며, 자동 enforcement 는 별도 scoped goal.
+- **dogfooding enforcement bypass 의 audit log** — `-AllowDogfoodSource` 가 사용된 invocation 의 install metadata / manifest / marker 안에 기록할지의 결정. 본 anchor 는 §11.1 14-field schema 의 변경을 도입하지 않는다.
+- **Claude Code agent-driven invocation 의 dogfooding boundary** — agent (Claude Code SKILL.md 기반 invocation) 가 dogfooding mode 에서 `-AllowDogfoodSource` 를 자동으로 전달하지 않도록 강제하는 SKILL.md 측 정책. 본 anchor 는 `snippets/claude-skills/...` 본문 mutation 을 도입하지 않는다 — 본 항목은 §14 의 managed-block / skill replace boundary 의 후속 항목 (§14.4) 과 함께 별도 scoped goal.
+
+### 18.7 Forbidden in this anchor
+
+본 anchor 는 다음을 금지한다 (§10.6 / §11.7 / §12.11 / §13.3 / §14.3 / §15.7 / §16.8 / §17.6 와 정합).
+
+- dogfooding enforcement 의 신규 implementation. `scripts/install-pipeline.ps1`, `scripts/lib/install-pipeline-core.ps1` 에 새 dogfooding 보호 함수 / branch / parameter 추가.
+- `tests/install-pipeline.Tests.ps1` 의 dogfooding handling test 신규 추가 (현행 "dogfooding `update-source` 거부 후 source repo HEAD 무변경" Pester case 그대로 유지).
+- `-AllowDogfoodSource` switch 이름 / surface 변경 또는 새 bypass mechanism (env var / config / prompt / warning-only mode) 도입.
+- §12.8 의 dogfooding mode boundary 정의 변경.
+- §12.9 의 "dogfooding mutation risk" failure case 형태 변경.
+- §11.1 의 14-field install metadata schema 변경 (dogfooding bypass audit field 도입 포함).
+- §15 의 manifest / marker schema 변경, §16 의 source-cache lifecycle 변경.
+- §17 의 source-cut path decision boundary 약화.
+- actual `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` mutation.
+- managed-block apply / Claude skill install / update / removal (§14 boundary 와 정합).
+- Step 4 validation 시작.
+- snapshot / payload manifest / payload marker 생성 (본 anchor 는 docs-only).
+- 부모 root-level docs (`GLOBAL_INSTALL_UPDATE_MODEL.md`, `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md`, `TOOLROOT_PROJECTROOT_AUDIT.md`) 본문 mutation.
+- `docs/backlog/operations.md` 의 기존 항목 status 변경.
+- §6 canonical decomposition (9 단계 ordering / numbering) 변경.
+- commit / push / publish / merge / release / adoption.
+
+### 18.8 본 anchor 의 scope 와 non-goals
+
+본 anchor 는 다음을 **포함한다**.
+
+- §18.1 의 5 명제 decision (explicit-flag bypass / strict mode confinement / action 별 boundary / 5 tree separation invariant / docs-only).
+- §18.2 의 dogfooding detection 의 두 detection point 재anchor (invocation-time ToolRoot resolution + action-time source-side dogfooding).
+- §18.3 의 5 tree separation invariant.
+- §18.4 의 action × mode × dogfooding boundary matrix.
+- §18.5 의 `-AllowDogfoodSource` final shape (mechanism / scope / non-mechanism enumeration).
+- §18.6 의 deferred items (별도 scoped goal 의 대상 항목 8 개).
+- §18.7 의 forbidden enumeration.
+
+본 anchor 는 다음을 **포함하지 않는다**.
+
+- dogfooding 처리의 actual implementation / 신규 함수 / 신규 test.
+- §12.8 의 dogfooding mode boundary 정의 변경.
+- §11.1 의 install metadata schema 변경.
+- §15 의 manifest / marker contract 변경.
+- §16 의 git-url mode source-cache lifecycle 변경.
+- §17 의 source-cut path decision boundary 변경.
+- 부모 root-level docs 본문 mutation. 본 anchor 는 STEP3 guide subordinate scope 안에서 닫는다.
+- §6 canonical decomposition 의 ordering / numbering 변경. dogfooding enforcement final shape 는 §6 의 9 단계 중 어느 단일 sub-step 의 재정의가 아니라 §12.8 의 implementation-time deferred wording 의 closeout anchor 다.
+- actual global / user filesystem mutation, target adoption, commit / push / publish / merge / release / Step 4 validation.
+
+본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 / §13.3 / §14.5 / §15.7 / §16.8 / §17.7 와 정합).
