@@ -34,6 +34,8 @@ Step 3-specific install / update implementation planning 은 본 문서의 **sub
 
 ## 1. Executive summary
 
+> **Source-cache canonicalization reconciliation (현행 — 본 문서 전체 적용).** 본 문서 §4.2 / §10.2 등에 등장하는 git-url mode 의 `canonical ToolRoot` 와 `clone recovery` 표현은 install / update / restore 의 source 가 InstallArea 안에 **persistent canonical clone** 으로 보존된다는 framing 위에서 작성되었다. 이 framing 은 이후의 사용자 결정으로 **superseded** 되었다. 현행 정합 규칙은 root `INSTALL.md` 가 source-of-truth 다 — 매 git-url action 마다 **run-scoped temporary work area** 에서 fresh clone 으로 source 를 획득하고, action 종료 시 그 work area 를 제거한다. action 사이에 persistent cache 가 보존되지 않으므로 "ToolRoot 가 사라졌으면 clone recovery 를 수행한다" 라는 wording 은 동작상 trivially "항상 fresh clone" 으로 단순화된다. GitHub URL source 의 reinstall 은 `update-source` path 로만 닫히며, "현재 최신 버전 기준으로 update 설치해" 의 no-source-touch path (§4.4) 는 local-clone mode 에만 적용된다. 본 문서 본문의 git-url 관련 잔재 wording (persistent ToolRoot framing, clone recovery 등) 은 historical decision lineage 로 그대로 보존되며, 본 note 와 `INSTALL.md` framing 이 그 모든 잔재 wording 보다 우선한다. 구체 보조 결정은 `docs/roadmap/global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` 의 동일 superseded note 와 정합한다.
+
 > **3rd reconciliation (현행 — 본 문서 전체 적용).** 본 문서의 BRIEF / target footprint wording 은 세 단계의 reconciliation 을 거쳤다.
 > (1) 1차 — canonical Brief 를 `<ProjectRoot>/log/brief/BRIEF.md` 로 두고 root `<ProjectRoot>/brief/` 를 forbidden 으로 둔 framing; target persistent footprint = `log/` only.
 > (2) 2차 — target product canonical Brief 를 `<ProjectRoot>/brief/BRIEF.md` 로 두고 `<ProjectRoot>/log/brief/BRIEF.md` 를 not-canonical 한 source-side primitive seed destination 으로 분류; target persistent footprint = `log/` + `brief/`.

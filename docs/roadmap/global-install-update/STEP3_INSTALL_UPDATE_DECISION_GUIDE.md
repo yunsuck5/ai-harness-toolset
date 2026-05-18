@@ -4,6 +4,17 @@
 
 본 문서의 존재만으로 어떤 implementation, validation, adoption, release, publish, global / user filesystem mutation, commit / push / merge / release 도 자동 승인되지 않는다.
 
+> **Superseded — source-cache canonicalization reconciliation (전체 문서 적용).** 본 문서 §10 / §15 / §16 / §17 / §18 의 anchored decision 중 `source-cache/` 를 `<InstallArea>/current/` 의 **canonical persistent sibling** 으로 anchor 한 모든 wording 은 이후의 사용자 결정으로 **superseded** 되었다. 현행 install policy 의 source-of-truth 는 root `INSTALL.md` 다. 현행 정합 규칙:
+>
+> - 성공한 install 의 **persistent canonical install output** 은 `current/` + sibling `install.json` + sibling `payload-manifest.json` + sibling `payload-marker.json` **네 항목까지** 다. `source-cache/` 는 persistent canonical sibling / success criterion / restore dependency **모두 아니다**.
+> - GitHub URL source 의 install / update / restore 는 매 action 마다 **run-scoped temporary work area** (구현상 `<InstallArea>/source-cache/`) 에서 fresh clone 으로 acquisition 을 수행하고, action 종료 시 그 work area 를 제거한다. action 사이에 persistent cache 가 보존되지 않는다.
+> - GitHub URL source 는 **`update-current` (no-source-touch path) 를 지원하지 않는다.** GitHub URL 의 reinstall 은 `update-source` 로만 닫힌다 (INSTALL.md §7).
+> - `install.json.toolRoot` 는 local-clone mode 에서만 non-empty 다 (사용자 supply 의 sourcePath 의 identity hint). git-url mode 에서는 transient work area 의 path 가 metadata 에 기록되지 않으며 `toolRoot` 가 의도적으로 비어 있다.
+> - cleanup 실패는 installed payload identity failure 가 아니다 — operator 는 leftover path 를 보고하고 explicit user-approved cleanup 절차를 따른다 (INSTALL.md §9).
+> - dogfooding enforcement 의 strict-mode confinement (§18.1 "git-url 은 구조적으로 dogfooding-irrelevant") 는 source 가 user dev checkout 이 아니라 외부 URL 인 한 그대로 유효하다. transient work area 도 user dev checkout 이 아니므로 본 invariant 는 wording 차원에서만 갱신되며 동작상 그대로다.
+>
+> 본 문서 §10.1 / §10.4 / §10.5 / §15.2 / §15.3 / §15.4 / §15.5 / §16 (전체) / §17.2 / §18.1 / §18.3 / §18.4 / §18.6 / §19 등에 등장하는 `source-cache/` 의 **canonical persistent sibling / single-cache-per-InstallArea / per-action lifecycle (fetch on existing cache, update-current re-archive from cache, restore from cache, cache-missing fail-fast 등) / git-url toolRoot = cache absolute path / 5 tree separation 의 source-cache tree** wording 은 historical decision lineage 로 그대로 보존되며, 본 superseded note 가 그 모든 잔재 wording 의 현행 정합 기준으로 우선한다. `INSTALL.md` 본문과 위 정합 규칙이 STEP3 guide 본문과 충돌하면 `INSTALL.md` 와 본 note 가 우선한다. scripts / tests 는 본 라운드에서 위 정합 규칙으로 정렬되었다 — see `scripts/install-pipeline.ps1`, `scripts/lib/install-pipeline-core.ps1`, `tests/install-pipeline.Tests.ps1`.
+
 ---
 
 ## 1. Role of this document

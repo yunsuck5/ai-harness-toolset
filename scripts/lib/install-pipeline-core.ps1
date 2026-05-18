@@ -104,11 +104,14 @@ function Get-InstallPipelineMarkerPath {
     return [System.IO.Path]::GetFullPath((Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineMarkerName))
 }
 
-# STEP3 guide §16.2: sibling-of-current/ source cache for git-url mode.
-# Single-cache-per-InstallArea; multi-cache and per-ref subdirectories are deferred (§16.6).
-# §16.5 requires install.json toolRoot to be the cache absolute path — normalize via
-# GetFullPath() so that relative -InstallArea inputs still produce an absolute cache path
-# (and downstream tuple.toolRoot / metadata.toolRoot remain absolute).
+# source-cache directory used as a RUN-SCOPED TEMPORARY WORK AREA for git-url mode.
+# Per INSTALL.md §2 / §6 / §7 / §9 the cache is NOT a persistent canonical install output;
+# the entry script (scripts/install-pipeline.ps1) creates it at action start and removes it
+# at action end. Within a single action the cache exists transiently so `Invoke-InstallPipeline*`
+# helpers below (clone / fetch / remote-head / archive) can operate against it. The persistent
+# canonical install outputs are: `current/`, `install.json`, `payload-manifest.json`,
+# `payload-marker.json`. `install.json.toolRoot` is intentionally empty for git-url (see
+# New-InstallPipelineMetadata) because the work area is transient and not a stable identity.
 function Get-InstallPipelineSourceCacheDir {
     [CmdletBinding()]
     param(
@@ -602,13 +605,20 @@ function New-InstallPipelineMetadata {
     if ($Tuple.installMode -eq 'git-url')     { $repoUrl    = [string]$Tuple.sourceLocation }
     if ($Tuple.installMode -eq 'local-clone') { $sourcePath = [string]$Tuple.sourceLocation }
 
+    # toolRoot semantics under the run-scoped temporary work area policy (INSTALL.md §2):
+    # local-clone: source is the user-supplied path → stable, recorded as identity hint.
+    # git-url    : source is a transient work area cleaned up at end of action → no stable
+    #              local path to record. metadata.toolRoot is intentionally empty for git-url.
+    $toolRootForMetadata = ''
+    if ($Tuple.installMode -eq 'local-clone') { $toolRootForMetadata = [string]$Tuple.toolRoot }
+
     return [PSCustomObject]([ordered]@{
         schemaVersion         = $script:InstallPipelineSchemaVersion
         tool                  = $script:InstallPipelineTool
         installMode           = [string]$Tuple.installMode
         repoUrl               = $repoUrl
         sourcePath            = $sourcePath
-        toolRoot              = [string]$Tuple.toolRoot
+        toolRoot              = $toolRootForMetadata
         branch                = $Branch
         remote                = $Remote
         installedHead         = [string]$Tuple.resolvedRefSha
@@ -674,6 +684,13 @@ function Invoke-InstallPipelineDispatch {
     else {
         $existing.lastUpdatedHead = [string]$Tuple.resolvedRefSha
         $existing.lastUpdatedAt   = $now
+        # Normalize toolRoot to the current run-scoped policy (INSTALL.md §2).
+        # For git-url the work area is transient and metadata.toolRoot must be empty;
+        # this also overrides any leftover non-empty toolRoot from a pre-reconciliation
+        # install.json so successive update/restore cycles converge on the new policy.
+        if ($Tuple.installMode -eq 'git-url') {
+            $existing.toolRoot = ''
+        }
         Write-InstallPipelineMetadata -InstallArea $InstallArea -Metadata $existing
     }
 }
@@ -715,8 +732,11 @@ function Invoke-InstallPipelineVerify {
         if (@('git-url', 'local-clone') -notcontains $md.installMode) {
             $errors.Add("metadata.installMode invalid: $($md.installMode)")
         }
-        if ([string]::IsNullOrEmpty([string]$md.toolRoot)) {
-            $errors.Add('metadata.toolRoot empty')
+        # toolRoot is required for local-clone (= user-supplied source path identity).
+        # For git-url it is intentionally empty under the run-scoped temporary work area
+        # policy (INSTALL.md §2) — the cache is transient and not a persistent identity.
+        if ($md.installMode -eq 'local-clone' -and [string]::IsNullOrEmpty([string]$md.toolRoot)) {
+            $errors.Add('metadata.toolRoot empty for local-clone mode')
         }
         if ([string]::IsNullOrEmpty([string]$md.installedHead)) {
             $errors.Add('metadata.installedHead empty')

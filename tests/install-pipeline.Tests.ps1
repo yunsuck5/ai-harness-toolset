@@ -1000,7 +1000,7 @@ Describe 'install-pipeline §15 payload-manifest + payload-marker contract' {
 }
 
 Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
-    It 'AC-IP-GITURL-INSTALL-1: fresh install with git-url clones cache, materializes payload, writes install.json + manifest + marker' {
+    It 'AC-IP-GITURL-INSTALL-1: fresh install with git-url clones into run-scoped work area, materializes payload, writes install.json + manifest + marker, then removes the work area' {
         $bare = script:New-FixtureBareRepo -CaseName 'giturl-install-1' -MarkerSuffix 'v1'
         $area = script:New-InstallArea -CaseName 'giturl-install-1'
         $proj = script:New-ProjectRoot -CaseName 'giturl-install-1'
@@ -1012,18 +1012,19 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
         }
         $r.ExitCode | Should -Be 0 -Because $r.Output
         $r.Output   | Should -Match 'install-pipeline: PASS'
+        $r.Output   | Should -Match 'cleanup ok; removed transient source-cache'
 
-        # Source cache created sibling-of-current/.
+        # Run-scoped temporary work area must NOT persist after a successful action.
         $cacheDir = Join-Path $area 'source-cache'
-        Test-Path -LiteralPath $cacheDir -PathType Container | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path $cacheDir '.git') | Should -BeTrue
+        Test-Path -LiteralPath $cacheDir | Should -BeFalse
 
-        # install.json fields.
+        # install.json fields. metadata.toolRoot is intentionally empty for git-url
+        # (the work area was transient — no persistent canonical local ToolRoot).
         $md = script:Read-MetadataFromArea -InstallArea $area
         $md.installMode | Should -Be 'git-url'
         $md.repoUrl     | Should -Be $bare.BareUrl
         $md.sourcePath  | Should -BeNullOrEmpty
-        $md.toolRoot    | Should -Be ([System.IO.Path]::GetFullPath($cacheDir))
+        $md.toolRoot    | Should -BeNullOrEmpty
         $md.installedHead   | Should -Be $bare.HeadAtClone
         $md.lastUpdatedHead | Should -Be $bare.HeadAtClone
         $md.branch  | Should -Be 'main'
@@ -1047,7 +1048,7 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
         $vr.ok | Should -BeTrue -Because (($vr.errors) -join '; ')
     }
 
-    It 'AC-IP-GITURL-UPDATE-SOURCE-1: update-source fetches bare repo and advances lastUpdatedHead' {
+    It 'AC-IP-GITURL-UPDATE-SOURCE-1: update-source does a fresh run-scoped clone, advances lastUpdatedHead, preserves installedHead, and cleans up the work area' {
         $bare = script:New-FixtureBareRepo -CaseName 'giturl-us-1' -MarkerSuffix 'v1'
         $area = script:New-InstallArea -CaseName 'giturl-us-1'
         $proj = script:New-ProjectRoot -CaseName 'giturl-us-1'
@@ -1058,6 +1059,8 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
         $r1.ExitCode | Should -Be 0 -Because $r1.Output
+        # Cleanup ran at the end of install — no persistent source-cache between actions.
+        Test-Path -LiteralPath (Join-Path $area 'source-cache') | Should -BeFalse
 
         $newHead = script:Add-FixtureBareCommit -SourceRoot $bare.Source.Root -BareUrl $bare.BareUrl -MarkerSuffix 'v2'
         $newHead | Should -Not -Be $bare.HeadAtClone
@@ -1067,6 +1070,8 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
         $r2.ExitCode | Should -Be 0 -Because $r2.Output
+        $r2.Output   | Should -Match 'cleanup ok; removed transient source-cache'
+        Test-Path -LiteralPath (Join-Path $area 'source-cache') | Should -BeFalse
 
         $md = script:Read-MetadataFromArea -InstallArea $area
         $md.installedHead   | Should -Be $bare.HeadAtClone   # preserved
@@ -1081,7 +1086,7 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
         [System.IO.File]::ReadAllText((Join-Path $area 'current/config/marker.txt'), $utf8NoBom) | Should -Be 'marker-config-v2'
     }
 
-    It 'AC-IP-GITURL-UPDATE-CURRENT-1: update-current re-materializes from cache without network — head stays at install head' {
+    It 'AC-IP-GITURL-UPDATE-CURRENT-1: update-current is refused for git-url (no-source-touch path is local-clone only per INSTALL.md §7)' {
         $bare = script:New-FixtureBareRepo -CaseName 'giturl-uc-1' -MarkerSuffix 'v1'
         $area = script:New-InstallArea -CaseName 'giturl-uc-1'
         $proj = script:New-ProjectRoot -CaseName 'giturl-uc-1'
@@ -1092,23 +1097,31 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         } | Out-Null
 
-        # Advance bare. update-current must NOT fetch this — head stays at install head.
-        [void] (script:Add-FixtureBareCommit -SourceRoot $bare.Source.Root -BareUrl $bare.BareUrl -MarkerSuffix 'v2')
+        # Snapshot deliverable artifacts before the refused action.
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $installJsonBefore = [System.IO.File]::ReadAllBytes((Join-Path $area 'install.json'))
+        $manifestBefore    = [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-manifest.json'))
+        $markerBefore      = [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-marker.json'))
+        $currentMarkerBefore = [System.IO.File]::ReadAllBytes((Join-Path $area 'current/config/marker.txt'))
 
         $r = script:Invoke-InstallPipeline -Params @{
             Action='update-current'; InstallArea=$area;
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
-        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output   | Should -Match 'git-url \+ update-current is not supported'
 
-        $md = script:Read-MetadataFromArea -InstallArea $area
-        $md.installedHead   | Should -Be $bare.HeadAtClone
-        $md.lastUpdatedHead | Should -Be $bare.HeadAtClone   # NOT advanced — no network call
+        # Deliverable artifacts must be byte-identical to the snapshot.
+        [System.IO.File]::ReadAllBytes((Join-Path $area 'install.json'))           | Should -Be $installJsonBefore
+        [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-manifest.json'))  | Should -Be $manifestBefore
+        [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-marker.json'))    | Should -Be $markerBefore
+        [System.IO.File]::ReadAllBytes((Join-Path $area 'current/config/marker.txt')) | Should -Be $currentMarkerBefore
 
-        [System.IO.File]::ReadAllText((Join-Path $area 'current/config/marker.txt'), (New-Object System.Text.UTF8Encoding($false))) | Should -Be 'marker-config-v1'
+        # No leftover transient source-cache from the refused action.
+        Test-Path -LiteralPath (Join-Path $area 'source-cache') | Should -BeFalse
     }
 
-    It 'AC-IP-GITURL-RESTORE-1: restore to an older fetched ref rewrites current/ + manifest + marker to that ref' {
+    It 'AC-IP-GITURL-RESTORE-1: restore to an older ref does a fresh run-scoped acquisition and rewrites current/ + manifest + marker to that ref, then cleans up the work area' {
         $bare = script:New-FixtureBareRepo -CaseName 'giturl-restore-1' -MarkerSuffix 'v1'
         $headV1 = $bare.HeadAtClone
         $area = script:New-InstallArea -CaseName 'giturl-restore-1'
@@ -1120,23 +1133,28 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         } | Out-Null
 
-        # Advance + fetch so the cache holds both v1 and v2.
+        # Advance the bare so v2 is the new HEAD. update-source moves lastUpdatedHead to v2.
         [void] (script:Add-FixtureBareCommit -SourceRoot $bare.Source.Root -BareUrl $bare.BareUrl -MarkerSuffix 'v2')
         script:Invoke-InstallPipeline -Params @{
             Action='update-source'; InstallArea=$area;
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         } | Out-Null
 
-        # Now restore to v1 head.
+        # Restore to v1 head. Under the run-scoped policy this is a fresh clone of the
+        # bare repo (which retains v1 as a reachable commit) followed by archive of v1.
         $r = script:Invoke-InstallPipeline -Params @{
             Action='restore'; InstallArea=$area; Ref=$headV1;
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
         $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output   | Should -Match 'cleanup ok; removed transient source-cache'
+
+        # No leftover work area between actions.
+        Test-Path -LiteralPath (Join-Path $area 'source-cache') | Should -BeFalse
 
         $md = script:Read-MetadataFromArea -InstallArea $area
         $md.installedHead   | Should -Be $headV1
-        $md.lastUpdatedHead | Should -Be $headV1   # rolled back
+        $md.lastUpdatedHead | Should -Be $headV1   # rolled back to the restored ref
 
         $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
         $manifest = [System.IO.File]::ReadAllText((Join-Path $area 'payload-manifest.json'), $utf8NoBom) | ConvertFrom-Json
@@ -1147,39 +1165,36 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
         [System.IO.File]::ReadAllText((Join-Path $area 'current/config/marker.txt'), $utf8NoBom) | Should -Be 'marker-config-v1'
     }
 
-    It 'AC-IP-GITURL-CACHE-MISSING-1: update-current with cache deleted fails fast and preserves install.json/manifest/marker/current' {
-        $bare = script:New-FixtureBareRepo -CaseName 'giturl-cm-1' -MarkerSuffix 'v1'
-        $area = script:New-InstallArea -CaseName 'giturl-cm-1'
-        $proj = script:New-ProjectRoot -CaseName 'giturl-cm-1'
+    It 'AC-IP-GITURL-LEFTOVER-1: install on an InstallArea with a leftover source-cache directory from a prior failed run is refused, and deliverable artifacts (if any) are preserved' {
+        # Replacement for the prior AC-IP-GITURL-CACHE-MISSING-1 case. Under the run-scoped
+        # temporary work area policy (INSTALL.md §2 / §9), source-cache is not a persistent
+        # canonical sibling — it should only exist transiently during an action. A leftover
+        # source-cache directory therefore indicates a prior failed cleanup; the next install
+        # action refuses rather than silently reusing or overwriting the leftover.
+        $bare = script:New-FixtureBareRepo -CaseName 'giturl-leftover-1' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'giturl-leftover-1'
+        $proj = script:New-ProjectRoot -CaseName 'giturl-leftover-1'
 
-        script:Invoke-InstallPipeline -Params @{
+        # Simulate a leftover work area by creating a non-empty source-cache directory.
+        $cacheDir = Join-Path $area 'source-cache'
+        $null = New-Item -ItemType Directory -Path $cacheDir -Force
+        [System.IO.File]::WriteAllText((Join-Path $cacheDir 'leftover.txt'), 'partial', (New-Object System.Text.UTF8Encoding($false)))
+
+        $r = script:Invoke-InstallPipeline -Params @{
             Action='install'; InstallArea=$area; InstallMode='git-url';
             RepoUrl=$bare.BareUrl; Branch='main'; Remote='origin';
             ProjectRoot=$proj; RuntimeToolRoot=$proj
-        } | Out-Null
-
-        # Snapshot deliverable artifacts before mutation.
-        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-        $installJsonBefore = [System.IO.File]::ReadAllBytes((Join-Path $area 'install.json'))
-        $manifestBefore    = [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-manifest.json'))
-        $markerBefore      = [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-marker.json'))
-        $currentMarkerBefore = [System.IO.File]::ReadAllBytes((Join-Path $area 'current/config/marker.txt'))
-
-        # Delete the cache. update-current then must fail fast.
-        Remove-Item -LiteralPath (Join-Path $area 'source-cache') -Recurse -Force
-
-        $r = script:Invoke-InstallPipeline -Params @{
-            Action='update-current'; InstallArea=$area;
-            ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
         $r.ExitCode | Should -Not -Be 0
-        $r.Output   | Should -Match 'source cache missing'
+        $r.Output   | Should -Match 'leftover transient source-cache'
 
-        # Deliverable artifacts must be byte-identical to the snapshot.
-        [System.IO.File]::ReadAllBytes((Join-Path $area 'install.json'))           | Should -Be $installJsonBefore
-        [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-manifest.json'))  | Should -Be $manifestBefore
-        [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-marker.json'))    | Should -Be $markerBefore
-        [System.IO.File]::ReadAllBytes((Join-Path $area 'current/config/marker.txt')) | Should -Be $currentMarkerBefore
+        # The pre-existing leftover stays — the refusal does not auto-cleanup.
+        Test-Path -LiteralPath (Join-Path $cacheDir 'leftover.txt') | Should -BeTrue
+        # No deliverable canonical artifacts were created.
+        Test-Path -LiteralPath (Join-Path $area 'install.json')          | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $area 'payload-manifest.json') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $area 'payload-marker.json')   | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $area 'current')               | Should -BeFalse
     }
 
     It 'AC-IP-GITURL-RESTORE-MISSING-REF-1: restore with non-existent ref fails fast and preserves deliverable artifacts' {
@@ -1208,12 +1223,18 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
         [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-manifest.json'))  | Should -Be $manifestBefore
         [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-marker.json'))    | Should -Be $markerBefore
         [System.IO.File]::ReadAllBytes((Join-Path $area 'current/config/marker.txt')) | Should -Be $currentMarkerBefore
+
+        # Cleanup must remove the transient source-cache even after a ref-resolution failure.
+        Test-Path -LiteralPath (Join-Path $area 'source-cache') | Should -BeFalse
     }
 
-    It 'AC-IP-GITURL-FETCH-FAILURE-1: update-source with broken cache origin fails fast and preserves deliverable artifacts' {
-        $bare = script:New-FixtureBareRepo -CaseName 'giturl-ff-1' -MarkerSuffix 'v1'
-        $area = script:New-InstallArea -CaseName 'giturl-ff-1'
-        $proj = script:New-ProjectRoot -CaseName 'giturl-ff-1'
+    It 'AC-IP-GITURL-CLONE-FAILURE-1: update-source whose source URL becomes unreachable fails fast at the run-scoped clone step and preserves deliverable artifacts' {
+        # Under the run-scoped temporary work area policy every git-url action does a fresh
+        # clone from `repoUrl` rather than fetching against a persistent cache. We simulate
+        # an unreachable URL by deleting the bare repo after the initial successful install.
+        $bare = script:New-FixtureBareRepo -CaseName 'giturl-cf-1' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'giturl-cf-1'
+        $proj = script:New-ProjectRoot -CaseName 'giturl-cf-1'
 
         script:Invoke-InstallPipeline -Params @{
             Action='install'; InstallArea=$area; InstallMode='git-url';
@@ -1221,26 +1242,30 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         } | Out-Null
 
-        $manifestBefore = [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-manifest.json'))
-        $markerBefore   = [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-marker.json'))
+        $installJsonBefore = [System.IO.File]::ReadAllBytes((Join-Path $area 'install.json'))
+        $manifestBefore    = [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-manifest.json'))
+        $markerBefore      = [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-marker.json'))
         $currentMarkerBefore = [System.IO.File]::ReadAllBytes((Join-Path $area 'current/config/marker.txt'))
 
-        # Break the cache's origin URL so git fetch can't reach anything.
-        $brokenUrl = Join-Path $TestDrive 'this-bare-does-not-exist.git'
-        $cacheDir = Join-Path $area 'source-cache'
-        & git -C $cacheDir remote set-url origin $brokenUrl 2>&1 | Out-Null
-        $LASTEXITCODE | Should -Be 0
+        # Break source reachability by removing the bare repo. Next git-url action's fresh
+        # clone must fail before materialization, leaving deliverable artifacts byte-identical.
+        Remove-Item -LiteralPath $bare.BareUrl -Recurse -Force
 
         $r = script:Invoke-InstallPipeline -Params @{
             Action='update-source'; InstallArea=$area;
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
         $r.ExitCode | Should -Not -Be 0
-        $r.Output   | Should -Match 'git fetch failed'
+        $r.Output   | Should -Match 'git clone failed'
 
+        # Deliverable canonical artifacts are byte-identical to the snapshot.
+        [System.IO.File]::ReadAllBytes((Join-Path $area 'install.json'))           | Should -Be $installJsonBefore
         [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-manifest.json'))  | Should -Be $manifestBefore
         [System.IO.File]::ReadAllBytes((Join-Path $area 'payload-marker.json'))    | Should -Be $markerBefore
         [System.IO.File]::ReadAllBytes((Join-Path $area 'current/config/marker.txt')) | Should -Be $currentMarkerBefore
+
+        # Cleanup must still remove any partial transient work area from the failed clone.
+        Test-Path -LiteralPath (Join-Path $area 'source-cache') | Should -BeFalse
     }
 
     It 'AC-IP-GITURL-FORBID-1: git-url install with forbidden InstallArea (under %USERPROFILE%\.claude) is refused' {
@@ -1259,14 +1284,89 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
         Test-Path -LiteralPath $forbidden | Should -BeFalse
     }
 
-    It 'AC-IP-GITURL-TOOLROOT-ABS-1: relative -InstallArea still produces absolute metadata.toolRoot (§16.5 contract)' {
-        $bare = script:New-FixtureBareRepo -CaseName 'giturl-toolroot-abs-1' -MarkerSuffix 'v1'
-        $absArea = script:New-InstallArea -CaseName 'giturl-toolroot-abs-1'
-        $proj    = script:New-ProjectRoot -CaseName 'giturl-toolroot-abs-1'
+    It 'AC-IP-GITURL-NO-BRANCH-1: update-source without recorded branch falls back to the fresh clone HEAD (per INSTALL.md no -Branch requirement)' {
+        # Install without -Branch — relies on the remote default branch.
+        $bare = script:New-FixtureBareRepo -CaseName 'giturl-nobranch-1' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'giturl-nobranch-1'
+        $proj = script:New-ProjectRoot -CaseName 'giturl-nobranch-1'
 
-        # Run the install with -InstallArea passed as a relative path (the entry will receive
-        # the raw string; the lib's Get-InstallPipelineSourceCacheDir must normalize it via
-        # GetFullPath() so that metadata.toolRoot is the absolute cache path per §16.5).
+        $r1 = script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='git-url';
+            RepoUrl=$bare.BareUrl;
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r1.ExitCode | Should -Be 0 -Because $r1.Output
+
+        $md1 = script:Read-MetadataFromArea -InstallArea $area
+        $md1.branch    | Should -BeNullOrEmpty
+        $md1.toolRoot  | Should -BeNullOrEmpty
+        $md1.installedHead | Should -Be $bare.HeadAtClone
+
+        # Advance the bare and update-source — without a recorded branch.
+        $newHead = script:Add-FixtureBareCommit -SourceRoot $bare.Source.Root -BareUrl $bare.BareUrl -MarkerSuffix 'v2'
+
+        $r2 = script:Invoke-InstallPipeline -Params @{
+            Action='update-source'; InstallArea=$area;
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r2.ExitCode | Should -Be 0 -Because $r2.Output
+
+        $md2 = script:Read-MetadataFromArea -InstallArea $area
+        $md2.installedHead   | Should -Be $bare.HeadAtClone
+        $md2.lastUpdatedHead | Should -Be $newHead
+        $md2.toolRoot        | Should -BeNullOrEmpty
+        Test-Path -LiteralPath (Join-Path $area 'source-cache') | Should -BeFalse
+    }
+
+    It 'AC-IP-GITURL-LEGACY-TOOLROOT-1: update-source against an install.json with legacy non-empty toolRoot normalizes it to empty (run-scoped policy convergence)' {
+        # Simulate a pre-reconciliation install.json that still holds <InstallArea>/source-cache
+        # in toolRoot. The next update-source must converge metadata.toolRoot to empty for git-url.
+        $bare = script:New-FixtureBareRepo -CaseName 'giturl-legacy-tr-1' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'giturl-legacy-tr-1'
+        $proj = script:New-ProjectRoot -CaseName 'giturl-legacy-tr-1'
+
+        # Fresh install (under new policy this writes toolRoot='').
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='git-url';
+            RepoUrl=$bare.BareUrl; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # Inject a legacy non-empty toolRoot into install.json (simulating a pre-reconciliation install).
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $jsonPath = Join-Path $area 'install.json'
+        $md = [System.IO.File]::ReadAllText($jsonPath, $utf8NoBom) | ConvertFrom-Json
+        $legacyToolRoot = [System.IO.Path]::GetFullPath((Join-Path $area 'source-cache'))
+        $md.toolRoot = $legacyToolRoot
+        # Re-serialize.
+        ([System.IO.File]::WriteAllText($jsonPath, ($md | ConvertTo-Json -Depth 10), $utf8NoBom))
+
+        # Advance bare and update-source. Convergence: toolRoot must end up empty.
+        $newHead = script:Add-FixtureBareCommit -SourceRoot $bare.Source.Root -BareUrl $bare.BareUrl -MarkerSuffix 'v2'
+        $r = script:Invoke-InstallPipeline -Params @{
+            Action='update-source'; InstallArea=$area;
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $md2 = script:Read-MetadataFromArea -InstallArea $area
+        $md2.installMode     | Should -Be 'git-url'
+        $md2.toolRoot        | Should -BeNullOrEmpty   # normalized to empty under new policy
+        $md2.installedHead   | Should -Be $bare.HeadAtClone   # preserved
+        $md2.lastUpdatedHead | Should -Be $newHead
+        Test-Path -LiteralPath (Join-Path $area 'source-cache') | Should -BeFalse
+    }
+
+    It 'AC-IP-GITURL-RELATIVE-INSTALL-AREA-1: relative -InstallArea still resolves correctly under the run-scoped temporary work area policy' {
+        # The original AC-IP-GITURL-TOOLROOT-ABS-1 asserted that metadata.toolRoot was the
+        # absolute cache path. Under the new policy metadata.toolRoot is empty for git-url
+        # (the cache is transient). This replacement asserts that the relative -InstallArea
+        # is still handled correctly: install completes, payload is materialized into the
+        # absolute InstallArea, and the transient work area is cleaned up afterwards.
+        $bare = script:New-FixtureBareRepo -CaseName 'giturl-rel-area-1' -MarkerSuffix 'v1'
+        $absArea = script:New-InstallArea -CaseName 'giturl-rel-area-1'
+        $proj    = script:New-ProjectRoot -CaseName 'giturl-rel-area-1'
+
         $prevLocation = (Get-Location).Path
         try {
             $parent = Split-Path -Parent $absArea
@@ -1284,32 +1384,13 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
         }
         $r.ExitCode | Should -Be 0 -Because $r.Output
 
+        # metadata.toolRoot is intentionally empty for git-url under the run-scoped policy.
         $md = script:Read-MetadataFromArea -InstallArea $absArea
-        $expectedToolRoot = [System.IO.Path]::GetFullPath((Join-Path $absArea 'source-cache'))
-        $md.toolRoot | Should -Be $expectedToolRoot
-        # Sanity: the recorded path is absolute (rooted).
-        [System.IO.Path]::IsPathRooted($md.toolRoot) | Should -BeTrue
-        # And it really points at a directory that exists on disk (the cache).
-        Test-Path -LiteralPath $md.toolRoot -PathType Container | Should -BeTrue
-    }
-
-    It 'AC-IP-GITURL-REINSTALL-1: install on an InstallArea whose source-cache already exists is refused' {
-        $bare = script:New-FixtureBareRepo -CaseName 'giturl-ri-1' -MarkerSuffix 'v1'
-        $area = script:New-InstallArea -CaseName 'giturl-ri-1'
-        $proj = script:New-ProjectRoot -CaseName 'giturl-ri-1'
-
-        script:Invoke-InstallPipeline -Params @{
-            Action='install'; InstallArea=$area; InstallMode='git-url';
-            RepoUrl=$bare.BareUrl; Branch='main'; Remote='origin';
-            ProjectRoot=$proj; RuntimeToolRoot=$proj
-        } | Out-Null
-
-        $r = script:Invoke-InstallPipeline -Params @{
-            Action='install'; InstallArea=$area; InstallMode='git-url';
-            RepoUrl=$bare.BareUrl; Branch='main'; Remote='origin';
-            ProjectRoot=$proj; RuntimeToolRoot=$proj
-        }
-        $r.ExitCode | Should -Not -Be 0
-        $r.Output   | Should -Match 'cache already exists'
+        $md.installMode | Should -Be 'git-url'
+        $md.toolRoot    | Should -BeNullOrEmpty
+        # Payload materialized under the absolute InstallArea.
+        Test-Path -LiteralPath (Join-Path $absArea 'current/config/marker.txt') -PathType Leaf | Should -BeTrue
+        # Transient source-cache cleaned up.
+        Test-Path -LiteralPath (Join-Path $absArea 'source-cache') | Should -BeFalse
     }
 }
