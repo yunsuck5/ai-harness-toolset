@@ -165,8 +165,10 @@ if ([string]::IsNullOrEmpty($sourceLoc)) {
     exit 1
 }
 
-# Dogfooding mutation protection for update-source.
-if ($Action -eq 'update-source') {
+# Dogfooding mutation protection for update-source (local-clone only — dogfooding semantics
+# require ProjectRoot == source repo path, which is a local-clone concept; git-url's
+# materialization source is an in-InstallArea cache, never a user dev checkout).
+if ($Action -eq 'update-source' -and $mode -eq 'local-clone') {
     $isDogfood = Test-InstallPipelineDogfoodingSource -SourcePath $sourceLoc -ProjectRoot $project
     if ($isDogfood -and -not $AllowDogfoodSource) {
         Write-Host ('install-pipeline: FAIL update-source against a dogfooding source (= ProjectRoot is a source repo) is refused by default to prevent silent mutation of user dev checkout.')
@@ -175,7 +177,46 @@ if ($Action -eq 'update-source') {
     }
 }
 
-# Resolve ref. install / update-* / restore have different ref policies.
+# Resolve the source-side canonical local ToolRoot (= materialization source per STEP3 guide §16.5):
+# - local-clone: tuple.toolRoot = absolute path of user-supplied sourcePath (current behavior).
+# - git-url    : tuple.toolRoot = absolute path of <InstallArea>/source-cache. The URL goes into
+#                tuple.sourceLocation, not into the archive path.
+# For git-url, fresh install clones, update-source fetches, update-current/restore reuse the cache.
+$tuplePath = ''
+if ($mode -eq 'local-clone') {
+    $tuplePath = [System.IO.Path]::GetFullPath($sourceLoc)
+}
+elseif ($mode -eq 'git-url') {
+    try {
+        if ($Action -eq 'install') {
+            $tuplePath = Invoke-InstallPipelineGitUrlClone -InstallArea $InstallArea -RepoUrl $sourceLoc
+        }
+        else {
+            $tuplePath = Get-InstallPipelineSourceCacheDir -InstallArea $InstallArea
+            if (-not (Test-InstallPipelineSourceCachePresent -InstallArea $InstallArea)) {
+                throw "install-pipeline: FAIL git-url source cache missing at $tuplePath. clone recovery is deferred (STEP3 guide §16.6); run -Action install first."
+            }
+            if ($Action -eq 'update-source') {
+                $branchName = $Branch
+                if ([string]::IsNullOrEmpty($branchName) -and $null -ne $existing) {
+                    $branchName = [string]$existing.branch
+                }
+                $remoteName = $Remote
+                if ([string]::IsNullOrEmpty($remoteName) -and $null -ne $existing) {
+                    $remoteName = [string]$existing.remote
+                }
+                [void](Invoke-InstallPipelineGitUrlFetch -InstallArea $InstallArea -Remote $remoteName -Branch $branchName)
+            }
+        }
+    }
+    catch {
+        Write-Host $_.Exception.Message
+        exit 1
+    }
+}
+
+# Resolve ref. install / update-source / update-current / restore each take a different path.
+# For git-url update-source the fetched <remote>/<branch> is authoritative (we just fetched it).
 $refSha = ''
 $refKind = 'commit'
 try {
@@ -184,12 +225,29 @@ try {
             if ([string]::IsNullOrEmpty($Ref)) {
                 throw "install-pipeline: FAIL restore action requires -Ref <commit|tag|branch>. Metadata-derived known-good fallback is forbidden (STEP3 guide §11.4 / §12.3)."
             }
-            $refSha  = Resolve-InstallPipelineRef -SourceLocation $sourceLoc -Ref $Ref
+            $refSha  = Resolve-InstallPipelineRef -SourceLocation $tuplePath -Ref $Ref
             $refKind = if ($Ref -match '^[0-9a-f]{7,40}$') { 'commit' } else { 'unknown' }
         }
+        'update-source' {
+            if ($mode -eq 'git-url') {
+                $branchForHead = $Branch
+                if ([string]::IsNullOrEmpty($branchForHead) -and $null -ne $existing) {
+                    $branchForHead = [string]$existing.branch
+                }
+                $remoteForHead = $Remote
+                if ([string]::IsNullOrEmpty($remoteForHead) -and $null -ne $existing) {
+                    $remoteForHead = [string]$existing.remote
+                }
+                $refSha = Get-InstallPipelineGitUrlRemoteHead -InstallArea $InstallArea -Remote $remoteForHead -Branch $branchForHead
+            }
+            else {
+                $refSha = Get-InstallPipelineSourceHead -SourceLocation $tuplePath
+            }
+            $refKind = 'commit'
+        }
         default {
-            # install / update-source / update-current — resolve current source HEAD.
-            $refSha  = Get-InstallPipelineSourceHead -SourceLocation $sourceLoc
+            # install / update-current — use current HEAD of materialization source.
+            $refSha  = Get-InstallPipelineSourceHead -SourceLocation $tuplePath
             $refKind = 'commit'
         }
     }
@@ -200,18 +258,17 @@ catch {
 }
 
 # sourceUpdatePolicy: update-source flags fetch-and-update; others are read-current-only.
-# In this temp-only skeleton no network fetch is actually performed; the policy is
-# recorded so a future implementation distinguishes the two semantics deterministically.
 $policy = if ($Action -eq 'update-source') { 'fetch-and-update' } else { 'read-current-only' }
 
-# Build resolved tuple. tuple.toolRoot = source-side canonical local ToolRoot (Layer 1).
+# Build resolved tuple. tuple.sourceLocation = user-facing identifier (URL or local path);
+# tuple.toolRoot = source-side canonical local ToolRoot (cache for git-url, source path for local-clone).
 $tuple = New-InstallPipelineTuple `
     -Action $Action `
     -InstallMode $mode `
     -SourceLocation $sourceLoc `
     -ResolvedRefSha $refSha `
     -RefKind $refKind `
-    -ToolRoot ([System.IO.Path]::GetFullPath($sourceLoc)) `
+    -ToolRoot $tuplePath `
     -ProjectRoot $project `
     -SourceUpdatePolicy $policy `
     -SourceCutDetected $false
@@ -235,5 +292,5 @@ if (-not $verifyResult.ok) {
 
 Write-Host ('install-pipeline: PASS action={0} installArea={1} sourceLocation={2} resolvedRefSha={3} sourceUpdatePolicy={4}' -f $Action, $InstallArea, $sourceLoc, $refSha, $policy)
 Write-Host ('install-pipeline: invocation-context runtimeToolRoot={0} projectRoot={1}' -f $runtimeTool, $project)
-Write-Host ('install-pipeline: tuple-toolRoot (source-side canonical local ToolRoot, parent §6 Layer 1) = {0}' -f ([System.IO.Path]::GetFullPath($sourceLoc)))
+Write-Host ('install-pipeline: tuple-toolRoot (source-side canonical local ToolRoot, parent §6 Layer 1) = {0}' -f $tuplePath)
 exit 0

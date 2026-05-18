@@ -1,6 +1,36 @@
 ﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+# Helper: run a native command and rely solely on $LASTEXITCODE for success/failure.
+# In PS 5.1, $ErrorActionPreference='Stop' combined with 2>&1 (or 2>$null in some scopes)
+# wraps each stderr line as a NativeCommandError and terminates BEFORE the caller can
+# inspect $LASTEXITCODE. Pinning to 'Continue' inside this helper lets the native exit
+# code drive the decision; the caller throws a wrapper message on non-zero.
+function Invoke-InstallPipelineNativeGit {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]] $Arguments,
+        [switch] $CaptureStdout
+    )
+    $prev = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        if ($CaptureStdout) {
+            $stdout = & git @Arguments
+        }
+        else {
+            & git @Arguments | Out-Null
+            $stdout = $null
+        }
+        $code = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $prev
+    }
+    return [pscustomobject]@{ ExitCode = $code; Stdout = $stdout }
+}
+
 # install-pipeline-core library — Step 3 3-2~3-5 runtime pipeline (temp-only skeleton).
 # Dot-sourced from scripts/install-pipeline.ps1 (CLI entry) and from
 # tests/install-pipeline.Tests.ps1 (Pester suite).
@@ -31,6 +61,8 @@ $script:InstallPipelineManifestSchemaVersion = 1
 $script:InstallPipelineManifestName         = 'payload-manifest.json'
 $script:InstallPipelineMarkerSchemaVersion  = 1
 $script:InstallPipelineMarkerName           = 'payload-marker.json'
+$script:InstallPipelineSourceCacheName      = 'source-cache'
+$script:InstallPipelineGitUrlDefaultRemote  = 'origin'
 
 function Get-InstallPipelinePayloadRoots {
     return ,$script:InstallPipelinePayloadRoots
@@ -42,7 +74,7 @@ function Get-InstallPipelineMetadataPath {
         [Parameter(Mandatory = $true)]
         [string] $InstallArea
     )
-    return Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineMetadataName
+    return [System.IO.Path]::GetFullPath((Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineMetadataName))
 }
 
 function Get-InstallPipelineCurrentDir {
@@ -51,7 +83,7 @@ function Get-InstallPipelineCurrentDir {
         [Parameter(Mandatory = $true)]
         [string] $InstallArea
     )
-    return Join-Path -Path $InstallArea -ChildPath 'current'
+    return [System.IO.Path]::GetFullPath((Join-Path -Path $InstallArea -ChildPath 'current'))
 }
 
 function Get-InstallPipelineManifestPath {
@@ -60,7 +92,7 @@ function Get-InstallPipelineManifestPath {
         [Parameter(Mandatory = $true)]
         [string] $InstallArea
     )
-    return Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineManifestName
+    return [System.IO.Path]::GetFullPath((Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineManifestName))
 }
 
 function Get-InstallPipelineMarkerPath {
@@ -69,7 +101,139 @@ function Get-InstallPipelineMarkerPath {
         [Parameter(Mandatory = $true)]
         [string] $InstallArea
     )
-    return Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineMarkerName
+    return [System.IO.Path]::GetFullPath((Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineMarkerName))
+}
+
+# STEP3 guide §16.2: sibling-of-current/ source cache for git-url mode.
+# Single-cache-per-InstallArea; multi-cache and per-ref subdirectories are deferred (§16.6).
+# §16.5 requires install.json toolRoot to be the cache absolute path — normalize via
+# GetFullPath() so that relative -InstallArea inputs still produce an absolute cache path
+# (and downstream tuple.toolRoot / metadata.toolRoot remain absolute).
+function Get-InstallPipelineSourceCacheDir {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $InstallArea
+    )
+    $joined = Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineSourceCacheName
+    return [System.IO.Path]::GetFullPath($joined)
+}
+
+function Test-InstallPipelineSourceCachePresent {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $InstallArea
+    )
+    $cache = Get-InstallPipelineSourceCacheDir -InstallArea $InstallArea
+    if (-not (Test-Path -LiteralPath $cache -PathType Container)) { return $false }
+    $gitDir = Join-Path $cache '.git'
+    return (Test-Path -LiteralPath $gitDir)
+}
+
+# STEP3 guide §16.3 install row: single `git clone <repoUrl> <cache>` into a fresh cache dir.
+# Fails fast if the cache already exists with payload — caller is expected to gate this on
+# Test-InstallPipelineSourceCachePresent / action == 'install' semantics.
+function Invoke-InstallPipelineGitUrlClone {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $InstallArea,
+        [Parameter(Mandatory = $true)]
+        [string] $RepoUrl
+    )
+
+    if (-not (Test-Path -LiteralPath $InstallArea -PathType Container)) {
+        throw "Invoke-InstallPipelineGitUrlClone: InstallArea not found: $InstallArea"
+    }
+    if ([string]::IsNullOrEmpty($RepoUrl)) {
+        throw 'Invoke-InstallPipelineGitUrlClone: -RepoUrl is required.'
+    }
+    $cache = Get-InstallPipelineSourceCacheDir -InstallArea $InstallArea
+    if (Test-Path -LiteralPath $cache) {
+        # If anything is present (even partial), refuse — operator must clean it up. Atomicity
+        # is at the deliverable artifact level (install.json/manifest/marker/current/), per §16.4;
+        # partial cache from a prior failed clone is operator-visible cleanup territory.
+        $any = Get-ChildItem -LiteralPath $cache -Force -ErrorAction SilentlyContinue
+        if ($null -ne $any) {
+            throw "Invoke-InstallPipelineGitUrlClone: cache already exists and is not empty: $cache. Remove it explicitly before re-running fresh install."
+        }
+    }
+    else {
+        $null = New-Item -ItemType Directory -Path $cache -Force
+    }
+
+    # Invoke-InstallPipelineNativeGit pins $ErrorActionPreference=Continue around the call
+    # so NativeCommandError on git stderr does not preempt the exit-code-driven throw below.
+    $res = Invoke-InstallPipelineNativeGit -Arguments @('clone', '-q', $RepoUrl, $cache)
+    if ($res.ExitCode -ne 0) {
+        throw "Invoke-InstallPipelineGitUrlClone: git clone failed (repoUrl=$RepoUrl, dest=$cache; exitCode=$($res.ExitCode))"
+    }
+    return $cache
+}
+
+# STEP3 guide §16.3 update-source row: `git fetch <remote> <branch>` against the existing cache.
+# Failure throws BEFORE materialization, so the dispatcher never runs and the deliverable
+# artifacts (install.json/manifest/marker/current/) keep byte-identity (§16.4 invariant).
+function Invoke-InstallPipelineGitUrlFetch {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $InstallArea,
+        [string] $Remote = '',
+        [string] $Branch = ''
+    )
+
+    $cache = Get-InstallPipelineSourceCacheDir -InstallArea $InstallArea
+    if (-not (Test-InstallPipelineSourceCachePresent -InstallArea $InstallArea)) {
+        throw "Invoke-InstallPipelineGitUrlFetch: source cache missing: $cache. fail-fast (clone recovery is deferred per STEP3 guide §16.6)."
+    }
+
+    $remoteName = $Remote
+    if ([string]::IsNullOrEmpty($remoteName)) { $remoteName = $script:InstallPipelineGitUrlDefaultRemote }
+
+    if ([string]::IsNullOrEmpty($Branch)) {
+        $fetchArgs = @('-C', $cache, 'fetch', '-q', $remoteName)
+    }
+    else {
+        $fetchArgs = @('-C', $cache, 'fetch', '-q', $remoteName, $Branch)
+    }
+    $res = Invoke-InstallPipelineNativeGit -Arguments $fetchArgs
+    if ($res.ExitCode -ne 0) {
+        throw "Invoke-InstallPipelineGitUrlFetch: git fetch failed (cache=$cache, remote=$remoteName, branch=$Branch; exitCode=$($res.ExitCode))"
+    }
+    return $cache
+}
+
+# STEP3 guide §16.3: post-fetch HEAD resolution. For update-source we resolve
+# <remote>/<branch> (the fetched tip), NOT the cache's local HEAD. For install /
+# update-current we resolve the cache's local HEAD via Get-InstallPipelineSourceHead.
+function Get-InstallPipelineGitUrlRemoteHead {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $InstallArea,
+        [string] $Remote = '',
+        [Parameter(Mandatory = $true)]
+        [string] $Branch
+    )
+
+    $cache = Get-InstallPipelineSourceCacheDir -InstallArea $InstallArea
+    if (-not (Test-InstallPipelineSourceCachePresent -InstallArea $InstallArea)) {
+        throw "Get-InstallPipelineGitUrlRemoteHead: source cache missing: $cache."
+    }
+    if ([string]::IsNullOrEmpty($Branch)) {
+        throw 'Get-InstallPipelineGitUrlRemoteHead: -Branch is required for git-url update-source HEAD resolution.'
+    }
+    $remoteName = $Remote
+    if ([string]::IsNullOrEmpty($remoteName)) { $remoteName = $script:InstallPipelineGitUrlDefaultRemote }
+
+    $refspec = "$remoteName/$Branch"
+    $res = Invoke-InstallPipelineNativeGit -CaptureStdout -Arguments @('-C', $cache, 'rev-parse', '--verify', "$refspec^{commit}")
+    if ($res.ExitCode -ne 0) {
+        throw "Get-InstallPipelineGitUrlRemoteHead: git rev-parse failed for $refspec (cache=$cache; exitCode=$($res.ExitCode))"
+    }
+    return (@($res.Stdout) -join "`n").Trim()
 }
 
 # STEP3 guide §15.2: per-file payload-manifest.json (backlog candidate (b)).
@@ -272,11 +436,11 @@ function Resolve-InstallPipelineRef {
     }
 
     $verifyArg = ('{0}^{{commit}}' -f $Ref)
-    $output = & git -C $SourceLocation rev-parse --verify $verifyArg 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Resolve-InstallPipelineRef: ref not found in source: $Ref (source=$SourceLocation; output=$output)"
+    $res = Invoke-InstallPipelineNativeGit -CaptureStdout -Arguments @('-C', $SourceLocation, 'rev-parse', '--verify', $verifyArg)
+    if ($res.ExitCode -ne 0) {
+        throw "Resolve-InstallPipelineRef: ref not found in source: $Ref (source=$SourceLocation)"
     }
-    return ($output -join "`n").Trim()
+    return (@($res.Stdout) -join "`n").Trim()
 }
 
 function Test-InstallPipelineSourceCut {
@@ -337,7 +501,16 @@ function Invoke-InstallMaterialization {
     if (-not (Test-Path -LiteralPath $InstallArea -PathType Container)) {
         throw "Invoke-InstallMaterialization: InstallArea not found: $InstallArea"
     }
-    $sourceLoc = [string]$Tuple.sourceLocation
+    # §16.5 + relative-InstallArea regression (AC-IP-GITURL-TOOLROOT-ABS-1): normalize the
+    # InstallArea once so that $tmpZip / $tmpExtract built directly below resolve to absolute
+    # paths even when the caller supplied a relative -InstallArea. Get-InstallPipeline*Dir/Path
+    # helpers already normalize, but $tmpZip is constructed here without going through them.
+    $InstallArea = [System.IO.Path]::GetFullPath($InstallArea)
+    # STEP3 guide §16.5: materialization source = tuple.toolRoot (source-side canonical local
+    # ToolRoot). For local-clone that equals tuple.sourceLocation (user-supplied path); for
+    # git-url that equals the source cache at <InstallArea>/source-cache (URL goes into
+    # tuple.sourceLocation, not into the archive path).
+    $sourceLoc = [string]$Tuple.toolRoot
     if (-not (Test-Path -LiteralPath $sourceLoc -PathType Container)) {
         throw "Invoke-InstallMaterialization: source not found: $sourceLoc"
     }
@@ -472,14 +645,15 @@ function Invoke-InstallPipelineDispatch {
         throw "Invoke-InstallPipelineDispatch: action $($Tuple.action) requires existing install metadata; none found at $InstallArea (run -Action install first)."
     }
 
-    if ($Tuple.installMode -eq 'local-clone') {
-        # local-clone sourceLocation must be a valid ai-harness source repo
-        # (D3 multi-marker, parent §2.2 — "Claude Code 가 현재 repo 검증 ... 하고 canonical local ToolRoot 로 등록한다").
-        # Arbitrary git repos must not pass the install / update / restore pipeline.
-        $srcLoc = [string]$Tuple.sourceLocation
-        if (-not (Test-IsSourceRepoRoot -Path $srcLoc)) {
-            throw "Invoke-InstallPipelineDispatch: local-clone sourceLocation is not a valid ai-harness source repo (D3 multi-marker check failed): $srcLoc. Required markers: scripts/verify-ps1.ps1, templates/review-input.md, config/reviewer.json."
-        }
+    # D3 multi-marker check (parent §2.2; STEP3 guide §16.5): the source we are about to
+    # archive from must be a valid ai-harness source repo. Apply to both modes — for
+    # local-clone the source is tuple.sourceLocation (user-supplied path), for git-url
+    # the source is tuple.toolRoot (= cache after clone). Arbitrary git repos / arbitrary
+    # URLs must not pass the install / update / restore pipeline.
+    $d3Target = [string]$Tuple.toolRoot
+    if (-not (Test-IsSourceRepoRoot -Path $d3Target)) {
+        $hintLoc = [string]$Tuple.sourceLocation
+        throw "Invoke-InstallPipelineDispatch: source is not a valid ai-harness source repo (D3 multi-marker check failed) at $d3Target (sourceLocation=$hintLoc). Required markers: scripts/verify-ps1.ps1, templates/review-input.md, config/reviewer.json."
     }
 
     Invoke-InstallMaterialization -Tuple $Tuple -InstallArea $InstallArea

@@ -511,7 +511,7 @@ target project 에 대한 footprint 결정은 다음을 보존한다 (`GLOBAL_IN
 ### 12.4 3-3 overwrite materialization core — contract level
 
 - **입력**: 3-2 의 resolved tuple.
-- **동작**: `sourceLocation` + `resolvedRefSha` 기준의 source content 를 **global install area 의 runtime payload directory `current/`** (parent §6 Layer 2; §10.1 layer table; §11.2 location boundary) 의 runtime payload roots (`config/` / `scripts/` / `snippets/` / `templates/` — §10.1) 로 deterministic overwrite 한다. 본 destination 은 channel 3 default 운영에서 `%USERPROFILE%\.claude\ai-harness-toolset\current\` 다. resolver tuple 의 `toolRoot` (= source-side canonical local ToolRoot, parent §6 Layer 1) 와는 별개의 path 이며, 두 path 는 같은 디렉터리를 가리키지 않는다 — 본 anchor 는 destination 을 `<toolRoot>/...` 의 child path 로 표기하지 않는다. overwrite 의 byte-identity 보장은 implementation level 의 검증이며 본 anchor 가 algorithm 을 fix 하지 않는다.
+- **동작**: source-side canonical local ToolRoot (= resolver tuple 의 `toolRoot`, parent §6 Layer 1; §15.5 / §16.5 와 정합 — git-url mode 에서는 `<InstallArea>/source-cache/`, local-clone mode 에서는 user-supplied sourcePath 의 absolute path) 에서 `resolvedRefSha` 의 source content 를 **global install area 의 runtime payload directory `current/`** (parent §6 Layer 2; §10.1 layer table; §11.2 location boundary) 의 runtime payload roots (`config/` / `scripts/` / `snippets/` / `templates/` — §10.1) 로 deterministic overwrite 한다. tuple 의 `sourceLocation` 은 user-facing identifier (git-url mode 의 URL 또는 local-clone mode 의 sourcePath) 로서 metadata write 의 입력 (§11.5 lifecycle 의 metadata field) 이며, materialization 의 archive source 가 아니다 (§16.5 와 정합 — 두 개념을 같은 이름으로 conflated 시키지 않는다). 본 destination 은 channel 3 default 운영에서 `%USERPROFILE%\.claude\ai-harness-toolset\current\` 다. resolver tuple 의 `toolRoot` (= materialization source) 와 destination (= `<InstallArea>/current/`) 은 별개의 path 이며, 두 path 는 같은 디렉터리를 가리키지 않는다 — 본 anchor 는 destination 을 `<toolRoot>/...` 의 child path 로 표기하지 않는다. overwrite 의 byte-identity 보장은 implementation level 의 검증이며 본 anchor 가 algorithm 을 fix 하지 않는다.
 - **금지**:
   - destination diff / patch 기반 변경 (§3 / §4).
   - partial patch update (§4).
@@ -628,7 +628,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 
 본 절은 §6 canonical decomposition 의 9 번째 sub-step — **3-8 minimal docs closeout** — 을 수행한다. Step 3 의 현재 완료 상태를 한 자리에 모으고, 남은 deferred scope 를 분리해 기록한다. 본 절의 존재로 어떤 새 implementation, validation, adoption, release, publish, global / user filesystem mutation, commit / push / merge / release 도 자동 승인되지 않는다.
 
-§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에, 3-6 boundary 의 § anchor 는 §14 에, payload integrity manifest + payload completeness marker minimum contract 는 §15 에 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다. 본 §13 작성 시점에는 §14 / §15 가 아직 작성되지 않았으나, 후속 anchor 라운드 (3-6 anchor 라운드, manifest / marker minimum contract 라운드) 에서 본 §13.1 의 Completed 와 §13.2 의 Deferred 가 함께 갱신되었다.
+§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에, 3-6 boundary 의 § anchor 는 §14 에, payload integrity manifest + payload completeness marker minimum contract 는 §15 에, git-url mode minimum source acquisition contract 는 §16 에 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다. 본 §13 작성 시점에는 §14 / §15 / §16 가 아직 작성되지 않았으나, 후속 anchor 라운드 (3-6 anchor / manifest+marker minimum contract / git-url minimum source acquisition) 에서 본 §13.1 의 Completed 와 §13.2 의 Deferred 가 함께 갱신되었다.
 
 ### 13.1 Completed
 
@@ -640,7 +640,8 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - **temp-only install-pipeline skeleton implementation** — `scripts/install-pipeline.ps1` (CLI entry), `scripts/lib/install-pipeline-core.ps1` (library), `tests/install-pipeline.Tests.ps1` (Pester tests) 3 파일 신규. local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action 을 `$TestDrive` fixture 기준으로 end-to-end 동작. install.json (§11.1 14-field schema), source-cut detection-only, dogfooding silent-mutation 보호, forbidden InstallArea guard (`%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` 및 descendants), git-archive 기반 ref-specific materialization 포함. commit `84d1126`.
 - **3-7 dry-run coverage extension** — install → update-current → restore 연속 flow + per-step metadata + invariant 9 fields 비-드리프트 (`installedAt` 보존, `lastUpdatedAt` lifecycle 포함), source-cut 거부 후 `current/` byte-identity 보존, dogfooding `update-source` 거부 후 source repo HEAD 무변경, `%USERPROFILE%\.codex` reject, `%USERPROFILE%\.claude` descendant reject + 디렉터리 미생성. 5 신규 Pester tests. commit `3bff209`.
 - **3-6 managed-block / skill replace boundary anchor** — §14 anchor (boundary statement, in-scope / out-of-scope enumeration, deferred items). §7 #2 carry-forward caveat 의 §anchor 정착 + §10.6 / §11.7 / §12.10 enumeration 의 상위 §종합 자리. install / update automation core (§12 의 4 action) ≠ managed-block / skill replace apply (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 scope 분리를 한 줄 boundary 로 anchor. commit `9cf2000` (`Anchor Step 3 3-6 managed-block boundary`). 본 anchor 는 boundary 정의에 한정되며 actual managed-block / skill apply 또는 진단 helper / actual writer 의 도입을 자동 승인하지 않는다.
-- **payload integrity manifest + payload completeness marker minimum contract + temp-only implementation + dry-run tests** — §15 anchor + `scripts/lib/install-pipeline-core.ps1` 구현 + `tests/install-pipeline.Tests.ps1` 9 신규 tests. backlog "Aggregate digest reproducibility" candidate (b) per-file manifest 채택; `payload-manifest.json` (sibling-of-`current/`, JSON UTF-8 no-BOM, per-file `{path, size, sha256}` sorted ascending) + `payload-marker.json` (sibling-of-`current/`, presence flag + integrity binding). write hook 은 materialization 직후 / metadata write 이전 단계로, verify hook 은 `Invoke-InstallPipelineVerify` 안의 metadata 검증과 함께 manifest per-file diff (tamper / missing / extra) + marker presence + head cross-binding 을 fail-fast. 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action 만 cover 하며 git-url mode actual network fetch / actual global install area mutation / entrypoint set finalize / aggregate digest algorithm (candidate (a)) / schema bump migration writer / 외부 검증 tool / channel 3 활성 hook 의 actual implementation / target adoption 은 자동 승인하지 않는다.
+- **payload integrity manifest + payload completeness marker minimum contract + temp-only implementation + dry-run tests** — §15 anchor + `scripts/lib/install-pipeline-core.ps1` 구현 + `tests/install-pipeline.Tests.ps1` 9 신규 tests. backlog "Aggregate digest reproducibility" candidate (b) per-file manifest 채택; `payload-manifest.json` (sibling-of-`current/`, JSON UTF-8 no-BOM, per-file `{path, size, sha256}` sorted ascending) + `payload-marker.json` (sibling-of-`current/`, presence flag + integrity binding). write hook 은 materialization 직후 / metadata write 이전 단계로, verify hook 은 `Invoke-InstallPipelineVerify` 안의 metadata 검증과 함께 manifest per-file diff (tamper / missing / extra) + marker presence + head cross-binding 을 fail-fast. commit `1273afe` (`Anchor Step 3 payload manifest and marker minimum contract`). 본 anchor 는 local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action 만 cover 하며 git-url mode actual network fetch / actual global install area mutation / entrypoint set finalize / aggregate digest algorithm (candidate (a)) / schema bump migration writer / 외부 검증 tool / channel 3 활성 hook 의 actual implementation / target adoption 은 자동 승인하지 않는다.
+- **git-url mode minimum source acquisition contract + temp-only implementation + dry-run tests** — §16 anchor + `scripts/lib/install-pipeline-core.ps1` 구현 + `scripts/install-pipeline.ps1` entry wiring + `tests/install-pipeline.Tests.ps1` 9 신규 tests (AC-IP-GITURL-*). §10.5 의 deferred source-cache layer 결정을 reassessment 결과로 §16 에서 채택 — canonical location `<InstallArea>/source-cache/` (sibling-of-`current/`), normal-clone format, single-cache-per-InstallArea. per-action lifecycle: install → `git clone -q`, update-source → `git fetch -q origin <branch>` + resolve `origin/<branch>`, update-current → cache-local `git rev-parse HEAD` (no network), restore → cache-local `git rev-parse --verify <user-ref>^{commit}` (no network). failure preservation: fetch / resolve / clone 실패가 모두 materialization 이전 단계라 deliverable artifact (install.json / manifest / marker / current/) 의 byte-identity 가 보존된다. tuple.toolRoot = cache absolute path (§16.5 — install.json `toolRoot` 와 정합); tuple.sourceLocation = URL (user-facing identifier). `Invoke-InstallPipelineNativeGit` helper 가 `$ErrorActionPreference` 를 함수 scope 내 'Continue' 로 pin 해 NativeCommandError-on-stderr 가 LASTEXITCODE-driven throw 를 preempt 하는 PS 5.1 quirk 를 우회. test fixture 는 `git clone --bare -q` 로 만든 local bare repo 만 사용 (`-RepoUrl` = bare absolute path; file:// URL 도 동등하게 동작하나 path 만 사용). 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 credential / auth handling / clone recovery / multi-cache / per-ref subdirectory / bare cache / cache identity verification / fetch retry / submodule / actual global apply / source-cut path 실제 처리 / schemaVersion migration writer / Step 4 시작 / managed-block apply / Claude skill install/update/removal / 외부 GitHub network reachability 의존 test 어느 것도 자동 승인하지 않는다.
 
 본 commit 시리즈의 최신 HEAD: `3bff2093ee3cfb0996633007efed717b64ace631` (3-7 dry-run coverage extension 시점). 본 §14 anchor 가 commit 되면 HEAD 는 그 후속 commit hash 로 carry — 본 §13.1 의 commit hash 표기는 본 §14 anchor 의 commit 시점에 갱신되지 않으며 ("baseline commit hash 는 review context only" — §7 #6 와 정합), 위 3-7 시점의 baseline 표기로 historical 보존된다.
 
@@ -650,7 +651,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 
 다음 항목은 본 §13 closeout 이 **자동 승인하지 않는** deferred scope 다. 각 항목은 별도 scoped goal 의 explicit user-approved decision 으로 진행한다.
 
-- **git-url mode 의 실제 source acquisition / network fetch** — 현 skeleton 은 local-clone mode 의 local git repo 만 다룬다. git-url mode 의 `git clone` / `git fetch` / `git pull` / clone recovery 의 실제 implementation, credential / auth handling, network failure 처리는 별도 scoped goal (`GLOBAL_INSTALL_UPDATE_MODEL.md` §2.1 / §4.2 와 정합).
+- **git-url mode 의 후속 deferred 항목** — §16 anchor 가 minimum source acquisition contract (local git operations 기반의 cache / clone / fetch / ref resolve + temp-only implementation + dry-run tests) 를 정착시키므로 본 §13.2 의 deferred 잔여는 §16.6 의 후속 deferred 항목 (credential / auth handling, clone recovery, multi-cache / per-ref subdirectory, bare clone 채택, cache identity verification, fetch retry / backoff / shallow clone, HTTP/HTTPS/SSH/git protocol specific 처리, submodule, schemaVersion migration writer / source-cut path 실제 처리 / actual global apply 등) 으로 좁아진다. 모두 별도 scoped goal 의 explicit user-approved decision 으로 진행한다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §2.1 / §4.2 와 정합).
 - **payload integrity manifest / payload completeness marker 의 후속 deferred 항목** — §15 anchor 가 minimum contract (per-file manifest + presence marker) 와 temp-only local-clone implementation + dry-run tests 를 정착시키므로 본 §13.2 의 deferred 잔여는 §15.6 의 6 항목 (entrypoint set finalize, aggregate digest algorithm (candidate (a)) 의 별도 도입, manifest / marker schema bump migration writer, manifest 외부 검증 tool / linter, `Get-ToolRoot` channel 3 활성 hook 의 actual implementation, target adoption / external target 에 대한 manifest / marker) 으로 좁아진다. 모두 별도 scoped goal 의 explicit user-approved decision 으로 진행한다 (`docs/backlog/operations.md` "Aggregate digest reproducibility — install/update verification scope debt" 와 정합).
 - **3-6 boundary 의 후속 implementation 항목** — §14 anchor 가 boundary 정의를 마치므로 본 §13.2 의 deferred 잔여는 §14.4 의 5 항목 (boundary 진단 helper / check-only helper 의 도입 여부 + spec + 위치 + 이름, managed-block apply 의 actual writer surface, Claude skill install / update / removal 의 actual writer surface, boundary violation detection mechanism, 3-6 의 implementation-level closeout) 으로 좁아진다. 본 항목들은 boundary 정의가 아니라 boundary 의 후속 implementation / helper 단계이며, 모두 별도 scoped goal (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 explicit user-approved decision 으로 진행한다.
 - **Step 4 actual install / update validation** — `POST_MVP_PLAN.md` §11 step 4. 본 §13 closeout 이 자동 승인하지 않는다.
@@ -894,3 +895,117 @@ manifest / marker 의 lifecycle 은 §12.1 pipeline 의 metadata write 단계와
 - commit / push / publish / merge / release / adoption.
 
 본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc / test mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 / §13.3 / §14.5 와 정합).
+
+---
+
+## 16. Recorded git-url mode minimum source acquisition contract
+
+본 절은 §12.3 의 3-2 resolver 의 git-url mode resolution path 와 §13.2 deferred 의 "git-url mode 의 실제 source acquisition / network fetch" 항목 중 **deterministic 한 local repository 기반 source acquisition 의 최소 contract** 를 anchor 한다. 본 anchor 는 §10.5 의 source-cache layer "본 anchor 가 layer 도입 자체를 채택하지 않는다 — 3-3 / 3-4 단계에서 드러나면 그때 layer 신설 여부를 재평가" 의 후속 reassessment 결과로, **source-cache layer 를 본 §16 에서 채택** 한다. 본 anchor 는 implementation, actual `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` mutation, credential / auth / network failure recovery / clone recovery, Step 4 validation 어느 것도 자동 승인하지 않는다.
+
+본 anchor 는 §10 (3-0 layer layout) / §11 (3-1 install metadata contract) / §12 (3-2~3-5 runtime pipeline grouping) / §14 (3-6 managed-block / skill replace boundary) / §15 (manifest + marker minimum contract) 위에 build 되며 그 결정을 약화하지 않는다.
+
+### 16.1 Algorithm choice (minimum 범위)
+
+본 anchor 는 git-url mode 의 acquisition 을 **local git repository operations only** 로 좁힌다 — `git clone <repoUrl>` / `git -C <cache> fetch` / `git -C <cache> rev-parse` / `git -C <cache> archive`. external GitHub / public network 대역 자체에 대한 actual reachability / 인증 / credential / proxy / mirror 정책은 본 anchor 의 범위가 아니다. 본 anchor 는 user environment 가 이미 git CLI 에서 `repoUrl` 에 도달 가능하다는 것을 전제로 한 deterministic 한 local git operation contract 만 정의한다.
+
+### 16.2 Source cache layer (`source-cache/`)
+
+본 anchor 가 §10.5 의 deferred source-cache layer 결정을 마감한다.
+
+- **canonical location**: `<InstallArea>/source-cache/` — `current/` / `install.json` / `payload-manifest.json` / `payload-marker.json` 와 **sibling** (§10.4 boundary 와 정합).
+- **layout**: 하나의 git clone (normal clone, not bare) 이 directly under `<InstallArea>/source-cache/`. multi-cache / per-ref subdirectory 는 본 anchor 가 도입하지 않는다 (single-cache-per-InstallArea).
+- **format**: standard git repo (working tree + `.git/`). bare clone 채택은 deferred (working tree 가 있는 normal clone 이 `git archive` / `git rev-parse` 양쪽에 가장 단순하므로 minimum 채택).
+- **identification**: cache 는 implicit 하게 InstallArea 의 metadata.repoUrl 과 일치한다. 본 anchor 는 cache 자체에 origin URL identity 검증 (cache 의 `git config remote.origin.url` 이 metadata.repoUrl 과 일치하는지) 을 도입하지 **않는다** — drift 가 발생하면 source-cut detection (§12.7) 의 영역이다.
+- **금지** (§10.6 / §14 / §15 와 정합):
+  - cache 를 `current/` 안에 두는 것.
+  - cache 를 target project 안에 두는 것.
+  - cache 를 source repo 의 tracked 항목으로 두는 것.
+  - cache 안의 파일을 manifest / marker entry 대상에 포함하는 것 (§15 의 manifest 는 `current/<payloadRoots>/**` 만 enumerate; cache 는 enumeration 범위 밖).
+
+### 16.3 Per-action lifecycle (git-url mode)
+
+| action | cache 상태 전제 | network operation | ref resolve source | materialization source |
+|---|---|---|---|---|
+| **install** | cache 없거나 비어 있음 (fresh) | `git clone <repoUrl> <cache>` (single clone) | cache 의 `git rev-parse HEAD` | cache `git archive` |
+| **update-source** | cache 가 valid git repo (fail-fast otherwise) | `git -C <cache> fetch origin <branch>` | cache 의 `git rev-parse origin/<branch>` (fetch 후) | cache `git archive` |
+| **update-current** | cache 가 valid git repo (fail-fast otherwise) | **없음** — network 호출 안 함 | cache 의 `git rev-parse HEAD` | cache `git archive` |
+| **restore** | cache 가 valid git repo (fail-fast otherwise) | **없음** — network 호출 안 함 | cache 의 `git rev-parse --verify <user-ref>^{commit}` | cache `git archive` |
+
+본 lifecycle 의 명시 boundary:
+
+- install 이 아닌 action 에서 cache 가 부재하면 **clone recovery 를 수행하지 않는다** — 본 minimum 에서는 fail-fast 만 보장한다. **clone recovery 는 deferred** (§16.6 / `GLOBAL_INSTALL_UPDATE_MODEL.md` §4.2 의 "ToolRoot 가 사라졌으면 `repoUrl` 로 clone recovery 를 수행한다" wording 의 actual 구현이 본 anchor 의 범위 밖).
+- update-current / restore 는 network 호출이 없다 (§12.3 의 "update-current 는 fetch 없이 현재 HEAD 만 read" / "restore 는 user-specified `--ref` 가 필수" 와 정합).
+- restore 의 ref 가 cache 에 존재하지 않으면 (예: fetch 되지 않은 remote-only ref) fail-fast — 자동 fetch fallback 금지 (§7 #1 / §11.4 (b) 와 정합).
+
+### 16.4 Failure preservation (atomicity)
+
+본 anchor 의 fail-fast 는 다음 invariant 를 유지한다.
+
+- **fresh install (clone) 실패**: cache 디렉터리가 partial 상태로 남을 수 있으나, `current/` / `install.json` / manifest / marker 는 아직 작성 전 단계 이므로 본 InstallArea 의 deliverable artifact 는 영향 없음. 후속 install attempt 는 cache 를 clean up 한 뒤 진행해야 한다 (운영자 명시 cleanup).
+- **update-source 의 fetch 실패**: fetch 가 ref resolve / materialization **이전** 에 실행되며, 실패 시 그 단계에서 throw → dispatcher 가 진행하지 않으므로 `current/` / `install.json` / manifest / marker 의 **byte-identity 보존**.
+- **ref resolve 실패** (restore 의 사용자 ref 가 cache 에 없는 경우, 또는 update-source 의 fetched ref 가 invalid): `Resolve-InstallPipelineRef` / `Get-InstallPipelineSourceHead` 가 throw → `Invoke-InstallMaterialization` 진입 전 이므로 `current/` 와 그 sibling artifact 모두 byte-identity 보존.
+- **clone 자체 실패 (install)**: cache 가 partial 일 수 있으나 deliverable artifact 는 아직 작성되지 않은 단계.
+
+본 invariant 는 §12.4 (materialization core) 의 "destination 의 byte-identity overwrite materialization" boundary 와 정합한다. fetch / resolve 단계는 materialization 이전 의 read-only / network-only / cache-only operation 이며, destination 의 partial mutation 을 발생시키지 않는다.
+
+### 16.5 toolRoot semantics (git-url mode)
+
+`install.json` 의 `toolRoot` field (§11.1) 의 git-url mode 값은 **cache 의 absolute path** (`<InstallArea>/source-cache/`) 다 — 부모 §6 Layer 1 의 "canonical local ToolRoot = local clone of the GitHub repo" 와 정합. local-clone mode 의 toolRoot 가 사용자 supply 의 sourcePath 였던 것과 달리, git-url mode 의 toolRoot 는 본 도구가 deterministic 하게 install area 안에 cache 한 path 다.
+
+resolver tuple 의 `toolRoot` field 도 동일한 cache absolute path 다. `sourceLocation` 은 사용자 facing identifier (URL 자체) 다 — 둘은 별개 concept 이며, `Invoke-InstallMaterialization` 의 git-archive source 는 **tuple.toolRoot (= cache path)** 를 사용한다. 이 분리는 §12.3 의 "tuple `toolRoot` 는 §11.1 metadata `toolRoot` 와 동일한 source-side canonical local ToolRoot" framing 과 정합한다.
+
+### 16.6 Deferred items (§16 의 범위 밖)
+
+본 anchor 는 다음을 fix 하지 않는다.
+
+- **credential / auth handling** — HTTPS basic auth, SSH key, PAT, Windows credential helper, proxy 처리 등의 actual implementation. user environment 가 이미 git CLI 에서 `repoUrl` 에 도달 가능하다는 것을 전제로 한다.
+- **clone recovery** — non-install action 에서 cache 가 부재한 경우의 자동 re-clone. 본 anchor 는 fail-fast 만 보장하며, recovery 는 별도 scoped goal.
+- **multi-cache / per-ref cache subdirectory** — 다양한 ref 의 동시 cache 보존. 본 anchor 는 single-cache-per-InstallArea 만 채택.
+- **bare clone 채택** — cache 의 bare repo 변환. 본 anchor 는 normal clone (working tree + `.git/`) 만 채택.
+- **cache identity verification** — cache 의 `remote.origin.url` 이 metadata.repoUrl 과 일치하는지의 자동 검증. drift 는 source-cut detection (§12.7) 의 영역.
+- **fetch retry / backoff / partial fetch / shallow clone** — network 신뢰성 / 효율성을 위한 정책. 본 anchor 는 single-attempt fetch 만 채택.
+- **HTTP / HTTPS / SSH / git protocol** 의 specific 처리 — 본 anchor 는 git CLI 가 알아서 처리하는 것으로 가정.
+- **submodule** 처리 — `ai-harness-toolset` 자체가 submodule 을 사용하지 않으므로 본 anchor 는 submodule clone / update / fetch 를 다루지 않는다.
+- **`schemaVersion` migration writer** (§11.3 / §11.6 / §15.6 deferred 그대로).
+- **source-cut path 의 실제 처리** (§12.7 와 정합).
+- **actual `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` 안의 git-url install / update** — actual global apply 는 별도 explicit user-approved scope.
+
+### 16.7 Test fixture boundary
+
+본 anchor 의 Pester dry-run tests 는 다음 fixture 만 사용한다.
+
+- **local bare repo** — `git clone --bare <local-source-repo> <local-bare-repo>` 로 만든 bare repo 의 absolute path 를 `-RepoUrl` 로 전달.
+- **file URL fixture** — 동일 local bare repo 를 `file:///<path>` URL 로 전달 (optional; git CLI 가 path 만으로 처리 가능하면 path 만 사용).
+
+본 anchor 는 다음을 **금지** 한다.
+
+- 외부 GitHub / 외부 network remote 에 대한 actual reachability 의존.
+- Pester test 의 PASS / FAIL 이 외부 network 상태에 좌우되는 fixture.
+- credential / auth 가 필요한 fixture.
+
+### 16.8 본 anchor 의 scope 와 non-goals
+
+본 anchor 는 다음을 **포함한다**.
+
+- §16.1 의 algorithm choice (local git repository operations only).
+- §16.2 의 source-cache layer (canonical location / layout / format / identification / 금지).
+- §16.3 의 per-action lifecycle (install / update-source / update-current / restore 4 action 의 cache 전제 / network / ref resolve / materialization source).
+- §16.4 의 failure preservation invariant (fetch / resolve 실패 시 deliverable artifact byte-identity 보존).
+- §16.5 의 toolRoot semantics (cache absolute path).
+- §16.6 의 deferred items (credential / auth / clone recovery / multi-cache / bare / identity / retry / protocol / submodule / migration writer / source-cut / actual global apply).
+- §16.7 의 test fixture boundary (local bare repo / file URL only).
+
+본 anchor 는 다음을 **포함하지 않는다**.
+
+- actual `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` 안의 git-url install / update / refresh / mutation.
+- external GitHub / network reachability 에 의존하는 test.
+- credential / auth / proxy / mirror 처리.
+- clone recovery / multi-cache / shallow clone / bare clone / submodule / migration writer.
+- source-cut path 의 실제 처리.
+- managed-block apply / Claude skill install / update / removal.
+- Step 4 validation 시작.
+- 부모 root-level docs 본문 mutation. 본 anchor 는 STEP3 guide subordinate scope 안에서 닫는다.
+- §6 canonical decomposition (9 단계 ordering / numbering) 변경.
+- commit / push / publish / merge / release / adoption.
+
+본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc / test mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 / §13.3 / §14.5 / §15.7 와 정합).
