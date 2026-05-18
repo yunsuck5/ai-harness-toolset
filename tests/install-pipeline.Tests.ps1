@@ -478,3 +478,208 @@ Describe 'install-pipeline entry — forbidden InstallArea / required inputs' {
         $r.Output   | Should -Match 'requires existing install metadata'
     }
 }
+
+Describe 'install-pipeline 3-7 dry-run coverage extension' {
+    It 'AC-IP-FLOW-1: install -> update-current -> restore sequential flow + per-step metadata + content' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'flow-1' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'flow-1'
+        $proj = script:New-ProjectRoot -CaseName 'flow-1'
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        $markerPath = Join-Path $area 'current/config/marker.txt'
+
+        # 1) install at v1.
+        $r1 = script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r1.ExitCode | Should -Be 0 -Because $r1.Output
+        $md1 = script:Read-MetadataFromArea -InstallArea $area
+        $md1.installedHead   | Should -Be $src.Head
+        $md1.lastUpdatedHead | Should -Be $src.Head
+        $installedAt1   = $md1.installedAt
+        $lastUpdatedAt1 = $md1.lastUpdatedAt
+        $md1.installedAt | Should -Be $md1.lastUpdatedAt   # install sets both to the same UTC stamp
+        [System.IO.File]::ReadAllText($markerPath, $utf8NoBom) | Should -Be 'marker-config-v1'
+
+        # 2) source advances to v2; update-current adopts it.
+        Start-Sleep -Milliseconds 1100  # ensure lastUpdatedAt resolution differs
+        $headV2 = script:Add-FixtureCommit -SourceRoot $src.Root -MarkerSuffix 'v2'
+
+        $r2 = script:Invoke-InstallPipeline -Params @{
+            Action='update-current'; InstallArea=$area; SourcePath=$src.Root;
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r2.ExitCode | Should -Be 0 -Because $r2.Output
+        $md2 = script:Read-MetadataFromArea -InstallArea $area
+        $md2.installedHead   | Should -Be $src.Head             # install root preserved
+        $md2.installedAt     | Should -Be $installedAt1         # install timestamp preserved
+        $md2.lastUpdatedHead | Should -Be $headV2               # head advanced
+        # §11.5: update refreshes lastUpdatedAt. ISO 8601 UTC stamps compare correctly as strings.
+        $md2.lastUpdatedAt | Should -Not -Be $lastUpdatedAt1
+        ($md2.lastUpdatedAt -gt $lastUpdatedAt1) | Should -BeTrue -Because 'update-current must advance lastUpdatedAt forward'
+        $lastUpdatedAt2 = $md2.lastUpdatedAt
+        [System.IO.File]::ReadAllText($markerPath, $utf8NoBom) | Should -Be 'marker-config-v2'
+
+        # 3) restore to v1 (user-specified ref); content rolls back, installedHead still preserved.
+        Start-Sleep -Milliseconds 1100
+        $r3 = script:Invoke-InstallPipeline -Params @{
+            Action='restore'; InstallArea=$area; SourcePath=$src.Root; Ref=$src.Head;
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r3.ExitCode | Should -Be 0 -Because $r3.Output
+        $md3 = script:Read-MetadataFromArea -InstallArea $area
+        $md3.installedHead   | Should -Be $src.Head             # still preserved
+        $md3.installedAt     | Should -Be $installedAt1         # still preserved
+        $md3.lastUpdatedHead | Should -Be $src.Head             # rolled back to v1
+        # §11.5: restore (option b) refreshes lastUpdatedAt after successful re-materialization.
+        $md3.lastUpdatedAt | Should -Not -Be $lastUpdatedAt2
+        ($md3.lastUpdatedAt -gt $lastUpdatedAt2) | Should -BeTrue -Because 'restore must advance lastUpdatedAt forward even when rolling content back'
+        [System.IO.File]::ReadAllText($markerPath, $utf8NoBom) | Should -Be 'marker-config-v1'
+
+        # Invariants across the entire sequence: identity / footprint / managedBy fields must not drift.
+        foreach ($pair in @(@($md1, $md2), @($md2, $md3))) {
+            $a, $b = $pair
+            $b.schemaVersion         | Should -Be $a.schemaVersion
+            $b.tool                  | Should -Be $a.tool
+            $b.installMode           | Should -Be $a.installMode
+            $b.sourcePath            | Should -Be $a.sourcePath
+            $b.toolRoot              | Should -Be $a.toolRoot
+            $b.branch                | Should -Be $a.branch
+            $b.remote                | Should -Be $a.remote
+            $b.targetFootprintPolicy | Should -Be $a.targetFootprintPolicy
+            $b.managedBy             | Should -Be $a.managedBy
+        }
+    }
+
+    It 'AC-IP-SOURCE-CUT-2: source-cut rejection preserves existing current/ payload (no mutation)' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'sc-2' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'sc-2'
+        $proj = script:New-ProjectRoot -CaseName 'sc-2'
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+
+        $r1 = script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r1.ExitCode | Should -Be 0 -Because $r1.Output
+
+        # Snapshot current/ payload before triggering source-cut.
+        $currentDir = Join-Path $area 'current'
+        $beforeFiles = Get-ChildItem -LiteralPath $currentDir -Recurse -File | Sort-Object FullName
+        $beforeMap = @{}
+        foreach ($f in $beforeFiles) {
+            $rel = $f.FullName.Substring($currentDir.Length + 1).Replace('\','/')
+            $beforeMap[$rel] = [System.IO.File]::ReadAllBytes($f.FullName)
+        }
+
+        # Trigger source-cut: invocation sourcePath differs from metadata.sourcePath.
+        $other = Join-Path $TestDrive 'sc-2-other'
+        $null = New-Item -ItemType Directory -Path $other -Force
+        $r2 = script:Invoke-InstallPipeline -Params @{
+            Action='update-current'; InstallArea=$area; SourcePath=$other;
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r2.ExitCode | Should -Not -Be 0
+        $r2.Output   | Should -Match 'source-cut detected'
+
+        # current/ payload must be byte-identical to the pre-rejection snapshot.
+        $afterFiles = Get-ChildItem -LiteralPath $currentDir -Recurse -File | Sort-Object FullName
+        $afterFiles.Count | Should -Be $beforeFiles.Count
+        foreach ($f in $afterFiles) {
+            $rel = $f.FullName.Substring($currentDir.Length + 1).Replace('\','/')
+            $beforeMap.ContainsKey($rel) | Should -BeTrue -Because "unexpected file appeared: $rel"
+            $beforeBytes = $beforeMap[$rel]
+            $afterBytes  = [System.IO.File]::ReadAllBytes($f.FullName)
+            $afterBytes.Length | Should -Be $beforeBytes.Length -Because "size mismatch in $rel"
+            $hashBefore = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash($beforeBytes))
+            $hashAfter  = [System.BitConverter]::ToString([System.Security.Cryptography.SHA256]::Create().ComputeHash($afterBytes))
+            $hashAfter | Should -Be $hashBefore -Because "content mismatch in $rel"
+        }
+    }
+
+    It 'AC-IP-DOG-ENTRY-2: dogfooding update-source rejection does not mutate the source repo HEAD' {
+        # Source = ProjectRoot = ai-harness multi-marker source repo.
+        $shared = Join-Path $TestDrive 'dog-2-shared'
+        $null = New-Item -ItemType Directory -Path $shared -Force
+        $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+        Push-Location $shared
+        try {
+            & git init -q 2>&1 | Out-Null
+            & git config core.autocrlf false 2>&1 | Out-Null
+            & git config core.safecrlf false 2>&1 | Out-Null
+            & git config user.email 'test@example.com' 2>&1 | Out-Null
+            & git config user.name  'test' 2>&1 | Out-Null
+            foreach ($r in 'config','scripts','snippets','templates') {
+                $null = New-Item -ItemType Directory -Path (Join-Path $shared $r) -Force
+                [System.IO.File]::WriteAllText((Join-Path $shared "$r/marker.txt"), "marker-$r-v1", $utf8NoBom)
+            }
+            [System.IO.File]::WriteAllText((Join-Path $shared 'scripts/verify-ps1.ps1'),    '# marker', $utf8NoBom)
+            [System.IO.File]::WriteAllText((Join-Path $shared 'templates/review-input.md'), '# marker', $utf8NoBom)
+            [System.IO.File]::WriteAllText((Join-Path $shared 'config/reviewer.json'),      '{}',       $utf8NoBom)
+            & git add . 2>&1 | Out-Null
+            & git commit -q -m 'seed' 2>&1 | Out-Null
+            $script:DogHeadBefore = (& git rev-parse HEAD 2>&1 | Out-String).Trim()
+            $script:DogStatusBefore = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()
+        }
+        finally { Pop-Location }
+
+        $area = script:New-InstallArea -CaseName 'dog-2'
+
+        # Install must succeed (install action does not trigger the dogfooding guard).
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$shared; Branch='main'; Remote='origin';
+            ProjectRoot=$shared; RuntimeToolRoot=$shared
+        } | Out-Null
+
+        # Now attempt update-source with the dogfooding source — must be refused.
+        $r = script:Invoke-InstallPipeline -Params @{
+            Action='update-source'; InstallArea=$area; SourcePath=$shared;
+            ProjectRoot=$shared; RuntimeToolRoot=$shared
+        }
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output   | Should -Match 'dogfooding source'
+
+        # Source repo HEAD and working tree must be unchanged.
+        Push-Location $shared
+        try {
+            $headAfter   = (& git rev-parse HEAD 2>&1 | Out-String).Trim()
+            $statusAfter = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()
+        }
+        finally { Pop-Location }
+        $headAfter   | Should -Be $script:DogHeadBefore
+        $statusAfter | Should -Be $script:DogStatusBefore
+    }
+
+    It 'AC-IP-FORBID-2: InstallArea pointing at %USERPROFILE%\.codex is refused' {
+        $userProfile = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
+        $forbidden = Join-Path $userProfile '.codex'
+        $src  = script:New-FixtureSourceRepo -CaseName 'forbid-2' -MarkerSuffix 'v1'
+        $proj = script:New-ProjectRoot -CaseName 'forbid-2'
+
+        $r = script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$forbidden; InstallMode='local-clone';
+            SourcePath=$src.Root; ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output   | Should -Match 'forbidden'
+    }
+
+    It 'AC-IP-FORBID-3: InstallArea descendant of %USERPROFILE%\.claude is refused' {
+        $userProfile = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
+        $forbidden = Join-Path (Join-Path $userProfile '.claude') 'pester-install-pipeline-forbid-3'
+        $src  = script:New-FixtureSourceRepo -CaseName 'forbid-3' -MarkerSuffix 'v1'
+        $proj = script:New-ProjectRoot -CaseName 'forbid-3'
+
+        $r = script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$forbidden; InstallMode='local-clone';
+            SourcePath=$src.Root; ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output   | Should -Match 'forbidden'
+        # The forbidden path must not have been created by the rejected run.
+        Test-Path -LiteralPath $forbidden | Should -BeFalse
+    }
+}
