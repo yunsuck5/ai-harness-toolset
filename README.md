@@ -6,6 +6,10 @@ ai-harness-toolset is a project-local deterministic toolset. It is not an orches
 
 > **Current adoption model.** The current adoption and default direction is the **shared / global stable runtime ToolRoot** — channel 3, the global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation (see `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` and `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md`). The **legacy project-local copy mode** (channel 5) — the `.ai-harness/` payload covered in its own subsection below — is still supported for backward compatibility, but is not the recommended adoption shape for new projects. Source-repo dogfooding resolves the ToolRoot to the repo root (channel 4), but channel 4 is only reached when no channel 3 global stable install is present; on a machine that has one, pass an explicit `-ToolRoot <repo-root>` (channel 1) so channel 3 does not shadow it. Full mode boundaries: `docs/OPERATOR_GUIDE_KR.md` §2.
 
+## Install
+
+[`INSTALL.md`](INSTALL.md) 가 unified install guide 다. GitHub repo URL 과 local clone path 의 두 source input 을 같은 model 로 설명하며, prerequisites / fresh install / update · reinstall / failure handling 까지 본문에 포함되어 self-contained 하다. 본 도구는 system-wide CLI / productized installer 가 없고, install operator 는 Claude Code 다. install identity 는 source 문자열이 아니라 resolved commit SHA 다. 실제 `%USERPROFILE%\.claude\ai-harness-toolset\current\` materialize / refresh 는 explicit user-approved global / user filesystem mutation scope 이며, trigger 한 줄로 자동 실행되지 않는다.
+
 ## Quick start
 
 The current adoption model is the **shared / global stable runtime ToolRoot** (channel 3). There is no installer and no system-wide CLI: lifecycle scripts run from a global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, and every invocation resolves that path automatically — you do not pass `-ToolRoot` or set `AI_HARNESS_TOOL_ROOT`. Runtime output is always written under the target project's `<project-root>/log/`, never back into the install.
