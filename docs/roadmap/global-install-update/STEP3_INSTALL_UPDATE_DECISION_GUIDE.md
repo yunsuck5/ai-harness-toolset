@@ -207,3 +207,98 @@ yes with risk
 verdict 의미: §2 의 planning discussion 결과는 non-source-of-truth Step 3 planning reference 로 사용 가능하다. 단 본 가이드의 §7 carry-forward caveats 가 향후 prompt / handoff / scope definition / Codex review input 에 명시적으로 함께 운반되어야 한다.
 
 위 verdict 는 commit / push / publish / merge / release / adoption 또는 Step 3 implementation 의 자동 승인이 아니다.
+
+---
+
+## 10. Recorded 3-0 layer layout decision
+
+본 절은 §6 의 canonical decomposition 9 단계 중 첫 단계 — **3-0 install / update layer layout decision** — 의 결정 shape 를 repo source-of-truth 로 anchor 한다. 본 anchor 는 §5 (Layer separation) 의 fixed boundary 를 약화하지 않으며, §7 (Carry-forward caveats) 의 항목과 충돌하지 않는다. 본 anchor 는 layer 의 종류 / boundary / mutability / lifecycle 분류만 기록하며, 정확한 file / directory 이름, metadata schema 필드, installer materialization default 등은 본 anchor 의 범위 밖이고 후속 sub-step (3-1 ~ 3-8) 의 scoped decision 으로 carry 된다.
+
+본 anchor 는 implementation, schema design, install / update / restore 의 actual 실행, global / user filesystem mutation, target adoption, commit / push / publish / merge / release / Step 4 validation 어느 것도 자동 승인하지 않는다. 본 anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거친다 (§8 와 정합).
+
+### 10.1 Layer category 분류
+
+본 anchor 가 인정하는 layer category 는 다음 5 가지다. 각 layer 의 정확한 path-name / directory layout 은 본 anchor 가 fix 하지 않는다 — boundary level 의 분류만 기록한다.
+
+| layer | repo-side 위치 (현행) | global install area 위치 (boundary) | mutability | lifecycle action |
+|---|---|---|---|---|
+| **runtime payload** | `config/`, `scripts/`, `snippets/`, `templates/` (root set 유지 — 변경은 별도 scoped decision) | `current/` 안 | install 후 read-only | overwrite materialization (§3) |
+| **install control-plane** | repo-side root 후보 (path-name 미확정 — 3-1 ~ 3-3 단계 carry) | `current/` 와 **sibling**; global install area 에 control-plane copy 를 materialize 할지는 §7 #9 의 의미상 optional | install 후 read-only | install metadata 기준 dispatch (§3) |
+| **install metadata** | source repo 에는 schema / example 만 (instance 금지) | `current/` 와 **sibling**; JSON | append-on-update | install / update 시 write (`GLOBAL_INSTALL_UPDATE_MODEL.md` §5) |
+| **source-cache** (optional) | — | layer 도입 여부 자체가 deferred (§7 #4) | — | 본 anchor 가 layer 를 도입하지 않는다 |
+| **tests / docs** | `tests/`, `docs/` | runtime payload 아님 → `current/` 외부 | source-managed | install / update payload 대상 아님 |
+
+### 10.2 `current/` 포함 / 제외 명시
+
+`current/` 는 **runtime payload only** 다 (§5 와 정합). 다음 항목은 어느 경우에도 `current/` 안에 들어가지 않는다.
+
+- install control-plane code / installer source.
+- install metadata instance (정확한 filename 은 3-1 단계 carry).
+- source-cache (layer 도입 시에도 `current/` 밖).
+- repo `tests/`, `docs/`.
+- runtime / state artifact (`<ProjectRoot>/log/` 아래 — 별개 ProjectRoot tree).
+- Claude skill SKILL.md (`%USERPROFILE%\.claude\skills/` 별도 위치).
+- global instruction file content (`%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md` 등 별도 destination).
+- ad-hoc backup / archive / snapshot.
+
+`current/` 안에 위 어느 항목이 materialize 되면 §5 의 fixed boundary 위반이다.
+
+### 10.3 Target project footprint 보존
+
+target project 에 대한 footprint 결정은 다음을 보존한다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §8 와 정합).
+
+- target project 는 install control-plane / installer source 를 **받지 않는다**.
+- target project 는 install metadata instance 를 **받지 않는다**.
+- target project 의 persistent footprint 는 `<ProjectRoot>/log/` only (3차 reconciliation 기준; BRIEF / Chatlog / Evidence / Review 모두 `log/` 아래).
+- forbidden target path: `.ai-harness/`, target 안의 `scripts/` / `config/` / `templates/` / `snippets/` 사본, ai-harness 전용 `CLAUDE.md` / `AGENTS.md`, root `<ProjectRoot>/brief/`, user-home operator-local runtime root.
+
+### 10.4 Install metadata 위치 (boundary level only)
+
+본 anchor 는 metadata 의 정확한 filename / path 를 fix 하지 않고 boundary 만 결정한다.
+
+- metadata instance 는 global install area 의 `current/` 와 **sibling** 위치에 둔다.
+- format 은 JSON.
+- `current/` **안** 에는 두지 않는다 (§5).
+- target project **안** 에는 두지 않는다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §5.1).
+- source repo 의 tracked instance 로 두지 않는다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §5.1; source repo 에는 schema / example 만 허용).
+
+정확한 filename 과 schema field set 은 **3-1 단계의 scoped decision** 으로 carry (§7 #3 과 정합). 부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` §5.2 의 minimal field set 이 3-1 단계의 baseline 이다.
+
+### 10.5 installer / source-cache 결정 (deferred 범위 보존)
+
+- **installer / control-plane** — layer category 자체는 본 anchor 가 인정한다 (§10.1). global install area 의 정확한 path-name, repo-side control-plane root 의 위치, materialization default (optional materialization 의 on / off default), 모두 **3-1 ~ 3-3 단계의 scoped decision** 으로 carry (§7 #4, #9 와 정합).
+- **source-cache** — 본 anchor 가 layer 도입 자체를 채택하지 **않는다.** install-from-git-url mode 의 source clone 위치가 `current/` 와 어떻게 격리될지의 필요성이 3-3 / 3-4 단계에서 드러나면 그때 layer 신설 여부를 재평가 (§7 #4 와 정합).
+
+### 10.6 Managed-block / skill refresh boundary 보존
+
+본 anchor 는 다음 boundary 를 약화시키지 **않는다** (`GLOBAL_INSTALL_UPDATE_MODEL.md` §1 / §12, §7 #2 와 정합).
+
+- global instruction file (`%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md` 또는 `%CODEX_HOME%\AGENTS.md`, Codex user-global `AGENTS.override.md`, project-root `CLAUDE.md` / `AGENTS.md`) 의 managed-block apply 는 install / update automation **본체 밖** 이다. `GLOBAL_ADOPTION_DECISION.md` §6 의 explicit user-approved managed-block insert / replace scope 가 governing 한다.
+- Claude skill SKILL.md install / update / removal 은 `GLOBAL_ADOPTION_PROCEDURE.md` 가 source-of-truth 인 별도 절차다. install / update automation 본체가 자동으로 skill 을 refresh 하지 않는다.
+- automation 본체의 trigger / verdict 는 managed-block apply 나 skill refresh 를 묶음으로 자동 승인하지 않는다.
+- forbidden path `%USERPROFILE%\.claude\AGENTS.md` 는 어느 scope 에서도 생성하지 않는다.
+
+3-6 (managed block / skill replace boundary) step 은 위 boundary 의 **정의 / 진단 helper** 만 다루며, install / update automation 본체를 managed block apply 까지 확장하라는 의미가 아니다 (§6 와 정합).
+
+### 10.7 본 anchor 의 scope 와 non-goals
+
+본 anchor 는 다음을 **포함한다**.
+
+- §10.1 의 5 layer category 분류 및 그 boundary 결정.
+- `current/` 의 runtime-payload-only 경계 (§10.2).
+- target footprint = `<ProjectRoot>/log/` only 경계 (§10.3).
+- install metadata 의 sibling-of-`current/` + JSON boundary (§10.4).
+- installer / source-cache 의 deferred carry (§10.5).
+- managed-block / skill refresh 의 automation 본체 밖 boundary (§10.6).
+
+본 anchor 는 다음을 **포함하지 않는다.**
+
+- installer / control-plane 의 정확한 path-name, repo-side control-plane root 위치, materialization default.
+- source-cache layer 의 도입 / 미도입 final.
+- install metadata 의 정확한 filename, schema field set.
+- `current/` payload completeness marker (entrypoint set) 의 finalize.
+- payload integrity 검증 알고리즘 (aggregate digest vs per-file manifest; `docs/backlog/operations.md` "Aggregate digest reproducibility" 항목이 별도 carry).
+- 3-1 ~ 3-8 단계의 implementation 또는 schema design.
+- install / update / restore 의 actual 실행, global / user filesystem mutation, target adoption, commit / push / publish / merge / release.
+
+본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply 는 사용자 명시 결정으로 처리한다 (§8 와 정합).
