@@ -383,26 +383,35 @@ global stable runtime ToolRoot 모델로의 전환이 snippets / skill / resolut
 
 ## Aggregate digest reproducibility — install/update verification scope debt
 
-- **Status**: candidate
-- **Classification**: install / update automation 의 verification scope. global runtime ToolRoot channel 3 (`%USERPROFILE%\.claude\ai-harness-toolset\current`) payload 무결성 검증 방법의 정의에 관한 debt 다.
+- **Status**: 완료 — `docs/roadmap/global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §15 anchor 가 candidate (b) per-file manifest 를 채택하고 `payload-manifest.json` + `payload-marker.json` 의 minimum contract + temp-only implementation + dry-run tests 를 final shape 로 anchor 했다 (commit `1273afe`). 본 backlog 항목의 verification scope debt 는 본 채택으로 해소된다.
+- **Classification**: install / update automation 의 verification scope (`GLOBAL_INSTALL_UPDATE_MODEL.md` §1) 에 대한 historical debt 기록. global runtime ToolRoot channel 3 (`%USERPROFILE%\.claude\ai-harness-toolset\current`) payload 무결성 검증 방법의 정의 debt.
 
-### Context
+### Historical context
 
 channel 3 payload 검증 시, 단일 aggregate digest 값으로 payload 전체 무결성을 한 번에 확인하려는 시도가 있었으나, 그 digest 를 산출한 알고리즘이 repo docs / scripts 어디에도 명문화되어 있지 않고 `current/` 안에 동행 manifest 도 없어 재현 / 검증이 불가능했다. 동일 payload 에 대해 서로 다른 산출 방식 (relpath:hash 라인 집계, content-only concat 등) 이 서로 다른 값을 내므로, 알고리즘이 고정되지 않으면 "expected digest" 는 verifiable 한 기준이 되지 못한다. 해당 라운드에서는 per-file SHA-256 비교 (`current/` vs source HEAD, 27/27 byte-identical) 라는 method-independent 방식으로 content equality 를 확인하여 우회했다.
 
-### Candidate direction
+### Adopted shape (closed)
 
-- install / update automation 의 verification scope (`GLOBAL_INSTALL_UPDATE_MODEL.md` §1 의 automation 본체 scope 정의 참조) 에 payload 무결성 검증 방식을 명시적으로 포함한다. 다음 중 하나로 좁힌다.
-  - (a) **deterministic aggregate digest algorithm 의 문서화** — 입력 파일 집합, 정렬 규칙, 경로 정규화, 줄바꿈 / BOM 처리, 해시 결합 순서를 명문화하고, 그 알고리즘으로 산출한 digest 를 `current/` 동행 manifest 에 기록한다.
-  - (b) **per-file manifest** — aggregate digest 대신 relative path → SHA-256 의 명시적 목록을 manifest 로 두고, 검증은 파일 단위 비교로 수행한다.
-- 어느 쪽이든 검증 알고리즘 / manifest schema 는 install metadata (`GLOBAL_INSTALL_UPDATE_MODEL.md` §5) 와 정합해야 한다.
+- STEP3 guide §15.1 의 algorithm choice — **(b) per-file manifest** 채택. (a) deterministic aggregate digest algorithm 은 채택하지 않는다.
+- STEP3 guide §15.2 / §15.3 의 manifest + marker contract — `payload-manifest.json` (sibling-of-`current/`, JSON UTF-8 no-BOM, per-file `{path, size, sha256}` ascending sort) + `payload-marker.json` (sibling-of-`current/`, presence flag + head/manifestPath/payloadRoots constant).
+- STEP3 guide §15.4 의 write hook (materialization 직후 / install.json write 이전) + verify hook (`Invoke-InstallPipelineVerify` 안에서 manifest per-file diff + marker presence + cross-binding fail-fast).
+
+### Not a work candidate
+
+다음 항목은 본 toolset 의 **작업 후보로 보존하지 않는다** (STEP3 guide §15.6 / §19 운영 정책과 정합).
+
+- (a) deterministic aggregate digest algorithm 의 별도 도입.
+- manifest / marker schema bump migration writer.
+- manifest 외부 검증 tool / linter / 자동 검사 mechanism.
+- payload-marker.json 의 channel 3 활성 조건 hook 의 actual implementation 확장.
+- entrypoint set finalize.
+- target adoption / external target 에 대한 manifest / marker.
+
+manifest / marker 의 손상 / drift 가 감지되면 STEP3 guide §19 의 manual source 재준비 + deterministic overwrite reinstall 로 처리한다 — overwrite materialization 이 manifest + marker 를 source HEAD 기준으로 재작성한다.
 
 ### Non-goals
 
-- 본 항목은 backlog candidate 다. 즉각 algorithm / manifest 도입은 자동 승인되지 않는다.
-- install / update automation 본체 구현의 승인이 아니다 — `GLOBAL_INSTALL_UPDATE_MODEL.md` §7 sequencing (validation 먼저) 이 우선한다.
-- digest 검증 linter / 자동 검사 tool 도입을 자동 승인하지 않는다.
-- 본 항목 implementation 은 별도 scoped goal 을 거친다.
+- 본 closeout 은 actual global / user filesystem mutation, target adoption, commit / push / publish / merge / release / Step 4 validation 시작 어느 것도 자동 승인하지 않는다.
 
 ---
 
