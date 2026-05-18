@@ -628,7 +628,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 
 본 절은 §6 canonical decomposition 의 9 번째 sub-step — **3-8 minimal docs closeout** — 을 수행한다. Step 3 의 현재 완료 상태를 한 자리에 모으고, 남은 deferred scope 를 분리해 기록한다. 본 절의 존재로 어떤 새 implementation, validation, adoption, release, publish, global / user filesystem mutation, commit / push / merge / release 도 자동 승인되지 않는다.
 
-§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에, 3-6 boundary 의 § anchor 는 §14 에, payload integrity manifest + payload completeness marker minimum contract 는 §15 에, git-url mode minimum source acquisition contract 는 §16 에 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다. 본 §13 작성 시점에는 §14 / §15 / §16 가 아직 작성되지 않았으나, 후속 anchor 라운드 (3-6 anchor / manifest+marker minimum contract / git-url minimum source acquisition) 에서 본 §13.1 의 Completed 와 §13.2 의 Deferred 가 함께 갱신되었다.
+§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에, 3-6 boundary 의 § anchor 는 §14 에, payload integrity manifest + payload completeness marker minimum contract 는 §15 에, git-url mode minimum source acquisition contract 는 §16 에, source-cut path actual handling decision anchor 는 §17 에 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다. 본 §13 작성 시점에는 §14 / §15 / §16 / §17 가 아직 작성되지 않았으나, 후속 anchor 라운드 (3-6 anchor / manifest+marker minimum contract / git-url minimum source acquisition / source-cut path decision anchor) 에서 본 §13.1 의 Completed 와 §13.2 의 Deferred 가 함께 갱신되었다.
 
 ### 13.1 Completed
 
@@ -642,6 +642,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - **3-6 managed-block / skill replace boundary anchor** — §14 anchor (boundary statement, in-scope / out-of-scope enumeration, deferred items). §7 #2 carry-forward caveat 의 §anchor 정착 + §10.6 / §11.7 / §12.10 enumeration 의 상위 §종합 자리. install / update automation core (§12 의 4 action) ≠ managed-block / skill replace apply (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 scope 분리를 한 줄 boundary 로 anchor. commit `9cf2000` (`Anchor Step 3 3-6 managed-block boundary`). 본 anchor 는 boundary 정의에 한정되며 actual managed-block / skill apply 또는 진단 helper / actual writer 의 도입을 자동 승인하지 않는다.
 - **payload integrity manifest + payload completeness marker minimum contract + temp-only implementation + dry-run tests** — §15 anchor + `scripts/lib/install-pipeline-core.ps1` 구현 + `tests/install-pipeline.Tests.ps1` 9 신규 tests. backlog "Aggregate digest reproducibility" candidate (b) per-file manifest 채택; `payload-manifest.json` (sibling-of-`current/`, JSON UTF-8 no-BOM, per-file `{path, size, sha256}` sorted ascending) + `payload-marker.json` (sibling-of-`current/`, presence flag + integrity binding). write hook 은 materialization 직후 / metadata write 이전 단계로, verify hook 은 `Invoke-InstallPipelineVerify` 안의 metadata 검증과 함께 manifest per-file diff (tamper / missing / extra) + marker presence + head cross-binding 을 fail-fast. commit `1273afe` (`Anchor Step 3 payload manifest and marker minimum contract`). 본 anchor 는 local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action 만 cover 하며 git-url mode actual network fetch / actual global install area mutation / entrypoint set finalize / aggregate digest algorithm (candidate (a)) / schema bump migration writer / 외부 검증 tool / channel 3 활성 hook 의 actual implementation / target adoption 은 자동 승인하지 않는다.
 - **git-url mode minimum source acquisition contract + temp-only implementation + dry-run tests** — §16 anchor + `scripts/lib/install-pipeline-core.ps1` 구현 + `scripts/install-pipeline.ps1` entry wiring + `tests/install-pipeline.Tests.ps1` 9 신규 tests (AC-IP-GITURL-*). §10.5 의 deferred source-cache layer 결정을 reassessment 결과로 §16 에서 채택 — canonical location `<InstallArea>/source-cache/` (sibling-of-`current/`), normal-clone format, single-cache-per-InstallArea. per-action lifecycle: install → `git clone -q`, update-source → `git fetch -q origin <branch>` + resolve `origin/<branch>`, update-current → cache-local `git rev-parse HEAD` (no network), restore → cache-local `git rev-parse --verify <user-ref>^{commit}` (no network). failure preservation: fetch / resolve / clone 실패가 모두 materialization 이전 단계라 deliverable artifact (install.json / manifest / marker / current/) 의 byte-identity 가 보존된다. tuple.toolRoot = cache absolute path (§16.5 — install.json `toolRoot` 와 정합); tuple.sourceLocation = URL (user-facing identifier). `Invoke-InstallPipelineNativeGit` helper 가 `$ErrorActionPreference` 를 함수 scope 내 'Continue' 로 pin 해 NativeCommandError-on-stderr 가 LASTEXITCODE-driven throw 를 preempt 하는 PS 5.1 quirk 를 우회. test fixture 는 `git clone --bare -q` 로 만든 local bare repo 만 사용 (`-RepoUrl` = bare absolute path; file:// URL 도 동등하게 동작하나 path 만 사용). 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 credential / auth handling / clone recovery / multi-cache / per-ref subdirectory / bare cache / cache identity verification / fetch retry / submodule / actual global apply / source-cut path 실제 처리 / schemaVersion migration writer / Step 4 시작 / managed-block apply / Claude skill install/update/removal / 외부 GitHub network reachability 의존 test 어느 것도 자동 승인하지 않는다.
+- **Step 3 source-cut path actual handling decision anchor** — §17 anchor. §12.7 detection-only / dispatcher non-process / STOP behavior 위에서, source-cut path 의 actual handling 을 **`deferred with exact boundary`** 로 고정한다. `explicit unsupported fail-fast now` 도 `minimum support now` 도 채택하지 않는다 — future implementation 가능성은 보존하되 본 라운드의 자동 승인은 거부. 본 anchor 는 (a) 3 concept (local-clone mode / git-url mode / source-cut path) 의 boundary separation 을 본 자리에서 한 번 종합 — local-clone / git-url 은 mutually exclusive 한 두 mode 이며 source-cut 은 세 번째 mode 가 아니라 metadata mutation class. (b) §12.7 의 6 trigger field (`installMode` / `repoUrl` / `sourcePath` / `toolRoot` / `branch` / `remote`) 를 본 anchor 에 복제 anchor (재정의 아님). (c) §17.4 in-scope behavior 보존 (§12.7 unchanged + 3-7 dry-run 의 byte-identity case 유지). (d) §17.5 deferred boundary 8 항목 enumeration — 재install handler / metadata mutation writer / new install path 및 cutover 절차 / approve UX / source-cache lifecycle on mode change / `schemaVersion` source-cut-related field 추가 / dogfooding mode interaction enforcement / source-cut 처리 후 manifest+marker 재작성 절차. (e) §17.6 forbidden enumeration. 본 anchor 는 docs-only 이며 `scripts/install-pipeline.ps1` / `scripts/lib/install-pipeline-core.ps1` / `tests/install-pipeline.Tests.ps1` 어느 것도 변경하지 않는다. 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 source-cut handler 의 신규 implementation, install-pipeline 의 source-cut 자동 처리, 신규 Pester test 추가, metadata in-place mutation, actual global apply, managed-block apply, Claude skill install / update / removal, Step 4 validation 시작, snapshot / manifest 생성, commit / push 어느 것도 자동 승인하지 않는다.
 
 본 commit 시리즈의 최신 HEAD: `3bff2093ee3cfb0996633007efed717b64ace631` (3-7 dry-run coverage extension 시점). 본 §14 anchor 가 commit 되면 HEAD 는 그 후속 commit hash 로 carry — 본 §13.1 의 commit hash 표기는 본 §14 anchor 의 commit 시점에 갱신되지 않으며 ("baseline commit hash 는 review context only" — §7 #6 와 정합), 위 3-7 시점의 baseline 표기로 historical 보존된다.
 
@@ -656,7 +657,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - **3-6 boundary 의 후속 implementation 항목** — §14 anchor 가 boundary 정의를 마치므로 본 §13.2 의 deferred 잔여는 §14.4 의 5 항목 (boundary 진단 helper / check-only helper 의 도입 여부 + spec + 위치 + 이름, managed-block apply 의 actual writer surface, Claude skill install / update / removal 의 actual writer surface, boundary violation detection mechanism, 3-6 의 implementation-level closeout) 으로 좁아진다. 본 항목들은 boundary 정의가 아니라 boundary 의 후속 implementation / helper 단계이며, 모두 별도 scoped goal (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 explicit user-approved decision 으로 진행한다.
 - **Step 4 actual install / update validation** — `POST_MVP_PLAN.md` §11 step 4. 본 §13 closeout 이 자동 승인하지 않는다.
 - **Actual global / user filesystem apply** — global stable install (`%USERPROFILE%\.claude\ai-harness-toolset\current\`) 의 실제 materialize / refresh, install metadata instance write, managed-block apply, Claude skill assets install 어느 것도 본 commit 시리즈로 자동 승인되지 않는다.
-- **source-cut path 의 실제 처리** — §12.7 의 detection-only 가 본 skeleton 의 boundary; 실제 handling (재install / metadata 갱신 / new install 등) 은 별도 scoped goal.
+- **source-cut path 의 실제 처리** — §17 anchor 가 본 항목을 **`deferred with exact boundary`** 로 정착시키므로 본 §13.2 의 deferred 잔여는 §17.5 의 8 항목 (재install handler / metadata mutation writer / new install path 및 cutover 절차 / approve UX / source-cache lifecycle on mode change / `schemaVersion` source-cut-related field 추가 / dogfooding mode interaction enforcement / source-cut 처리 후 manifest+marker 재작성 절차) 으로 좁아진다. §12.7 의 resolver detection-only / dispatcher non-process / STOP behavior 는 그대로 유지된다 (§17.4). 본 항목들은 별도 scoped goal 의 explicit user-approved decision 으로만 진행한다 (`docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` §4 와 정합).
 - **dogfooding enforcement mechanism 의 final shape** — 현 skeleton 은 `-AllowDogfoodSource` switch 패턴. 실제 운영의 warning prompt / flag / confirm UX 결정은 별도 scoped goal.
 - **`schemaVersion` bump migration writer** — §11.3 / §11.6 그대로 deferred.
 - **post-MVP closeout 결정 (`POST_MVP_PLAN.md` §11 step 6)**, **`ai-harness-toolset` self-adoption (`POST_MVP_PLAN.md` §11 step 5)**, **new GJMNet clean adoption (`POST_MVP_PLAN.md` §11 step 7)** — 모두 별도 scoped goal.
@@ -1009,3 +1010,112 @@ resolver tuple 의 `toolRoot` field 도 동일한 cache absolute path 다. `sour
 - commit / push / publish / merge / release / adoption.
 
 본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc / test mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 / §13.3 / §14.5 / §15.7 와 정합).
+
+---
+
+## 17. Recorded Step 3 source-cut path actual handling decision anchor
+
+본 절은 §12.7 (source-cut detection — resolver level only) 와 §13.2 deferred 의 "source-cut path 의 실제 처리" 항목에 대한 **decision anchor** 다. 본 anchor 는 actual handling 의 처리 방식을 **"deferred with exact boundary"** 로 고정한다 — 즉, 본 라운드의 Step 3 어디서도 source-cut path 의 actual handling implementation 으로 확장하지 않으며, deferred 의 boundary 를 본 §17 에서 한 번 종합한다.
+
+본 anchor 는 §10 (3-0 layer layout) / §11 (3-1 install metadata contract) / §12 (3-2~3-5 runtime pipeline grouping) / §14 (3-6 managed-block / skill replace boundary) / §15 (manifest + marker minimum contract) / §16 (git-url mode minimum source acquisition contract) 위에 build 되며 그 결정을 약화하지 않는다. 본 anchor 는 source-cut handler 의 신규 implementation, install-pipeline 의 source-cut 자동 처리 함수 추가, 신규 test 추가, actual `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` mutation, Step 4 validation 어느 것도 자동 승인하지 않는다.
+
+### 17.1 Decision
+
+source-cut path 의 actual handling 은 **deferred with exact boundary** 다. 본 anchor 는 다음 두 가지를 동시에 anchor 한다.
+
+- **현 라운드의 in-scope behavior 는 §12.7 의 resolver detection-only / dispatcher non-process / STOP 그대로** — 본 anchor 가 그 behavior 를 변경하지 않는다.
+- **actual handling 의 future scope 는 별도 explicit user-approved goal 로 carry** — 본 anchor 가 future handler 의 신규 함수 surface / 명령 / approve UX / metadata mutation 절차 / source-cache lifecycle 어느 것도 fix 하지 않는다.
+
+`explicit unsupported fail-fast now` 는 본 anchor 의 선택지가 **아니다** — source-cut 의 future implementation 자체를 영구히 무지원으로 닫지 않는다. 본 anchor 는 future implementation 의 **자동 승인을 거부** 할 뿐이며, future scoped goal 의 가능성을 보존한다. `minimum support now` 도 본 anchor 의 선택지가 아니다 — 본 라운드는 어떤 minimal source-cut handler 의 도입도 자동 승인하지 않는다.
+
+### 17.2 Mode separation (3 concept boundary)
+
+**local-clone mode / git-url mode / source-cut path** 의 의미를 본 anchor 가 한 자리에 명시한다. 셋의 의미가 섞이지 않도록 boundary 를 분리한다.
+
+- **local-clone mode** — `installMode == "local-clone"` 인 single source acquisition channel. metadata 의 `sourcePath` (+ `toolRoot`) 가 source resolution 의 입력이며, `Invoke-InstallPipelineNativeGit` 으로 `git archive` 가 그 source 에서 ref-specific snapshot 을 만든다 (§12.3 / §16.5 와 정합). cache-free behavior 다.
+- **git-url mode** — `installMode == "git-url"` 인 single source acquisition channel. metadata 의 `repoUrl` (+ `branch` / `remote` / `toolRoot=<InstallArea>/source-cache/`) 가 source resolution 의 입력이며, `<InstallArea>/source-cache/` 의 single normal clone 이 §16 의 lifecycle (clone / fetch / cache-local ref resolve / cache `git archive`) 을 수행한다.
+- **source-cut path** — source acquisition mode 의 **변경** 또는 동일 mode 안의 source identity (`repoUrl` / `sourcePath` / `toolRoot` / `branch` / `remote`) 의 변경. 이는 **세 번째 mode 가 아니다** — local-clone 과 git-url 은 mutually exclusive 한 두 mode 이며, source-cut 은 한 InstallArea 의 metadata 가 그 두 mode 사이를 옮기거나 동일 mode 안의 source identity field 가 바뀌려는 **mutation class** 다.
+
+두 mode 의 lifecycle 은 본 anchor 의 결정과 독립적이다. 본 anchor 는 두 mode 의 어느 lifecycle (§12 / §15 / §16) 도 약화하지 않는다 — 본 anchor 가 anchor 하는 것은 **mutation class 의 deferred boundary** 뿐이다.
+
+### 17.3 Source-cut trigger fields (재anchor)
+
+§12.7 가 enumerate 한 source-cut trigger field 6 개를 본 anchor 가 그대로 보존한다 (재정의가 아니며, §12.7 의 enumeration 을 본 anchor 에 복제 anchor 한다).
+
+- `installMode` (git-url ↔ local-clone)
+- `repoUrl`
+- `sourcePath`
+- `toolRoot`
+- `branch`
+- `remote`
+
+invocation params 가 위 field 중 어느 하나라도 metadata 와 다르면 source-cut 으로 분류되어 §12.7 의 resolver STOP / dispatcher non-process 가 발생한다. 본 anchor 는 위 enumeration 의 추가 / 삭제 / 재정의를 자동 승인하지 않는다.
+
+### 17.4 In-scope behavior at this anchor (no change from §12.7)
+
+본 anchor 는 다음 behavior 를 보존만 한다 — 추가 / 변경 어느 것도 도입하지 않는다.
+
+- resolver 가 source-cut 을 감지 (URL normalization 후 §17.3 의 6 field 비교) 하여 `sourceCutDetected=true` 로 표시 (§12.3 / §12.7 와 정합).
+- dispatcher 가 `sourceCutDetected=true` 인 resolved tuple 을 진행하지 않음 — STOP / 사용자 보고 (§12.5 / §12.7 와 정합).
+- destination artifact (`current/` / `install.json` / `payload-manifest.json` / `payload-marker.json`) 의 byte-identity 보존 (§12.4 의 materialization core atomicity, §15.4 의 manifest / marker write hook 의 metadata-write-이전 단계, §16.4 의 fetch / resolve 실패의 materialization-이전 단계 invariant 와 정합).
+- §12.9 의 key failure cases 중 "source-cut detected" 의 exit non-zero / 사유 message / 다음 사용자 행동 안내 형식 그대로.
+- §13.1 의 3-7 dry-run coverage extension (commit `3bff209`) 에 이미 anchored / tested 인 "source-cut 거부 후 `current/` byte-identity 보존" Pester case 그대로 유지.
+
+본 in-scope behavior 는 §12 라운드 (commit `f11ed27`) 와 3-7 dry-run coverage extension (commit `3bff209`) 에서 이미 anchored / tested 상태다. 본 §17 anchor 는 그 behavior 에 어떠한 implementation 변경도 추가하지 않는다.
+
+### 17.5 Deferred boundary (별도 explicit user-approved goal 의 대상)
+
+본 anchor 가 deferred 로 carry 하는 항목은 다음과 같다. 각 항목은 별도 scoped goal 의 explicit user-approved decision 으로만 진행한다. 본 enumeration 은 §13.2 의 "source-cut path 의 실제 처리" 항목을 본 자리에서 한 번 종합한 결과이며, §12.7 의 "별도 explicit user-approved scope" wording 의 boundary closeout 이다.
+
+- **재install handler** — source-cut detected 시 invocation params 에 정합한 새 install 절차로 자동 전환할지의 결정 / 형태 / approve UX. 본 anchor 는 어떠한 자동 전환도 거부한다.
+- **metadata mutation writer** — `installMode` / `repoUrl` / `sourcePath` / `toolRoot` / `branch` / `remote` 중 일부 또는 전부의 in-place 갱신 절차 (§11.1 14-field schema 위에서의 partial mutation 형태). 본 anchor 는 어떤 in-place mutation 도 자동 승인하지 않는다.
+- **new install path / cutover 절차** — 기존 InstallArea 를 보존하면서 별도 InstallArea 로 install 하는 절차, 또는 기존 InstallArea 를 retire 하고 새 InstallArea 로 cutover 하는 절차. 본 anchor 는 어떤 cutover 도 자동 승인하지 않는다.
+- **approve UX / explicit confirmation prompt** — source-cut 처리의 사용자 명시 승인 UX (warning prompt / `--allow-source-cut` flag / 별도 explicit command surface 등) 의 final shape. 본 anchor 는 어떤 UX 도 fix 하지 않는다.
+- **source-cache lifecycle on mode change** — git-url ↔ local-clone mode 변경 또는 git-url 안의 `repoUrl` / `branch` / `remote` 변경 시 기존 `<InstallArea>/source-cache/` 의 cleanup / 보존 / 재clone 절차 (§16.2 single-cache-per-InstallArea boundary 위에서의 lifecycle 결정). 본 anchor 는 어떤 cleanup 절차도 자동 승인하지 않는다.
+- **`schemaVersion` 의 source-cut-related field 추가** — 별도 field (예: `sourceCutHistory`, `previousInstallMode`, `cutoverAt` 등) 의 도입은 별도 scoped decision (§11.3 / §11.6 의 schema bump migration writer deferred 그대로 와 정합).
+- **source-cut path 와 dogfooding mode (§12.8) 의 interaction** — dogfooding mode 에서의 source-cut 처리의 추가 보호 layer 도입 여부 / final shape. 본 anchor 는 §12.8 의 dogfooding silent-mutation 보호를 그대로 보존하며, source-cut 과의 interaction enforcement 는 별도 scoped goal.
+- **source-cut path 의 manifest / marker 재작성 절차** — source-cut handling 후 §15 의 `payload-manifest.json` / `payload-marker.json` 의 재작성 hook 의 정확한 순서 / boundary. 본 anchor 는 §15.5 의 "source-cut path 의 실제 처리 후의 manifest 재작성" deferred 그대로 와 정합.
+
+### 17.6 Forbidden in this anchor
+
+본 anchor 는 다음을 금지한다 (§10.6 / §11.7 / §12.11 / §13.3 / §14.3 / §15.7 / §16.8 와 정합).
+
+- source-cut handler 의 신규 implementation. `scripts/install-pipeline.ps1`, `scripts/lib/install-pipeline-core.ps1` 에 source-cut 자동 처리 함수 / branch / parameter 추가.
+- `tests/install-pipeline.Tests.ps1` 의 source-cut handling test 신규 추가 (현행 source-cut detection / STOP / byte-identity preservation tests 그대로 유지).
+- 어떤 invocation flag / parameter 도입으로 source-cut 의 자동 처리를 활성화하는 변경.
+- §12.7 의 resolver detection-only / dispatcher non-process / STOP boundary 의 약화.
+- metadata 의 `installMode` / `repoUrl` / `sourcePath` / `toolRoot` / `branch` / `remote` 의 in-place mutation.
+- §11.1 의 14-field install metadata schema 변경.
+- §15 의 manifest / marker schema 변경, §16 의 source-cache lifecycle 변경.
+- actual `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` mutation.
+- managed-block apply / Claude skill install / update / removal (§14 boundary 와 정합).
+- Step 4 validation 시작.
+- snapshot / payload manifest / payload marker 생성 (본 anchor 는 docs-only).
+- 부모 root-level docs (`GLOBAL_INSTALL_UPDATE_MODEL.md`, `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`) 본문 mutation.
+- `docs/backlog/operations.md` 의 기존 항목 status 변경.
+- §6 canonical decomposition (9 단계 ordering / numbering) 변경.
+- commit / push / publish / merge / release / adoption.
+
+### 17.7 본 anchor 의 scope 와 non-goals
+
+본 anchor 는 다음을 **포함한다**.
+
+- §17.1 의 decision (`deferred with exact boundary`) anchor.
+- §17.2 의 3 concept (local-clone mode / git-url mode / source-cut path) boundary separation.
+- §17.3 의 trigger field 6 개 재anchor (§12.7 와 1:1 정합).
+- §17.4 의 in-scope behavior 보존 (§12.7 unchanged).
+- §17.5 의 deferred boundary enumeration (별도 scoped goal 의 대상 항목 8 개).
+- §17.6 의 forbidden enumeration.
+
+본 anchor 는 다음을 **포함하지 않는다**.
+
+- source-cut 처리의 actual implementation / 신규 함수 / 신규 test.
+- §12.7 의 resolver / dispatcher behavior 변경.
+- §11.1 의 install metadata schema 변경.
+- §15 의 manifest / marker contract 변경.
+- §16 의 git-url mode source-cache lifecycle 변경.
+- 부모 root-level docs 본문 mutation. 본 anchor 는 STEP3 guide subordinate scope 안에서 닫는다.
+- §6 canonical decomposition 의 ordering / numbering 변경. source-cut path 의 deferred boundary 는 §6 의 9 단계 중 어느 단일 sub-step 의 재정의가 아니라 §12.7 deferred 의 closeout anchor 다.
+- actual global / user filesystem mutation, target adoption, commit / push / publish / merge / release / Step 4 validation.
+
+본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 / §13.3 / §14.5 / §15.7 / §16.8 와 정합).
