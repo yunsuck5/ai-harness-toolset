@@ -539,3 +539,49 @@ CH3-B reaffirming round 의 driver-failure 사례는 본 backlog 의 "PowerShell
 - target fixture cleanup, evidence archive 생성, %TEMP% 정리 어느 것도 자동 승인하지 않는다.
 - repo working tree 의 commit / push 를 의미하지 않는다.
 - 본 closeout 본문에 execution HEAD / fixture path / run-id 같은 per-run 세부를 박지 않는다 (Long-lived docs commit hash hygiene 항목과 정합).
+
+---
+
+## Review result wrapper / fence artifact hygiene
+
+- **Status**: candidate (future hardening). 즉시 implementation 승인 아님.
+- **Classification**: review subsystem 의 `result.md` artifact hygiene. canonical contract (`docs/REVIEW_RESULT_CONTRACT.md` 의 `## Verdict` shape) 자체의 변경이 아니라, Codex CLI `--output-last-message` 가 reviewer 의 last message 본문을 그대로 dump 하는 경로에서 발생할 수 있는 wrapper / fence rendering ambiguity 의 후속 정리에 대한 debt 다.
+
+### Observed phenomenon
+
+- Codex CLI 가 read-only sandbox 안에서 자체 write tool 호출이 reject 된 경우, reviewer 가 final response 본문에 result content 를 markdown fenced code block (` ```markdown ... ``` `) 으로 wrap 해 보고할 수 있다.
+- `--output-last-message <path>` flag 가 그 wrapper 를 포함한 last message 전체를 그대로 파일로 dump 하므로, result.md 의 첫 비공백 줄이 ` ```markdown ` 가 되고 `## Verdict` 가 fence 안의 plain text 로 등장한다.
+
+### Current impact
+
+- canonical contract (`## Verdict` heading + 다음 첫 비공백 줄 lowercase 일치) 의 machine-parseable check 는 통과한다 — `scripts/review-verify.ps1` 의 verdict shape 검증은 fence-bounded `## Verdict` 도 매칭한다.
+- 본 candidate 작성 시점까지 발생 사례는 `log/review/step3-manifest-marker-anchor-2026-05-18/pass-02/result.md` 한 건. 동일 round 의 pass-01 result.md 는 wrapper 없는 정상 shape 였다.
+- 본 항목은 어떤 commit / push 의 blocking risk 가 아니다 — 직전 라운드 (`Anchor Step 3 payload manifest and marker minimum contract`) 의 commit 도 wrapper hygiene 과 무관하게 진행되었다.
+
+### Risk
+
+- **human-readable markdown rendering 의 ambiguity**: viewer 에서 fence 안의 `## Verdict` 는 heading 으로 렌더링되지 않고 plain text 로 보이며, fence 의 ` ```markdown ` line 이 첫 줄에 노출된다. 사람 reviewer 가 result.md 를 시각적으로 빠르게 검토할 때 verdict heading 의 발견성이 낮아진다.
+- **machine-parseable strictness 와 human-readable rendering 의 mismatch**: `review-verify` 는 통과하지만 result artifact 의 hygiene 은 fence 가 stripped 된 상태가 더 안전하다 — 향후 다른 lint / contract docs 가 result.md 의 top-level heading 위치를 가정하면 wrapper 가 있는 result.md 가 unexpected reading 을 유발할 수 있다.
+- **재현 조건의 좁음**: 본 wrapper 발생은 Codex CLI 가 자체 file-write tool 호출을 sandbox 로 reject 한 케이스에 한정되며, 일반 review 호출 경로에서는 발생하지 않는다. 단 재현 조건이 sandbox / tool policy 설정에 의존하므로 미래에 발생률이 변할 수 있다.
+
+### Candidate direction
+
+후보는 상호 배타가 아니며 (X) (Y) (Z) 중 하나 또는 복수 채택이 가능하다. 본 backlog 단계에서는 어느 것도 결정하지 않는다.
+
+- **(X) wrapper stripping in `scripts/review-run.ps1`** — `--output-last-message` dump 후, result.md 의 시작이 ` ``` ` fence 이고 마지막 비공백 줄이 닫는 fence 면 두 fence 라인을 제거한 normalized result 를 write. fence 의 info string (예: `markdown`) 도 함께 제거. fence-pair 검증 / nested fence 처리 / fence 없는 정상 case 의 통과 조건을 명시해야 한다.
+- **(Y) reviewer prompt / CLI argument 조정** — Codex CLI 가 reject 된 own write 의 fallback 으로 wrapper 를 쓰지 않도록 prompt / invocation 단계에서 안내. 단 CLI 의 sandbox behavior 변화에 의존하므로 deterministic 보장이 어렵다.
+- **(Z) `scripts/review-verify.ps1` 에 lint-only warning mode 추가** — verdict shape PASS 는 그대로 두고, result.md 의 첫 비공백 줄이 fence 이면 warning 보고 (verdict shape failure 와는 분리; commit 의 blocking 아닌 hygiene advisory).
+
+### Cross-reference
+
+- `docs/REVIEW_RESULT_CONTRACT.md` — canonical `## Verdict` shape contract. 본 항목은 이 contract 의 변경 / 약화가 아니다.
+- `scripts/review-run.ps1` — `--output-last-message` 사용 위치 (wrapper 발생 경로).
+- `scripts/review-verify.ps1` — verdict shape 검증 위치 (현재 wrapper 가 있어도 통과; (Z) 후보의 lint-only warning 도입 위치).
+
+### Non-goals
+
+- 본 항목은 candidate 다. (X) / (Y) / (Z) 어느 후보 implementation 도 자동 승인하지 않는다.
+- canonical `## Verdict` shape contract 의 변경 / 약화가 아니다.
+- 본 backlog entry 의 존재로 `scripts/review-run.ps1` / `scripts/review-verify.ps1` / `templates/review-result.md` 본문이 변경되지 않는다.
+- past round 들의 result.md 를 retroactive 하게 normalize 하는 작업도 자동 승인하지 않는다 — past round artifact 는 write-once 며 별도 scoped goal 의 대상이 아니다.
+- 본 항목 implementation 은 별도 scoped goal 을 거친다.
