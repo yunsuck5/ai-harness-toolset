@@ -626,9 +626,9 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 
 ## 13. Recorded 3-8 minimal docs closeout
 
-본 절은 §6 canonical decomposition 의 마지막 sub-step — **3-8 minimal docs closeout** — 을 수행한다. Step 3 의 현재 완료 상태를 한 자리에 모으고, 남은 deferred scope 를 분리해 기록한다. 본 절의 존재로 어떤 새 implementation, validation, adoption, release, publish, global / user filesystem mutation, commit / push / merge / release 도 자동 승인되지 않는다.
+본 절은 §6 canonical decomposition 의 9 번째 sub-step — **3-8 minimal docs closeout** — 을 수행한다. Step 3 의 현재 완료 상태를 한 자리에 모으고, 남은 deferred scope 를 분리해 기록한다. 본 절의 존재로 어떤 새 implementation, validation, adoption, release, publish, global / user filesystem mutation, commit / push / merge / release 도 자동 승인되지 않는다.
 
-§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에 그대로 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다.
+§6 canonical decomposition 9 단계 중 본 §13 은 3-8 자리의 anchor 이며, 3-2~3-5 의 grouped runtime pipeline 본문은 §12 에, 3-6 boundary 의 § anchor 는 §14 에 보존된다. 본 §13 은 §6 의 ordering / numbering 을 변경하지 않는다. 본 §13 작성 시점에는 3-6 § anchor (§14) 가 아직 작성되지 않았으나, 후속 3-6 anchor 라운드에서 본 §13.1 의 Completed 에 3-6 entry 가 추가되었다 (§14 작성 라운드 — 본 closeout 의 sibling 갱신).
 
 ### 13.1 Completed
 
@@ -639,8 +639,9 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - **3-2~3-5 runtime pipeline contract grouping** — §12 anchor (resolver / materialization / dispatcher / verify boundary 와 4 canonical action labels, source-cut detection-only, dogfooding 보호, key failure cases, out-of-pipeline categories). commit `f11ed27`.
 - **temp-only install-pipeline skeleton implementation** — `scripts/install-pipeline.ps1` (CLI entry), `scripts/lib/install-pipeline-core.ps1` (library), `tests/install-pipeline.Tests.ps1` (Pester tests) 3 파일 신규. local-clone mode 의 `install` / `update-source` / `update-current` / `restore` 4 action 을 `$TestDrive` fixture 기준으로 end-to-end 동작. install.json (§11.1 14-field schema), source-cut detection-only, dogfooding silent-mutation 보호, forbidden InstallArea guard (`%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` 및 descendants), git-archive 기반 ref-specific materialization 포함. commit `84d1126`.
 - **3-7 dry-run coverage extension** — install → update-current → restore 연속 flow + per-step metadata + invariant 9 fields 비-드리프트 (`installedAt` 보존, `lastUpdatedAt` lifecycle 포함), source-cut 거부 후 `current/` byte-identity 보존, dogfooding `update-source` 거부 후 source repo HEAD 무변경, `%USERPROFILE%\.codex` reject, `%USERPROFILE%\.claude` descendant reject + 디렉터리 미생성. 5 신규 Pester tests. commit `3bff209`.
+- **3-6 managed-block / skill replace boundary anchor** — §14 anchor (boundary statement, in-scope / out-of-scope enumeration, deferred items). §7 #2 carry-forward caveat 의 §anchor 정착 + §10.6 / §11.7 / §12.10 enumeration 의 상위 §종합 자리. install / update automation core (§12 의 4 action) ≠ managed-block / skill replace apply (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 scope 분리를 한 줄 boundary 로 anchor. 본 anchor 의 commit hash 는 본 closeout 라운드의 후속 commit (사용자 명시 결정 후) 으로 carry. 본 anchor 는 boundary 정의에 한정되며 actual managed-block / skill apply 또는 진단 helper / actual writer 의 도입을 자동 승인하지 않는다.
 
-본 commit 시리즈의 최신 HEAD: `3bff2093ee3cfb0996633007efed717b64ace631`.
+본 commit 시리즈의 최신 HEAD: `3bff2093ee3cfb0996633007efed717b64ace631` (3-7 dry-run coverage extension 시점). 본 §14 anchor 가 commit 되면 HEAD 는 그 후속 commit hash 로 carry — 본 §13.1 의 commit hash 표기는 본 §14 anchor 의 commit 시점에 갱신되지 않으며 ("baseline commit hash 는 review context only" — §7 #6 와 정합), 위 3-7 시점의 baseline 표기로 historical 보존된다.
 
 본 라운드까지의 implementation surface 는 §10.2 의 `current/` runtime-payload-only, §11.1 의 14-field install metadata, §11.4 의 (b) user-specified ref-only restore, §11.7 의 forbidden enumeration, §12.2 의 4 canonical action labels, §12.7 의 source-cut detection-only, §12.8 의 dogfooding 보호, §12.10 의 out-of-pipeline categories 와 1:1 정합한다. Pester 전체 suite 는 본 closeout 작성 시점에 회귀 없이 통과한다.
 
@@ -650,7 +651,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 
 - **git-url mode 의 실제 source acquisition / network fetch** — 현 skeleton 은 local-clone mode 의 local git repo 만 다룬다. git-url mode 의 `git clone` / `git fetch` / `git pull` / clone recovery 의 실제 implementation, credential / auth handling, network failure 처리는 별도 scoped goal (`GLOBAL_INSTALL_UPDATE_MODEL.md` §2.1 / §4.2 와 정합).
 - **payload integrity manifest / payload completeness marker** — §12.6 / §11.6 의 deferred 항목 그대로. manifest algorithm / 위치 / 이름, completeness marker 의 entrypoint set 확정은 `docs/backlog/operations.md` "Aggregate digest reproducibility — install/update verification scope debt" 와 함께 별도 scoped goal.
-- **3-6 managed block / skill replace boundary** — §6 / §10.6 / §11.7 / §12.10 의 enumeration 그대로. global instruction file managed-block apply, Claude skill SKILL.md install / update / removal 의 boundary 정의 / 진단 helper 의 정합화는 별도 scoped goal (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`).
+- **3-6 boundary 의 후속 implementation 항목** — §14 anchor 가 boundary 정의를 마치므로 본 §13.2 의 deferred 잔여는 §14.4 의 5 항목 (boundary 진단 helper / check-only helper 의 도입 여부 + spec + 위치 + 이름, managed-block apply 의 actual writer surface, Claude skill install / update / removal 의 actual writer surface, boundary violation detection mechanism, 3-6 의 implementation-level closeout) 으로 좁아진다. 본 항목들은 boundary 정의가 아니라 boundary 의 후속 implementation / helper 단계이며, 모두 별도 scoped goal (`GLOBAL_ADOPTION_DECISION.md` §6 / `GLOBAL_ADOPTION_PROCEDURE.md`) 의 explicit user-approved decision 으로 진행한다.
 - **Step 4 actual install / update validation** — `POST_MVP_PLAN.md` §11 step 4. 본 §13 closeout 이 자동 승인하지 않는다.
 - **Actual global / user filesystem apply** — global stable install (`%USERPROFILE%\.claude\ai-harness-toolset\current\`) 의 실제 materialize / refresh, install metadata instance write, managed-block apply, Claude skill assets install 어느 것도 본 commit 시리즈로 자동 승인되지 않는다.
 - **source-cut path 의 실제 처리** — §12.7 의 detection-only 가 본 skeleton 의 boundary; 실제 handling (재install / metadata 갱신 / new install 등) 은 별도 scoped goal.
@@ -675,3 +676,86 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - Step 4 validation 의 시작.
 
 본 §13 은 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. closeout 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / payload refresh / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 와 정합).
+
+---
+
+## 14. Recorded 3-6 managed-block / skill replace boundary
+
+본 절은 §6 canonical decomposition 의 7 번째 sub-step — **3-6 managed-block / skill replace boundary** — 의 결정 shape 를 repo source-of-truth 로 anchor 한다. 본 anchor 는 §10 (3-0 layer layout) / §11 (3-1 install metadata contract) / §12 (3-2~3-5 runtime pipeline contract grouping) 위에 build 되며 그 결정을 약화하지 않는다. 본 anchor 는 boundary 의 **정의** 만 기록한다 — managed-block / skill apply 의 actual 실행은 본 anchor 의 범위 밖이며, 부모 root-level docs (`GLOBAL_ADOPTION_DECISION.md` §6, `GLOBAL_ADOPTION_PROCEDURE.md`) 가 source-of-truth 인 별도 explicit user-approved scope 다.
+
+본 anchor 는 §7 #2 (managed-block / skill refresh 는 install / update automation 본체 밖) 의 carry-forward caveat 을 본 §14 의 §anchor 자리로 정착시키며, §10.6 / §11.7 / §12.10 에 enumerate 되어 있던 boundary 진술을 본 자리에서 한 번 종합한다. §10.6 / §11.7 / §12.10 본문은 변경하지 않으며, 본 §14 는 그 enumeration 의 **상위 §anchor** 다. §6 canonical decomposition 의 ordering / numbering 도 변경하지 않는다 — 본 §14 는 doc 본문의 §순서상 §13 (3-8 closeout) 뒤에 위치하지만 (anchor 작성 시점이 §13 이후이기 때문), §6 의 9 단계에서는 여전히 3-6 의 7 번째 위치다.
+
+본 anchor 는 implementation, managed-block / skill 의 actual install / update / removal, global / user filesystem mutation, target adoption, commit / push / publish / merge / release / Step 4 validation 어느 것도 자동 승인하지 않는다.
+
+### 14.1 Boundary statement
+
+**3-6 boundary 의 한 줄 요약.**
+
+```
+install / update / restore automation core (§12 runtime pipeline)
+  ≠
+managed-block / skill replace apply (GLOBAL_ADOPTION_DECISION.md §6 / GLOBAL_ADOPTION_PROCEDURE.md)
+```
+
+두 scope 는 분리된다. 한쪽의 trigger / verdict / 승인이 다른 쪽을 자동 승인하지 않는다. install / update automation 본체 (§12 의 4 action `install` / `update-source` / `update-current` / `restore`) 는 destination 의 byte-identity overwrite materialization 만 다루며, managed-block / skill destination 으로 wording / SKILL.md 를 묶음 apply 하지 않는다. 반대로 managed-block / skill replace 도 `current/` runtime payload 의 materialization 을 자동 수행하지 않는다.
+
+### 14.2 In-scope (3-6 boundary 의 정의로 본 anchor 가 포함하는 항목)
+
+본 anchor 는 다음을 **포함한다**.
+
+- **automation core 본체와 managed-block / skill apply 의 scope 분리 statement.** §14.1 의 한 줄 boundary + §14.3 의 forbidden coupling.
+- **boundary 의 governing source-of-truth 표기.** managed-block 정책의 source-of-truth 는 `GLOBAL_ADOPTION_DECISION.md` §6 (marker / detection algorithm / destination path table / update policy), Claude skill 절차의 source-of-truth 는 `GLOBAL_ADOPTION_PROCEDURE.md` (skill 의 first install / update / removal 절차).
+- **install / update automation 본체의 scope 한정 재진술.** automation 본체는 `current/` runtime payload 의 materialize / refresh + install metadata (§11.1) + update dispatch (§12) + verify (§12.6) 로 제한된다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §1 / §12 와 정합).
+- **managed-block apply destination path enumeration 의 boundary 보존.** `GLOBAL_ADOPTION_DECISION.md` §6 의 path table (Claude project-root `<ProjectRoot>/CLAUDE.md`, Claude user-global `%USERPROFILE%\.claude\CLAUDE.md`, Codex project-root `<ProjectRoot>/AGENTS.md`, Codex user-global default `%USERPROFILE%\.codex\AGENTS.md`, `CODEX_HOME` 설정 시 `%CODEX_HOME%\AGENTS.md`, Codex user-global override `AGENTS.override.md`) 와 forbidden path `%USERPROFILE%\.claude\AGENTS.md` 는 본 anchor 의 boundary 가 governing 인정한다. 본 anchor 는 그 enumeration 을 복제하지 않으며, 변경하지도 않는다.
+- **Claude skill asset 의 source / destination shape boundary 보존.** source 는 `<ToolRoot>/snippets/claude-skills/<skill-name>/SKILL.md`, destination 은 `%USERPROFILE%\.claude\skills\<skill-name>\SKILL.md` (`GLOBAL_ADOPTION_PROCEDURE.md` §3). skill SKILL.md 는 `current/` runtime payload 안에 두지 않는다 (§10.2 와 정합).
+- **deferred 후속 결정의 raise 자리 명시.** boundary 진단 helper (check-only / inspect-only) 는 본 anchor 가 fix 하지 않는다 (§14.4 참조).
+
+### 14.3 Out-of-scope (본 anchor 가 자동 승인하지 않는 항목)
+
+본 anchor 는 다음을 **포함하지 않는다**.
+
+- **actual managed-block insert / replace** 의 실행. `%USERPROFILE%\.claude\CLAUDE.md` / `%USERPROFILE%\.codex\AGENTS.md` / `%CODEX_HOME%\AGENTS.md` / `AGENTS.override.md` / project-root `CLAUDE.md` / `AGENTS.md` 의 어떤 marker-bounded block insert / replace 도 본 §14 의 doc 변경으로 자동 승인되지 않는다. `GLOBAL_ADOPTION_DECISION.md` §6 의 explicit user-approved managed-block insert / replace scope 가 governing.
+- **actual Claude skill install / update / removal** 의 실행. `%USERPROFILE%\.claude\skills\<skill-name>\` 의 어떤 생성 / 덮어쓰기 / 삭제도 본 §14 의 doc 변경으로 자동 승인되지 않는다. `GLOBAL_ADOPTION_PROCEDURE.md` §5 / §6 / §7 의 절차가 governing.
+- **install / update automation core 본체에서의 managed-block / skill apply 호출.** §12 의 4 action 어느 것도 managed-block apply 나 skill refresh 를 묶음으로 자동 실행하지 않는다. `install` / `update-source` / `update-current` / `restore` 의 dispatcher (§12.5) 에서 managed-block 또는 skill destination 으로의 추가 mutation 이 발생하지 않는다.
+- **`%USERPROFILE%\.claude\AGENTS.md`** 의 생성. forbidden path (`GLOBAL_ADOPTION_DECISION.md` §6 의 forbidden row, §10.6 forbidden enumeration, `GLOBAL_INSTALL_UPDATE_MODEL.md` §1 / §12) — 본 anchor 도 어떤 경우에도 이 path 를 생성하지 않는다.
+- **whole-file overwrite** 의 자동 승인. `GLOBAL_ADOPTION_DECISION.md` §6 의 marker-bounded block 전면 교체 정책 (whole-file overwrite 금지, marker-bounded block 바깥 보존) 이 governing. 본 §14 가 그 정책을 약화하지 않는다.
+- **managed-block marker / detection algorithm** 의 재정의 또는 복제. `GLOBAL_ADOPTION_DECISION.md` §6 (counting rule / whole-line trim match / fence-pair pathology / decision-equivalent statements / destination 분기) 가 source-of-truth. 본 anchor 가 그 algorithm 을 복제하거나 재정의하지 않는다.
+- **diagnostic helper / check-only helper** 의 spec / 위치 / 이름 finalize (§14.4 의 deferred 항목 참조).
+- **§6 canonical decomposition** 의 ordering / numbering 변경 (3-6 의 위치는 §6 의 7 번째 sub-step 그대로다).
+- **부모 root-level docs** (`GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `GLOBAL_INSTALL_UPDATE_MODEL.md`) 의 본문 mutation. 본 anchor 는 STEP3 guide subordinate scope 안에서 닫는다.
+- **`POST_MVP_PLAN.md` §11 step 4** 의 시작 (install / update validation), step 5–7 의 시작.
+- **commit / push / publish / merge / release / adoption**.
+
+본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다.
+
+### 14.4 Deferred items (3-6 boundary 의 후속 결정)
+
+본 anchor 는 다음을 fix 하지 않는다. 각각은 별도 scoped goal 의 대상으로 carry 한다.
+
+- **boundary 진단 helper / check-only helper 의 도입 여부 / spec / 위치 / 이름.** managed-block 상태 inspect (BEGIN / END pair count, whole-line vs fenced quotation 구분, malformed / nested 보고) 및 skill destination 상태 inspect (`<GlobalSkillFile(name)>` 존재 / hash 비교) 의 read-only 진단 helper 는 본 anchor 가 도입을 자동 승인하지 않는다. `GLOBAL_ADOPTION_DECISION.md` §6 의 detection algorithm 과 `GLOBAL_ADOPTION_PROCEDURE.md` §5.1 / §6.1 의 pre-flight inspect 단계가 이미 procedural source-of-truth 이며, 이를 deterministic helper script (예: `scripts/managed-block-inspect.ps1`, `scripts/skill-status-inspect.ps1`) 로 풀어낼지 / 풀어내지 말지 / 풀어낸다면 어떤 surface 로 풀어낼지는 별도 scoped decision 으로 carry 한다. 본 anchor 는 helper 의 도입을 자동 승인하지 **않는다** 동시에 도입을 자동 금지하지도 **않는다** — helper 도입은 별도 explicit user-approved scope 의 사안이다.
+- **managed-block apply 의 actual implementation script / surface** (예: `scripts/managed-block-apply.ps1` 또는 동등 surface). `GLOBAL_ADOPTION_DECISION.md` §6 의 destination 분기 (file 부재 / marker 0 개 / 정확히 1 개 / 불완전 / 여러 개 / malformed / nested) 를 따르는 actual writer 의 도입 여부 / 이름 / 위치 / signature / approval prompt UX 는 별도 scoped goal.
+- **Claude skill install / update / removal 의 actual implementation script / surface** (예: `scripts/skill-apply.ps1` 또는 동등 surface). `GLOBAL_ADOPTION_PROCEDURE.md` §5 / §6 / §7 의 procedural source-of-truth 를 deterministic writer 로 풀어낼지의 결정은 별도 scoped goal.
+- **boundary violation 의 detection / report mechanism.** install / update automation 본체가 실수로 managed-block / skill destination 을 건드리는 경우의 fail-fast detection (예: dispatcher 단계의 destination path allowlist check 또는 forbidden path guard 의 확장) 은 본 anchor 가 도입하지 않는다 — 본 anchor 는 `install-pipeline-core.ps1` 의 현행 `Get-ForbiddenInstallAreaPaths` 기반 guard 가 boundary 위반의 일부 (= `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` 의 descendant 로 `current/` 외 경로를 install 하려는 시도) 를 이미 감지함을 인정하지만, managed-block / skill destination 의 전체 enumeration 을 install-pipeline guard 로 promote 할지는 별도 scoped decision 이다.
+- **3-6 의 implementation-level closeout** (actual managed-block / skill writer 가 도입된 뒤의 dry-run tests, evidence 보존, regression smoke). 본 anchor 가 boundary 정의로만 닫히므로, automation core 안의 dry-run 처럼 boundary-side 의 dry-run 도 deferred 다.
+
+위 deferred 항목은 STEP3 guide §13.2 의 deferred enumeration 과 정합한다. 본 §14.4 가 그 enumeration 을 대체하거나 복제하지 않으며, §13.2 와 함께 보존된다 (§13.2 의 "3-6 managed block / skill replace boundary" 항목은 본 §14 anchor 의 부재 시점의 기록으로 historical 보존되며, 본 §14 가 그 항목의 핵심을 anchor 자리로 promote 한 결과 §13.2 의 동 항목은 §13.1 Completed 자리로 carry 됨 — §13 update 작업과 정합).
+
+### 14.5 본 anchor 의 scope 와 non-goals
+
+본 anchor 는 다음을 **포함한다**.
+
+- §14.1 의 한 줄 boundary statement.
+- §14.2 의 in-scope (boundary 정의 / governing source-of-truth 표기 / automation 본체 scope 한정 재진술 / managed-block destination path enumeration boundary 보존 / Claude skill source / destination shape boundary 보존 / deferred raise 자리 명시).
+- §14.3 의 out-of-scope enumeration (actual apply 의 자동 승인 거부, automation core 의 묶음 apply 호출 금지, forbidden path, whole-file overwrite, marker detection algorithm 의 재정의 / 복제 거부 등).
+- §14.4 의 deferred items (boundary 진단 helper, actual writer surface, boundary violation detection mechanism, implementation-level closeout).
+
+본 anchor 는 다음을 **포함하지 않는다**.
+
+- managed-block / skill 의 actual apply, mutation, refresh, install, update, removal.
+- `GLOBAL_ADOPTION_DECISION.md` §6 의 marker / detection algorithm / destination path table / update policy 의 재정의 또는 복제.
+- `GLOBAL_ADOPTION_PROCEDURE.md` 의 first install / update / removal 절차의 재정의 또는 복제.
+- §6 canonical decomposition 의 ordering / numbering 변경.
+- 부모 root-level docs 본문 mutation.
+- install / update / restore 의 actual 실행, global / user filesystem mutation, target adoption, commit / push / publish / merge / release / Step 4 validation.
+
+본 anchor 의 source / doc mutation 자체는 본 도구의 정상 review gate 를 거치며, review verdict 이후의 commit / push / global apply / managed-block apply / skill install / Step 4 validation 시작 등은 사용자 명시 결정으로 처리한다 (§8 / §10.7 / §11.8 / §12.11 / §13.3 와 정합).
