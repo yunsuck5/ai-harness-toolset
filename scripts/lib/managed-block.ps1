@@ -140,6 +140,33 @@ function Get-ManagedBlockContent {
     return $out.ToArray()
 }
 
+function Assert-NoCorruptionSentinel {
+    # A-2b corruption sentinel gate. Hard-fail if decoded apply input carries the
+    # Unicode replacement character U+FFFD.
+    #
+    # Why this is needed on top of the A-2a strict reader: the bytes EF BF BD are a
+    # *valid* UTF-8 encoding of U+FFFD, so Read-Utf8's strict decoder passes them
+    # through without error. Their presence in an instruction file is not legitimate
+    # content here — it means an earlier lossy decode (e.g. the cp949 mis-decode
+    # behind the 2026-05-21 incident) already replaced a non-ASCII character with the
+    # replacement char and persisted it. Splicing / rewriting such input would launder
+    # corruption into a freshly written file, so refuse before any write.
+    #
+    # Literal ASCII '?' (0x3F) is deliberately NOT gated here: it is ordinary content
+    # (the repo's own CLAUDE_SNIPPET.md contains a '?'), so an input-presence reject
+    # would be a false positive. The intended '?' contract is a before/after
+    # non-increase check (docs/backlog/operations.md "비-ASCII 무손실 gate"), which is
+    # a separate, narrower mechanism left for a follow-up.
+    param(
+        [string] $Content,
+        [string] $Label = 'input'
+    )
+
+    if (-not [string]::IsNullOrEmpty($Content) -and $Content.Contains([char]0xFFFD)) {
+        throw ("managed-block: U+FFFD replacement character found in {0}; input is already corrupted, refusing to apply." -f $Label)
+    }
+}
+
 function Set-ManagedBlock {
     # Pure function: return new destination content with its managed block replaced
     # by the snippet's managed block. Performs NO file IO and leaves NO partial

@@ -388,6 +388,76 @@ Describe 'apply-managed-block snippet / input guards' {
         [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
     }
 
+    It 'AC-AMB-FFFD-TARGET: a target carrying U+FFFD fails fast and is left byte-unchanged' {
+        $dir = script:New-CaseDir -CaseName 'fffd-target'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+
+        # U+FFFD encodes to the valid UTF-8 bytes EF BF BD, so the A-2a strict reader
+        # accepts it — the A-2b sentinel gate is what must reject it. Place it OUTSIDE
+        # the managed block (the marker pair is well-formed) to prove the gate fires
+        # on already-persisted corruption, not on a marker / structural problem.
+        $fffd = [string][char]0xFFFD
+        $original = ("head with corruption " + $fffd + "`n" + $script:Begin + "`nold`n" + $script:End + "`ntail`n")
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+
+        $beforeBytes = script:Read-Bytes -Path $target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'U\+FFFD replacement character'
+        $result.Output | Should -Match 'target'
+
+        $afterBytes = script:Read-Bytes -Path $target
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+    }
+
+    It 'AC-AMB-FFFD-SNIPPET: a snippet carrying U+FFFD fails fast and leaves the target unchanged' {
+        $dir = script:New-CaseDir -CaseName 'fffd-snippet'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+
+        $fffd = [string][char]0xFFFD
+        script:Write-Utf8NoBomFile -Path $snippet -Content ($script:Begin + "`n# managed payload " + $fffd + "`nbody`n" + $script:End + "`n")
+        $original = ("head`n" + $script:Begin + "`nold`n" + $script:End + "`ntail`n")
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+
+        $beforeBytes = script:Read-Bytes -Path $target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'U\+FFFD replacement character'
+        $result.Output | Should -Match 'snippet'
+
+        # Byte-array equality (matching AC-AMB-FFFD-TARGET) proves the target was not
+        # touched at all when the corruption is carried by the snippet.
+        $afterBytes = script:Read-Bytes -Path $target
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+    }
+
+    It 'AC-AMB-LITERAL-Q-OK: a target with a legitimate literal "?" still applies (? is not gated)' {
+        $dir = script:New-CaseDir -CaseName 'literal-q'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+
+        # Literal ASCII '?' is ordinary content (e.g. the repo's own CLAUDE_SNIPPET.md
+        # contains '진행할까요?'). The A-2b gate must NOT reject it as a corruption
+        # sentinel; the apply must succeed.
+        $before = "# 사용자 메모리`n정말 이어서 진행할까요? 네 또는 아니오`n`n"
+        $original = ($before + $script:Begin + "`nold`n" + $script:End + "`ntail?`n")
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $finalText = script:Read-Utf8NoBomFile -Path $target
+        $finalText | Should -Match '진행할까요\?'        # legitimate '?' preserved
+        $finalText | Should -Match 'managed payload — v2'
+        $finalText | Should -Not -Match 'old'
+        $finalText.Contains([char]0xFFFD) | Should -BeFalse
+    }
+
     It 'AC-AMB-MISSING-TARGET: a missing target path fails fast' {
         $dir = script:New-CaseDir -CaseName 'missing-target'
         $snippet = Join-Path $dir 'snippet.md'

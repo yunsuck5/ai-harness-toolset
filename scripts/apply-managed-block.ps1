@@ -54,6 +54,11 @@ if ($targetBytes.Length -ge 3 -and $targetBytes[0] -eq 0xEF -and $targetBytes[1]
 try {
     $snippet    = Read-Utf8 -Path $SnippetPath
     $target     = Read-Utf8 -Path $TargetPath
+    # A-2b corruption sentinel gate: refuse already-corrupted input (U+FFFD) before
+    # any write, so a prior lossy decode persisted on disk cannot be laundered into a
+    # freshly rewritten file. Runs before Set-ManagedBlock, inside this pre-write try.
+    Assert-NoCorruptionSentinel -Content $target -Label 'target'
+    Assert-NoCorruptionSentinel -Content $snippet -Label 'snippet'
     $newContent = Set-ManagedBlock -TargetContent $target -SnippetContent $snippet
 }
 catch {
