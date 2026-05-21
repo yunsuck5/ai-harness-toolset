@@ -40,6 +40,22 @@ install 의 source 입력은 두 가지 형태를 동등하게 지원한다. 어
 
 두 source input 의 유일한 차이는 source acquisition 단계 — `git clone` 이 필요한가, 아니면 기존 clone 을 그대로 사용하는가 — 뿐이다.
 
+### 3.1 Source input 이 install mode 를 결정한다 (모호한 재-offer 금지)
+
+install mode (`installMode`) 는 operator 의 자유 선택이 아니라 **사용자가 실제로 제공한 source input 의 형태** 가 결정한다. operator 는 두 mode 를 매번 나란히 제시하지 않는다.
+
+- **사용자가 GitHub URL 을 제공하면 `git-url` 이 default 이자 유일하게 제시되는 mode 다.** URL input 에 대해 `local-clone` mode 를 함께 offer 하지 않는다. URL 하나만 주어진 상황에서 "git-url 로 할까요, local clone 으로 할까요" 식의 양자택일을 제시하는 것은 본 계약 위반이다 — `git-url` 로 진행한다.
+- **`local-clone` mode 는 사용자가 명시적으로 local clone path 를 source 로 제공했을 때 (또는 "이 local path 를 source 로 써" 라고 명시적으로 지시했을 때) 에만 유효하다.** 사용자가 URL 만 준 경우 operator 가 임의로 local-clone 으로 전환하지 않는다.
+- 사용자가 URL 을 준 뒤 별도로 "그 URL 대신 이 local clone path 를 source 로 써" 라고 **명시적으로** 바꾸면 그때 `local-clone` 으로 전환한다. 그 명시 지시 없이는 URL → `git-url` 이 고정이다.
+
+### 3.2 Inspect / acquisition clone 은 source input 이 아니다
+
+operator 가 INSTALL.md 를 읽기 위해서, 또는 payload 를 materialize 하기 위해서 만든 임의의 clone / 작업 사본은 §2 의 **run-scoped temporary work area** 일 뿐이며, source input 도 persistent source identity 도 아니다.
+
+- 그런 inspect / acquisition clone 의 path 를 `local-clone` source 로 재해석하거나 사용자에게 "이미 여기 clone 이 있으니 local-clone 으로 설치할까요" 식으로 다시 제시하지 않는다. URL 로 시작한 install 은 inspect clone 이 디스크에 존재한다는 사실만으로 `local-clone` 후보가 되지 않는다.
+- 그 work area 의 path 는 `install.json` 의 `sourcePath` 에도 `toolRoot` 에도 기록되지 않는다. `git-url` mode 의 `install.json.sourcePath` 와 `install.json.toolRoot` 는 §4 대로 항상 empty (`''`) 다 — work area 가 transient 이고 persistent identity 가 아니기 때문이다.
+- 성공한 URL install 은 verify 가 정합 상태로 닫힌 뒤 §2 policy 에 따라 그 work area / acquisition clone 을 제거한다. cleanup 의 성공 / 실패는 verify 보고에 포함하되, work area 의 존재 여부는 install identity 의 success criterion 이 아니다.
+
 ## 4. Install model — the same for both source inputs
 
 source input 이 무엇이든 install 은 다음 단일 model 을 따른다.
@@ -69,9 +85,9 @@ source input 이 무엇이든 install 은 다음 단일 model 을 따른다.
 
 호스트에 ai-harness install 이 아직 없는 경우 (또는 `current/` + `install.json` 이 모두 부재인 경우) 의 절차다.
 
-1. operator 는 Claude Code 안에서 다음 중 한 가지 의도를 사용자에게 표시한다.
-   - GitHub URL 로 설치: 예 — "이 URL 로 ai-harness-toolset 을 설치한다: `https://github.com/yunsuck5/ai-harness-toolset`."
-   - local clone path 로 설치: 예 — "이 local clone 을 source 로 설치한다: `H:\Work\ai-harness-toolset\ai-harness-toolset`."
+1. operator 는 Claude Code 안에서 의도를 사용자에게 표시한다. 이때 mode 는 §3.1 대로 **사용자가 제공한 source input 의 형태가 결정** 하며, operator 가 두 mode 를 양자택일로 제시하지 않는다.
+   - 사용자가 GitHub URL 을 제공한 경우 → `git-url`: 예 — "이 URL 로 ai-harness-toolset 을 설치한다 (`git-url` mode): `https://github.com/yunsuck5/ai-harness-toolset`." (URL 만 주어졌을 때 `local-clone` 을 함께 묻지 않는다.)
+   - 사용자가 local clone path 를 명시적으로 source 로 제공한 경우 → `local-clone`: 예 — "이 local clone 을 source 로 설치한다 (`local-clone` mode): `H:\Work\ai-harness-toolset\ai-harness-toolset`."
 2. operator 는 §5 inspect 를 수행한다. prerequisites 점검 + destination 부재 확인 + source 의 현재 HEAD SHA resolve.
 3. operator 는 §5 propose 를 수행한다. propose 에는 다음이 포함된다.
    - source input 종류 (URL / local path) 와 값.
