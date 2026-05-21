@@ -771,9 +771,37 @@ install snapshot zip 에서 **실제 installed `CLAUDE.md` / `AGENTS.md` managed
 
 ## Activation managed-block apply tooling hardening
 
-- **Status**: candidate (immediate-priority hardening, docs-only registration). **강하게 보존해야 하는 polishing backlog** 이며 즉시 implementation 승인 아님. 본 항목은 recovered 된 high-severity incident 의 후속 도구화 후보다 — install / update correctness 를 뒤집는 blocker 가 **아니라** activation apply 단계의 tooling gap 을 메우는 항목이다.
-- **Classification**: install / update activation path 의 tooling debt. base payload materialization 은 deterministic install-pipeline 으로 도구화되어 있으나, global / user instruction file 의 managed-block replace 는 deterministic script 가 없어 AI 가 매번 ad-hoc PowerShell splice 를 작성한다 — "가장 위험한 변형 (global / user file in-place mutation)" 이 "가장 도구 지원이 없는 단계" 와 겹친 상태의 hardening 이다.
+- **Status**: **완료 (closeout, 2026-05-22)** — 본 항목의 candidate direction (deterministic apply tooling) 은 전부 구현 / commit 되었고, future expansion candidates 는 **대부분** 구현 / commit 되었으며 (일부는 명시적으로 deferred — §Closeout 의 "여전히 deferred / 구현하지 않음" 참조: 리터럴 `?` (0x3F) 비증가 gate, D atomicity), 실제 global activation apply 가 dry-run readiness check 이후 성공했다 (아래 §Closeout). 아래 Incident / Severity / Update behavior / Structural problem / Candidate direction / Future expansion candidates 절은 **historical record 로 보존**하며, 그 forward-looking wording 의 현재 상태 source-of-truth 는 §Closeout 이다. 원래 분류는 recovered 된 high-severity incident 의 후속 도구화였다 — install / update correctness 를 뒤집는 blocker 가 **아니라** activation apply 단계의 tooling gap 을 메우는 항목이었다.
+- **Classification**: install / update activation path 의 tooling debt (원래 framing — 현재 상태는 §Closeout). base payload materialization 은 deterministic install-pipeline 으로 도구화되어 있었으나, 당시 global / user instruction file 의 managed-block replace 는 deterministic script 가 없어 AI 가 매번 ad-hoc PowerShell splice 를 작성해야 했다 — "가장 위험한 변형 (global / user file in-place mutation)" 이 "가장 도구 지원이 없는 단계" 와 겹친 상태의 hardening 이었다. 본 gap 은 이후 닫혔다 (§Closeout).
 - **Origin**: fresh git-url operational update 라운드 (`fc70f2a8` → `729f96a6` global payload update). update behavior 자체는 PASS 로 판단되었고 (아래 §Update behavior 판단 분리), 본 항목은 그 라운드에서 발생한 activation apply UTF-8 corruption incident 의 후속 polishing 으로 강하게 남긴다.
+
+### Closeout (구현 완료 — 2026-05-22)
+
+본 tooling gap 은 별도 scoped goal 들로 모두 구현 / commit 되었다. 아래의 forward-looking wording (Structural problem / Candidate direction / Future expansion candidates) 은 historical record 로 보존하되, 현재 상태의 source-of-truth 는 본 Closeout 이다.
+
+- **구현된 산출물**:
+  - `scripts/lib/managed-block.ps1` — pure marker-detection / splice primitive (file IO 없음).
+  - `scripts/apply-managed-block.ps1` — deterministic single-target managed-block apply.
+  - `scripts/activate-global.ps1` — global activation orchestration (snippet → destination mapping; `apply-managed-block.ps1` 에 위임, ad-hoc splice 없음).
+  - `tests/apply-managed-block.Tests.ps1`, `tests/activate-global.Tests.ps1`.
+- **commit 매핑**:
+  - A-1 base deterministic apply tool: `6d0e504`.
+  - A-2a strict invalid UTF-8 fail-fast: `c825b5b`.
+  - A-2b U+FFFD corruption sentinel gate: `7c8e4f4`.
+  - A-2c pre-write backup / rollback (refuse-on-existing-backup 포함): `5732a37`.
+  - A-2d dry-run / diff preview (no write / no backup): `ca6c76e`.
+  - A-2e global activation apply orchestration: `5f71177`.
+- **Future expansion candidates 대응** (아래 동명 절의 항목별):
+  - pre-write backup → A-2c (`5732a37`).
+  - 손상 즉시 rollback 경로 → A-2c (`5732a37`).
+  - dry-run / diff 모드 → A-2d (`ca6c76e`).
+  - 비-ASCII 무손실 gate → U+FFFD hard-fail 부분은 A-2b (`7c8e4f4`) 로 구현. 적용 전후 리터럴 `?` (0x3F) count 비증가 부분은 false-positive 위험 (snippet 본문에 정상 `?` 가 존재) 때문에 **deferred** — narrower contract 없이는 구현하지 않으며, 본 closeout 은 그 구현을 약속하지 않는다.
+  - global activation apply 전체의 script 화 → A-2e (`5f71177`).
+- **실제 global activation apply**: dry-run readiness check 통과 후 `scripts/activate-global.ps1 -Apply` 로 실 사용자 global 대상 두 개 (`%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md`) 에 1 회 적용되었다 — apply exit code 0, 적용 후 두 managed block 이 repo snippet 과 match, `.amb-backup` 잔존 없음, repo working tree clean 유지.
+- **여전히 deferred / 구현하지 않음** (본 closeout 은 아래 어느 것도 구현 commitment 로 만들지 않으며, 새 backlog item 도 만들지 않는다):
+  - 위 리터럴 `?` (0x3F) 비증가 gate — narrower contract 필요.
+  - D materialization atomicity / transaction design — 별도 scoped 작업으로 deferred 유지.
+  - `activate-global.ps1` forbidden-path guard 의 alias-class (junction / symlink / 8.3 short-name / trailing-dot) 강화 — 현재 guard 는 `[System.IO.Path]::GetFullPath` 텍스트 정규화 기반이며 dot-segment 우회는 닫혀 있다. filesystem-identity 정규화는 **accepted non-goal** 로 남긴다.
 
 ### Incident — activation managed-block apply UTF-8 corruption
 
@@ -798,11 +826,15 @@ install snapshot zip 에서 **실제 installed `CLAUDE.md` / `AGENTS.md` managed
 
 ### Structural problem (왜 immediate-priority 로 남기는가)
 
+> **구현 완료 (historical record).** 본 절이 기술하는 tooling gap 은 닫혔다 — deterministic, 재사용 가능한 apply script 가 이제 존재한다 (`scripts/apply-managed-block.ps1` / `scripts/activate-global.ps1`). 현재 상태는 위 §Closeout 이 source-of-truth 다.
+
 - base payload materialization 은 install-pipeline 으로 도구화되어 있다 (encoding-safe, deterministic).
 - 그러나 global / user activation managed-block replace 는 deterministic, 재사용 가능한 script 가 없다. 그래서 AI 가 매번 ad-hoc PowerShell splice 를 작성하고, encoding / marker / 정렬 처리 실수의 여지가 크다.
 - 이 상태를 방치하면 다음 install / update 에서도 AI 가 ad-hoc splice 를 반복할 수 있으며, 동일 incident 가 재발 가능하다. 따라서 본 항목은 install closeout polishing 중에서도 immediate-priority 후보로 남긴다.
 
 ### Candidate direction — deterministic managed-block apply tooling (별도 scoped 작업)
+
+> **구현 완료 (historical record).** 아래 산출물 후보와 최소 요구사항은 모두 충족되었다 — 위 §Closeout 의 commit 매핑 참조.
 
 본 backlog 단계에서는 어느 것도 implementation 결정하지 않는다. 후속 작업으로 deterministic managed-block apply tooling 을 별도 scoped goal 로 구현한다.
 
@@ -822,6 +854,8 @@ install snapshot zip 에서 **실제 installed `CLAUDE.md` / `AGENTS.md` managed
   - 실패 시 fail-fast.
 
 ### Future expansion candidates (위 최소 구현 이후, 별도 후속)
+
+> **대부분 구현 완료 (historical record).** 각 후보의 구현 / deferral 상태는 위 §Closeout 의 "Future expansion candidates 대응" 을 참조한다 (리터럴 `?` 비증가 gate 와 D atomicity 는 deferred 유지).
 
 - pre-write backup (타임스탬프).
 - 손상 즉시 rollback 경로.
