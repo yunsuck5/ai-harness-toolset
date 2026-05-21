@@ -1394,3 +1394,53 @@ Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
         Test-Path -LiteralPath (Join-Path $absArea 'source-cache') | Should -BeFalse
     }
 }
+
+Describe 'install-pipeline library — native git invocation routes through Invoke-InstallPipelineNativeGit' {
+    # Guards the B-task cleanup: every install-pipeline git call must go through
+    # Invoke-InstallPipelineNativeGit (which pins $ErrorActionPreference='Continue' so a git
+    # stderr line cannot be promoted to a terminating NativeCommandError under PS 5.1 +
+    # EAP=Stop before $LASTEXITCODE is read), not a raw `& git ... 2>&1`.
+
+    It 'AC-IP-GIT-ROUTE-1: Get-InstallPipelineSourceHead returns the source repo HEAD' {
+        $src = script:New-FixtureSourceRepo -CaseName 'git-route-head' -MarkerSuffix 'v1'
+        Get-InstallPipelineSourceHead -SourceLocation $src.Root | Should -Be $src.Head
+    }
+
+    It 'AC-IP-GIT-ROUTE-2: Get-InstallPipelineSourceHead consumes helper output and routes through the helper' {
+        $src = script:New-FixtureSourceRepo -CaseName 'git-route-head-mock' -MarkerSuffix 'v1'
+        Mock Invoke-InstallPipelineNativeGit { [pscustomobject]@{ ExitCode = 0; Stdout = 'cafebabecafebabecafebabecafebabecafebabe' } }
+
+        $head = Get-InstallPipelineSourceHead -SourceLocation $src.Root
+
+        # Proves the function reads the helper's Stdout (not raw `& git`).
+        $head | Should -Be 'cafebabecafebabecafebabecafebabecafebabe'
+        Should -Invoke Invoke-InstallPipelineNativeGit -Times 1 -Exactly -ParameterFilter {
+            ($Arguments -contains 'rev-parse') -and ($Arguments -contains 'HEAD')
+        }
+    }
+
+    It 'AC-IP-GIT-ROUTE-3: Get-InstallPipelineSourceHead reports the helper exit code on failure' {
+        $src = script:New-FixtureSourceRepo -CaseName 'git-route-head-fail' -MarkerSuffix 'v1'
+        Mock Invoke-InstallPipelineNativeGit { [pscustomobject]@{ ExitCode = 128; Stdout = $null } }
+
+        { Get-InstallPipelineSourceHead -SourceLocation $src.Root } |
+            Should -Throw -ExpectedMessage '*rev-parse HEAD failed*exitCode=128*'
+    }
+
+    It 'AC-IP-GIT-ROUTE-4: Invoke-InstallMaterialization archive step reports the helper exit code on failure' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'git-route-archive' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'git-route-archive'
+        $tuple = New-InstallPipelineTuple `
+            -Action 'install' -InstallMode 'local-clone' `
+            -SourceLocation $src.Root -ResolvedRefSha $src.Head -RefKind 'commit' `
+            -ToolRoot $src.Root -ProjectRoot $src.Root -SourceUpdatePolicy 'read-current-only'
+
+        Mock Invoke-InstallPipelineNativeGit { [pscustomobject]@{ ExitCode = 1; Stdout = $null } }
+
+        { Invoke-InstallMaterialization -Tuple $tuple -InstallArea $area } |
+            Should -Throw -ExpectedMessage '*git archive failed*exitCode=1*'
+        Should -Invoke Invoke-InstallPipelineNativeGit -Times 1 -Exactly -ParameterFilter {
+            $Arguments -contains 'archive'
+        }
+    }
+}

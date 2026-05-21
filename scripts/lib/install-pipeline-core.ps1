@@ -415,11 +415,15 @@ function Get-InstallPipelineSourceHead {
         throw "Get-InstallPipelineSourceHead: source is not a git repo (missing .git): $SourceLocation"
     }
 
-    $output = & git -C $SourceLocation rev-parse HEAD 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        throw "Get-InstallPipelineSourceHead: git rev-parse HEAD failed: $output"
+    # Route through Invoke-InstallPipelineNativeGit (not raw `& git ... 2>&1`) so that
+    # under PS 5.1 + $ErrorActionPreference='Stop' a git stderr line is not promoted to a
+    # terminating NativeCommandError before $LASTEXITCODE can be inspected. Mirrors the
+    # helper-routed Resolve-InstallPipelineRef below.
+    $res = Invoke-InstallPipelineNativeGit -CaptureStdout -Arguments @('-C', $SourceLocation, 'rev-parse', 'HEAD')
+    if ($res.ExitCode -ne 0) {
+        throw "Get-InstallPipelineSourceHead: git rev-parse HEAD failed (source=$SourceLocation; exitCode=$($res.ExitCode))"
     }
-    return ($output -join "`n").Trim()
+    return (@($res.Stdout) -join "`n").Trim()
 }
 
 function Resolve-InstallPipelineRef {
@@ -537,9 +541,12 @@ function Invoke-InstallMaterialization {
     $tmpExtract = Join-Path $InstallArea ('extract-' + [Guid]::NewGuid().ToString('N'))
 
     try {
-        $arOut = & git -C $sourceLoc archive --format=zip --output $tmpZip $refSha 2>&1
-        if ($LASTEXITCODE -ne 0) {
-            throw "Invoke-InstallMaterialization: git archive failed for ref $refSha (source=$sourceLoc; output=$arOut)"
+        # Route through Invoke-InstallPipelineNativeGit (not raw `& git ... 2>&1`): the
+        # archive bytes go to $tmpZip via --output, so no stdout capture is needed, but the
+        # helper still shields the exit-code check from a PS 5.1 EAP=Stop stderr promotion.
+        $res = Invoke-InstallPipelineNativeGit -Arguments @('-C', $sourceLoc, 'archive', '--format=zip', '--output', $tmpZip, $refSha)
+        if ($res.ExitCode -ne 0) {
+            throw "Invoke-InstallMaterialization: git archive failed for ref $refSha (source=$sourceLoc; exitCode=$($res.ExitCode))"
         }
 
         $null = New-Item -ItemType Directory -Path $tmpExtract -Force
