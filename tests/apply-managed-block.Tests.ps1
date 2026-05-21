@@ -54,7 +54,7 @@ BeforeAll {
     }
 
     function script:Invoke-Apply {
-        param([string] $SnippetPath, [string] $TargetPath)
+        param([string] $SnippetPath, [string] $TargetPath, [switch] $DryRun)
         $procArgs = @(
             '-NoProfile',
             '-ExecutionPolicy', 'Bypass',
@@ -62,6 +62,7 @@ BeforeAll {
             '-SnippetPath', $SnippetPath,
             '-TargetPath', $TargetPath
         )
+        if ($DryRun) { $procArgs += '-DryRun' }
         $combined = & powershell.exe @procArgs 2>&1
         $exitCode = $LASTEXITCODE
         $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
@@ -580,5 +581,114 @@ Describe 'apply-managed-block A-2c backup / rollback' {
             $bak = $target + '.amb-backup'
             if (Test-Path -LiteralPath $bak) { Remove-Item -LiteralPath $bak -Force }
         }
+    }
+}
+
+Describe 'apply-managed-block A-2d dry-run / diff' {
+    It 'AC-AMB-DRYRUN-OK: a valid change previews, exits 0, writes nothing, creates no backup' {
+        $dir = script:New-CaseDir -CaseName 'dryrun-ok'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $original = ("head`n" + $script:Begin + "`nOLD body`n" + $script:End + "`ntail`n")
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+        $beforeBytes = script:Read-Bytes -Path $target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target -DryRun
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'DRY-RUN \(no file written, no backup created\)'
+        $result.Output | Should -Match 'DRY-RUN PASS \(managed block WOULD change\)'
+        # Block-level diff markers: the current block body and the proposed body appear.
+        $result.Output | Should -Match '- OLD body'
+        $result.Output | Should -Match '\+ # managed payload — v2'
+        $result.Output | Should -Not -Match 'apply-managed-block: PASS'   # not a real apply
+
+        # Target byte-unchanged and NO backup sidecar created.
+        $afterBytes = script:Read-Bytes -Path $target
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-DRYRUN-NOCHANGE: when the block already matches, dry-run reports no change' {
+        $dir = script:New-CaseDir -CaseName 'dryrun-nochange'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        # Target's managed block is identical to the snippet's block (terminator-agnostic).
+        $original = ("head`n" + $script:Begin + "`n# managed payload — v2`nbody line`n" + $script:End + "`ntail`n")
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+        $beforeBytes = script:Read-Bytes -Path $target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target -DryRun
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'already up to date \(no change\)'
+        $result.Output | Should -Match 'DRY-RUN PASS \(no change\)'
+
+        $afterBytes = script:Read-Bytes -Path $target
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-DRYRUN-FAIL-FFFD: dry-run still rejects a U+FFFD target before any write' {
+        $dir = script:New-CaseDir -CaseName 'dryrun-fffd'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $fffd = [string][char]0xFFFD
+        $original = ("head " + $fffd + "`n" + $script:Begin + "`nold`n" + $script:End + "`ntail`n")
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+        $beforeBytes = script:Read-Bytes -Path $target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target -DryRun
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'U\+FFFD replacement character'
+        $result.Output | Should -Not -Match 'DRY-RUN PASS'
+
+        $afterBytes = script:Read-Bytes -Path $target
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-DRYRUN-FAIL-INVALID-UTF8: dry-run still rejects invalid UTF-8 before any write' {
+        $dir = script:New-CaseDir -CaseName 'dryrun-utf8'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+
+        $head = [System.Text.Encoding]::UTF8.GetBytes("head`n")
+        $bad  = [byte[]]@(0xFF, 0xFE)
+        $blk  = [System.Text.Encoding]::UTF8.GetBytes("`n" + $script:Begin + "`nold`n" + $script:End + "`ntail`n")
+        $bytes = New-Object byte[] ($head.Length + $bad.Length + $blk.Length)
+        [System.Array]::Copy($head, 0, $bytes, 0, $head.Length)
+        [System.Array]::Copy($bad, 0, $bytes, $head.Length, $bad.Length)
+        [System.Array]::Copy($blk, 0, $bytes, $head.Length + $bad.Length, $blk.Length)
+        [System.IO.File]::WriteAllBytes($target, $bytes)
+        $beforeBytes = script:Read-Bytes -Path $target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target -DryRun
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'invalid UTF-8 byte sequence'
+        $result.Output | Should -Not -Match 'DRY-RUN PASS'
+
+        $afterBytes = script:Read-Bytes -Path $target
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-DRYRUN-FAIL-MARKER: dry-run still rejects a target with no marker pair before any write' {
+        $dir = script:New-CaseDir -CaseName 'dryrun-marker'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $original = "# no markers here`njust user content`n"
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target -DryRun
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'no AI_HARNESS_TOOLSET_GLOBAL marker pair'
+        $result.Output | Should -Not -Match 'DRY-RUN PASS'
+
+        (script:Read-Utf8NoBomFile -Path $target) | Should -Be $original
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
     }
 }

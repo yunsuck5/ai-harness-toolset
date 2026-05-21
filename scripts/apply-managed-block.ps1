@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
     [Parameter(Mandatory = $true)] [string] $SnippetPath,
-    [Parameter(Mandatory = $true)] [string] $TargetPath
+    [Parameter(Mandatory = $true)] [string] $TargetPath,
+    [switch] $DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -22,6 +23,10 @@ $ErrorActionPreference = 'Stop'
 #   - Content outside the managed block is preserved byte-for-byte. The block
 #     region is rendered with the destination's detected newline convention.
 #   - On any validation failure the tool fails fast BEFORE writing — no partial write.
+#   - With -DryRun the tool runs the full pre-write validation path (existence, BOM,
+#     strict UTF-8 read, U+FFFD sentinel, marker validation, new-content construction)
+#     and prints a block-level before/after preview, but writes nothing and creates no
+#     backup. It is a whole-managed-block preview, not a line-level diff engine.
 #
 # Scope guard: this tool edits a caller-supplied destination path only. It does not
 # resolve, target, or apply to %USERPROFILE%\.claude or %USERPROFILE%\.codex on its
@@ -64,6 +69,45 @@ try {
 catch {
     Write-Host ('apply-managed-block: FAIL {0}' -f $_.Exception.Message)
     exit 1
+}
+
+# A-2d dry-run / diff preview. By this point every pre-write gate has run (existence,
+# BOM, strict UTF-8, U+FFFD sentinel, marker validation) and the would-be new content
+# is constructed. Dry-run reuses that exact path, then prints a block-level before/after
+# preview and exits WITHOUT writing the target or creating a backup — the backup/write
+# section below is never reached. The preview is the whole managed block (current vs
+# proposed), not a line-level diff engine, which keeps it small and deterministic.
+if ($DryRun) {
+    $oldBlock = Get-ManagedBlockContent -Content $target  -Label 'destination'
+    $newBlock = Get-ManagedBlockContent -Content $snippet -Label 'snippet'
+
+    $changed = $false
+    if ($oldBlock.Count -ne $newBlock.Count) {
+        $changed = $true
+    }
+    else {
+        for ($i = 0; $i -lt $oldBlock.Count; $i++) {
+            if ($oldBlock[$i] -cne $newBlock[$i]) {
+                $changed = $true
+                break
+            }
+        }
+    }
+
+    Write-Host 'apply-managed-block: DRY-RUN (no file written, no backup created)'
+    Write-Host ('apply-managed-block: target {0}' -f $TargetPath)
+    Write-Host ('apply-managed-block: source snippet {0}' -f $SnippetPath)
+    if ($changed) {
+        Write-Host 'apply-managed-block: managed block diff (- current / + proposed):'
+        foreach ($line in $oldBlock) { Write-Host ('- {0}' -f $line) }
+        foreach ($line in $newBlock) { Write-Host ('+ {0}' -f $line) }
+        Write-Host 'apply-managed-block: DRY-RUN PASS (managed block WOULD change)'
+    }
+    else {
+        Write-Host 'apply-managed-block: managed block is already up to date (no change).'
+        Write-Host 'apply-managed-block: DRY-RUN PASS (no change)'
+    }
+    exit 0
 }
 
 # A-2c backup / rollback. Every pre-write gate above (snippet/target existence, BOM,
