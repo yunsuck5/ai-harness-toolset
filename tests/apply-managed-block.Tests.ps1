@@ -359,6 +359,35 @@ Describe 'apply-managed-block snippet / input guards' {
         [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
     }
 
+    It 'AC-AMB-INVALID-UTF8: an invalid-UTF-8 target fails fast and is left byte-unchanged' {
+        $dir = script:New-CaseDir -CaseName 'invalid-utf8'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+
+        # A well-formed marker pair, but with raw invalid UTF-8 bytes (0xFF 0xFE)
+        # spliced into the outside-block content. Strict Read-Utf8 must reject this
+        # before the managed-block splice / verify runs, so the corrupted bytes are
+        # never read, rewritten, or "verified" — and the file is left untouched.
+        $head = [System.Text.Encoding]::UTF8.GetBytes("head`n")
+        $bad  = [byte[]]@(0xFF, 0xFE)
+        $blk  = [System.Text.Encoding]::UTF8.GetBytes("`n" + $script:Begin + "`nold`n" + $script:End + "`ntail`n")
+        $bytes = New-Object byte[] ($head.Length + $bad.Length + $blk.Length)
+        [System.Array]::Copy($head, 0, $bytes, 0, $head.Length)
+        [System.Array]::Copy($bad, 0, $bytes, $head.Length, $bad.Length)
+        [System.Array]::Copy($blk, 0, $bytes, $head.Length + $bad.Length, $blk.Length)
+        [System.IO.File]::WriteAllBytes((Join-Path $dir 'CLAUDE.md'), $bytes)
+
+        $beforeBytes = script:Read-Bytes -Path $target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'invalid UTF-8 byte sequence'
+
+        $afterBytes = script:Read-Bytes -Path $target
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+    }
+
     It 'AC-AMB-MISSING-TARGET: a missing target path fails fast' {
         $dir = script:New-CaseDir -CaseName 'missing-target'
         $snippet = Join-Path $dir 'snippet.md'

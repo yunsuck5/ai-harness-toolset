@@ -14,8 +14,35 @@ function Read-Utf8 {
     }
 
     $resolved = (Resolve-Path -LiteralPath $Path).ProviderPath
-    $encoding = New-Object System.Text.UTF8Encoding($false)
-    return [System.IO.File]::ReadAllText($resolved, $encoding)
+    $bytes = [System.IO.File]::ReadAllBytes($resolved)
+
+    # Preserve the prior ReadAllText semantics: a leading UTF-8 BOM is consumed
+    # rather than returned as a U+FEFF character. (The managed-block apply path
+    # rejects BOM-prefixed targets upstream; other callers that historically relied
+    # on BOM-stripping keep that behavior.)
+    $offset = 0
+    if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+        $offset = 3
+    }
+
+    # Strict UTF-8 decode: UTF8Encoding(emitBOM=$false, throwOnInvalidBytes=$true)
+    # installs the exception decoder fallback. The default (single-arg) constructor
+    # uses the *replacement* fallback, which silently maps invalid UTF-8 bytes to
+    # U+FFFD. On the managed-block apply path that means corrupted input could be
+    # read, rewritten, and "verified" without the corruption ever surfacing.
+    #
+    # GetString performs one complete decode that flushes the decoder, so it throws
+    # on BOTH mid-stream invalid bytes AND a truncated trailing multi-byte sequence.
+    # File.ReadAllText routes through a StreamReader that silently DROPS a dangling
+    # tail sequence at EOF (no throw, no U+FFFD), which would let truncated input
+    # reach the splice as silent byte loss; decoding the bytes ourselves closes that.
+    $encoding = New-Object System.Text.UTF8Encoding($false, $true)
+    try {
+        return $encoding.GetString($bytes, $offset, $bytes.Length - $offset)
+    }
+    catch {
+        throw "Read-Utf8: invalid UTF-8 byte sequence in file: $Path"
+    }
 }
 
 function Write-Utf8NoBom {
