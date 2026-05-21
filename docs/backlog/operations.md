@@ -766,3 +766,80 @@ install snapshot zip 에서 **실제 installed `CLAUDE.md` / `AGENTS.md` managed
 - 본 backlog entry 의 존재로 `scripts/` / snapshot tooling / report template / 어떤 report 본문도 자동 변경되지 않는다.
 - review subsystem 결함 수정이 아니며, BRIEF.md 부재 / restore-offer review 문제와도 별개다.
 - 본 항목 implementation 은 별도 scoped goal 을 거친다.
+
+---
+
+## Activation managed-block apply tooling hardening
+
+- **Status**: candidate (immediate-priority hardening, docs-only registration). **강하게 보존해야 하는 polishing backlog** 이며 즉시 implementation 승인 아님. 본 항목은 recovered 된 high-severity incident 의 후속 도구화 후보다 — install / update correctness 를 뒤집는 blocker 가 **아니라** activation apply 단계의 tooling gap 을 메우는 항목이다.
+- **Classification**: install / update activation path 의 tooling debt. base payload materialization 은 deterministic install-pipeline 으로 도구화되어 있으나, global / user instruction file 의 managed-block replace 는 deterministic script 가 없어 AI 가 매번 ad-hoc PowerShell splice 를 작성한다 — "가장 위험한 변형 (global / user file in-place mutation)" 이 "가장 도구 지원이 없는 단계" 와 겹친 상태의 hardening 이다.
+- **Origin**: fresh git-url operational update 라운드 (`fc70f2a8` → `729f96a6` global payload update). update behavior 자체는 PASS 로 판단되었고 (아래 §Update behavior 판단 분리), 본 항목은 그 라운드에서 발생한 activation apply UTF-8 corruption incident 의 후속 polishing 으로 강하게 남긴다.
+
+### Incident — activation managed-block apply UTF-8 corruption
+
+- **발생 지점**: `fc70f2a8` → `729f96a6` global payload update 중. base payload materialization 과 metadata cross-binding (`payload-manifest.json` / `payload-marker.json` / `install.json.lastUpdatedHead`) 은 정상적으로 진행되었다. 사고는 그 다음 단계인 **activation managed-block apply** 에서 발생했다.
+- **대상 파일**: global / user instruction files 두 개 —
+  - `%USERPROFILE%\.claude\CLAUDE.md`
+  - `%USERPROFILE%\.codex\AGENTS.md`
+- **원인**: repo-provided deterministic activation apply tool 이 없어 AI 가 ad-hoc PowerShell splice 를 작성했고, 대상 파일을 `Get-Content` 로 encoding 지정 없이 읽었다. 대상 파일은 UTF-8 (BOM 없음) 이었으나 Windows PowerShell 5.1 은 `-Encoding` 생략 시 시스템 ANSI 코드페이지 (이 머신은 cp949) 로 디코딩하므로, 비-ASCII 문자가 lossy corruption 되었다.
+- **손상 형태**: `CLAUDE.md` 에서 em-dash 등이 리터럴 `??` 로 깨졌고, `AGENTS.md` 에서는 marker 밖 한글 개인 memory block 이 mojibake 로 손상되었다. 즉 손상이 managed block 내부에 그치지 않고 **marker 밖 사용자 개인 데이터** 까지 미쳤다 — 이 점 때문에 high severity 로 분류한다.
+
+### Severity and recovery
+
+- **High severity** — global / user instruction file 의 managed block 밖 사용자 개인 데이터가 손상되었다. managed block 밖 content 를 byte 보존해야 한다는 apply contract (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6, snippet "Forbidden in this toolset") 를 결과적으로 위반했다.
+- **Recovered** — 동일 세션에서 두 파일 모두 원본으로 복구되었고, 사용자가 `CLAUDE.md` / `AGENTS.md` 의 marker 밖 개인 내용 복구를 직접 확인했다. 현재 두 파일의 복구 상태는 PASS 다.
+- 그러나 recovery 가 incident 의 high severity 분류를 낮추지 않는다 — backup / deterministic tooling 부재 상태에서 손상이 우연히 복구 가능했을 뿐, 동일한 ad-hoc splice 방식을 반복하면 재발 가능하다.
+
+### Update behavior 판단 분리 (이 항목이 뒤집지 않는 것)
+
+- **update behavior 자체는 PASS 다.** AI 가 기존 installed metadata 로 `git-url` source identity 를 파악하고, 현재 작업 디렉터리를 source 로 오인하지 않았으며, 기존 버전과 merge 하지 않고 deterministic overwrite / replace 로 payload 와 activation surface 를 갱신했다. `lastUpdatedHead` 와 manifest / marker cross-binding 이 `729f96a6` 으로 일치 갱신되었다.
+- 본 incident 는 **update model 의 실패가 아니라 activation apply implementation path 의 tooling gap** 이다. 정확한 분류는 "update behavior: PASS / activation apply path: FAIL, recovered, high-severity incident" 이다.
+- 본 항목은 update PASS 판단을 뒤집지 않으며, deterministic overwrite / replace 라는 update 대전제도 흐리지 않는다.
+
+### Structural problem (왜 immediate-priority 로 남기는가)
+
+- base payload materialization 은 install-pipeline 으로 도구화되어 있다 (encoding-safe, deterministic).
+- 그러나 global / user activation managed-block replace 는 deterministic, 재사용 가능한 script 가 없다. 그래서 AI 가 매번 ad-hoc PowerShell splice 를 작성하고, encoding / marker / 정렬 처리 실수의 여지가 크다.
+- 이 상태를 방치하면 다음 install / update 에서도 AI 가 ad-hoc splice 를 반복할 수 있으며, 동일 incident 가 재발 가능하다. 따라서 본 항목은 install closeout polishing 중에서도 immediate-priority 후보로 남긴다.
+
+### Candidate direction — deterministic managed-block apply tooling (별도 scoped 작업)
+
+본 backlog 단계에서는 어느 것도 implementation 결정하지 않는다. 후속 작업으로 deterministic managed-block apply tooling 을 별도 scoped goal 로 구현한다.
+
+- **예상 산출물 후보** (위치 / 이름 implementation 단계 확정):
+  - `scripts/apply-managed-block.ps1`
+  - `scripts/lib/managed-block.ps1`
+  - `tests/apply-managed-block.Tests.ps1`
+- **최소 요구사항** (후속 작업자가 구현 시 충족해야 할 것):
+  - UTF-8 safe read / write 만 사용 (`[System.IO.File]::ReadAllText` / `WriteAllText` + UTF8 no-BOM).
+  - `Get-Content` / `Set-Content` 사용 금지, 또는 repo helper 로 명시 차단.
+  - snippet marker pair 검증.
+  - destination marker pair 가 정확히 1 쌍인지 검증 (`Managed block marker detection — whole-line trim match algorithm` 항목의 whole-line trim counting rule 과 정합).
+  - marker 밖 content 보존 (byte 동일).
+  - managed block 전체 replace.
+  - 적용 후 block == snippet 검증.
+  - line ending / BOM policy 명시 또는 destination 관례 보존.
+  - 실패 시 fail-fast.
+
+### Future expansion candidates (위 최소 구현 이후, 별도 후속)
+
+- pre-write backup (타임스탬프).
+- 손상 즉시 rollback 경로.
+- dry-run / diff 모드.
+- 비-ASCII 무손실 gate (적용 전후 리터럴 `?` (0x3F) / U+FFFD count 비증가 검증).
+- global activation apply 전체의 script 화.
+
+### Cross-reference
+
+- `Managed block marker detection — whole-line trim match algorithm` 항목 — managed-block apply 의 marker counting 알고리즘 (whole-line trim match) 을 명문화한 closed 항목. 본 항목의 apply tooling 이 destination marker pair 검증 시 그 counting rule 을 사용한다. 두 항목은 동일 apply policy 영역이나, 그 항목은 detection algorithm 의 contract clarification 이고 본 항목은 encoding-safe deterministic apply tooling 의 부재 (tooling gap) 다 — 합치지 않는다.
+- `Install validation report evidence hygiene` / `Snapshot auxiliary evidence exactness wording` 항목 — 동일 install / update closeout 라운드 계열의 sibling polishing 항목. 본 항목은 그 둘과 별개로, activation apply 단계의 incident-driven tooling gap 을 다룬다.
+- `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6 — managed-block apply policy (marker rule, fail-fast, whole-file overwrite 금지, marker 밖 보존). 본 항목의 apply tooling 이 구현해야 할 contract.
+
+### Non-goals
+
+- update / install correctness 판단을 뒤집지 않는다 — 본 origin 라운드의 update behavior 는 PASS 다.
+- 이번 docs-only 등록에서 `scripts/` / `scripts/lib/` / `tests/` / `snippets/` / `templates/` / `INSTALL.md` 어느 것도 구현 / 변경하지 않는다 — managed-block apply tooling 의 implementation 은 별도 scoped goal 이다.
+- global installed payload, `%USERPROFILE%\.claude`, `%USERPROFILE%\.codex` 어느 것도 변경하지 않는다.
+- review subsystem 작업이 아니다 — reviewer-mode restore-offer defect 는 이미 closed 이며 본 항목에 섞지 않는다.
+- Codex install-method review 의 native git invocation 통일 / verify schema strictness 강화 / materialization atomicity 와 묶지 않는다 — 각각 별개 항목이며 본 항목과 같은 batch 로 구현하지 않는다.
+- 본 항목 implementation 은 별도 scoped goal 을 거친다.
