@@ -142,6 +142,12 @@ BeforeAll {
         return ($raw | ConvertFrom-Json)
     }
 
+    function script:Write-MetadataToArea {
+        param([string] $InstallArea, $Metadata)
+        $path = Join-Path $InstallArea 'install.json'
+        [System.IO.File]::WriteAllText($path, ($Metadata | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding($false)))
+    }
+
     # STEP3 guide §16.7: git-url tests use a local bare repo as the "remote URL". The bare
     # path is passed to -RepoUrl; git treats local paths as implicit file:// URLs.
     function script:New-FixtureBareRepo {
@@ -1442,5 +1448,214 @@ Describe 'install-pipeline library — native git invocation routes through Invo
         Should -Invoke Invoke-InstallPipelineNativeGit -Times 1 -Exactly -ParameterFilter {
             $Arguments -contains 'archive'
         }
+    }
+}
+
+Describe 'install-pipeline verify — install.json schema strictness (C-task)' {
+    # Minimal metadata-contract strictness on top of the pre-existing verify checks:
+    # exact field set, installMode allowed values, mode-specific empty/non-empty conditions,
+    # and 40-hex head sha format. Each case installs a real, valid metadata then tampers
+    # install.json in one dimension and asserts Invoke-InstallPipelineVerify reports it.
+    It 'AC-IP-SCHEMA-1: a clean local-clone install passes verify (no false positive)' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-1' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-1'
+        $proj = script:New-ProjectRoot -CaseName 'schema-1'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeTrue -Because ($vr.errors -join '; ')
+    }
+
+    It 'AC-IP-SCHEMA-2: verify rejects an unexpected metadata field' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-2' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-2'
+        $proj = script:New-ProjectRoot -CaseName 'schema-2'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md | Add-Member -NotePropertyName 'bogusField' -NotePropertyValue 'x'
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata has unexpected field: bogusField').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-3: verify rejects a missing metadata field' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-3' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-3'
+        $proj = script:New-ProjectRoot -CaseName 'schema-3'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.PSObject.Properties.Remove('branch')
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata missing required field: branch').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-4: verify rejects an invalid installMode value' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-4' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-4'
+        $proj = script:New-ProjectRoot -CaseName 'schema-4'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.installMode = 'bogus-mode'
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata.installMode invalid: bogus-mode').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-5: verify rejects a non-40-hex head sha' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-5' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-5'
+        $proj = script:New-ProjectRoot -CaseName 'schema-5'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # Tamper installedHead only — lastUpdatedHead stays valid so the manifest/marker
+        # head binding is untouched and the 40-hex check is what fires.
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.installedHead = 'not-a-real-sha'
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata.installedHead is not a 40-hex sha').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-6: clean git-url install passes verify, and a non-empty sourcePath/toolRoot is rejected' {
+        $bare = script:New-FixtureBareRepo -CaseName 'schema-6' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-6'
+        $proj = script:New-ProjectRoot -CaseName 'schema-6'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='git-url';
+            RepoUrl=$bare.BareUrl; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # Baseline: git-url install must verify clean (sourcePath/toolRoot intentionally empty).
+        (Invoke-InstallPipelineVerify -InstallArea $area).ok | Should -BeTrue
+
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.sourcePath = 'C:\should-be-empty'
+        $md.toolRoot   = 'C:\should-be-empty'
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata.sourcePath must be empty for git-url mode').Count | Should -BeGreaterThan 0
+        ($vr.errors -match 'metadata.toolRoot must be empty for git-url mode').Count   | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-7: missing a directly-read field returns ok=false structurally (does not throw under StrictMode)' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-7' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-7'
+        $proj = script:New-ProjectRoot -CaseName 'schema-7'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # `tool` is read directly by the value-level checks; under Set-StrictMode -Version
+        # Latest its absence would throw if value checks were not gated on field completeness.
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.PSObject.Properties.Remove('tool')
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        { Invoke-InstallPipelineVerify -InstallArea $area } | Should -Not -Throw
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata missing required field: tool').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-8: field-set check is case-sensitive (a Branch key does not satisfy required branch)' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-8' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-8'
+        $proj = script:New-ProjectRoot -CaseName 'schema-8'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # Rename branch -> Branch (case variant). JSON keys are case-sensitive; the exact
+        # field-set must report both a missing `branch` and an unexpected `Branch`.
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $branchVal = $md.branch
+        $md.PSObject.Properties.Remove('branch')
+        $md | Add-Member -NotePropertyName 'Branch' -NotePropertyValue $branchVal
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata missing required field: branch').Count | Should -BeGreaterThan 0
+        ($vr.errors -match 'metadata has unexpected field: Branch').Count   | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-9: missing lastUpdatedHead (read in manifest/marker cross-binding) returns ok=false without throwing' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-9' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-9'
+        $proj = script:New-ProjectRoot -CaseName 'schema-9'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # lastUpdatedHead is read after the field gate in the manifest + marker head
+        # cross-binding; its absence must not throw under Set-StrictMode -Version Latest.
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.PSObject.Properties.Remove('lastUpdatedHead')
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        { Invoke-InstallPipelineVerify -InstallArea $area } | Should -Not -Throw
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata missing required field: lastUpdatedHead').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-10: a missing install.json fails verify (does not silently pass)' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-10' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-10'
+        $proj = script:New-ProjectRoot -CaseName 'schema-10'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # Delete install.json only; current/, manifest and marker remain. Without an explicit
+        # missing-metadata error, metadata strictness would be skipped and verify could pass.
+        Remove-Item -LiteralPath (Join-Path $area 'install.json') -Force
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata missing:').Count | Should -BeGreaterThan 0
     }
 }

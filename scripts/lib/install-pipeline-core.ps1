@@ -53,6 +53,14 @@ function Invoke-InstallPipelineNativeGit {
 
 $script:InstallPipelineSchemaVersion        = 1
 $script:InstallPipelineTool                 = 'ai-harness-toolset'
+# Exact install.json field set (canonical order = New-InstallPipelineMetadata). Verify uses
+# this for missing-field / unexpected-field strictness. Keep in sync with the constructor;
+# adding a real field is a deliberate schema change that updates both sites together.
+$script:InstallPipelineMetadataFields       = @(
+    'schemaVersion', 'tool', 'installMode', 'repoUrl', 'sourcePath', 'toolRoot',
+    'branch', 'remote', 'installedHead', 'lastUpdatedHead', 'installedAt',
+    'lastUpdatedAt', 'targetFootprintPolicy', 'managedBy'
+)
 $script:InstallPipelineManagedBy            = 'claude-code'
 $script:InstallPipelineFootprint            = 'log-only'
 $script:InstallPipelinePayloadRoots         = @('config', 'scripts', 'snippets', 'templates')
@@ -731,38 +739,94 @@ function Invoke-InstallPipelineVerify {
     catch {
         $errors.Add(('metadata read failed: {0}' -f $_.Exception.Message))
     }
+    # A missing install.json must fail verify rather than silently skipping all metadata
+    # strictness and the manifest/marker-to-metadata binding. Mirrors the manifest/marker
+    # missing checks below. The read-failed branch already reported, so do not double-report.
+    if ($null -eq $md -and -not ($errors -match 'metadata read failed')) {
+        $errors.Add(('metadata missing: {0}' -f (Get-InstallPipelineMetadataPath -InstallArea $InstallArea)))
+    }
 
     if ($null -ne $md) {
-        if ($md.tool -ne $script:InstallPipelineTool) {
-            $errors.Add("metadata.tool mismatch: $($md.tool) (expected $script:InstallPipelineTool)")
+        # Exact field-set strictness: install.json must carry exactly the known field set
+        # (no missing, no unexpected). Comparison is case-sensitive (-ccontains/-cnotcontains)
+        # so JSON key casing is exact — a key like `Branch` does NOT satisfy required `branch`
+        # (it is reported as both a missing `branch` and an unexpected `Branch`). schemaVersion
+        # mismatch is already fail-fast in Read-InstallPipelineMetadata.
+        $actualFields = @($md.PSObject.Properties.Name)
+        $missingFields = @($script:InstallPipelineMetadataFields | Where-Object { $actualFields -cnotcontains $_ })
+        foreach ($f in $missingFields) {
+            $errors.Add("metadata missing required field: $f")
         }
-        if (@('git-url', 'local-clone') -notcontains $md.installMode) {
-            $errors.Add("metadata.installMode invalid: $($md.installMode)")
+        foreach ($f in $actualFields) {
+            if ($script:InstallPipelineMetadataFields -cnotcontains $f) {
+                $errors.Add("metadata has unexpected field: $f")
+            }
         }
-        # toolRoot is required for local-clone (= user-supplied source path identity).
-        # For git-url it is intentionally empty under the run-scoped temporary work area
-        # policy (INSTALL.md §2) — the cache is transient and not a persistent identity.
-        if ($md.installMode -eq 'local-clone' -and [string]::IsNullOrEmpty([string]$md.toolRoot)) {
-            $errors.Add('metadata.toolRoot empty for local-clone mode')
+
+        # Value-level checks read required properties directly; under Set-StrictMode -Version
+        # Latest accessing a missing property throws a terminating error. Run them only once
+        # the field set is structurally complete, so a missing required field yields a
+        # structured ok=false error instead of crashing verify.
+        if ($missingFields.Count -eq 0) {
+            if ($md.tool -ne $script:InstallPipelineTool) {
+                $errors.Add("metadata.tool mismatch: $($md.tool) (expected $script:InstallPipelineTool)")
+            }
+            if (@('git-url', 'local-clone') -notcontains $md.installMode) {
+                $errors.Add("metadata.installMode invalid: $($md.installMode)")
+            }
+            # toolRoot is required for local-clone (= user-supplied source path identity).
+            # For git-url it is intentionally empty under the run-scoped temporary work area
+            # policy (INSTALL.md §2) — the cache is transient and not a persistent identity.
+            if ($md.installMode -eq 'local-clone' -and [string]::IsNullOrEmpty([string]$md.toolRoot)) {
+                $errors.Add('metadata.toolRoot empty for local-clone mode')
+            }
+            if ([string]::IsNullOrEmpty([string]$md.installedHead)) {
+                $errors.Add('metadata.installedHead empty')
+            }
+            if ([string]::IsNullOrEmpty([string]$md.lastUpdatedHead)) {
+                $errors.Add('metadata.lastUpdatedHead empty')
+            }
+            # Head fields must be 40-hex commit shas when present. Empty is reported above; this
+            # only adds a format error for non-empty malformed values (e.g. truncated/branch name).
+            # Match is case-insensitive (PowerShell -notmatch default) — not over-constrained.
+            foreach ($shaField in @('installedHead', 'lastUpdatedHead')) {
+                $shaVal = [string]$md.$shaField
+                if (-not [string]::IsNullOrEmpty($shaVal) -and ($shaVal -notmatch '^[0-9a-f]{40}$')) {
+                    $errors.Add("metadata.$shaField is not a 40-hex sha: $shaVal")
+                }
+            }
+            if ($md.installMode -eq 'git-url') {
+                if ([string]::IsNullOrEmpty([string]$md.repoUrl)) {
+                    $errors.Add('metadata.repoUrl empty for git-url mode')
+                }
+                # git-url records no persistent local identity: source is a transient work area
+                # cleaned up at end of action (INSTALL.md §2), so both must be empty.
+                if (-not [string]::IsNullOrEmpty([string]$md.sourcePath)) {
+                    $errors.Add('metadata.sourcePath must be empty for git-url mode')
+                }
+                if (-not [string]::IsNullOrEmpty([string]$md.toolRoot)) {
+                    $errors.Add('metadata.toolRoot must be empty for git-url mode')
+                }
+            }
+            if ($md.installMode -eq 'local-clone' -and [string]::IsNullOrEmpty([string]$md.sourcePath)) {
+                $errors.Add('metadata.sourcePath empty for local-clone mode')
+            }
+            if ($md.targetFootprintPolicy -ne $script:InstallPipelineFootprint) {
+                $errors.Add("metadata.targetFootprintPolicy mismatch: $($md.targetFootprintPolicy) (expected $script:InstallPipelineFootprint)")
+            }
+            if ($md.managedBy -ne $script:InstallPipelineManagedBy) {
+                $errors.Add("metadata.managedBy mismatch: $($md.managedBy) (expected $script:InstallPipelineManagedBy)")
+            }
         }
-        if ([string]::IsNullOrEmpty([string]$md.installedHead)) {
-            $errors.Add('metadata.installedHead empty')
-        }
-        if ([string]::IsNullOrEmpty([string]$md.lastUpdatedHead)) {
-            $errors.Add('metadata.lastUpdatedHead empty')
-        }
-        if ($md.installMode -eq 'git-url' -and [string]::IsNullOrEmpty([string]$md.repoUrl)) {
-            $errors.Add('metadata.repoUrl empty for git-url mode')
-        }
-        if ($md.installMode -eq 'local-clone' -and [string]::IsNullOrEmpty([string]$md.sourcePath)) {
-            $errors.Add('metadata.sourcePath empty for local-clone mode')
-        }
-        if ($md.targetFootprintPolicy -ne $script:InstallPipelineFootprint) {
-            $errors.Add("metadata.targetFootprintPolicy mismatch: $($md.targetFootprintPolicy) (expected $script:InstallPipelineFootprint)")
-        }
-        if ($md.managedBy -ne $script:InstallPipelineManagedBy) {
-            $errors.Add("metadata.managedBy mismatch: $($md.managedBy) (expected $script:InstallPipelineManagedBy)")
-        }
+    }
+
+    # StrictMode-safe snapshot of metadata.lastUpdatedHead for the manifest/marker
+    # cross-binding below. $md may be missing required fields (already recorded as field-set
+    # errors); reading $md.lastUpdatedHead directly would throw under Set-StrictMode -Version
+    # Latest when the field is absent, terminating verify instead of returning ok=false.
+    $mdLastUpdatedHead = $null
+    if ($null -ne $md -and (@($md.PSObject.Properties.Name) -ccontains 'lastUpdatedHead')) {
+        $mdLastUpdatedHead = [string]$md.lastUpdatedHead
     }
 
     # STEP3 guide §15.4 verify hook — manifest + marker. Both validated independently
@@ -781,9 +845,9 @@ function Invoke-InstallPipelineVerify {
         if ($manifest.tool -ne $script:InstallPipelineTool) {
             $errors.Add("manifest.tool mismatch: $($manifest.tool) (expected $script:InstallPipelineTool)")
         }
-        if ($null -ne $md -and -not [string]::IsNullOrEmpty([string]$md.lastUpdatedHead)) {
-            if ($manifest.head -ne $md.lastUpdatedHead) {
-                $errors.Add("manifest.head ($($manifest.head)) does not match metadata.lastUpdatedHead ($($md.lastUpdatedHead))")
+        if (-not [string]::IsNullOrEmpty($mdLastUpdatedHead)) {
+            if ($manifest.head -ne $mdLastUpdatedHead) {
+                $errors.Add("manifest.head ($($manifest.head)) does not match metadata.lastUpdatedHead ($mdLastUpdatedHead)")
             }
         }
         $expectedRoots = $script:InstallPipelinePayloadRoots
@@ -868,8 +932,8 @@ function Invoke-InstallPipelineVerify {
         if ($null -ne $manifest -and $marker.head -ne $manifest.head) {
             $errors.Add("marker.head ($($marker.head)) does not match manifest.head ($($manifest.head))")
         }
-        if ($null -ne $md -and -not [string]::IsNullOrEmpty([string]$md.lastUpdatedHead) -and $marker.head -ne $md.lastUpdatedHead) {
-            $errors.Add("marker.head ($($marker.head)) does not match metadata.lastUpdatedHead ($($md.lastUpdatedHead))")
+        if (-not [string]::IsNullOrEmpty($mdLastUpdatedHead) -and $marker.head -ne $mdLastUpdatedHead) {
+            $errors.Add("marker.head ($($marker.head)) does not match metadata.lastUpdatedHead ($mdLastUpdatedHead)")
         }
     }
 
