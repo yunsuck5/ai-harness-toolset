@@ -482,3 +482,103 @@ Describe 'apply-managed-block snippet / input guards' {
         (script:Read-Utf8NoBomFile -Path $target) | Should -Be $original
     }
 }
+
+Describe 'apply-managed-block A-2c backup / rollback' {
+    It 'AC-AMB-BACKUP-CLEAN: a successful apply leaves no .amb-backup sidecar' {
+        $dir = script:New-CaseDir -CaseName 'backup-clean'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        script:Write-Utf8NoBomFile -Path $target -Content ("head`n" + $script:Begin + "`nold`n" + $script:End + "`ntail`n")
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'apply-managed-block: PASS'
+
+        # The happy path must not leave a stale backup artifact next to the target.
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-BACKUP-NONE-ON-PREWRITE-FAIL: a pre-write failure (U+FFFD) creates no backup and leaves the target byte-unchanged' {
+        $dir = script:New-CaseDir -CaseName 'backup-none-prewrite'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+
+        # U+FFFD in the target is rejected by the A-2b gate, which runs BEFORE the
+        # backup is created. So no backup sidecar should ever appear for this failure.
+        $fffd = [string][char]0xFFFD
+        $original = ("head " + $fffd + "`n" + $script:Begin + "`nold`n" + $script:End + "`ntail`n")
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+        $beforeBytes = script:Read-Bytes -Path $target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'U\+FFFD replacement character'
+
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+        $afterBytes = script:Read-Bytes -Path $target
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+    }
+
+    It 'AC-AMB-BACKUP-EXISTS-REFUSE: a pre-existing .amb-backup is left intact and the apply refuses' {
+        $dir = script:New-CaseDir -CaseName 'backup-exists'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $original = ("head`n" + $script:Begin + "`nold`n" + $script:End + "`ntail`n")
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+        $targetBefore = script:Read-Bytes -Path $target
+
+        # Simulate a recovery artifact left by a prior FAILED rollback: the backup holds
+        # the only surviving copy of the user's original bytes. The apply must NOT clobber
+        # it; it must refuse and leave both files untouched.
+        $bak = $target + '.amb-backup'
+        $sentinelBytes = [System.Text.Encoding]::UTF8.GetBytes("PRECIOUS ORIGINAL BYTES — do not overwrite`n")
+        [System.IO.File]::WriteAllBytes($bak, $sentinelBytes)
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'a prior backup already exists'
+
+        # Existing backup preserved byte-for-byte; target unchanged.
+        $bakAfter = script:Read-Bytes -Path $bak
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$bakAfter, [byte[]]$sentinelBytes) | Should -BeTrue
+        $targetAfter = script:Read-Bytes -Path $target
+        [System.Linq.Enumerable]::SequenceEqual([byte[]]$targetAfter, [byte[]]$targetBefore) | Should -BeTrue
+    }
+
+    It 'AC-AMB-ROLLBACK-WRITEFAIL: a write failure (read-only target) leaves the target byte-unchanged' {
+        # NOTE ON SIMULATION SCOPE: a post-write *verification mismatch* is defensively
+        # unreachable with valid inputs — Set-ManagedBlock writes the snippet block and
+        # the verifier re-extracts that same block, so they match by construction, and
+        # any structural problem is caught pre-write. The closest deterministic failure
+        # AFTER the pre-write gates is a failing write itself. A read-only target makes
+        # Write-Utf8NoBom throw (the file is not truncated), exercising the rollback
+        # branch; the invariant under test is that a failed apply never leaves the
+        # target mutated.
+        $dir = script:New-CaseDir -CaseName 'rollback-writefail'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $original = ("head`n" + $script:Begin + "`nold`n" + $script:End + "`ntail`n")
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+        $beforeBytes = script:Read-Bytes -Path $target
+
+        Set-ItemProperty -LiteralPath $target -Name IsReadOnly -Value $true
+        try {
+            $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target
+            $result.ExitCode | Should -Not -Be 0
+            $result.Output | Should -Match 'apply-managed-block: FAIL'
+
+            $afterBytes = script:Read-Bytes -Path $target
+            [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+        }
+        finally {
+            # Clear read-only so TestDrive cleanup (and any retained sidecar) can be removed.
+            Set-ItemProperty -LiteralPath $target -Name IsReadOnly -Value $false
+            $bak = $target + '.amb-backup'
+            if (Test-Path -LiteralPath $bak) { Remove-Item -LiteralPath $bak -Force }
+        }
+    }
+}

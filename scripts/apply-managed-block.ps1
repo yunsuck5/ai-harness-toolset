@@ -66,35 +66,81 @@ catch {
     exit 1
 }
 
-Write-Utf8NoBom -Path $TargetPath -Content $newContent
+# A-2c backup / rollback. Every pre-write gate above (snippet/target existence, BOM,
+# strict UTF-8 read, U+FFFD sentinel, marker structure) has already passed, so the
+# backup is created only here — immediately before the single mutation. A pre-write
+# failure therefore never leaves a backup artifact.
+#
+# The backup is a deterministic sidecar next to the target ('<target>.amb-backup')
+# holding the original bytes captured before any write ($targetBytes, read above for
+# the BOM check). The write + post-write verification run inside one try: on ANY
+# failure (a throwing write, an unreadable read-back, or a block mismatch) the
+# original bytes are restored from the backup, so the target is never left mutated by
+# a failed apply. On success the backup is removed, so the happy path leaves no stale
+# artifact. This is a minimal local backup/rollback, not a transaction / journaling
+# design (atomicity across process death is out of scope — see A-2c boundaries).
+$backupPath = $resolvedTarget + '.amb-backup'
 
-# Post-apply verification: the destination's managed block must now equal the
-# snippet's managed block (line content, terminator-agnostic).
+# Refuse if a backup sidecar already exists. The happy path and a clean rollback both
+# delete it, so a leftover '.amb-backup' means a PRIOR rollback failed (or a process was
+# killed mid-apply) and this file is the only surviving copy of the user's original
+# bytes. Overwriting it with the current (possibly already-mutated) target bytes would
+# destroy that recovery artifact, so fail fast and leave both the target and the existing
+# backup untouched for manual resolution.
+if (Test-Path -LiteralPath $backupPath) {
+    Write-Host ('apply-managed-block: FAIL a prior backup already exists (a previous rollback may have failed); resolve it before re-applying: {0}' -f $backupPath)
+    exit 1
+}
+
+[System.IO.File]::WriteAllBytes($backupPath, $targetBytes)
+
 try {
+    Write-Utf8NoBom -Path $TargetPath -Content $newContent
+
+    # Post-apply verification: the destination's managed block must now equal the
+    # snippet's managed block (line content, terminator-agnostic). A mismatch — or a
+    # failure reading the file back — means the write produced unexpected content, so
+    # raise an error the rollback handles instead of leaving the bad write in place.
     $snippetBlock = Get-ManagedBlockContent -Content $snippet -Label 'snippet'
     $writtenBlock = Get-ManagedBlockContent -Content (Read-Utf8 -Path $TargetPath) -Label 'destination'
+
+    $mismatch = $false
+    if ($snippetBlock.Count -ne $writtenBlock.Count) {
+        $mismatch = $true
+    }
+    else {
+        for ($i = 0; $i -lt $snippetBlock.Count; $i++) {
+            if ($snippetBlock[$i] -cne $writtenBlock[$i]) {
+                $mismatch = $true
+                break
+            }
+        }
+    }
+    if ($mismatch) {
+        throw 'post-apply verification: destination block does not equal snippet block.'
+    }
 }
 catch {
-    Write-Host ('apply-managed-block: FAIL post-apply verification: {0}' -f $_.Exception.Message)
+    $failMessage = $_.Exception.Message
+    try {
+        $backupBytes = [System.IO.File]::ReadAllBytes($backupPath)
+        [System.IO.File]::WriteAllBytes($resolvedTarget, $backupBytes)
+        # Cleanup is best-effort: a stuck deletion must not mask a successful restore.
+        Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
+        Write-Host ('apply-managed-block: FAIL {0}' -f $failMessage)
+        Write-Host 'apply-managed-block: rolled back; target restored to its original bytes.'
+    }
+    catch {
+        Write-Host ('apply-managed-block: FAIL {0}' -f $failMessage)
+        Write-Host ('apply-managed-block: ROLLBACK FAILED ({0}); original bytes preserved at backup: {1}' -f $_.Exception.Message, $backupPath)
+    }
     exit 1
 }
 
-$mismatch = $false
-if ($snippetBlock.Count -ne $writtenBlock.Count) {
-    $mismatch = $true
-}
-else {
-    for ($i = 0; $i -lt $snippetBlock.Count; $i++) {
-        if ($snippetBlock[$i] -cne $writtenBlock[$i]) {
-            $mismatch = $true
-            break
-        }
-    }
-}
-if ($mismatch) {
-    Write-Host 'apply-managed-block: FAIL post-apply verification: destination block does not equal snippet block.'
-    exit 1
-}
+# Success: apply and verification both passed. Remove the backup so the happy path
+# leaves no stale artifact. Best-effort: a failed cleanup must not turn a successful
+# apply into a failure (it would only leave a stale sidecar, reported as a tradeoff).
+Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
 
 Write-Host ('apply-managed-block: applied managed block to {0}' -f $TargetPath)
 Write-Host ('apply-managed-block: source snippet {0}' -f $SnippetPath)
