@@ -694,3 +694,75 @@ Step 3 git-url round (commit `8eecae0`) 의 5 review pass 에서 Codex reviewer 
 - `result.md` writer ownership 의 변경 implementation (예: Codex 가 작성 → local script 가 작성) 을 자동 승인하지 않는다 — 본 backlog 는 framing direction 의 후보 기록.
 - past round 들의 result.md / input.md 를 retroactive 하게 normalize 하는 작업도 자동 승인하지 않는다 — past round artifact 는 write-once 며 별도 scoped goal 의 대상이 아니다.
 - 본 항목 implementation 은 별도 scoped goal 을 거친다.
+
+---
+
+## Install validation report evidence hygiene
+
+- **Status**: candidate (future polishing). **강하게 보존해야 하는 polishing backlog** 이며 즉시 implementation 승인 아님. install correctness 를 뒤집는 blocker 가 **아니라** install validation / operational install closeout 의 **reporting / evidence quality** 개선 항목이다.
+- **Classification**: install validation / operational install closeout report 의 evidence hygiene debt. inner verification 결과 (PASS) 와 wrapper/tool layer 의 anomalous signal 을 분리해 신뢰 가능한 evidence report 를 만드는 후속 정리에 관한 것이다.
+- **Origin**: fresh git-url operational install closeout 라운드. 설치 자체는 PASS 로 판단되었고 본 항목은 그 closeout 의 후속 polishing 으로 강하게 남긴다.
+
+### Context
+
+fresh git-url operational install 중 **base payload global verify 구간**에서 wrapper / tool layer 가 `Error: Exit code 1` 을 표시했다. 그러나 그 구간의 **내부 verify 값은 `ok=True`** 였고, 이후 snapshot / integrity 검증도 모두 통과했다. 따라서 설치 실패로 판단하지는 않았다. 다만 이 상태를 formal report 에서 단순히 "wrapper noise" 한 단어로 일축하는 것은 보고 품질상 부적절하다 — PASS 판단과 anomalous wrapper signal 이 한 줄에 뭉뚱그려지면 후속 reader 가 실제 상태를 재구성하기 어렵다.
+
+### Problem (왜 polishing 으로 강하게 남기는가)
+
+- verify 자체가 PASS (`ok=True`) 여도 wrapper / tool layer 가 exit code 1 을 출력하면, 그 신호를 무시하거나 "noise" 로만 일축하면 evidence 신뢰도가 떨어진다.
+- 반대로 그것을 install 실패로 과장해도 안 된다 — inner verify 와 후속 integrity 검증이 모두 통과했기 때문이다.
+- 즉 **PASS 판단과 anomalous wrapper signal 을 분리해서 보고**하는 규칙이 없어 매 closeout 마다 같은 ambiguity 가 재발할 수 있다.
+
+### Candidate direction (후속 작업자가 실제로 고칠 것)
+
+본 backlog 단계에서는 어느 것도 implementation 결정하지 않는다.
+
+- verify PASS + wrapper / tool layer exit code 1 이 동시에 발생하면, formal report 에서 (a) **원인** — 어느 layer 의 exit code 인지, (b) **영향 범위**, (c) **blocking 여부** 를 분리해서 기술한다.
+- "noise" 라고만 표현하지 말고: 그 exit code 가 어느 layer 의 것인지, inner verification result (`ok=True`) 와 충돌하는지, 최종 PASS 판단에 영향을 주는지를 명시적으로 구분한다.
+- install validation / operational install closeout report 에서 이런 상태를 **evidence hygiene issue** 로 분류하는 reporting 규칙(또는 report template 문구)을 마련한다.
+- 목표: 실패를 과장하지 않으면서 PASS 판단과 anomalous wrapper signal 을 분리해, 신뢰 가능한 evidence report 를 만드는 것.
+
+### Cross-reference
+
+- "Review result wrapper / fence artifact hygiene" backlog 항목 — sibling 성격이나 **다른 항목**이다. 그 항목은 review `result.md` artifact 의 on-disk fence/wrapper rendering 정리이고, 본 항목은 **install validation report 에서 wrapper/tool-layer exit code 를 어떻게 보고하는가** 의 reporting hygiene 이다. 합치지 않는다.
+
+### Non-goals
+
+- install correctness 판단을 뒤집지 않는다 — 본 origin 라운드의 install 은 PASS 다.
+- review subsystem 의 결함 수정이 아니다. 특히 BRIEF.md 부재로 Codex reviewer 가 restore-offer 질문으로 빠지는 문제는 본 항목과 **별개의 review subsystem 작업**이며 본 항목에 섞지 않는다.
+- 본 backlog entry 의 존재로 `scripts/` / report template / 어떤 report 본문도 자동 변경되지 않는다.
+- 본 항목 implementation 은 별도 scoped goal 을 거친다.
+
+---
+
+## Snapshot auxiliary evidence exactness wording
+
+- **Status**: candidate (future polishing). **강하게 보존해야 하는 polishing backlog** 이며 즉시 implementation 승인 아님. install correctness 를 뒤집는 blocker 가 **아니라** snapshot / evidence report 의 **wording accuracy** 개선 항목이다.
+- **Classification**: install snapshot / evidence report 의 wording exactness debt. installed content correctness 와 auxiliary evidence (convenience copy) 의 정확도를 분리해 보고하는 후속 정리에 관한 것이다.
+- **Origin**: fresh git-url operational install closeout 라운드. 설치 자체는 PASS 로 판단되었고 본 항목은 그 closeout 의 후속 polishing 으로 강하게 남긴다.
+
+### Context
+
+install snapshot zip 에서 **실제 installed `CLAUDE.md` / `AGENTS.md` managed block 은 installed snippet 과 match** 했다 (installed content correctness 는 정상). 그러나 auxiliary evidence 인 `added-blocks/*.added-block.md` (편의용 convenience copy) 는 **line ending / final newline 차이** 때문에 byte-for-byte exact 라고 말하기 어려웠다. 설치 correctness 문제는 아니지만, snapshot evidence wording 에서 "exact text" 같은 표현은 실제 검증 수준을 과장하게 된다.
+
+### Problem (왜 polishing 으로 강하게 남기는가)
+
+- auxiliary evidence (convenience copy) 가 byte-exact 가 아닌데 report 가 "exact text" 라고 적으면 검증 수준을 과장한다.
+- installed content correctness 와 auxiliary evidence convenience copy 의 정확도가 한 단어로 뭉뚱그려지면, 후속 reader 가 "어디까지 byte-exact 로 검증되었는지" 를 오해할 수 있다.
+
+### Candidate direction (후속 작업자가 실제로 고칠 것)
+
+본 backlog 단계에서는 어느 것도 implementation 결정하지 않는다.
+
+- auxiliary evidence 가 실제 byte-exact 가 **아니면** "exact text" / "byte-for-byte exact" 같은 표현을 사용하지 않는다.
+- byte-exact claim 을 하려면 (a) line ending / final newline normalization 기준을 명시하거나, (b) 실제 byte-for-byte 검증을 수행한 뒤에만 그 표현을 쓴다.
+- snapshot evidence report 에서 **installed content correctness** (실제 적용된 managed block 의 정합) 와 **auxiliary evidence convenience copy 의 정확도** 를 분리해서 보고한다.
+- 목표: snapshot / report wording 이 실제 검증 수준을 과장하지 않게 만드는 것.
+
+### Non-goals
+
+- installed managed-block content 의 correctness 판단을 바꾸지 않는다 — 실제 installed block 은 snippet 과 match 했다.
+- snippet / managed-block apply 동작 자체를 수정하지 않는다.
+- 본 backlog entry 의 존재로 `scripts/` / snapshot tooling / report template / 어떤 report 본문도 자동 변경되지 않는다.
+- review subsystem 결함 수정이 아니며, BRIEF.md 부재 / restore-offer review 문제와도 별개다.
+- 본 항목 implementation 은 별도 scoped goal 을 거친다.
