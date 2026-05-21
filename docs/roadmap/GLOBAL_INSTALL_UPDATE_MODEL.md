@@ -112,6 +112,14 @@ decision: 목표 방식은 세 번째 — **Claude-operated install/update + glo
 - **installer-first productization 은 현재 범위 밖이다.** `install.ps1` 같은 productized installer 를 서둘러 만들지 않는다 (`GLOBAL_ADOPTION_DECISION.md` §5, §10; `GLOBAL_ADOPTION_PROCEDURE.md` §9). legacy `ai-harness` 의 문제는 global install 아이디어 자체가 아니라, core functionality 검증 이전에 installer / rollback / global mutation 을 먼저 productize 하려 한 sequencing 이었다.
 - **단, Claude-operated explicit install/update procedure 는 장기적으로 필요하다.** 이는 installer-first productization 과 다르다 — 자동화된 제품형 installer 가 아니라, Claude Code 가 operator 로서 inspect → detect → propose → 사용자 승인 → apply → verify 의 단계를 따르는 절차다 (`GLOBAL_ADOPTION_DECISION.md` §5, `GLOBAL_ADOPTION_PROCEDURE.md` §5–§7).
 
+### 3.1 Recovery posture — generated payload 의 reinstall-first
+
+generated payload (global Claude install layer 의 `current/` runtime payload + install metadata / integrity artifact) 의 source-of-truth 는 기존 installed payload 가 아니라 **trusted source identity (resolved commit SHA)** 다. 따라서 install / update / reinstall 은 모두 **deterministic overwrite / replace materialization** 이며 (§3 의 목표 방식 + §4 update modes), generated payload 의 partial / unknown / 손상 상태의 회복도 동일한 한 model 로 닫힌다.
+
+- 회복은 기존 payload 를 분석 / 역행 / 부분 수리하는 것이 아니라, trusted source 를 재준비한 뒤 destination 을 통째로 deterministic 하게 다시 만드는 것이다. 즉 "복구" 는 별도 mode 가 아니라 reinstall 그 자체다 — install / reinstall / update 의 destination-side 처리가 동일 overwrite 이기 때문이다.
+- 이 model 은 generated payload 에 대한 **transaction log / rollback framework / tamper detection / partial-state reconciliation 을 도입하지 않는다** (§12 non-goals). materialization atomicity 우려는 transaction 구현이 아니라 reinstall-first operational policy 로 닫힌다. 본 toolset 은 손상 / drift 의 **detection** 만 보장하고, recovery 절차는 trusted source 재준비 + deterministic overwrite reinstall 한 줄이다 (`docs/roadmap/global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §19.1 / §19.2 / §19.5, `INSTALL.md` §9 / §9.1).
+- 단 **activation surface** 는 generated payload 와 다른 별도 영역이며, 다시 두 종류로 나뉜다. (a) **managed-block instruction file** (`%USERPROFILE%\.claude\CLAUDE.md`, Codex `AGENTS.md` 의 `AI_HARNESS_TOOLSET_GLOBAL` block) 은 marker 밖 사용자 content 를 포함하므로 marker-bounded replace + dry-run / pre-write backup / rollback / verification (`GLOBAL_ADOPTION_DECISION.md` §6, `INSTALL.md` §9.1 / §10) 으로 처리하며 whole-file reinstall-overwrite 대상이 아니다. (b) **Claude skill `SKILL.md`** 는 managed-block file 이 아니라 activation artifact 로, 현행 contract 상 source `snippets/claude-skills/<name>/SKILL.md` 의 whole-file copy / update + hash verification + 사용자 수정 overwrite 사전 고지 모델이다 (`INSTALL.md` §10) — 별도 pre-write backup / rollback / dry-run tooling 을 두지 않는다. 어느 영역의 회복도 하나의 transaction / rollback framework 로 묶지 않는다.
+
 ---
 
 ## 4. Update modes
@@ -530,6 +538,7 @@ graph TD
 - evidence archive 의 생성.
 - GJMNet adoption 의 시작.
 - installer-first productization.
+- generated payload 에 대한 transaction log / rollback framework / tamper detection / partial-state reconciliation. generated payload 의 materialization atomicity / partial state 회복은 §3.1 의 reinstall-first 로 닫힌다 (managed-block instruction file 의 backup / rollback / dry-run / verification, 그리고 Claude skill 의 whole-file copy / update + hash verification 은 §3.1 / `INSTALL.md` §9.1 / §10 의 별도 영역이며, skill 에는 별도 backup / rollback / dry-run tooling 을 두지 않는다).
 - auto update daemon / watcher / scheduler.
 - automatic decision-maker (사용자 승인 없이 다음 action 을 결정 / 실행하는 component).
 - scripts / tests / runtime behavior 의 변경.

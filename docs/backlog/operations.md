@@ -800,7 +800,7 @@ install snapshot zip 에서 **실제 installed `CLAUDE.md` / `AGENTS.md` managed
 - **실제 global activation apply**: dry-run readiness check 통과 후 `scripts/activate-global.ps1 -Apply` 로 실 사용자 global 대상 두 개 (`%USERPROFILE%\.claude\CLAUDE.md`, `%USERPROFILE%\.codex\AGENTS.md`) 에 1 회 적용되었다 — apply exit code 0, 적용 후 두 managed block 이 repo snippet 과 match, `.amb-backup` 잔존 없음, repo working tree clean 유지.
 - **여전히 deferred / 구현하지 않음** (본 closeout 은 아래 어느 것도 구현 commitment 로 만들지 않으며, 새 backlog item 도 만들지 않는다):
   - 위 리터럴 `?` (0x3F) 비증가 gate — narrower contract 필요.
-  - D materialization atomicity / transaction design — 별도 scoped 작업으로 deferred 유지.
+  - D materialization atomicity / transaction design — **reinstall-first recovery policy 로 closeout (구현 항목 아님, transaction/rollback backlog 아님).** generated payload (`current/` + `install.json` + `payload-manifest.json` + `payload-marker.json`) 의 partial / unknown / 손상 상태는 transaction log / rollback framework / tamper detection / partial-state reconciliation 으로 닫지 않는다. 회복 source-of-truth 는 기존 installed payload 가 아니라 trusted source identity (resolved commit SHA) 이며, 회복 = trusted source 재준비 후 deterministic overwrite reinstall 한 줄이다 (별도 broken-payload mode 없음). 본 toolset 은 손상 / drift 의 detection 만 보장한다. activation surface 는 generated payload 와 별도 영역이며 두 종류로 나뉜다 — (a) managed-block instruction file (`%USERPROFILE%\.claude\CLAUDE.md` / `%USERPROFILE%\.codex\AGENTS.md`) 은 marker 밖 사용자 content 를 담으므로 dry-run / marker validation / pre-write backup / 손상 즉시 rollback / 적용 후 verification 의 대상이며, 이는 위 commit 매핑의 A-1 / A-2 managed-block tooling 이 제공한다. (b) Claude skill `SKILL.md` 는 managed-block file 이 아니라 activation artifact 로, 현행 contract 상 source `snippets/claude-skills/<name>/SKILL.md` 의 whole-file copy / update + hash verification + 사용자 수정 overwrite 사전 고지 모델이며 (`INSTALL.md` §10), 별도 pre-write backup / rollback / dry-run tooling 의 대상이 아니다. 따라서 D 는 deferred transaction 작업이 아니라 reinstall-first policy 로 닫힌 결정이며, 본 closeout 은 transaction / rollback / tamper detection / partial-state reconciliation 구현을 작업 후보로 보존하지 않는다 (`INSTALL.md` §9 / §9.1, `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` §3.1 / §12, `docs/roadmap/global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §19.5 와 정합).
   - `activate-global.ps1` forbidden-path guard 의 alias-class (junction / symlink / 8.3 short-name / trailing-dot) 강화 — 현재 guard 는 `[System.IO.Path]::GetFullPath` 텍스트 정규화 기반이며 dot-segment 우회는 닫혀 있다. filesystem-identity 정규화는 **accepted non-goal** 로 남긴다.
 
 ### Incident — activation managed-block apply UTF-8 corruption
@@ -855,7 +855,7 @@ install snapshot zip 에서 **실제 installed `CLAUDE.md` / `AGENTS.md` managed
 
 ### Future expansion candidates (위 최소 구현 이후, 별도 후속)
 
-> **대부분 구현 완료 (historical record).** 각 후보의 구현 / deferral 상태는 위 §Closeout 의 "Future expansion candidates 대응" 을 참조한다 (리터럴 `?` 비증가 gate 와 D atomicity 는 deferred 유지).
+> **대부분 구현 완료 (historical record).** 각 후보의 구현 / deferral 상태는 위 §Closeout 의 "Future expansion candidates 대응" 을 참조한다 (리터럴 `?` 비증가 gate 는 deferred 유지; D atomicity 는 transaction/rollback 구현이 아니라 reinstall-first recovery policy 로 closeout — 위 §Closeout 의 "여전히 deferred / 구현하지 않음" 의 D 항목 참조).
 
 - pre-write backup (타임스탬프).
 - 손상 즉시 rollback 경로.
