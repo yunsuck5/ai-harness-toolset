@@ -93,6 +93,10 @@ BeforeAll {
         $body += 'if ([string]::IsNullOrEmpty($out)) { Write-Host ''codex-stub: FAIL --output-last-message missing''; exit 96 }'
         $body += 'if (-not $hasStdinMarker) { Write-Host ''codex-stub: FAIL stdin marker - missing''; exit 97 }'
         $body += '[System.IO.File]::WriteAllText(($out + ''.argv.txt''), ($argv -join "`n"), $enc)'
+        # Capture the stdin payload review-run.ps1 pipes to Codex so tests can assert the
+        # deterministic reviewer-mode preamble is injected ahead of the input.md content.
+        $body += '$stdinText = [Console]::In.ReadToEnd()'
+        $body += '[System.IO.File]::WriteAllText(($out + ''.stdin.txt''), $stdinText, $enc)'
 
         switch ($Mode) {
             'verdict-yes' {
@@ -423,6 +427,46 @@ Describe 'review-run canonical pass directory' {
 
         $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
         Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-RR11: reviewer-mode preamble is injected ahead of input.md on the Codex stdin payload' {
+        # Regression for the BRIEF restore-offer pollution defect: review-run.ps1 must
+        # prepend a deterministic reviewer-mode shield to the content piped to Codex, so a
+        # global AGENTS.md/CLAUDE.md restore-offer can never turn a verdict into a question.
+        $project = script:New-RunCase -CaseName 'rr11'
+        $taskId  = 'rr11-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr11-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $stdinCapture = $resultMd + '.stdin.txt'
+        Test-Path -LiteralPath $stdinCapture -PathType Leaf | Should -BeTrue -Because 'stub must have received piped stdin'
+
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $stdin = [System.IO.File]::ReadAllText($stdinCapture, $enc)
+
+        # Reviewer-mode declaration + the specific anti-restore-offer guards.
+        $stdin | Should -Match 'CODEX REVIEWER MODE'
+        $stdin | Should -Match 'BRIEF'
+        $stdin | Should -Match 'restore-offer'
+        $stdin | Should -Match 'Do NOT ask the user any question'
+        $stdin | Should -Match '## Verdict'
+        # The original input.md content must still follow the preamble marker.
+        $stdin | Should -Match 'BEGIN REVIEW INPUT'
+        $stdin | Should -Match 'pester context line\.'
+        # Preamble must come before the input content (shield precedes the task).
+        ($stdin.IndexOf('CODEX REVIEWER MODE')) | Should -BeLessThan ($stdin.IndexOf('pester context line.'))
+
+        # input.md on disk is unchanged by the injection (canonical artifact preserved).
+        $onDisk = [System.IO.File]::ReadAllText($inputPath, $enc)
+        $onDisk | Should -Not -Match 'CODEX REVIEWER MODE'
     }
 
     It 'AC-RR9: invalid -Pass (not pass-NN) is rejected before any Codex invocation' {

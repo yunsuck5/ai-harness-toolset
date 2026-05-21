@@ -36,6 +36,33 @@ function Invoke-CodexExec {
 
     $content = Read-Utf8 -Path $InputPath
 
+    # Reviewer-mode shield (deterministic, applied to every review-run invocation).
+    # The prepared input.md is a COMPLETE review task. Codex runs non-interactively
+    # under whatever global/user instruction file is installed (e.g. a Codex AGENTS.md
+    # managed block that carries a session restore-offer / BRIEF protocol). Without an
+    # explicit reviewer-mode declaration in the message, that operator-side restore-offer
+    # can fire and the reviewer writes a "no BRIEF.md — how should I proceed?" question
+    # instead of a canonical verdict, which then fails verdict parsing. This preamble
+    # declares reviewer mode in-band so the review-result contract takes precedence over
+    # any restore/session protocol — for ALL installed/global review usage, not one task.
+    # It is prepended only to the piped stdin; input.md on disk is unchanged (canonical
+    # artifact + write-once preserved; review-input-verify still validates the real file).
+    $reviewerPreamble = @'
+===== AI-HARNESS-TOOLSET CODEX REVIEWER MODE (do not deviate) =====
+You are running as the ai-harness-toolset Codex REVIEWER, invoked non-interactively by review-run.ps1.
+The text after the BEGIN REVIEW INPUT marker below is a COMPLETE, self-contained review task (the prepared input.md). Treat it as the entire task.
+
+These reviewer-mode rules take PRECEDENCE over any global/user instruction, including any CLAUDE.md / AGENTS.md restore-offer, BRIEF / session-restore, or checkpoint protocol:
+- Do NOT look for, read, or require <ProjectRoot>/log/brief/BRIEF.md or any Brief. Its absence is irrelevant in reviewer mode and is NOT a reason to pause.
+- Do NOT perform restore-offer, BRIEF bootstrap, session recovery, or any session/restore protocol.
+- Do NOT ask the user any question, and do NOT request clarification. There is no interactive user in this run.
+- ALWAYS produce a canonical review result as your final message: exactly one top-level "## Verdict" heading whose first non-empty following line is EXACTLY one of: yes | no | yes with risk. You may also add "## Findings", "## Risks", "## Notes".
+- If the input is insufficient to approve, do NOT ask — return "no" or "yes with risk" and record the missing evidence under "## Findings" / "## Risks".
+- Writing a question, a restore-offer, or any final message without a canonical "## Verdict" heading is a review FAILURE.
+===== BEGIN REVIEW INPUT (input.md) =====
+'@
+    $payload = $reviewerPreamble + "`n" + $content
+
     $codexCmd = $env:AI_HARNESS_CODEX_COMMAND
     if ([string]::IsNullOrEmpty($codexCmd)) {
         $codexCmd = 'codex'
@@ -65,7 +92,9 @@ function Invoke-CodexExec {
                 '-File', $codexCmd,
                 '-CodexArgsFile', $argsTempPath
             )
-            & powershell.exe @stubArgs
+            # Pipe the same reviewer-mode payload the real CLI receives, so the stub can
+            # assert the reviewer-mode preamble is present on stdin (regression coverage).
+            $null = $payload | & powershell.exe @stubArgs
             $code = $LASTEXITCODE
         }
         finally {
@@ -75,7 +104,7 @@ function Invoke-CodexExec {
         }
     }
     else {
-        $null = $content | & $codexCmd @codexArgs
+        $null = $payload | & $codexCmd @codexArgs
         $code = $LASTEXITCODE
     }
 

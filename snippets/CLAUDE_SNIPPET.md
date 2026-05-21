@@ -76,6 +76,8 @@ A reviewer verdict does not approve commit, push, publish, merge, release, uploa
 
 ## New session restore-offer
 
+> **Reviewer-mode exclusion.** This restore-offer protocol is **operator-mode only**. When acting as a reviewer — for example the Codex reviewer invoked by `review-run.ps1` with a prepared `log/review/<review-task-id>/pass-NN/input.md` — do **not** perform any step below: do not read or require `BRIEF.md`, do not treat its absence as a reason to pause, and do not ask any restore / session / clarification question. In reviewer mode the review-result contract takes precedence over this protocol — produce the canonical `result.md` verdict instead (exactly one `## Verdict` heading with `yes` / `no` / `yes with risk`; if evidence is insufficient, return `no` or `yes with risk` with the gap recorded under `## Findings` / `## Risks`, never a question).
+
 At the start of meaningful work, read the canonical Brief at `<ProjectRoot>/log/brief/BRIEF.md`. This is the single canonical location — there is no fallback location and no read-order chain. Do not look for or read `<ProjectRoot>/brief/BRIEF.md` (rejected) or any user-home operator-local runtime root. Referenced review / evidence / Chatlog artifacts are read only when the canonical Brief points to them.
 
 Then:
