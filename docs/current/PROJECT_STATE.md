@@ -8,7 +8,7 @@ Conflict rule: when this summary disagrees with the detailed source it points to
 
 ## Current active priority
 
-The **docs taxonomy / source-of-truth reset** has been **applied by this change**: `docs/**` now separates current source-of-truth (`docs/current/`, per-system `docs/systems/<system>/STATUS.md`), roadmap, backlog, deferred, completed-ledger, and historical/superseded material (`docs/archive/`) instead of interleaving them. Its baseline was the Batch 0 audit (`polishing/docs_taxonomy_audit/docs_taxonomy_batch0_inventory_20260522.md`). It is no longer an in-progress workstream.
+The **docs taxonomy / source-of-truth reset** has been **applied, committed, and pushed to `origin/main`**: `docs/**` now separates current source-of-truth (`docs/current/`, per-system `docs/systems/<system>/STATUS.md`), roadmap, backlog, deferred, completed-ledger, and historical/superseded material (`docs/archive/`) instead of interleaving them. Its baseline was the Batch 0 audit (`polishing/docs_taxonomy_audit/docs_taxonomy_batch0_inventory_20260522.md`). The structural reset is no longer in progress, and these current entrypoints reflect the committed state.
 
 There is **no auto-selected next active priority.** The next project action is chosen by the user (see `docs/current/NEXT_ACTIONS.md`). The numbered remaining order in `docs/roadmap/POST_MVP_PLAN.md` §11 still carries the Step 3 install/update implementation **deferred remainder** (`STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2) ahead of Step 5 self-adoption; their sequencing is a pending user decision, not a settled next milestone.
 
@@ -30,7 +30,7 @@ Compact per-system completed-ledgers live in the system status documents (`docs/
 
 ## Active / deferred top issues
 
-- **docs taxonomy / source-of-truth reset** — applied (this change); not in progress, and no follow-on is auto-selected.
+- **docs taxonomy / source-of-truth reset** — applied, committed, and pushed to `origin/main`; not in progress as a structural reset, and no follow-on milestone is auto-selected.
 - **Step 5 self-adoption** — not performed; deferred (`POST_MVP_PLAN.md` §11 step 5, `GLOBAL_INSTALL_UPDATE_MODEL.md` §9). No current implementation basis.
 - **Step 6 post-MVP closeout decision** — deferred (`POST_MVP_PLAN.md` §11 step 6).
 - **Step 7 GJMNet clean adoption** — deferred (`POST_MVP_PLAN.md` §7, §11 step 7).

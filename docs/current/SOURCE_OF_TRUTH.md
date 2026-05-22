@@ -13,6 +13,8 @@ How to read each entry:
 > **Archive authority.** Material under `docs/archive/` is historical or superseded. Do not use it as current implementation, operation, install, or review guidance unless a task explicitly asks for historical context. Current source-of-truth lives under `docs/current/` and the per-system status documents (`docs/systems/<system>/STATUS.md`).
 >
 > **The docs taxonomy / source-of-truth reset has been applied.** The Primary/Secondary pointers below already point at the routed locations under `docs/systems/**` and `docs/archive/**`. The question→authority mapping itself is stable; update a pointer here only if a future change relocates one of the routed documents.
+>
+> **Root `docs/*.md` contract-layer policy (Policy A).** The active contracts and policies that live directly under `docs/` — `BRIEF_CONTRACT.md`, `REVIEW_RESULT_CONTRACT.md`, `CHATLOG_CONTRACT.md`, `EVIDENCE_CONTRACT.md`, `REVIEWER_CONFIG_POLICY.md`, `CLI_ENVIRONMENT_ASSUMPTIONS.md`, `POWERSHELL_POLICY.md`, `AI_HARNESS_TOOLSET_SCOPE.md`, `TOOLING_POSITION.md`, `OPERATOR_GUIDE_KR.md`, `DECISIONS.md` — are intentionally kept at the `docs/` root as a **stable cross-system contract layer**, not relocated into `docs/systems/<system>/` or a `docs/contracts/` folder. They are cross-cutting, heavily inbound-referenced (README, `snippets/**`, `scripts/**` comments, and other docs), and the per-system `STATUS.md` documents **route to** them as the authoritative source rather than replacing them. This is the committed policy for the current structure; relocating any of them is a separate scoped decision that would also require updating those inbound references.
 
 ---
 

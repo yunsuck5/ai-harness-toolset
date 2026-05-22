@@ -140,7 +140,7 @@ The marker text `AI_HARNESS_TOOLSET_GLOBAL` is the canonical form for both snipp
 
 **Start here for current state.** `docs/current/SOURCE_OF_TRUTH.md` routes any question to the document that answers it (with priority on conflict); `docs/current/PROJECT_STATE.md` is the top-level current summary; `docs/current/NEXT_ACTIONS.md` is the active queue. Per-system status lives under `docs/systems/<system>/STATUS.md` (+ `BACKLOG.md` / `DEFERRED.md`). Historical / superseded material lives under `docs/archive/` (not current guidance — see `docs/archive/README.md`).
 
-The contracts and policies below are the authoritative active operational docs they route to.
+The contracts and policies below are the authoritative active operational docs they route to. They live directly under `docs/` as a deliberate **stable cross-system contract layer** (Policy A): they are cross-cutting and heavily referenced, so they are kept at the `docs/` root rather than relocated into per-system folders, and the per-system `STATUS.md` docs route to them rather than replacing them (see `docs/current/SOURCE_OF_TRUTH.md`).
 
 Tags: `active operational` (current source-of-truth), `active reference` (advisory), `mixed decision log` (active and historical interleaved), `historical reference` (migration-era).
 
@@ -162,8 +162,8 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 
 ### Current state, systems, roadmap, and archive
 
-| Path | Role |
-|---|---|
+| Path | Role | One-line role |
+|---|---|---|
 | `docs/current/SOURCE_OF_TRUTH.md` | active operational | Question → authoritative document (Primary / Secondary / Implementation / Historical / Do-not-use). |
 | `docs/current/PROJECT_STATE.md` | active operational | Top-level current summary + compact completed-milestone ledger. |
 | `docs/current/NEXT_ACTIONS.md` | active operational | Active queue only. |

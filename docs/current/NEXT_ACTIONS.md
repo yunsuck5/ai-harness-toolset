@@ -6,7 +6,7 @@ The **active queue** only — what is being worked now and the single next thing
 
 ## Active now
 
-**Nothing is auto-selected.** The **docs taxonomy / source-of-truth reset** (additive `docs/current/` entrypoints, low-risk archive moves, `POST_MVP_PLAN.md` decomposition, roadmap contract route/relabel, backlog consolidation, README routing, protected-area stale-wording audit) has been **applied by this change** and is no longer in progress. The next single action is a pending user decision (below) — it is not auto-started.
+**Nothing is auto-selected.** The **docs taxonomy / source-of-truth reset** (additive `docs/current/` entrypoints, low-risk archive moves, `POST_MVP_PLAN.md` decomposition, roadmap contract route/relabel, backlog consolidation, README routing, protected-area stale-wording audit) has been **applied, committed, and pushed to `origin/main`** and is no longer in progress. The next single milestone action is a pending user decision (below) — it is not auto-started.
 
 ## Candidate next actions (per POST_MVP_PLAN §11 — user-selected, sequencing is a pending decision)
 
@@ -26,6 +26,5 @@ Do not assert either of the above as "the" next single action until the user seq
 
 ## Pending user decisions
 
-- Whether/when to commit and push this docs taxonomy reset change — commit and push remain a separate, explicit user decision and are not auto-approved by any review verdict.
 - Sequencing of the Step 3 deferred remainder (`STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2) relative to Step 5.
 - Timing of global `current/` / managed-block / skill refresh for any source changes landed since the last global apply.
