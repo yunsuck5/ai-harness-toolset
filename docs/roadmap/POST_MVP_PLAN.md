@@ -262,9 +262,58 @@ canonical review task/pass topology refactor (a5d94a5 contract alignment + c81fe
 1. `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 확정 — **§10 Completed 에 기록된 대로 이미 충족됨.** global install / update / validation / self-adoption operating model 이 current source-of-truth 로 확정되어 있다. 본 step 은 이후 단계의 baseline checkpoint 로 남기며, remaining work 는 step 3 부터다 (step 2 는 아래 항목 참조).
 2. manual global activation / controlled global materialization 으로 global behavior validation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §7.2 의 four-axis: global entrypoint / ToolRoot·ProjectRoot 분리 / target footprint / runtime artifact 위치) — **§10 Completed 에 기록된 대로 d557580 baseline 시점의 기존 evidence 로 이미 충족됨.** 본 closeout 은 step 3–7 어느 것도 자동 승인하지 않으며, `docs/backlog/operations.md` 항목의 status 도 변경하지 않는다.
 3. validation result 를 기준으로 install / update implementation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5). 본 step 의 작업은 `GLOBAL_INSTALL_UPDATE_MODEL.md` 의 subordinate 인 `docs/roadmap/global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` 를 따른다.
-4. install / update validation.
+4. install / update validation. 본 step 의 최소 scope (Tier A fixture-local determinism / Tier B real installed-state validation) 와 deferred / 승인 boundary 는 아래 §11.1 에 anchor 한다.
 5. `ai-harness-toolset` self-adoption (`GLOBAL_INSTALL_UPDATE_MODEL.md` §9).
 6. post-MVP closeout 결정.
 7. new GJMNet repo 의 clean adoption. self-adoption (step 5) 과 global behavior validation (step 2) 이후로 유지한다 (§7).
 
 순서 변경, 항목 추가, 또는 항목 삭제는 별도 scoped 승인이 필요하다. operations backlog track (§10) 의 항목은 본 numbered order 와 병렬이며, 그 중 2·3 번 (PowerShell smoke invocation quoting hardening, Smoke evidence preservation) 은 step 2 / step 5 를 지원하는 prerequisite 로 다룬다.
+
+### 11.1 Step 4 install / update validation — 최소 scope anchor
+
+본 절은 §11 numbered order 의 step 4 (`install / update validation`) 의 최소 scope 를 anchor 한다. 본 절은 step 4 의 placeholder 를 scope 정의로 구체화하는 docs-only anchor 이며, **step 4 validation 의 실제 실행, 어떤 global / user filesystem mutation, target adoption, commit / push / publish / merge / release 어느 것도 자동 승인하지 않는다.** §11 의 numbered order (1–7) 의 ordering / numbering 도 변경하지 않는다 — 본 절은 step 4 항목의 in-place 구체화다.
+
+본 절이 검증 대상으로 삼는 install / update automation 의 contract surface 는 `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5, §7 과 그 subordinate `docs/roadmap/global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` (특히 §10–§19) 다. clean-target fixture 검증 형식 (Pre / Action / Pass / Fail / Evidence) 은 `docs/roadmap/CLEAN_TARGET_SMOKE_CRITERIA.md` 를 baseline 으로 한다.
+
+#### 11.1.0 Source-of-truth 원칙 (Tier A / Tier B 공통 전제)
+
+step 4 의 모든 tier 는 다음 원칙 위에서 동작한다.
+
+- **trusted source = repo HEAD.** install / update / reinstall / recover 의 회복 source-of-truth 는 trusted repo source identity (resolved commit SHA) 이며, 이미 installed 된 payload 가 아니다 (STEP3 guide §19.2 / §19.5 의 reinstall-first 와 정합).
+- **installed state ≠ source-of-truth.** 어떤 installed state — `%USERPROFILE%\.claude\ai-harness-toolset\current\`, managed-block destination, Claude skill destination — 도 step 4 에서 source-of-truth 로 취급하지 않는다. installed state 는 **검증 대상 (validation target)** 이며, legacy / stale / minor-drift / corrupted 일 수 있다고 가정한다.
+- **현행 installed state 가정.** 본 anchor 작성 시점의 실제 host 들은 최신 Step 3 / Step 4 구현이 배포된 상태가 아니라고 가정한다. 한 host 는 hot copy 수준의 stale / minor state 이고, 다른 host 는 첫 install 이후 update 검증 중 발견된 이슈를 계기로 repo 측이 수정된 상태라 최신 install / update scripts 가 배포되어 있다고 가정하지 않는다. 따라서 step 4 는 "installed payload 가 곧 최신" 이라는 가정에서 출발하지 않으며, 항상 trusted repo source 기준 deterministic overwrite 로 정합화한다.
+
+#### 11.1.1 Tier A — fixture-local / project-local validation (기본 scope)
+
+repo HEAD 기준 install / update automation 의 **결정성** 을 fixture / temp area 에서 검증하는 범위다. 실제 global / user filesystem 을 건드리지 않는다.
+
+- **대상 automation.** `scripts/install-pipeline.ps1` + `scripts/lib/install-pipeline-core.ps1` 의 4 action (`install` / `update-source` / `update-current` / `restore`), `Invoke-InstallPipelineVerify` (payload-manifest per-file size + SHA-256 / payload-marker presence / install metadata cross-binding); `scripts/apply-managed-block.ps1` + `scripts/lib/managed-block.ps1` (dry-run no-write/no-backup → marker-bounded 1:1 치환 → 실패 rollback → 성공 cleanup, BOM / U+FFFD / malformed-marker fail-fast); `scripts/activate-global.ps1` (`-Apply` 미지정 시 default-safe dry-run, snippet→destination 매핑, forbidden-path guard).
+- **검증 area.** install-pipeline 의 `Assert-NotForbiddenInstallArea` 가 global / user scope InstallArea 를 거부하므로 temp InstallArea 만 사용한다. activate-global / apply-managed-block 은 overridable `-ClaudeHome` / `-CodexHome` / `-TargetPath` 로 temp / `TestDrive` destination 만 사용한다 — 실제 `%USERPROFILE%` 를 건드리지 않는다.
+- **수행 형태.** 본 tier 는 repo 의 기존 Pester suite (`tests/install-pipeline.Tests.ps1`, `tests/apply-managed-block.Tests.ps1`, `tests/activate-global.Tests.ps1` 및 관련 suite) 와 CLEAN_TARGET_SMOKE_CRITERIA 의 fixture-local SC (channel 1 / 2 positive, channel exhaustion, cross-tree write isolation) 의 실행 + read-only 결과 확인으로 닫는다.
+- **Tier A 의 mutation 경계.** Tier A 는 source / doc mutation 이 아니라 fixture-local 실행이다. 기존 suite 의 실행 + 결과 보고는 그 자체로 commit / push / global mutation 을 동반하지 않는다. evidence 보존 형태 (어디에 무엇을 남길지) 는 별도 결정이며 본 anchor 가 새 evidence / archive / snapshot 체계를 자동 도입하지 않는다.
+
+#### 11.1.2 Tier B — real installed-state validation (별도 승인 필요)
+
+mainpc / vanilla pc 같은 **실제 installed legacy / stale / corrupted state** 를 trusted repo source 기준으로 update / reinstall / recover 하여 install / update automation 이 실제 global / user 환경에서 결정론적으로 동작하는지 검증하는 actual validation 이다.
+
+- **검증 시나리오.** (a) stale / minor-drift installed `current/` 를 trusted repo source 로 update / reinstall 하여 §19.2 의 deterministic overwrite + `Invoke-InstallPipelineVerify` PASS 로 정합화. (b) 첫 install 이후 update 경로에서 발견된 이슈가 repo HEAD 에서 수정되었을 때, 그 수정된 scripts 로 installed state 를 다시 정합화. (c) 손상 / 부분 적용 상태의 reinstall-first 회복 (STEP3 guide §19.1 detection-only → §19.2 reinstall).
+- **mutation 대상 (global / user filesystem).** `%USERPROFILE%\.claude\ai-harness-toolset\current\` 및 sibling install metadata / payload-manifest / payload-marker; `%USERPROFILE%\.claude\CLAUDE.md` 와 Codex user-global `AGENTS.md` 의 managed-block apply (`activate-global.ps1 -Apply` / `apply-managed-block.ps1`); `%USERPROFILE%\.claude\skills\<skill-name>\` 의 Claude skill whole-file copy / update + hash verification (STEP3 guide §19.3 / §19.4, `INSTALL.md` §10, `GLOBAL_ADOPTION_PROCEDURE.md` §3).
+- **승인 boundary.** 위 mutation 은 전부 실제 global / user filesystem mutation 이므로 Tier A 와 분리된 **별도 explicit user-approved scoped step** 으로만 진행한다. forbidden 규칙은 그대로 유지한다 — `%USERPROFILE%\.claude\AGENTS.md` 는 어느 경우에도 생성하지 않는다 (`GLOBAL_ADOPTION_DECISION.md` §6 forbidden row). managed-block apply 는 §19.3 의 dry-run → 사용자 승인 → apply → 검증 보고 절차를 따르고, AI operator 의 ad-hoc splice 를 쓰지 않는다.
+- **Tier 순서.** Tier B 는 Tier A 통과를 전제로 한다. Tier A 가 repo HEAD automation 의 결정성을 닫지 못한 상태에서 real installed-state mutation 으로 진입하지 않는다.
+
+#### 11.1.3 Step 4 기본 scope 에서 제외 (deferred / non-default)
+
+다음 항목은 step 4 의 기본 scope 에 포함하지 않고 deferred / non-default 로 유지한다. 각 항목은 별도 scoped goal 의 explicit user-approved decision 으로만 진행한다.
+
+- **literal `?` / `0x3F` non-increase gate** — install / update / managed-block apply 가 source 대비 literal `?` (0x3F) 개수를 증가시키지 않는지의 encoding regression gate. step 4 기본 scope 밖 deferred (별도 결정).
+- **source-cut actual handling** — source-cut 은 현행 contract 상 detection-only (STEP3 guide §12.7 / §17). source-cut path 의 실제 처리는 step 4 기본 scope 밖 deferred.
+- **external git-url / network validation** — git-url mode 의 실제 network fetch / clone / credential / auth / proxy 검증은 step 4 기본 scope 밖 deferred (현 skeleton 은 local-clone 중심).
+- **BF Level 3 (deterministic Brief 자동 저장 / 자동 복구)** — §5 의 allowed-but-unimplemented future scoped work. step 4 validation 의 default scope 가 아니다.
+
+#### 11.1.4 실행 진입 전 review gate 와 사용자 승인 boundary
+
+- 본 §11.1 anchor 자체 (POST_MVP_PLAN.md 의 본 절 추가) 는 source / doc mutation 이므로 본 도구의 정상 review gate (Codex reviewer) 를 거친다. review verdict (`yes` / `no` / `yes with risk`) 은 commit / push / global apply / step 4 execution 시작 어느 것도 자동 승인하지 않는다 (§8 / verdict vocabulary 계약과 정합).
+- **Tier A 실행 진입** 은 별도 execution goal 의 사용자 승인을 거친다. 새 test case / 새 criteria doc 작성이 동반되면 그 source / doc mutation 은 정상 review gate 대상이다. 기존 suite 의 단순 실행 + read-only 결과 보고는 source mutation 이 아니다.
+- **Tier B 실행 진입** 은 Tier A 통과 후, 실제 global / user filesystem mutation 에 대한 **별도 explicit user-approved scoped step** 을 거친다. 어떤 review verdict 도 Tier B 의 real mutation 을 자동 승인하지 않으며, 각 destination 의 apply 는 사용자 명시 결정 + (managed-block 의 경우) dry-run 보고 → 승인 절차를 요구한다.
+
+본 §11.1 은 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다. 본 anchor 의 doc mutation 이후의 commit / push / Tier A 실행 / Tier B global apply 시작은 모두 사용자 명시 결정으로 처리한다.
