@@ -1,20 +1,6 @@
 # Decisions
 
-## Bootstrap and historical decisions
-
-- repo name: ai-harness-toolset
-- remote created
-- local clone created
-- branch: main
-- previous v0.1 seed attempt discarded
-- ai-harness.zip is the initial migration source only
-- legacy knowledge transfer must be explicit
-- `.gitattributes` policy migrated from legacy ai-harness
-- PowerShell encoding/codepage rules migrated as policy
-- reviewer config externalized into `config/reviewer.json`
-- no Claude Code project init
-- no Codex project init
-- v2 bootstrap packet remains archival/reference
+This is the **active** decision record. Bootstrap-era / historical decisions have been moved to `docs/archive/legacy-mvp/BOOTSTRAP_DECISIONS.md` (historical context only — not current guidance). For question→authority routing see `docs/current/SOURCE_OF_TRUTH.md`.
 
 ## Active policy decisions
 

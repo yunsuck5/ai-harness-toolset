@@ -138,6 +138,10 @@ The marker text `AI_HARNESS_TOOLSET_GLOBAL` is the canonical form for both snipp
 
 ## Documentation map
 
+**Start here for current state.** `docs/current/SOURCE_OF_TRUTH.md` routes any question to the document that answers it (with priority on conflict); `docs/current/PROJECT_STATE.md` is the top-level current summary; `docs/current/NEXT_ACTIONS.md` is the active queue. Per-system status lives under `docs/systems/<system>/STATUS.md` (+ `BACKLOG.md` / `DEFERRED.md`). Historical / superseded material lives under `docs/archive/` (not current guidance — see `docs/archive/README.md`).
+
+The contracts and policies below are the authoritative active operational docs they route to.
+
 Tags: `active operational` (current source-of-truth), `active reference` (advisory), `mixed decision log` (active and historical interleaved), `historical reference` (migration-era).
 
 | File | Role | One-line role |
@@ -146,12 +150,29 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 | `docs/BRIEF_CONTRACT.md` | active operational | Brief contract: BF Level as save/restore capability maturity, project-local runtime Brief at `<ProjectRoot>/log/brief/BRIEF.md` (gitignored under `log/`, not a commit/push target), root `<ProjectRoot>/brief/` rejected, and the `brief-init.ps1` / `brief-check.ps1` source-side primitive responsibility boundary. |
 | `docs/CHATLOG_CONTRACT.md` | active operational | Chatlog responsibility (history / decision rationale / Brief reconstruction evidence) and the demotion of `log/chatlog/current/resume.md` / `summary.md` to failed intermediate / legacy migration source / deprecation candidate. |
 | `docs/CLI_ENVIRONMENT_ASSUMPTIONS.md` | active operational | Canonical CLI/runtime dependency boundary. |
-| `docs/DECISIONS.md` | mixed decision log | Bootstrap-era and active policy decisions. |
+| `docs/DECISIONS.md` | active operational | Active policy decisions + MVP-closeout pointer (bootstrap/historical decisions archived to `docs/archive/legacy-mvp/BOOTSTRAP_DECISIONS.md`). |
 | `docs/EVIDENCE_CONTRACT.md` | active operational | `log/evidence/<scope>/<case>/` minimal capture contract. |
-| `docs/LEGACY_KNOWLEDGE_TRANSFER.md` | historical reference | Legacy `ai-harness` → v1 migration mapping table. |
-| `docs/MIGRATION_INVENTORY_SUMMARY.md` | historical reference | Frozen migration inventory counts. |
+| `docs/archive/legacy-mvp/LEGACY_KNOWLEDGE_TRANSFER.md` | historical reference | Legacy `ai-harness` → v1 migration mapping table (archived). |
+| `docs/archive/legacy-mvp/MIGRATION_INVENTORY_SUMMARY.md` | historical reference | Frozen migration inventory counts (archived). |
 | `docs/OPERATOR_GUIDE_KR.md` | active operational | Current Korean operator guide for shared/global operation, CLI usage, legacy mode appendix, and acceptance checklist. |
 | `docs/POWERSHELL_POLICY.md` | active operational | Encoding, line-ending, file IO, and collection return rules. |
 | `docs/REVIEWER_CONFIG_POLICY.md` | active operational | Reviewer config location, precedence, defaults, and MVP reviewer boundary. |
 | `docs/REVIEW_RESULT_CONTRACT.md` | active operational | Canonical review artifact contract — `log/review/<review-task-id>/pass-NN/input.md` (AI-authored) + `result.md` (Codex-authored) only; deterministic gates and verdict vocabulary. |
 | `docs/TOOLING_POSITION.md` | active reference | Position statements for adjacent tools. |
+
+### Current state, systems, roadmap, and archive
+
+| Path | Role |
+|---|---|
+| `docs/current/SOURCE_OF_TRUTH.md` | active operational | Question → authoritative document (Primary / Secondary / Implementation / Historical / Do-not-use). |
+| `docs/current/PROJECT_STATE.md` | active operational | Top-level current summary + compact completed-milestone ledger. |
+| `docs/current/NEXT_ACTIONS.md` | active operational | Active queue only. |
+| `docs/systems/install-update/STATUS.md` (+ `DEFERRED.md`, `BACKLOG.md`) | active operational | install/update/global-adoption status, deferred, and open backlog. |
+| `docs/systems/review/STATUS.md` (+ `BACKLOG.md`) | active operational | review subsystem status and open backlog. |
+| `docs/systems/brief/STATUS.md` (+ `DEFERRED.md`) | active operational | Brief primitive status and BF Level 3 deferred. |
+| `docs/roadmap/INDEX.md` | active reference | roadmap-area index + interim routing; routes design/model/record docs to system STATUS. |
+| `docs/roadmap/CURRENT_MILESTONES.md` | active reference | post-MVP numbered remaining order (steps 1–7), 1:1 routing view (authority: `docs/roadmap/POST_MVP_PLAN.md` §11). |
+| `docs/roadmap/POST_MVP_PLAN.md` | mixed decision log | post-MVP decision record (§1–§9) + numbered-order authority (§11); status/completed/deferred routed to current/system homes. |
+| `docs/archive/README.md` | historical reference | archive authority restriction; archive is not current guidance. |
+
+Note: the `docs/roadmap/` design/model/record docs (`GLOBAL_INSTALL_UPDATE_MODEL.md`, `global-install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md`, `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md`, `TOOLROOT_PROJECTROOT_AUDIT.md`, `CLEAN_TARGET_SMOKE_CRITERIA.md`, `REVIEW_EFFORT_GUIDE.md`) each carry a top routing banner to their system STATUS; current status lives in the system STATUS docs, not in those design docs.

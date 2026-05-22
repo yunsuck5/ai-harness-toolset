@@ -1,5 +1,7 @@
 # Review Effort Guide
 
+> **현행 status routing.** 본 문서는 review effort/cost 운영 권고 (active reference) 다. review subsystem 의 current 상태는 `docs/systems/review/STATUS.md`, contract 는 `docs/REVIEW_RESULT_CONTRACT.md` 가 authoritative 다 (전체 routing: `docs/current/SOURCE_OF_TRUTH.md`).
+
 본 문서는 `ai-harness-toolset` 의 CLI-only MVP 종료 이후, Codex review 를 여러 실제 프로젝트에 적용할 때 review effort 와 cost 를 어떻게 통제할지에 대한 가이드다. 사용자 운용 권고이며, tooling 의 자동 게이트가 아니다.
 
 본 문서는 review subsystem 의 contract 자체를 재정의하지 않는다. 권위 source-of-truth 는 그대로다.

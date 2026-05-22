@@ -1,5 +1,7 @@
 # Global Install / Update / Validation / Self-Adoption Operating Model
 
+> **현행 status routing.** 본 문서는 install/update/global-adoption 의 design/model/record source 다. **current 상태 / completed-ledger / deferred** 의 authoritative 자리는 `docs/systems/install-update/STATUS.md` + `docs/systems/install-update/DEFERRED.md` 다 (전체 routing 진입점: `docs/current/SOURCE_OF_TRUTH.md`; roadmap index: `docs/roadmap/INDEX.md`). 본 문서 본문과 system STATUS 가 충돌하면 current 판단은 STATUS 를 따른다.
+
 본 문서는 `ai-harness-toolset` 의 설치 / 업데이트 / 검증 / self-adoption 운영 모델을 기록하는 **current source-of-truth** 다. 앞으로 Claude Code, ChatGPT Web, 사용자는 global install / update / self-adoption 판단 시 본 문서를 기준으로 한다. **모델의 기록이며, implementation 승인이 아니다.**
 
 > **Install-execution authority note.** install / update / reinstall / operational install 의 **실행** 시 operative contract 는 repo root 의 `INSTALL.md` 하나다. install 실행 중에는 본 문서를 포함한 어떤 `docs/` 파일도 읽을 필요가 없고, 읽어서 install 동작을 결정하지 않는다 (`INSTALL.md` 의 anti-coupling 절). 본 문서는 그 install model 의 design / history record (background) 이며 install-time input 이 아니다 — 본 문서가 stale / 수정 / 삭제되어도 install 동작은 `INSTALL.md` 가 전적으로 결정한다. 본문의 "current source-of-truth" 표현은 운영 **모델 문서들 사이**의 우선순위를 가리킬 뿐이며, install 실행 authority (= `INSTALL.md`) 를 override 하지 않는다. 위 "global install / update / self-adoption 판단 시 본 문서를 기준으로 한다" 는 모델 / 설계 판단에 대한 것이지, install 실행 절차를 본 문서에서 읽으라는 의미가 아니다.

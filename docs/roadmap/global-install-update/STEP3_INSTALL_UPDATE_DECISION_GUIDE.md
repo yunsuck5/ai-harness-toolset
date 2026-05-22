@@ -1,5 +1,7 @@
 # Step 3 Install / Update Decision Guide
 
+> **현행 status routing.** 본 문서는 install/update/global-adoption 의 design/model/record source 다. **current 상태 / completed-ledger / deferred** 의 authoritative 자리는 `docs/systems/install-update/STATUS.md` + `docs/systems/install-update/DEFERRED.md` 다 (전체 routing 진입점: `docs/current/SOURCE_OF_TRUTH.md`; roadmap index: `docs/roadmap/INDEX.md`). 본 문서 본문과 system STATUS 가 충돌하면 current 판단은 STATUS 를 따른다.
+
 본 문서는 `ai-harness-toolset` 의 **Step 3 install / update / restore implementation** 방향이 흔들리지 않도록 보존하는 **Step 3-specific decision guide** 다. 본 문서는 부모 문서 `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 의 **subordinate** 이며, 본 문서가 부모 모델을 대체하지 않는다.
 
 본 문서의 존재만으로 어떤 implementation, validation, adoption, release, publish, global / user filesystem mutation, commit / push / merge / release 도 자동 승인되지 않는다.
@@ -28,13 +30,13 @@
 
 - 부모 모델 `docs/roadmap/GLOBAL_INSTALL_UPDATE_MODEL.md` 의 대체.
 - `docs/roadmap/POST_MVP_PLAN.md` 의 대체.
-- final docs taxonomy declaration. 본 문서가 위치한 `docs/roadmap/global-install-update/` 는 **proposed / temporary topic namespace** 이며 (`docs/roadmap/README.md` §4, §7), final docs taxonomy 가 정해지면 이름 / 위치 / 분류가 다시 결정될 수 있다.
+- final docs taxonomy declaration. 본 문서가 위치한 `docs/roadmap/global-install-update/` 는 **proposed / temporary topic namespace** 이며 (`docs/roadmap/INDEX.md` §4, §7), final docs taxonomy 가 정해지면 이름 / 위치 / 분류가 다시 결정될 수 있다.
 - Step 3 implementation 의 승인. 본 문서는 plan / direction guide 일 뿐, scoped implementation approval 은 별도로 받는다.
 - `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다.
 
 **Root-level parent docs remain authoritative where they define source-of-truth responsibilities.** 본 문서의 wording 이 부모 root-level docs (`GLOBAL_INSTALL_UPDATE_MODEL.md`, `POST_MVP_PLAN.md`, `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md`, `TOOLROOT_PROJECTROOT_AUDIT.md`, `CLEAN_TARGET_SMOKE_CRITERIA.md`) 의 contract / decision 과 충돌하면 root-level docs 가 우선한다. 또한 본 문서는 `docs/REVIEW_RESULT_CONTRACT.md`, `docs/BRIEF_CONTRACT.md`, `docs/CHATLOG_CONTRACT.md` 등 repo contract docs 의 source-of-truth 지위를 격하하지 않는다.
 
-`docs/roadmap/README.md` 가 `docs/roadmap/` 의 **interim routing rule** 을 정의한다. 본 문서가 속한 topic namespace 의 생성·운영 boundary 는 그 routing rule (특히 §4 temporary topic namespace 조건, §5 parent 와의 boundary, §7 `global-install-update/` example) 을 따른다.
+`docs/roadmap/INDEX.md` 가 `docs/roadmap/` 의 **interim routing rule** 을 정의한다. 본 문서가 속한 topic namespace 의 생성·운영 boundary 는 그 routing rule (특히 §4 temporary topic namespace 조건, §5 parent 와의 boundary, §7 `global-install-update/` example) 을 따른다.
 
 ---
 
@@ -203,7 +205,7 @@ Step 3 의 canonical decomposition 은 다음 9 단계다.
 - **commit / push 는 본 가이드의 verdict 와 무관한 별도 explicit approval boundary** 다. 본 가이드는 commit / push 를 승인하지 않는다.
 - **본 가이드는 implementation, validation, adoption, release, publish, push 의 어느 것도 승인하지 않는다.** plan / direction guide 일 뿐이다.
 - **향후 Claude Code prompt 는 본 §7 의 carry-forward caveats 를 명시적으로 함께 운반** 한다. caveat 누락 상태로 작성된 Step 3 scope 정의 prompt 는 본 가이드의 의도된 사용 방식이 아니다.
-- **Codex review input for Step 3 work 는 본 가이드를 `GLOBAL_INSTALL_UPDATE_MODEL.md` 의 subordinate 로 취급** 한다. 두 문서가 충돌하면 부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` 가 우선한다. 본 가이드가 부모 모델의 결정을 silently override 하지 않는다 (`docs/roadmap/README.md` §5).
+- **Codex review input for Step 3 work 는 본 가이드를 `GLOBAL_INSTALL_UPDATE_MODEL.md` 의 subordinate 로 취급** 한다. 두 문서가 충돌하면 부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` 가 우선한다. 본 가이드가 부모 모델의 결정을 silently override 하지 않는다 (`docs/roadmap/INDEX.md` §5).
 
 ---
 
@@ -362,7 +364,7 @@ target project 에 대한 footprint 결정은 다음을 보존한다 (`GLOBAL_IN
   - source repo 의 tracked instance 로 두지 않는다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §5.1; source repo 에는 schema / example 만 허용).
   - user-home 의 ai-harness-specific 별도 root (예: `%USERPROFILE%\.ai-harness\...`) 에 두지 않는다.
 
-부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` §5.1 의 placeholder `install-metadata.json` 은 본 anchor 의 filename 결정과 다르지만, 부모 §5.1 본문이 "정확한 파일명 / 위치는 implementation 단계에서 확정한다" 로 placeholder 임을 명시하므로 부모 본문 mutation 없이 본 STEP3 guide 의 canonical 결정이 우선한다 (`docs/roadmap/README.md` §5 의 subordinate-specifies-more-concretely boundary 와 정합). 부모 본문의 placeholder 는 alternative naming example 로 historical 보존되며, 본 anchor 와 충돌 시 본 §11 이 우선한다.
+부모 `GLOBAL_INSTALL_UPDATE_MODEL.md` §5.1 의 placeholder `install-metadata.json` 은 본 anchor 의 filename 결정과 다르지만, 부모 §5.1 본문이 "정확한 파일명 / 위치는 implementation 단계에서 확정한다" 로 placeholder 임을 명시하므로 부모 본문 mutation 없이 본 STEP3 guide 의 canonical 결정이 우선한다 (`docs/roadmap/INDEX.md` §5 의 subordinate-specifies-more-concretely boundary 와 정합). 부모 본문의 placeholder 는 alternative naming example 로 historical 보존되며, 본 anchor 와 충돌 시 본 §11 이 우선한다.
 
 ### 11.3 `schemaVersion` semantics
 

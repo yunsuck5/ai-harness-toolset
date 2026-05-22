@@ -1,5 +1,7 @@
 # Shared / Global Invocation Contract
 
+> **현행 status routing.** 본 문서는 install/update/global-adoption 의 design/model/record source 다. **current 상태 / completed-ledger / deferred** 의 authoritative 자리는 `docs/systems/install-update/STATUS.md` + `docs/systems/install-update/DEFERRED.md` 다 (전체 routing 진입점: `docs/current/SOURCE_OF_TRUTH.md`; roadmap index: `docs/roadmap/INDEX.md`). 본 문서 본문과 system STATUS 가 충돌하면 current 판단은 STATUS 를 따른다.
+
 본 문서는 `ai-harness-toolset` 의 shared / global mode invocation contract 의 **design** 을 기록한다. **design 의 기록이며, implementation 승인이 아니다.**
 
 본 문서가 존재한다는 사실만으로 어떤 script / config / template / snippet 의 수정, ToolRoot discovery 채널의 자동 도입, env var 의 활성화, snippet body 재작성, claude-skill SKILL.md 의 변경, shared / global mode 의 actual implementation 이 자동 승인되지 않는다. 후속 작업은 분할 단위로 별도 scoped 승인을 거친다.

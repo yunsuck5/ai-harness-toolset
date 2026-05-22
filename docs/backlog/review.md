@@ -1,6 +1,8 @@
 # Review Backlog
 
-본 파일은 review subsystem 및 review 운영 관련 open 후보 항목을 기록한다. 본 파일의 어떤 항목도 implementation, scheduling, release 의 자동 승인이 아니다. 본 파일과 다른 contract 문서가 충돌하면 contract 문서가 우선한다 (`./README.md` 참조).
+> **현행 routing (docs taxonomy reset).** 본 파일은 open backlog candidate 와 closed / historical / removed-legacy 항목이 섞여 있다. **현행 open work** 의 진입점은 per-system BACKLOG (`docs/systems/install-update/BACKLOG.md`, `docs/systems/review/BACKLOG.md`) 와 분류 INDEX (`docs/backlog/INDEX.md`) 다. 본 파일 안의 closed 항목은 `docs/systems/*/STATUS.md` 의 completed-ledger 가 authoritative status 이며, removed-legacy 식별자는 historical reason 으로만 보존된다 (operator path 아님). 항목별 status 분류는 `docs/backlog/INDEX.md` 를 본다.
+
+본 파일은 review subsystem 및 review 운영 관련 open 후보 항목을 기록한다. 본 파일의 어떤 항목도 implementation, scheduling, release 의 자동 승인이 아니다. 본 파일과 다른 contract 문서가 충돌하면 contract 문서가 우선한다 (`./INDEX.md` 참조).
 
 ---
 

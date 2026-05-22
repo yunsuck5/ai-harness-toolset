@@ -1,5 +1,7 @@
 # Clean Target Smoke Test Criteria — Shared / Global Mode
 
+> **현행 status routing.** 본 문서는 clean-target smoke criteria (SC1–SC7) 의 **record** 이며 Step 4 fixture 검증 형식의 still-referenced baseline 이다 (SC5/CH3 review-cycle body 등 일부 superseded). install/update 의 current 상태는 `docs/systems/install-update/STATUS.md` (IU-07/IU-12) + `docs/systems/install-update/DEFERRED.md` 가 authoritative 다 (전체 routing: `docs/current/SOURCE_OF_TRUTH.md`; roadmap index: `docs/roadmap/INDEX.md`). 본 문서 본문과 system STATUS 가 충돌하면 current 판단은 STATUS 를 따른다.
+
 본 문서는 `ai-harness-toolset` 의 shared / global mode 동작을 fresh / clean target 환경에서 검증하기 위한 smoke test criteria 의 정의다. **criteria 의 기록이며, smoke 실행 / target 채택 / script 변경 / global mutation / commit 어느 것도 자동 승인하지 않는다.**
 
 본 문서가 존재한다는 사실만으로 다음 행위가 승인되지 않는다.

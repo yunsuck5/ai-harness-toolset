@@ -1,5 +1,7 @@
 # ToolRoot / ProjectRoot Path Handling Audit
 
+> **현행 status routing.** 본 문서는 완료된 audit / criteria **record (historical)** 다. install/update 의 current 상태는 `docs/systems/install-update/STATUS.md` + `docs/systems/install-update/DEFERRED.md` 가 authoritative 다 (전체 routing: `docs/current/SOURCE_OF_TRUTH.md`; roadmap index: `docs/roadmap/INDEX.md`). 본 문서를 current implementation/operation guidance 로 쓰지 않는다 — current 판단은 STATUS 를 따른다.
+
 본 문서는 `ai-harness-toolset` 을 shared / global mode 로 전환하기 전에 수행해야 하는 **read-only path handling audit** 의 결과를 기록한다. **audit 의 기록이며, implementation 승인이 아니다.**
 
 본 문서가 존재한다는 사실만으로 shared / global mode 의 implementation, path handling refactor, snippet 본문 재작성, scripts / config / templates 변경, clean target smoke test 가 자동 승인되지 않는다. 후속 작업은 각각 별도 scoped 승인을 거친다.
