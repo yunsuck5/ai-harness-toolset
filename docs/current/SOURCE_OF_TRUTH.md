@@ -22,7 +22,7 @@ How to read each entry:
 
 - **Primary:** `INSTALL.md` — self-contained operative contract (anti-coupling: install behavior does not depend on `docs/`).
 - **Secondary:** `docs/systems/install-update/STATUS.md` (current system status + completed-ledger) and `DEFERRED.md`; `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` (operating model / design), `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` (Step 3 implementation planning).
-- **Implementation:** `scripts/install-pipeline.ps1`, `scripts/lib/install-pipeline-core.ps1`, `scripts/apply-managed-block.ps1`, `scripts/activate-global.ps1`.
+- **Implementation:** `scripts/lib/install-pipeline-core.ps1` (deterministic core library — resolver / materialization / dispatcher / verify; verify helper `Invoke-InstallPipelineVerify` is the canonical operator-side verify entry per `INSTALL.md` §5.1), `scripts/apply-managed-block.ps1`, `scripts/activate-global.ps1`. The fixture / test harness CLI for the install-pipeline core contract lives at `tests/support/install-pipeline-fixture.ps1` (moved from the former `scripts/install-pipeline.ps1` path; fixture-only — `Assert-NotForbiddenInstallArea` guard rejects production global install paths, see `INSTALL.md` §5.1).
 - **Historical:** `docs/decisions/GLOBAL_ADOPTION_DECISION.md` (copy / link / pinned-link enumeration), `docs/archive/audits/TOOLROOT_PROJECTROOT_AUDIT.md`.
 - **Do not use:** the source-cache / persistent-ToolRoot / `brief/` 1st·2nd-framing remnants inside `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` (isolated by its top reconciliation note).
 

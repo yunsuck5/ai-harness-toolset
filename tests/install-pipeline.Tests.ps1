@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
-    $script:EntryScript = Join-Path $script:RepoRoot 'scripts/install-pipeline.ps1'
+    $script:EntryScript = Join-Path $script:RepoRoot 'tests/support/install-pipeline-fixture.ps1'
 
     . (Join-Path $script:RepoRoot 'scripts/lib/encoding.ps1')
     . (Join-Path $script:RepoRoot 'scripts/lib/path.ps1')

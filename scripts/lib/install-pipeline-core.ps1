@@ -32,8 +32,9 @@ function Invoke-InstallPipelineNativeGit {
 }
 
 # install-pipeline-core library — Step 3 3-2~3-5 runtime pipeline (temp-only skeleton).
-# Dot-sourced from scripts/install-pipeline.ps1 (CLI entry) and from
-# tests/install-pipeline.Tests.ps1 (Pester suite).
+# Dot-sourced from tests/support/install-pipeline-fixture.ps1 (fixture / test harness
+# entry; moved from the former scripts/install-pipeline.ps1 path to make the role explicit)
+# and from tests/install-pipeline.Tests.ps1 (Pester suite).
 #
 # Implements the contract from docs/systems/install-update/
 #   STEP3_INSTALL_UPDATE_DECISION_GUIDE.md §12 (runtime pipeline grouping):
@@ -114,7 +115,7 @@ function Get-InstallPipelineMarkerPath {
 
 # source-cache directory used as a RUN-SCOPED TEMPORARY WORK AREA for git-url mode.
 # Per INSTALL.md §2 / §6 / §7 / §9 the cache is NOT a persistent canonical install output;
-# the entry script (scripts/install-pipeline.ps1) creates it at action start and removes it
+# the fixture entry script (tests/support/install-pipeline-fixture.ps1) creates it at action start and removes it
 # at action end. Within a single action the cache exists transiently so `Invoke-InstallPipeline*`
 # helpers below (clone / fetch / remote-head / archive) can operate against it. The persistent
 # canonical install outputs are: `current/`, `install.json`, `payload-manifest.json`,

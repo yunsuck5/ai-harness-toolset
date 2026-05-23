@@ -25,12 +25,16 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-. (Join-Path $PSScriptRoot 'lib/encoding.ps1')
-. (Join-Path $PSScriptRoot 'lib/path.ps1')
-. (Join-Path $PSScriptRoot 'lib/install-pipeline-core.ps1')
+# Fixture / test harness entry — moved from scripts/install-pipeline.ps1 to
+# tests/support/install-pipeline-fixture.ps1 to make the role explicit. Dot-source
+# paths therefore resolve relative to repo root rather than $PSScriptRoot.
+$script:FixtureRepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..\..')).ProviderPath
+. (Join-Path $script:FixtureRepoRoot 'scripts/lib/encoding.ps1')
+. (Join-Path $script:FixtureRepoRoot 'scripts/lib/path.ps1')
+. (Join-Path $script:FixtureRepoRoot 'scripts/lib/install-pipeline-core.ps1')
 
-# Temp-only entry: reject any InstallArea that points at the global stable
-# install area or any path under %USERPROFILE%\.claude or %USERPROFILE%\.codex.
+# Fixture / temp-only entry: reject any InstallArea that points at the global
+# stable install area or any path under %USERPROFILE%\.claude or %USERPROFILE%\.codex.
 # Actual global apply is a separate explicit user-approved scope per
 # INSTALL.md §10 (Approval boundaries) and GLOBAL_ADOPTION_DECISION.md §6.
 function Assert-NotForbiddenInstallArea {
