@@ -8,25 +8,25 @@
 
 본 문서는 다음 source-of-truth 들과 충돌하지 않는다.
 
-- 운영 계층 결정: `docs/roadmap/GLOBAL_ADOPTION_DECISION.md`
-- post-MVP 결정 기록: `docs/roadmap/POST_MVP_PLAN.md`
-- Claude skill global 절차: `docs/roadmap/GLOBAL_ADOPTION_PROCEDURE.md`
-- subsystem scope: `docs/AI_HARNESS_TOOLSET_SCOPE.md`
-- review record 계약: `docs/REVIEW_RESULT_CONTRACT.md`
+- 운영 계층 결정: `docs/decisions/GLOBAL_ADOPTION_DECISION.md`
+- post-MVP 결정 기록: `docs/decisions/POST_MVP_PLAN.md`
+- Claude skill global 절차: `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md`
+- subsystem scope: `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`
+- review record 계약: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
-> **BRIEF wording supersede note (3rd reconciliation, 문서 전체 적용).** 본 audit 본문의 BRIEF / BriefRoot 관련 wording — §2 의 `BriefRoot — <ProjectRoot>/brief. durable BRIEF artifact tree`, §4 의 `brief-check.ps1` 행이 `<ProjectRoot>/brief/BRIEF.md` 를 default 검사 대상으로 적은 것, §4 의 `templates/brief/BRIEF.md` 가 `<ProjectRoot>/brief/BRIEF.md` 를 canonical 위치로 적었다는 audit observation, §5 의 `5.2 brief/` 절에서 source repo 의 root `brief/` collision 을 다룬 부분 — 은 audit 시점의 BRIEF model 을 반영한 historical record 다. 그 모델은 이후 reconciliation 라운드를 거쳐 정정되었다. **현행 (3차 reconciliation) 기준**: canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` (project-local, operator-local, source-control-excluded runtime artifact under `<ProjectRoot>/log/`, gitignored), root `<ProjectRoot>/brief/` 는 **rejected**, user-home operator-local runtime root 도 rejected, target persistent footprint = `<ProjectRoot>/log/` only. `BriefRoot` 는 `<ProjectRoot>/log/brief` 다. `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 의 destination 이 정확히 그 자리와 일치한다. canonical source-of-truth 는 `docs/BRIEF_CONTRACT.md` 와 `docs/CHATLOG_CONTRACT.md` 다. 본 audit 의 process / gap / blocker 결론 자체는 path handling audit 의 read-only 관찰이므로 BRIEF 자리 결정과 독립적으로 유효하다 — wording 의 BRIEF 자리만 본 note 의 3차 framing 으로 읽는다.
+> **BRIEF wording supersede note (3rd reconciliation, 문서 전체 적용).** 본 audit 본문의 BRIEF / BriefRoot 관련 wording — §2 의 `BriefRoot — <ProjectRoot>/brief. durable BRIEF artifact tree`, §4 의 `brief-check.ps1` 행이 `<ProjectRoot>/brief/BRIEF.md` 를 default 검사 대상으로 적은 것, §4 의 `templates/brief/BRIEF.md` 가 `<ProjectRoot>/brief/BRIEF.md` 를 canonical 위치로 적었다는 audit observation, §5 의 `5.2 brief/` 절에서 source repo 의 root `brief/` collision 을 다룬 부분 — 은 audit 시점의 BRIEF model 을 반영한 historical record 다. 그 모델은 이후 reconciliation 라운드를 거쳐 정정되었다. **현행 (3차 reconciliation) 기준**: canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` (project-local, operator-local, source-control-excluded runtime artifact under `<ProjectRoot>/log/`, gitignored), root `<ProjectRoot>/brief/` 는 **rejected**, user-home operator-local runtime root 도 rejected, target persistent footprint = `<ProjectRoot>/log/` only. `BriefRoot` 는 `<ProjectRoot>/log/brief` 다. `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 의 destination 이 정확히 그 자리와 일치한다. canonical source-of-truth 는 `docs/contracts/brief/BRIEF_CONTRACT.md` 와 `docs/contracts/chatlog/CHATLOG_CONTRACT.md` 다. 본 audit 의 process / gap / blocker 결론 자체는 path handling audit 의 read-only 관찰이므로 BRIEF 자리 결정과 독립적으로 유효하다 — wording 의 BRIEF 자리만 본 note 의 3차 framing 으로 읽는다.
 >
-> **Chatlog template / chatlog AC supersede note.** §4 의 `templates/session-resume.md` / `templates/session-summary.md` / `templates/decision-log.md` 에 대한 path observation 은 audit 시점의 source-tree 사실을 기록한다. 그 세 template 은 이후 Brief/Chatlog/BF drift 정리 라운드에서 source tree 에서 drop 되었다 (Chatlog fuller implementation 미구현 / current contract 와 모순). 본 audit 의 결론에는 영향을 주지 않으며, drop 의 배경은 `docs/backlog/operations.md` 의 "Project-local copy model docs vs global stable runtime ToolRoot model" 항목 Resolved 절 참조.
+> **Chatlog template / chatlog AC supersede note.** §4 의 `templates/session-resume.md` / `templates/session-summary.md` / `templates/decision-log.md` 에 대한 path observation 은 audit 시점의 source-tree 사실을 기록한다. 그 세 template 은 이후 Brief/Chatlog/BF drift 정리 라운드에서 source tree 에서 drop 되었다 (Chatlog fuller implementation 미구현 / current contract 와 모순). 본 audit 의 결론에는 영향을 주지 않으며, drop 의 배경은 `docs/archive/backlog/operations.md` 의 "Project-local copy model docs vs global stable runtime ToolRoot model" 항목 Resolved 절 참조.
 >
-> **Review-cycle observations supersede note (3rd reconciliation).** §4 (4.1 / 4.2 / 4.3 / 4.5 / 5.2 / 5.3), §6 의 Gap G6 / Gap G8 (lines 258–272 인근), §7 의 blocker 본문, §8 의 D1–D9 design seeds 안에 등장하는 `scripts/review-cycle.ps1`, `Resolve-CycleScript`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath`, `templates/review-meta.json` 등의 observation 은 audit 시점의 source tree 사실이다. 이후 canonical review task/pass topology 채택 (POST_MVP_PLAN §10 Completed `c81fe45`) 으로 normal operator path 가 두 단계 entry (`scripts/review-prepare.ps1` → `scripts/review-run.ps1`) + canonical record `<ProjectRoot>/log/review/<review-task-id>/pass-NN/{input.md, result.md}` 로 갱신되었으며, 위 식별자들은 `docs/backlog/review.md` "Removed legacy review artifacts" historical reason 으로 이동했다. audit 의 read-only gap/blocker 결론 자체 (channel chain, BriefRoot wording, source-vs-runtime 경계 등) 는 본 supersede 와 독립적으로 유효하다 — wording 안의 review-cycle 식별자 / sidecar artifact 참조만 현행 contract 기준으로 읽는다. Gap G6 (`review-cycle.ps1` 의 untracked detection `log/` 제외 범위) 의 동작 결정 (D7) 자체는 `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md` 의 D7 supersede note 에 따라 그대로 유효하다.
+> **Review-cycle observations supersede note (3rd reconciliation).** §4 (4.1 / 4.2 / 4.3 / 4.5 / 5.2 / 5.3), §6 의 Gap G6 / Gap G8 (lines 258–272 인근), §7 의 blocker 본문, §8 의 D1–D9 design seeds 안에 등장하는 `scripts/review-cycle.ps1`, `Resolve-CycleScript`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath`, `templates/review-meta.json` 등의 observation 은 audit 시점의 source tree 사실이다. 이후 canonical review task/pass topology 채택 (POST_MVP_PLAN §10 Completed `c81fe45`) 으로 normal operator path 가 두 단계 entry (`scripts/review-prepare.ps1` → `scripts/review-run.ps1`) + canonical record `<ProjectRoot>/log/review/<review-task-id>/pass-NN/{input.md, result.md}` 로 갱신되었으며, 위 식별자들은 `docs/archive/backlog/review.md` "Removed legacy review artifacts" historical reason 으로 이동했다. audit 의 read-only gap/blocker 결론 자체 (channel chain, BriefRoot wording, source-vs-runtime 경계 등) 는 본 supersede 와 독립적으로 유효하다 — wording 안의 review-cycle 식별자 / sidecar artifact 참조만 현행 contract 기준으로 읽는다. Gap G6 (`review-cycle.ps1` 의 untracked detection `log/` 제외 범위) 의 동작 결정 (D7) 자체는 `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` 의 D7 supersede note 에 따라 그대로 유효하다.
 
 ---
 
 ## 1. Purpose
 
-`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8 은 shared / global mode 로 전환하기 전에 path handling audit 가 선행되어야 한다고 결정했다. 본 문서는 그 audit 를 수행한 결과다.
+`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §8 은 shared / global mode 로 전환하기 전에 path handling audit 가 선행되어야 한다고 결정했다. 본 문서는 그 audit 를 수행한 결과다.
 
 본 audit 의 책임은 다음으로 한정된다.
 
@@ -49,7 +49,7 @@
 
 ## 2. Conceptual path model recap
 
-`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8 의 path model 을 본 audit 의 참조 frame 으로 사용한다.
+`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §8 의 path model 을 본 audit 의 참조 frame 으로 사용한다.
 
 - `ToolRoot` — source-managed file (`scripts/`, `templates/`, `config/`, `snippets/`) 의 위치.
 - `ProjectRoot` — 적용 대상 project repo 의 root.
@@ -62,7 +62,7 @@
 세 가지 가능한 layout 이 본 audit 의 frame 이다.
 
 - **Project-local copy mode** — `ToolRoot == <ProjectRoot>/.ai-harness`. MVP 의 현재 default 동작. snippet 본문이 가정하는 형태.
-- **Shared / global mode** — `ToolRoot` 가 ProjectRoot 와 독립적인 경로 (예: `H:/Work/ai-harness-toolset/ai-harness-toolset`). `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §4 의 preferred direction.
+- **Shared / global mode** — `ToolRoot` 가 ProjectRoot 와 독립적인 경로 (예: `H:/Work/ai-harness-toolset/ai-harness-toolset`). `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §4 의 preferred direction.
 - **Self-target / dogfooding mode** — `ToolRoot == ProjectRoot` (즉, ai-harness-toolset source repo 자체가 ProjectRoot). source repo 가 자기 자신을 review 할 때.
 
 ---
@@ -173,7 +173,7 @@ template 에는 `.ai-harness/` 같은 copy-only 전제 path 가 발견되지 않
 - 사실 (a). project-local copy mode (현재 MVP default) 와 self-target / dogfooding mode 의 두 가지 layout 만을 명시적으로 다룬다.
 - 사실 (b). shared / global mode (ToolRoot 가 ProjectRoot 와 독립적인 경로) 는 본문에 명시적 분기가 없다.
 
-즉, 사용자가 shared / global mode 로 invoke 하려 해도, snippet 본문에는 "어디서 script 를 찾아야 하는지" 가 기록되어 있지 않다. 결과적으로 사용자 또는 AI 가 직접 ToolRoot 를 알아야 하거나, snippet 본문 외부의 정보 (예: `docs/roadmap/GLOBAL_ADOPTION_DECISION.md`) 를 참조해야 한다.
+즉, 사용자가 shared / global mode 로 invoke 하려 해도, snippet 본문에는 "어디서 script 를 찾아야 하는지" 가 기록되어 있지 않다. 결과적으로 사용자 또는 AI 가 직접 ToolRoot 를 알아야 하거나, snippet 본문 외부의 정보 (예: `docs/decisions/GLOBAL_ADOPTION_DECISION.md`) 를 참조해야 한다.
 
 이는 Batch A 의 `yes with risk` finding 과 정합한다.
 
@@ -416,7 +416,7 @@ D1–D9 가 결정되기 전에는 shared / global mode 의 invocation contract 
 ## 11. Source-of-truth 관계
 
 - 본 audit 는 path handling 의 read-only 조사 결과 기록이다.
-- `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8 의 audit 요구 사항을 충족한다.
-- §2 의 path model 정의는 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8 의 정의와 정합한다. 충돌 시 `GLOBAL_ADOPTION_DECISION.md` 가 우선한다.
-- §5 self-target / dogfooding audit 는 `docs/roadmap/POST_MVP_PLAN.md` §11 step 4 의 mandatory sub-scope 를 충족한다.
+- `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §8 의 audit 요구 사항을 충족한다.
+- §2 의 path model 정의는 `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §8 의 정의와 정합한다. 충돌 시 `GLOBAL_ADOPTION_DECISION.md` 가 우선한다.
+- §5 self-target / dogfooding audit 는 `docs/decisions/POST_MVP_PLAN.md` §11 step 4 의 mandatory sub-scope 를 충족한다.
 - 본 audit 는 review verdict (`yes` / `no` / `yes with risk`) 를 commit / push / publish / merge / release / adoption 의 자동 승인으로 해석하지 않는다는 contract 를 그대로 유지한다.

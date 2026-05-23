@@ -14,7 +14,7 @@
 
 `input.md` 는 operator-role AI (Claude Code) 가 작성한다. `result.md` 는 Codex reviewer 가 작성한다. script 는 위 두 파일에 대한 deterministic gate 만 담당하고, 의미 판단은 하지 않는다.
 
-본 contract 는 source-of-truth 이며, `templates/review-input.md` · `templates/review-result.md` · `snippets/claude-skills/ai-harness-review/SKILL.md` · `docs/OPERATOR_GUIDE_KR.md` · `README.md` 는 이 contract 를 mirror 한다. 본문이 충돌하면 본 contract 가 우선한다.
+본 contract 는 source-of-truth 이며, `templates/review-input.md` · `templates/review-result.md` · `snippets/claude-skills/ai-harness-review/SKILL.md` · `docs/user_guide/OPERATOR_GUIDE_KR.md` · `README.md` 는 이 contract 를 mirror 한다. 본문이 충돌하면 본 contract 가 우선한다.
 
 ## 1. Review task and pass directory
 
@@ -182,4 +182,4 @@ failed / incomplete pass (예: Codex 실패 또는 verdict parsing 실패로 `re
 - daemon, watcher, scheduler, CI integration.
 - evidence / chatlog / brief subsystem 과의 cross-tree 보장.
 
-removed legacy artifact design 의 historical reason 은 `docs/backlog/review.md` 및 `docs/backlog/operations.md` 에 격리되어 있다. 그 항목은 operator path 가 아니며 normal workflow 의 일부도 아니다.
+removed legacy artifact design 의 historical reason 은 `docs/archive/backlog/review.md` 및 `docs/archive/backlog/operations.md` 에 격리되어 있다. 그 항목은 operator path 가 아니며 normal workflow 의 일부도 아니다.

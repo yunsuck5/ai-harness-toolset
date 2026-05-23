@@ -7,7 +7,7 @@
 ## 핵심 정의 — Brief vs Chatlog
 
 - **Brief** 는 한 project 의 **durable restore source-of-truth** 다. 작업을 (재)개할 때 가장 먼저 읽는 한 자리이며, 여러 session 에 걸쳐 의미가 유지된다.
-- **Chatlog** 는 Brief 가 아니다. Chatlog 는 history / decision rationale / Brief reconstruction evidence 다. 현재 restore source 가 아니다 (`docs/CHATLOG_CONTRACT.md`).
+- **Chatlog** 는 Brief 가 아니다. Chatlog 는 history / decision rationale / Brief reconstruction evidence 다. 현재 restore source 가 아니다 (`docs/contracts/chatlog/CHATLOG_CONTRACT.md`).
 - 두 책임은 분리되어 있고 한쪽이 다른 쪽을 대체하지 않는다. Brief 가 오염 / 삭제 / stale 인 경우 Chatlog 가 Brief 재구성의 evidence 가 될 수 있으나, 그 자체가 Brief 의 자리는 아니다.
 
 ## BF Level — save/restore capability maturity
@@ -106,8 +106,8 @@ operator 가 명시적으로 결정해 `<ProjectRoot>/log/` 의 `.gitignore` 규
 
 ## Chatlog 와의 관계
 
-- Chatlog (`<ProjectRoot>/log/chatlog/`) 는 Brief 가 아니다. 본 contract 는 Chatlog 의 자리를 정의하지 않는다 — Chatlog 의 contract 는 `docs/CHATLOG_CONTRACT.md` 다.
-- 과거 docs 가 `log/chatlog/current/resume.md` / `summary.md` 를 "canonical BF Level 1/2 artifact" 로 묶어 부르던 형태는 본 contract 에서 더 이상 유효하지 않다. 두 파일은 **failed intermediate / legacy migration source / deprecation candidate** 다 (`docs/CHATLOG_CONTRACT.md`).
+- Chatlog (`<ProjectRoot>/log/chatlog/`) 는 Brief 가 아니다. 본 contract 는 Chatlog 의 자리를 정의하지 않는다 — Chatlog 의 contract 는 `docs/contracts/chatlog/CHATLOG_CONTRACT.md` 다.
+- 과거 docs 가 `log/chatlog/current/resume.md` / `summary.md` 를 "canonical BF Level 1/2 artifact" 로 묶어 부르던 형태는 본 contract 에서 더 이상 유효하지 않다. 두 파일은 **failed intermediate / legacy migration source / deprecation candidate** 다 (`docs/contracts/chatlog/CHATLOG_CONTRACT.md`).
 - Chatlog 는 Brief 가 오염 / 삭제 / stale 인 경우 Brief 재구성을 위한 evidence 로 사용될 수 있다. 그러나 Chatlog 자체가 현재 restore source 로 승격되지 않는다.
 - Brief 와 Chatlog 사이의 자동 mirror 는 본 contract 의 책임이 아니며, 어느 future scoped work 도 mirror 자동화를 자동 승인하지 않는다.
 
@@ -231,14 +231,14 @@ forbidden behavior:
 - BRIEF 는 review subsystem 의 input 이 아니며 output 도 아니다.
 - BRIEF 는 commit / push / release 게이트가 아니다.
 - `brief-check.ps1` 의 PASS / FAIL 은 commit / push / release 를 자동으로 막거나 승인하지 않는다.
-- review verdict (`yes` / `no` / `yes with risk`) 와 brief-check 결과 (PASS / FAIL) 는 다른 축이며 서로 enforcement 하지 않는다 (`docs/REVIEW_RESULT_CONTRACT.md`).
+- review verdict (`yes` / `no` / `yes with risk`) 와 brief-check 결과 (PASS / FAIL) 는 다른 축이며 서로 enforcement 하지 않는다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 
 ## encoding 정책
 
 - BRIEF runtime artifact 는 UTF-8 without BOM 이다.
 - `scripts/brief-init.ps1` / `scripts/brief-check.ps1` / `scripts/brief-status.ps1` 의 파일 IO 는 `scripts/lib/encoding.ps1` 의 함수 (`Read-Utf8`, `Write-Utf8NoBom`) 를 사용한다. `brief-status.ps1` 은 read-only 이므로 `Read-Utf8` 만 사용한다.
 - `Set-Content -Encoding UTF8`, `Add-Content -Encoding UTF8`, `Out-File`, `Get-Content -Raw` 는 사용하지 않는다.
-- `.ps1` 소스 파일은 UTF-8 with BOM + CRLF 이다 (`docs/POWERSHELL_POLICY.md`).
+- `.ps1` 소스 파일은 UTF-8 with BOM + CRLF 이다 (`docs/policies/POWERSHELL_POLICY.md`).
 
 ## non-goals (본 contract 가 다루지 않는 것)
 

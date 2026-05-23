@@ -8,10 +8,10 @@
 
 본 문서는 다음 source-of-truth 들과 충돌하지 않는다.
 
-- 운영 계층 결정: `docs/roadmap/GLOBAL_ADOPTION_DECISION.md`
-- post-MVP 결정 기록: `docs/roadmap/POST_MVP_PLAN.md`
-- review record 계약: `docs/REVIEW_RESULT_CONTRACT.md`
-- subsystem scope: `docs/AI_HARNESS_TOOLSET_SCOPE.md`
+- 운영 계층 결정: `docs/decisions/GLOBAL_ADOPTION_DECISION.md`
+- post-MVP 결정 기록: `docs/decisions/POST_MVP_PLAN.md`
+- review record 계약: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`
+- subsystem scope: `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
@@ -19,7 +19,7 @@
 
 ## 1. Purpose
 
-`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §5 는 adoption / update 의 operator 가 AI 라는 방향을 결정했다. 본 문서는 그 방향을 Claude skill 자산에 한정하여 절차로 풀어낸 운영 가이드다.
+`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §5 는 adoption / update 의 operator 가 AI 라는 방향을 결정했다. 본 문서는 그 방향을 Claude skill 자산에 한정하여 절차로 풀어낸 운영 가이드다.
 
 본 가이드의 책임은 다음으로 한정된다.
 
@@ -29,10 +29,10 @@
 
 본 가이드의 책임이 **아닌** 항목.
 
-- 글로벌 instruction file (Claude `%USERPROFILE%\.claude\CLAUDE.md`, Codex `%USERPROFILE%\.codex\AGENTS.md` 또는 `%CODEX_HOME%\AGENTS.md`, Codex user-global `AGENTS.override.md`, project-root `CLAUDE.md` / `AGENTS.md`) 의 managed block update. 본 동작의 marker 정책과 path enumeration 은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §6 이 source-of-truth 다 — generic 한 "global `AGENTS.md`" wording 만 사용하면 `%USERPROFILE%\.claude\AGENTS.md` 같은 forbidden path 로 오인될 수 있으므로 §6 의 path table 을 참조한다.
-- shared / global script invocation 의 path handling implementation. 본 동작의 audit 요구 사항은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8 다.
+- 글로벌 instruction file (Claude `%USERPROFILE%\.claude\CLAUDE.md`, Codex `%USERPROFILE%\.codex\AGENTS.md` 또는 `%CODEX_HOME%\AGENTS.md`, Codex user-global `AGENTS.override.md`, project-root `CLAUDE.md` / `AGENTS.md`) 의 managed block update. 본 동작의 marker 정책과 path enumeration 은 `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §6 이 source-of-truth 다 — generic 한 "global `AGENTS.md`" wording 만 사용하면 `%USERPROFILE%\.claude\AGENTS.md` 같은 forbidden path 로 오인될 수 있으므로 §6 의 path table 을 참조한다.
+- shared / global script invocation 의 path handling implementation. 본 동작의 audit 요구 사항은 `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §8 다.
 - target project 의 `.gitignore`, `brief/`, `log/` 의 변경. 본 동작들은 다른 계약이 source-of-truth 다.
-- installer 자동화. 본 단계에서 `install.ps1` 등 productized installer 는 명시적으로 out of scope 다 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §10).
+- installer 자동화. 본 단계에서 `install.ps1` 등 productized installer 는 명시적으로 out of scope 다 (`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §10).
 
 ---
 
@@ -54,7 +54,7 @@
 
 ## 3. Paths
 
-본 절은 절차에서 참조하는 경로의 conceptual split 을 기록한다. 본 split 은 `docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §8 의 ToolRoot / ProjectRoot 모델과 정합되며, 본 문서가 새 path 모델을 도입하지 않는다.
+본 절은 절차에서 참조하는 경로의 conceptual split 을 기록한다. 본 split 은 `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §8 의 ToolRoot / ProjectRoot 모델과 정합되며, 본 문서가 새 path 모델을 도입하지 않는다.
 
 - `ToolRoot` — `ai-harness-toolset` source repo root (예: `H:/Work/ai-harness-toolset/ai-harness-toolset`).
 - `SkillSourceRoot` — `<ToolRoot>/snippets/claude-skills`.
@@ -70,7 +70,7 @@
 
 본 절차는 사용자 명시 trigger 가 있을 때에만 시작된다. trigger 가 없는 동안에는 skill install / update / removal 행위가 발생하지 않는다.
 
-기대되는 자연어 trigger 예시 (`docs/roadmap/GLOBAL_ADOPTION_DECISION.md` §5 의 예시와 정합).
+기대되는 자연어 trigger 예시 (`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §5 의 예시와 정합).
 
 - "ai-harness-toolset global adoption 진행해줘"
 - "ai-harness-toolset skill 설치해줘"

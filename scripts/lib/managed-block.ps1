@@ -4,7 +4,7 @@ $ErrorActionPreference = 'Stop'
 # Deterministic managed-block apply primitive for ai-harness-toolset activation
 # surfaces (e.g. CLAUDE.md / AGENTS.md). It replaces the ad-hoc PowerShell splice
 # that caused the 2026-05-21 UTF-8 corruption incident
-# (docs/backlog/operations.md "Activation managed-block apply tooling hardening").
+# (docs/archive/backlog/operations.md "Activation managed-block apply tooling hardening").
 #
 # Encoding policy:
 #   - This library performs NO file IO. Callers MUST pass already-decoded UTF-8
@@ -155,7 +155,7 @@ function Assert-NoCorruptionSentinel {
     # Literal ASCII '?' (0x3F) is deliberately NOT gated here: it is ordinary content
     # (the repo's own CLAUDE_SNIPPET.md contains a '?'), so an input-presence reject
     # would be a false positive. The intended '?' contract is a before/after
-    # non-increase check (docs/backlog/operations.md "비-ASCII 무손실 gate"), which is
+    # non-increase check (docs/archive/backlog/operations.md "비-ASCII 무손실 gate"), which is
     # a separate, narrower mechanism left for a follow-up.
     param(
         [string] $Content,

@@ -2,7 +2,7 @@
 
 ## Config location
 
-The effective reviewer config is `<ToolRoot>/config/reviewer.json`, where `<ToolRoot>` is resolved per invocation (see `docs/roadmap/SHARED_GLOBAL_INVOCATION_CONTRACT.md`). `review-prepare.ps1` reads it from the resolved ToolRoot.
+The effective reviewer config is `<ToolRoot>/config/reviewer.json`, where `<ToolRoot>` is resolved per invocation (see `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md`). `review-prepare.ps1` reads it from the resolved ToolRoot.
 
 | Role | Path |
 |---|---|
@@ -49,7 +49,7 @@ Current as-built status of each key (in terms of the canonical operator-facing f
 | `timeoutSeconds` | **Metadata-only / unenforced** — see below. |
 | `outputFormat`, `resultFile` | Dead config — read by no script. |
 
-> The canonical operator-facing artifact set is exactly `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` + `result.md` (`docs/REVIEW_RESULT_CONTRACT.md`). Current scripts emit this canonical layout directly; sidecar files outside that pair (for example `meta.json`, `target-files.list`, `result.json`) are not produced on the operator path and are not part of the contract. Historical references to those removed-legacy artifacts live only in `docs/backlog/review.md` "Removed legacy review artifacts" and are not operator paths.
+> The canonical operator-facing artifact set is exactly `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` + `result.md` (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). Current scripts emit this canonical layout directly; sidecar files outside that pair (for example `meta.json`, `target-files.list`, `result.json`) are not produced on the operator path and are not part of the contract. Historical references to those removed-legacy artifacts live only in `docs/archive/backlog/review.md` "Removed legacy review artifacts" and are not operator paths.
 
 ### `timeoutSeconds` status
 
@@ -57,15 +57,15 @@ Current as-built status of each key (in terms of the canonical operator-facing f
 
 `timeoutSeconds` is explicitly **not**:
 
-- a review quality or completeness guarantee — review validity is judged by the canonical artifact pair (`input.md`, `result.md`) and the deterministic gates listed in `docs/REVIEW_RESULT_CONTRACT.md` §4;
+- a review quality or completeness guarantee — review validity is judged by the canonical artifact pair (`input.md`, `result.md`) and the deterministic gates listed in `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §4;
 - the Claude Code harness tool timeout — that is a separate harness-level value that governs the shell tool call and can trigger harness auto-background conversion;
 - a background-conversion control — it has no effect on whether a run is foregrounded or backgrounded.
 
-Whether to enforce, demote to explicit metadata-only, or remove `timeoutSeconds` is a separate future decision tracked in `docs/backlog/operations.md`. This document does not decide it.
+Whether to enforce, demote to explicit metadata-only, or remove `timeoutSeconds` is a separate future decision tracked in `docs/archive/backlog/operations.md`. This document does not decide it.
 
 ## Output location
 
-Reviewer output lives under `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` — the canonical two-level layout that current scripts emit directly (`docs/REVIEW_RESULT_CONTRACT.md`). A root `codex-review-input.md` or `codex-review-result*.json` is forbidden.
+Reviewer output lives under `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` — the canonical two-level layout that current scripts emit directly (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). A root `codex-review-input.md` or `codex-review-result*.json` is forbidden.
 
 ## Reviewer boundary
 
@@ -74,7 +74,7 @@ Reviewer output lives under `<ProjectRoot>/log/review/<review-task-id>/pass-NN/`
 - `fallbackModel` is kept for config-schema compatibility; the single-shot run does not use it.
 - reviewer verdict is not approval for commit / push / publish / merge / release / deployment.
 
-Canonical artifact set and verdict semantics are defined in `docs/REVIEW_RESULT_CONTRACT.md`.
+Canonical artifact set and verdict semantics are defined in `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.
 
 ## Diagnostic Codex invocation reference
 
@@ -82,9 +82,9 @@ For diagnosing Codex CLI invocation compatibility, the equivalent command shape 
 
 ```powershell
 # Paths below use the canonical <review-task-id>/pass-NN/ layout per
-# docs/REVIEW_RESULT_CONTRACT.md.
+# docs/contracts/review/REVIEW_RESULT_CONTRACT.md.
 Get-Content -Raw -LiteralPath "log/review/<review-task-id>/pass-NN/input.md" |
   codex --ask-for-approval never exec --sandbox read-only --model <model> -c web_search=disabled --output-last-message "log/review/<review-task-id>/pass-NN/result.md" -
 ```
 
-The normal path for a completed review record is the two-step `review-prepare.ps1` + `review-run.ps1` flow. The canonical contract is `docs/REVIEW_RESULT_CONTRACT.md`.
+The normal path for a completed review record is the two-step `review-prepare.ps1` + `review-run.ps1` flow. The canonical contract is `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.

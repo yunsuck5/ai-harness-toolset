@@ -1,6 +1,6 @@
 # brief — system status
 
-Current status for the Brief primitive. The **contract** is `docs/BRIEF_CONTRACT.md`; the Brief↔Chatlog boundary is `docs/CHATLOG_CONTRACT.md`. Routing: `docs/current/SOURCE_OF_TRUTH.md` (Q4). Deferred (BF Level 3): `docs/systems/brief/DEFERRED.md`.
+Current status for the Brief primitive. The **contract** is `docs/contracts/brief/BRIEF_CONTRACT.md`; the Brief↔Chatlog boundary is `docs/contracts/chatlog/CHATLOG_CONTRACT.md`. Routing: `docs/current/SOURCE_OF_TRUTH.md` (Q4). Deferred (BF Level 3): `docs/systems/brief/DEFERRED.md`.
 
 ## Current state
 
@@ -12,8 +12,8 @@ Current status for the Brief primitive. The **contract** is `docs/BRIEF_CONTRACT
 
 | ID | Item | Closed at | Current meaning | Detail |
 |---|---|---|---|---|
-| BR-01 | Narrow source-side primitive implemented | — | `scripts/brief-init.ps1` (seed), `scripts/brief-check.ps1` (validate), `scripts/brief-status.ps1`, `templates/brief/BRIEF.md`; writer destination == canonical Brief path | `POST_MVP_PLAN.md` §3, §5; `docs/BRIEF_CONTRACT.md` |
-| BR-02 | Snippets aligned to 3rd-reconciliation framing | — | `snippets/CLAUDE_SNIPPET.md` / `AGENTS_SNIPPET.md` carry canonical-Brief / rejected-locations / deprecation-candidate framing; docs contract is authoritative over any applied managed block | `POST_MVP_PLAN.md` §3, §10 |
-| BR-03 | Target-payload source-side primitive smoke test | — | primitive is operable in a target | `POST_MVP_PLAN.md` §3, §5 |
+| BR-01 | Narrow source-side primitive implemented | — | `scripts/brief-init.ps1` (seed), `scripts/brief-check.ps1` (validate), `scripts/brief-status.ps1`, `templates/brief/BRIEF.md`; writer destination == canonical Brief path | `docs/decisions/POST_MVP_PLAN.md` §3, §5; `docs/contracts/brief/BRIEF_CONTRACT.md` |
+| BR-02 | Snippets aligned to 3rd-reconciliation framing | — | `snippets/CLAUDE_SNIPPET.md` / `AGENTS_SNIPPET.md` carry canonical-Brief / rejected-locations / deprecation-candidate framing; docs contract is authoritative over any applied managed block | `docs/decisions/POST_MVP_PLAN.md` §3, §10 |
+| BR-03 | Target-payload source-side primitive smoke test | — | primitive is operable in a target | `docs/decisions/POST_MVP_PLAN.md` §3, §5 |
 
 These mean the **narrow primitive** is operable — not that the full BF Level 3 capability exists.

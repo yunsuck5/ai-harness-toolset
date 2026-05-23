@@ -21,7 +21,7 @@ $ErrorActionPreference = 'Stop'
 # Default-safe: with no -Apply switch this previews every mapped change in dry-run mode
 # (no target write, no .amb-backup). Real writes happen ONLY with -Apply.
 #
-# Snippet -> destination mapping (source of truth: docs/roadmap/GLOBAL_ADOPTION_DECISION.md
+# Snippet -> destination mapping (source of truth: docs/decisions/GLOBAL_ADOPTION_DECISION.md
 # section 6 path table):
 #   - snippets/CLAUDE_SNIPPET.md -> <ClaudeHome>/CLAUDE.md   (Claude user-global)
 #   - snippets/AGENTS_SNIPPET.md -> <CodexHome>/AGENTS.md    (Codex user-global)

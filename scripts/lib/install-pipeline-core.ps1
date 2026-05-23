@@ -35,7 +35,7 @@ function Invoke-InstallPipelineNativeGit {
 # Dot-sourced from scripts/install-pipeline.ps1 (CLI entry) and from
 # tests/install-pipeline.Tests.ps1 (Pester suite).
 #
-# Implements the contract from docs/roadmap/global-install-update/
+# Implements the contract from docs/systems/install-update/
 #   STEP3_INSTALL_UPDATE_DECISION_GUIDE.md §12 (runtime pipeline grouping):
 #   - 3-2 source / ref resolver (resolved tuple shape).
 #   - 3-3 overwrite materialization core (deterministic copy into current/).

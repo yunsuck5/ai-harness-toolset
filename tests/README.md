@@ -24,7 +24,7 @@ Local-first test fixtures for ai-harness-toolset.
   Invoke-Pester -Path .\tests -Output Detailed
   ```
 
-- Test files (current canonical task/pass review topology — `docs/REVIEW_RESULT_CONTRACT.md`):
+- Test files (current canonical task/pass review topology — `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`):
   - `tests/review-prepare.Tests.ps1` — `review-prepare` allocating `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` and seeding `input.md` from `templates/review-input.md`.
   - `tests/review-run.Tests.ps1` — `review-run` Codex invocation surface driven by a Codex stub, plus `## Verdict` shape validation. The stub is generated under Pester's `$TestDrive` physical path at test time and never invokes the real Codex CLI.
   - `tests/review-input-verify.Tests.ps1` — five-section readiness gate: filled-PASS, missing-heading FAIL, placeholder-remains FAIL.

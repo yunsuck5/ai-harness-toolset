@@ -94,7 +94,7 @@
 
 ### PowerShell reference snippet
 
-아래 snippet은 사람이 손으로 따라 가도 되는 reference이다. evidence runner / wrapper / schema validator로 발전시키지 않는다. file IO는 `scripts/lib/encoding.ps1`의 helper(`Write-Utf8NoBom`, `Read-Utf8` 등)만 사용하며, `Set-Content -Encoding UTF8`, `Out-File` 등은 `docs/POWERSHELL_POLICY.md`에 따라 사용하지 않는다.
+아래 snippet은 사람이 손으로 따라 가도 되는 reference이다. evidence runner / wrapper / schema validator로 발전시키지 않는다. file IO는 `scripts/lib/encoding.ps1`의 helper(`Write-Utf8NoBom`, `Read-Utf8` 등)만 사용하며, `Set-Content -Encoding UTF8`, `Out-File` 등은 `docs/policies/POWERSHELL_POLICY.md`에 따라 사용하지 않는다.
 
 따라서 snippet의 첫 줄 `. ./scripts/lib/encoding.ps1`은 **선행 조건**이다. 이 dot-source를 빠뜨리면 `Write-Utf8NoBom`이 정의되지 않아 file IO가 실패한다.
 
@@ -136,7 +136,7 @@ Write-Utf8NoBom -Path (Join-Path $caseDir 'notes.md') -Content "# Notes`n- Expec
 
 review subsystem은 별도 경로를 사용한다:
 
-- canonical review record는 `<ProjectRoot>/log/review/<review-task-id>/pass-NN/{input.md, result.md}` 두 단계 layout 에 생성된다 (`docs/REVIEW_RESULT_CONTRACT.md`).
+- canonical review record는 `<ProjectRoot>/log/review/<review-task-id>/pass-NN/{input.md, result.md}` 두 단계 layout 에 생성된다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 - review record 의 shape 검증, `## Verdict` 형식, `-RequireResult` binding 등은 `scripts/review-prepare.ps1` / `scripts/review-run.ps1` / `scripts/review-verify.ps1` / `scripts/review-input-verify.ps1` 가 담당한다.
 
 evidence는 review subsystem의 input이 아니며, output도 아니다. 두 트리는 같은 `log/` 아래에 있지만 책임이 다르다:

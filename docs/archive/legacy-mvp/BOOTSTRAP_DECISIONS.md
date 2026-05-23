@@ -1,6 +1,6 @@
 # Bootstrap and historical decisions (archived)
 
-> Historical / superseded-location material. These are the bootstrap-era and historical decisions previously under `docs/DECISIONS.md` "Bootstrap and historical decisions". Preserved here for historical context. **Do not use as current guidance** — current decisions and policy live in `docs/DECISIONS.md` "Active policy decisions", `docs/current/SOURCE_OF_TRUTH.md`, and the active contracts. See `docs/archive/README.md` for the archive authority restriction.
+> Historical / superseded-location material. These are the bootstrap-era and historical decisions previously under `docs/decisions/DECISIONS.md` "Bootstrap and historical decisions". Preserved here for historical context. **Do not use as current guidance** — current decisions and policy live in `docs/decisions/DECISIONS.md` "Active policy decisions", `docs/current/SOURCE_OF_TRUTH.md`, and the active contracts. See `docs/archive/README.md` for the archive authority restriction.
 
 - repo name: ai-harness-toolset
 - remote created
