@@ -494,7 +494,7 @@ target project 에 대한 footprint 결정은 다음을 보존한다 (`GLOBAL_IN
 
 ### 12.3 3-2 source / ref resolver — contract level
 
-- **입력**: invocation params, metadata (update / restore 시 필수), **resolved invocation context** — D1 runtime ToolRoot + D9 ProjectRoot (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1 channel chain 결과). D1 runtime ToolRoot 는 channel 3 default 에서 global install area 의 `current/` (= §12.4 materialization destination 과 동일 path) 다. 본 입력의 D1 runtime ToolRoot 는 **본 §12.3 의 resolved tuple field `toolRoot` 와 별개 concept** 이다 — tuple `toolRoot` 는 §11.1 metadata `toolRoot` 와 동일한 source-side canonical local ToolRoot (parent §6 Layer 1) 이며 materialization destination 이 아니다. 두 개념을 같은 이름의 동일 의미로 conflated 시키지 않도록 §12 본문 전체에서 분리 표기한다.
+- **입력**: invocation params, metadata (update / restore 시 필수), **resolved invocation context** — D1 runtime ToolRoot + D9 ProjectRoot (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1 channel chain 결과). D1 runtime ToolRoot 는 channel 3 default 에서 global install area 의 `current/` (= §12.4 materialization destination 과 동일 path) 다. 본 입력의 D1 runtime ToolRoot 는 **본 §12.3 의 resolved tuple field `toolRoot` 와 별개 concept** 이다 — tuple `toolRoot` 는 source-side canonical local ToolRoot (parent §6 Layer 1) 이며 materialization destination 이 아니다. tuple `toolRoot` 와 `install.json.toolRoot` (§11.1) 의 관계는 **mode-conditional** 이다: local-clone mode 에서는 두 값이 동일한 persistent path (사용자 supply 의 sourcePath); git-url mode 에서는 tuple `toolRoot` 가 action lifetime 안에서만 유효한 transient run-scoped work area absolute path 이고 `install.json.toolRoot` 는 의도적으로 empty (§16.5 / §11.1 와 정합). 본 §12 본문 전체에서 위 세 concept (D1 runtime ToolRoot / tuple `toolRoot` / `install.json.toolRoot`) 을 동일 의미로 conflated 시키지 않는다.
 - **출력**: resolved tuple 형식 (contract 수준 — 정확한 field 표현 / serialization 은 3-3 / 3-4 implementation 시점에 확정).
 
   | field | 의미 |
@@ -504,13 +504,13 @@ target project 에 대한 footprint 결정은 다음을 보존한다 (`GLOBAL_IN
   | `sourceLocation` | git-url mode 의 `repoUrl` 또는 local-clone mode 의 `sourcePath` |
   | `resolvedRefSha` | resolve 된 commit SHA (reproducible 보장을 위해 항상 SHA 로 정규화) |
   | `refKind` | 입력의 ref 형식 기록 — `commit` / `branch` / `tag` |
-  | `toolRoot` | **source 측 canonical local ToolRoot 절대경로** (parent §6 Layer 1; §11.1 metadata `toolRoot` 와 동일 의미). update / restore 시 source 를 읽는 위치이며, materialization 의 destination 이 **아니다**. destination 은 §12.4 의 runtime payload directory 로 별도 path. |
+  | `toolRoot` | **source 측 canonical local ToolRoot 절대경로** (parent §6 Layer 1). update / restore 시 source 를 읽는 위치이며, materialization 의 destination 이 **아니다** (destination 은 §12.4 의 runtime payload directory 로 별개 path). **mode-conditional 관계** (§11.1 metadata `toolRoot` 와의 관계): local-clone 에서는 두 값이 동일 (사용자 supply 의 sourcePath); git-url 에서는 tuple `toolRoot` 가 action lifetime 의 transient work area absolute path (§16.5) 이고 metadata `toolRoot` 는 의도적으로 empty. |
   | `projectRoot` | resolved ProjectRoot 절대경로 |
   | `sourceUpdatePolicy` | `fetch-and-update` (update-source) / `read-current-only` (update-current, restore, install 의 read 단계) |
   | `sourceCutDetected` | bool — true 면 STOP / 별도 explicit scope (§12.7) |
 
 - **mode-별 resolution path**:
-  - **git-url**: `repoUrl` / `branch` / `remote` / `toolRoot` 가 source resolution 의 입력. `update-source` 는 fetch 후 new HEAD 를 ref 로 resolve. `update-current` 는 fetch 없이 현재 HEAD 만 read. `restore` 는 user-specified `--ref` 가 필수.
+  - **git-url**: `repoUrl` / `branch` / `remote` 가 source resolution 의 입력 (metadata `toolRoot` 는 git-url 에서 empty; tuple `toolRoot` 는 action 시작 시 만들어지는 transient work area path — §16.5). 본 mode 의 모든 action 은 매 invocation 마다 **fresh `git clone`** 으로 acquisition 한다 (persistent cache 보존 없음; INSTALL.md §2 와 정합). `install` / `update-source` / `restore` 는 fresh clone 후 work area 에서 ref resolve (install / update-source 는 `-Branch` 있으면 `origin/<branch>`, 없으면 work area HEAD; restore 는 user-specified `--ref` 필수, fresh clone 의 ref 집합 밖이면 fail-fast). `update-current` 는 **intentionally unsupported** — git-url 은 persistent source-cache 가 없으므로 "no-source-touch reinstall" path 가 존재하지 않으며 entry script 가 dispatcher 진입 이전 fail-fast 한다 (INSTALL.md §7; §16.3; AC-IP-GITURL-UPDATE-CURRENT-1 회귀 보호).
   - **local-clone**: `sourcePath` / `toolRoot` 가 입력. `sourcePath` 는 valid source repo (D3 multi-marker 통과) 여야 한다. `update-source` 는 §12.8 의 dogfooding 제약 안에서만 source 갱신 허용. `update-current` 는 read-only. `restore` 는 user-specified `--ref` 필수.
 - **금지** (resolver level):
   - metadata write (§11.5 의 lifecycle 의 별도 단계가 담당).
@@ -522,7 +522,7 @@ target project 에 대한 footprint 결정은 다음을 보존한다 (`GLOBAL_IN
 ### 12.4 3-3 overwrite materialization core — contract level
 
 - **입력**: 3-2 의 resolved tuple.
-- **동작**: source-side canonical local ToolRoot (= resolver tuple 의 `toolRoot`, parent §6 Layer 1; §15.5 / §16.5 와 정합 — git-url mode 에서는 `<InstallArea>/source-cache/`, local-clone mode 에서는 user-supplied sourcePath 의 absolute path) 에서 `resolvedRefSha` 의 source content 를 **global install area 의 runtime payload directory `current/`** (parent §6 Layer 2; §10.1 layer table; §11.2 location boundary) 의 runtime payload roots (`config/` / `scripts/` / `snippets/` / `templates/` — §10.1) 로 deterministic overwrite 한다. tuple 의 `sourceLocation` 은 user-facing identifier (git-url mode 의 URL 또는 local-clone mode 의 sourcePath) 로서 metadata write 의 입력 (§11.5 lifecycle 의 metadata field) 이며, materialization 의 archive source 가 아니다 (§16.5 와 정합 — 두 개념을 같은 이름으로 conflated 시키지 않는다). 본 destination 은 channel 3 default 운영에서 `%USERPROFILE%\.claude\ai-harness-toolset\current\` 다. resolver tuple 의 `toolRoot` (= materialization source) 와 destination (= `<InstallArea>/current/`) 은 별개의 path 이며, 두 path 는 같은 디렉터리를 가리키지 않는다 — 본 anchor 는 destination 을 `<toolRoot>/...` 의 child path 로 표기하지 않는다. overwrite 의 byte-identity 보장은 implementation level 의 검증이며 본 anchor 가 algorithm 을 fix 하지 않는다.
+- **동작**: source-side canonical local ToolRoot (= resolver tuple 의 `toolRoot`, parent §6 Layer 1; §15.5 / §16.5 와 정합 — git-url mode 에서는 `<InstallArea>/source-cache/` 의 transient run-scoped work area (action lifetime only, end-of-action 에 cleanup), local-clone mode 에서는 user-supplied sourcePath 의 persistent absolute path) 에서 `resolvedRefSha` 의 source content 를 **global install area 의 runtime payload directory `current/`** (parent §6 Layer 2; §10.1 layer table; §11.2 location boundary) 의 runtime payload roots (`config/` / `scripts/` / `snippets/` / `templates/` — §10.1) 로 deterministic overwrite 한다. tuple 의 `sourceLocation` 은 user-facing identifier (git-url mode 의 URL 또는 local-clone mode 의 sourcePath) 로서 metadata write 의 입력 (§11.5 lifecycle 의 metadata field) 이며, materialization 의 archive source 가 아니다 (§16.5 와 정합 — 두 개념을 같은 이름으로 conflated 시키지 않는다). 본 destination 은 channel 3 default 운영에서 `%USERPROFILE%\.claude\ai-harness-toolset\current\` 다. resolver tuple 의 `toolRoot` (= materialization source) 와 destination (= `<InstallArea>/current/`) 은 별개의 path 이며, 두 path 는 같은 디렉터리를 가리키지 않는다 — 본 anchor 는 destination 을 `<toolRoot>/...` 의 child path 로 표기하지 않는다. overwrite 의 byte-identity 보장은 implementation level 의 검증이며 본 anchor 가 algorithm 을 fix 하지 않는다.
 - **금지**:
   - destination diff / patch 기반 변경 (§3 / §4).
   - partial patch update (§4).
@@ -545,7 +545,7 @@ target project 에 대한 footprint 결정은 다음을 보존한다 (`GLOBAL_IN
 
 - **입력**: materialized `current/` payload, metadata (post-write 상태), payload integrity manifest (도입 시) 또는 entrypoint marker (도입 시).
 - **동작**: 세 입력의 일치성을 검증.
-  - install metadata (§11.1 의 minimum field set) 의 binding 검증 — `tool` / `installMode` / `toolRoot` (source-side, parent §6 Layer 1) / `installedHead` / `lastUpdatedHead` / `branch` / `remote` / mode-conditional `repoUrl` 또는 `sourcePath` 등 §11.1 field 의 일치 / 유효성 확인. **install metadata 는 `projectRoot` field 를 포함하지 않는다** (§11.1). review subsystem 의 `meta.json` 에 대한 `SHARED_GLOBAL_INVOCATION_CONTRACT.md` D6 의 toolRoot binding 검증 패턴은 **별개 subsystem** 의 concept (review-verify) 이며 본 install verify path 와 직접 결합되지 않는다 — conceptual parallel 일 뿐이다.
+  - install metadata (§11.1 의 minimum field set) 의 binding 검증 — `tool` / `installMode` / `toolRoot` (mode-conditional: local-clone 에서 non-empty source path identity hint, git-url 에서 의도적으로 empty — §11.1 / §16.5) / `installedHead` / `lastUpdatedHead` / `branch` / `remote` / mode-conditional `repoUrl` 또는 `sourcePath` 등 §11.1 field 의 일치 / 유효성 확인. **install metadata 는 `projectRoot` field 를 포함하지 않는다** (§11.1). review subsystem 의 `meta.json` 에 대한 `SHARED_GLOBAL_INVOCATION_CONTRACT.md` D6 의 toolRoot binding 검증 패턴은 **별개 subsystem** 의 concept (review-verify) 이며 본 install verify path 와 직접 결합되지 않는다 — conceptual parallel 일 뿐이다.
   - payload 의 무결성 (integrity manifest 또는 per-file digest 와의 일치).
   - payload completeness marker (channel 3 활성 조건의 entrypoint set 존재) 의 검증.
 - **detail deferred**:
@@ -575,7 +575,7 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 
 - `update-source` 는 user dev checkout 의 working tree 를 **silent 하게 mutate 하지 않는다**.
 - default 동작은 **STOP / 사용자 보고** 또는 **explicit confirmation 요구**.
-- `update-current` 는 source 를 건드리지 않으므로 dogfooding mode 에서도 그대로 허용.
+- `update-current` 는 source 를 건드리지 않으므로 dogfooding mode 에서도 그대로 허용 (단 본 진술은 local-clone mode 에 한정 — git-url 에서는 `update-current` 가 mode-action 자체로 intentionally unsupported 이므로 dogfooding 분류와 무관; §12.3 / §16.3 / §18.1 와 정합).
 - `install` 은 dogfooding mode 에서 의미상 발생하지 않음 (이미 source repo 가 ToolRoot 인 상태).
 - `restore` 의 user-specified `--ref` 가 user dev checkout 의 working tree 를 변경할 가능성이 있으면 동일 보호 적용.
 
