@@ -919,7 +919,7 @@ manifest / marker 의 손상 / drift 가 감지되면 §19 의 manual source 재
 
 ### 16.1 Algorithm choice (minimum 범위)
 
-본 anchor 는 git-url mode 의 acquisition 을 **local git repository operations only** 로 좁힌다 — 매 action 의 run-scoped temporary work area 에 대한 `git clone <repoUrl> <work-area>` / `git -C <work-area> rev-parse` / `git -C <work-area> archive`. action 사이에 persistent cache 가 보존되지 않으므로 `git fetch` 는 본 anchor 의 정상 lifecycle 에서 호출되지 않는다 (legacy fetch helper 가 library 에 남아 있어도 entry script 의 dispatch path 가 호출하지 않는다). external GitHub / public network 대역 자체에 대한 actual reachability / 인증 / credential / proxy / mirror 정책은 본 anchor 의 범위가 아니다. 본 anchor 는 user environment 가 이미 git CLI 에서 `repoUrl` 에 도달 가능하다는 것을 전제로 한 deterministic 한 local git operation contract 만 정의한다.
+본 anchor 는 git-url mode 의 acquisition 을 **local git repository operations only** 로 좁힌다 — 매 action 의 run-scoped temporary work area 에 대한 `git clone <repoUrl> <work-area>` / `git -C <work-area> rev-parse` / `git -C <work-area> archive`. action 사이에 persistent cache 가 보존되지 않으므로 `git fetch` 는 본 anchor 의 정상 lifecycle 에서 호출되지 않는다 (library 에 별도의 fetch helper 를 두지 않으며, entry script 의 dispatch path 도 fetch 를 호출하지 않는다). external GitHub / public network 대역 자체에 대한 actual reachability / 인증 / credential / proxy / mirror 정책은 본 anchor 의 범위가 아니다. 본 anchor 는 user environment 가 이미 git CLI 에서 `repoUrl` 에 도달 가능하다는 것을 전제로 한 deterministic 한 local git operation contract 만 정의한다.
 
 ### 16.2 Source acquisition work area (run-scoped temporary)
 

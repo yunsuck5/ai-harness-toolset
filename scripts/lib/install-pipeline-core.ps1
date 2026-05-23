@@ -117,7 +117,7 @@ function Get-InstallPipelineMarkerPath {
 # Per INSTALL.md §2 / §6 / §7 / §9 the cache is NOT a persistent canonical install output;
 # the fixture entry script (tests/support/install-pipeline-fixture.ps1) creates it at action start and removes it
 # at action end. Within a single action the cache exists transiently so `Invoke-InstallPipeline*`
-# helpers below (clone / fetch / remote-head / archive) can operate against it. The persistent
+# helpers below (clone / remote-head / archive) can operate against it. The persistent
 # canonical install outputs are: `current/`, `install.json`, `payload-manifest.json`,
 # `payload-marker.json`. `install.json.toolRoot` is intentionally empty for git-url (see
 # New-InstallPipelineMetadata) because the work area is transient and not a stable identity.
@@ -184,42 +184,11 @@ function Invoke-InstallPipelineGitUrlClone {
     return $cache
 }
 
-# STEP3 guide §16.3 update-source row: `git fetch <remote> <branch>` against the existing cache.
-# Failure throws BEFORE materialization, so the dispatcher never runs and the deliverable
-# artifacts (install.json/manifest/marker/current/) keep byte-identity (§16.4 invariant).
-function Invoke-InstallPipelineGitUrlFetch {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)]
-        [string] $InstallArea,
-        [string] $Remote = '',
-        [string] $Branch = ''
-    )
-
-    $cache = Get-InstallPipelineSourceCacheDir -InstallArea $InstallArea
-    if (-not (Test-InstallPipelineSourceCachePresent -InstallArea $InstallArea)) {
-        throw "Invoke-InstallPipelineGitUrlFetch: source cache missing: $cache. fail-fast (clone recovery is deferred per STEP3 guide §16.6)."
-    }
-
-    $remoteName = $Remote
-    if ([string]::IsNullOrEmpty($remoteName)) { $remoteName = $script:InstallPipelineGitUrlDefaultRemote }
-
-    if ([string]::IsNullOrEmpty($Branch)) {
-        $fetchArgs = @('-C', $cache, 'fetch', '-q', $remoteName)
-    }
-    else {
-        $fetchArgs = @('-C', $cache, 'fetch', '-q', $remoteName, $Branch)
-    }
-    $res = Invoke-InstallPipelineNativeGit -Arguments $fetchArgs
-    if ($res.ExitCode -ne 0) {
-        throw "Invoke-InstallPipelineGitUrlFetch: git fetch failed (cache=$cache, remote=$remoteName, branch=$Branch; exitCode=$($res.ExitCode))"
-    }
-    return $cache
-}
-
-# STEP3 guide §16.3: post-fetch HEAD resolution. For update-source we resolve
-# <remote>/<branch> (the fetched tip), NOT the cache's local HEAD. For install /
-# update-current we resolve the cache's local HEAD via Get-InstallPipelineSourceHead.
+# STEP3 guide §16.3: post-clone HEAD resolution for install / update-source when
+# `-Branch` is supplied. The work area is a fresh clone (per-action; STEP3 §16.2),
+# so we resolve <remote>/<branch> (the cloned tip) directly. Restore takes a
+# user-supplied `--ref` and goes through Resolve-InstallPipelineRef instead;
+# update-current is intentionally unsupported for git-url (STEP3 §16.3 / INSTALL.md §7).
 function Get-InstallPipelineGitUrlRemoteHead {
     [CmdletBinding()]
     param(
