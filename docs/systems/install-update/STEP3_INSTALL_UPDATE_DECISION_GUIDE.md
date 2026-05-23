@@ -660,11 +660,11 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 
 본 라운드까지의 implementation surface 는 §10.2 의 `current/` runtime-payload-only, §11.1 의 14-field install metadata, §11.4 의 (b) user-specified ref-only restore, §11.7 의 forbidden enumeration, §12.2 의 4 canonical action labels, §12.7 의 source-cut detection-only, §12.8 의 dogfooding 보호, §12.10 의 out-of-pipeline categories 와 1:1 정합한다. Pester 전체 suite 는 본 closeout 작성 시점에 회귀 없이 통과한다.
 
-### 13.2 Deferred (Step 3 outside / Step 4+ 영역)
+### 13.2 Deferred (Step 3 outside / Step 4 closeout 이후 영역)
 
 다음 항목은 본 §13 closeout 이 **자동 승인하지 않는** deferred scope 다. 각 항목은 별도 scoped goal 의 explicit user-approved decision 으로 진행하며, §19 의 운영 정책 (no automatic recovery / manual source 재준비 + deterministic overwrite reinstall / managed-block apply 는 §19.3 의 A-2 managed-block tooling / AI-guided global apply) 안에서만 진행한다.
 
-- **Step 4 actual install / update validation** — `POST_MVP_PLAN.md` §11 step 4.
+- ~~**Step 4 actual install / update validation**~~ — **closed.** Tier A 100/100 PASS + Tier B mainpc / vanilla pc 실제 host 검증 PASS (두 host 모두 resolved HEAD `0a07d90`); closeout routing 은 `docs/systems/install-update/STATUS.md` IU-12 와 `POST_MVP_PLAN.md` §10 / §11 step 4 + §11.1 참조. 본 항목은 §13.2 목록 안에 closeout 표기로 보존되며 deferred 잔여는 아래 bullet 들이다.
 - **Actual global / user filesystem apply** — global stable install (`%USERPROFILE%\.claude\ai-harness-toolset\current\`) 의 실제 materialize / refresh, install metadata instance write, managed-block apply (§19.3 의 A-2 managed-block tooling 절차), Claude skill assets install. 모두 §19.4 의 AI-guided global apply 절차로 수행한다. managed-block writer (`scripts/apply-managed-block.ps1` / `scripts/activate-global.ps1`) 는 A-2 closeout 으로 이미 도입되어 managed-block apply 에 사용된다 — 그 외 추가 writer (예: skill writer) 의 도입은 본 toolset 의 작업 후보로 보존하지 않으며, skill 은 §10 의 whole-file copy / update + hash verification 으로 처리한다.
 - **`ai-harness-toolset` self-adoption** — `POST_MVP_PLAN.md` §11 step 5.
 - **post-MVP closeout 결정** — `POST_MVP_PLAN.md` §11 step 6.
