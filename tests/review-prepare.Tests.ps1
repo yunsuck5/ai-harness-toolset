@@ -40,8 +40,26 @@ BeforeAll {
         if ($null -ne $ExtraArgs -and $ExtraArgs.Count -gt 0) {
             $procArgs += $ExtraArgs
         }
-        $combined = & powershell.exe @procArgs 2>&1
-        $exitCode = $LASTEXITCODE
+        # The child powershell.exe may emit on stderr — notably the parameter
+        # binder error path that AC-PR7 exercises by passing legacy
+        # -TargetFilesPath / -ReviewRequestPath. Under Windows PowerShell 5.1,
+        # each native stderr line crossing `2>&1` is wrapped as a
+        # NativeCommandError ErrorRecord; the file-level
+        # $ErrorActionPreference = 'Stop' would otherwise abort this helper
+        # before $LASTEXITCODE could be read. Pin EAP to Continue for the
+        # duration of the child capture (mirrors the prior-art pattern in
+        # tests/install-pipeline.Tests.ps1 and the in-script
+        # Invoke-InstallPipelineNativeGit helper in
+        # scripts/lib/install-pipeline-core.ps1).
+        $prevPref = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $combined = & powershell.exe @procArgs 2>&1
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $prevPref
+        }
         $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
         return [pscustomobject]@{
             ExitCode = $exitCode
@@ -128,8 +146,18 @@ Describe 'review-prepare canonical layout' {
             '-ProjectRoot', $project,
             '-ToolRoot', $script:RepoRoot
         )
-        $combined = & powershell.exe @procArgs 2>&1
-        $exitCode = $LASTEXITCODE
+        # Pin EAP=Continue around the native call so a stderr line from the
+        # child does not abort this It block before $LASTEXITCODE is captured.
+        # Same rationale as Invoke-ReviewPrepare above.
+        $prevPref = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $combined = & powershell.exe @procArgs 2>&1
+            $exitCode = $LASTEXITCODE
+        }
+        finally {
+            $ErrorActionPreference = $prevPref
+        }
         $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
         $exitCode | Should -Not -Be 0 -Because $text
         # No log/review subtree created.
