@@ -48,6 +48,7 @@ Reviewer config lives at `<ToolRoot>/config/reviewer.json`.
 - The canonical operator entry points are two scripts, called in order: `<ToolRoot>/scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>] -Stage <stage> -Purpose <line>` allocates the pass directory and seeds `input.md`; then `<ToolRoot>/scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` runs Codex CLI exactly once and writes `result.md`.
 - `<ToolRoot>/scripts/review-verify.ps1 -ReviewTaskId <id> -Pass <pass-NN> [-RequireResult]` is the post-hoc canonical-artifact check. It does not invoke Codex.
 - Reviewer artifacts live only under `<ProjectRoot>/log/review/<review-task-id>/pass-NN/`, as the two canonical files `input.md` + `result.md`. Do not create root-level review inputs or results outside that pass directory, and do not invent sidecar JSON, hash-binding files, or external staging folders. Anything beyond the canonical pair is outside the contract.
+- Bash callers may invoke `<ToolRoot>/scripts/review-{prepare,run,verify}.sh` as thin adapters that forward to the canonical `.ps1`; they accept the same PowerShell-style parameters (`-ReviewTaskId`, `-Pass`, `-Stage`, `-Purpose`, `-ProjectRoot`, `-ToolRoot`, `-RequireResult`) — no Bash-style long options. The `.ps1` files remain the canonical implementation; the `.sh` adapters are not part of the channel 3 payload completeness marker.
 
 ## Result verdict vocabulary
 
