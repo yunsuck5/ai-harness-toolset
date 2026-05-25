@@ -133,4 +133,5 @@ These triggers exercise manual save discipline only. They do not invoke any dete
 
 - Commit and push require explicit user approval.
 - `.ps1` files must be UTF-8 with BOM + CRLF.
+- When capturing a native executable's output for correctness checks (e.g. `powershell.exe`, `git`, `codex`), keep stdout, stderr, and exit code separate. `2>&1`, `Out-String`, `Out-Null`, and other merged-stream captures collapse the signal — under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'` they also abort the call before the exit code is read. Detailed semantics: `docs/policies/POWERSHELL_POLICY.md`.
 <!-- END AI_HARNESS_TOOLSET_GLOBAL -->
