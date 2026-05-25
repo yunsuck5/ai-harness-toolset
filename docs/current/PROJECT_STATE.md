@@ -10,7 +10,7 @@ Conflict rule: when this summary disagrees with the detailed source it points to
 
 The **docs taxonomy / source-of-truth reset** has been **applied, committed, and pushed to `origin/main`**: `docs/**` now separates current source-of-truth (`docs/current/`, per-system `docs/systems/<system>/STATUS.md`), roadmap, backlog, deferred, completed-ledger, and historical/superseded material (`docs/archive/`) instead of interleaving them. Its baseline was a Batch 0 inventory audit (an external process record, not tracked in this repo). The structural reset is no longer in progress, and these current entrypoints reflect the committed state. A follow-on **access-pattern restructure** (contracts/policies/project/decisions/user_guide scope folders; `docs/` root README-only; placement authority `docs/README.md`) has since also been applied, committed, and pushed to `origin/main`.
 
-There is **no auto-selected next active priority.** The next project action is chosen by the user (see `docs/current/NEXT_ACTIONS.md`). The numbered remaining order in `docs/decisions/POST_MVP_PLAN.md` §11 still carries the Step 3 install/update implementation **deferred remainder** (`docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2) ahead of Step 5 self-adoption; their sequencing is a pending user decision, not a settled next milestone.
+There is **no auto-selected next active priority.** The next project action is chosen by the user (see `docs/current/NEXT_ACTIONS.md`). The numbered remaining order in `docs/decisions/POST_MVP_PLAN.md` §11 still carries the Step 3 install/update implementation **deferred remainder** (`docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2) as the remaining open work; Step 5 self-adoption was closed at resolved HEAD `8293878d` (apply 2026-05-25; `docs/systems/install-update/STATUS.md` IU-13). Whether to take up the Step 3 remainder next is a pending user decision, not a settled next milestone.
 
 ---
 
@@ -25,13 +25,13 @@ Compact per-system completed-ledgers live in the system status documents (`docs/
 - **Global install / update / self-adoption operating model** — documented as current source-of-truth for the model (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`). Install **execution** source-of-truth remains `INSTALL.md`.
 - **Step 3 install / update automation** — partial-progress closeout: anchored decisions (3-0/3-1/3-2~3-5/3-6), temp-only install-pipeline skeleton, dry-run coverage, payload integrity manifest + completeness marker, git-url minimum source acquisition, source-cut decision (deferred-with-boundary), dogfooding enforcement final shape, D-atomicity reinstall-first policy. Deferred remainder: `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2.
 - **Step 4 install / update validation** — **closed.** Tier A fixture-local determinism 100/100 PASS; Tier B real installed-state validation on two hosts (mainpc, vanilla pc) PASS, both converging to resolved HEAD `0a07d90`. Detail: `docs/decisions/POST_MVP_PLAN.md` §10 / §11 step 4 + §11.1.
+- **Step 5 self-adoption** — **closed.** Performed at resolved HEAD `8293878d20465aba1132c1bca189fa4a53bc0d43` (apply 2026-05-25) via `INSTALL.md` §2A AI-guided operational install (no productized wrapper adopted). Activation surfaces (Claude / Codex managed blocks + Claude `ai-harness-review` skill) were already byte-identical to new snippets at apply time and recorded as no-op (steady-state). Operational smoke PASS. Detail: `docs/systems/install-update/STATUS.md` IU-13 / "Self-adoption (Step 5) — performed".
 
 ---
 
 ## Active / deferred top issues
 
 - **docs taxonomy / source-of-truth reset** — applied, committed, and pushed to `origin/main`; not in progress as a structural reset, and no follow-on milestone is auto-selected.
-- **Step 5 self-adoption** — not performed; deferred (`docs/decisions/POST_MVP_PLAN.md` §11 step 5, `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9). No current implementation basis.
 - **Step 6 post-MVP closeout decision** — deferred (`docs/decisions/POST_MVP_PLAN.md` §11 step 6).
 - **Step 7 GJMNet clean adoption** — deferred (`docs/decisions/POST_MVP_PLAN.md` §7, §11 step 7).
 - **Step 3 deferred remainder** — git-url actual network fetch, source-cut actual handling, actual global/user apply, etc. (`docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2).
@@ -48,6 +48,6 @@ Per-system current status lives in the system status documents below. They hold 
 | review | `docs/systems/review/STATUS.md` | `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`, `docs/policies/REVIEWER_CONFIG_POLICY.md`, `docs/policies/REVIEW_EFFORT_GUIDE.md` |
 | install-update | `docs/systems/install-update/STATUS.md` + `DEFERRED.md` | `INSTALL.md` (execution), `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` (model), `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` (Step 3) |
 | brief | `docs/systems/brief/STATUS.md` + `DEFERRED.md` | `docs/contracts/brief/BRIEF_CONTRACT.md`, `docs/contracts/chatlog/CHATLOG_CONTRACT.md` |
-| self-adoption | `docs/systems/install-update/STATUS.md` "Self-adoption" (sub-topic) | `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9, `docs/decisions/POST_MVP_PLAN.md` §11 step 5 (not implemented) |
+| self-adoption | `docs/systems/install-update/STATUS.md` "Self-adoption" (sub-topic; performed, IU-13) | `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9, `docs/decisions/POST_MVP_PLAN.md` §11 step 5 |
 
 The numbered remaining-order milestones (steps 1–7) are routed in `docs/roadmap/CURRENT_MILESTONES.md` (authority for the order itself: `docs/decisions/POST_MVP_PLAN.md` §11).

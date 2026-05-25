@@ -10,12 +10,11 @@ The **active queue** only — what is being worked now and the single next thing
 
 ## Candidate next actions (per `docs/decisions/POST_MVP_PLAN.md` §11 — user-selected, sequencing is a pending decision)
 
-The remaining numbered roadmap work is governed by `docs/decisions/POST_MVP_PLAN.md` §11 and routed (with status) in `docs/roadmap/CURRENT_MILESTONES.md`; deferred items with reopen conditions are in `docs/systems/install-update/DEFERRED.md`. Step 4 install/update validation is closed, but two items still precede a clean "next single action" and their order is a pending user decision (see below):
+The remaining numbered roadmap work is governed by `docs/decisions/POST_MVP_PLAN.md` §11 and routed (with status) in `docs/roadmap/CURRENT_MILESTONES.md`; deferred items with reopen conditions are in `docs/systems/install-update/DEFERRED.md`. Step 4 install/update validation is closed, and **Step 5 self-adoption is closed** at resolved HEAD `8293878d` (apply 2026-05-25; `docs/systems/install-update/STATUS.md` IU-13, "Self-adoption (Step 5) — performed"). The remaining candidate near-term work is:
 
-1. **Step 3 install/update implementation — deferred remainder** (`docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2): git-url actual network fetch, source-cut actual handling, actual global/user filesystem apply, etc. These remain open in the numbered order even though Step 4 closed.
-2. **Step 5 self-adoption** (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9, `docs/decisions/POST_MVP_PLAN.md` §11 step 5): `ai-harness-toolset` self-adoption. Not started; requires a separate scoped, explicit user-approved goal.
+1. **Step 3 install/update implementation — deferred remainder** (`docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2): git-url actual network fetch, source-cut actual handling, etc. This remains open in the numbered order even though Step 4 and Step 5 closed.
 
-Do not assert either of the above as "the" next single action until the user sequences them — `docs/decisions/POST_MVP_PLAN.md` §11 is the authority for the numbered order.
+Do not assert the above as "the" next single action until the user sequences it — `docs/decisions/POST_MVP_PLAN.md` §11 is the authority for the numbered order.
 
 ## Standing constraints on every action above
 
@@ -26,5 +25,5 @@ Do not assert either of the above as "the" next single action until the user seq
 
 ## Pending user decisions
 
-- Sequencing of the Step 3 deferred remainder (`docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2) relative to Step 5.
-- Timing of global `current/` / managed-block / skill refresh for any source changes landed since the last global apply.
+- Whether to take up the Step 3 deferred remainder (`docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2) as the next milestone.
+- Timing of any future global `current/` / managed-block / skill refresh beyond the 2026-05-25 Step 5 closeout (`docs/systems/install-update/STATUS.md` IU-13).

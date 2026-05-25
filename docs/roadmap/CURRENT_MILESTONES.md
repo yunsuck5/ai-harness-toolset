@@ -10,7 +10,7 @@ The post-MVP **remaining-order** milestones, carried 1:1 from `docs/decisions/PO
 | 2 | Manual global activation / controlled materialization — global behavior validation (four-axis) | done | STATUS IU-10; `docs/decisions/POST_MVP_PLAN.md` §11 step 2 |
 | 3 | Install/update implementation (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5) | partial-progress closeout; deferred remainder open | STATUS IU-11; DEFERRED IU-D-01/02/03; `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13 |
 | 4 | Install/update validation (Tier A / Tier B) | done — closed | STATUS IU-12; `docs/decisions/POST_MVP_PLAN.md` §11.1 |
-| 5 | `ai-harness-toolset` self-adoption (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9) | deferred — not started | DEFERRED IU-D-04; `docs/systems/install-update/STATUS.md` "Self-adoption" |
+| 5 | `ai-harness-toolset` self-adoption (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9) | done — closed (resolved HEAD `8293878d`, apply 2026-05-25) | STATUS IU-13; `docs/systems/install-update/STATUS.md` "Self-adoption (Step 5) — performed" |
 | 6 | Post-MVP closeout decision | deferred | DEFERRED IU-D-05 |
 | 7 | New GJMNet repo clean adoption (after step 5 + step 2) | deferred | DEFERRED IU-D-06; `docs/decisions/POST_MVP_PLAN.md` §7 |
 

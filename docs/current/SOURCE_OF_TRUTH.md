@@ -69,10 +69,10 @@ How to read each entry:
 ## Q7. self-adoption / Step 5
 
 - **Primary:** `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9 (self-adoption model), `docs/decisions/POST_MVP_PLAN.md` §11 step 5.
-- **Secondary:** `docs/systems/install-update/STATUS.md` "Self-adoption" (sub-topic status: not implemented), `docs/user_guide/OPERATOR_GUIDE_KR.md` §17 (GJMNet / self-adoption operating notes).
-- **Implementation:** **not implemented.** install / update validation (Step 4) is closed; Step 5 self-adoption is not performed (`docs/decisions/POST_MVP_PLAN.md` §10 Deferred). There is no current implementation basis.
-- **Historical:** the 1st·2nd framing in `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9 BRIEF wording note.
-- **Do not use:** any reading that self-adoption has actually been performed (`docs/decisions/POST_MVP_PLAN.md` states it has not).
+- **Secondary:** `docs/systems/install-update/STATUS.md` "Self-adoption (Step 5) — performed" (sub-topic status; ledger IU-13), `docs/user_guide/OPERATOR_GUIDE_KR.md` §17 (post-MVP CLI-only operating notes, including GJMNet operating boundaries that sit downstream of self-adoption).
+- **Implementation:** **performed** at resolved HEAD `8293878d20465aba1132c1bca189fa4a53bc0d43` (apply 2026-05-25). Performed via `INSTALL.md` §2A AI-guided operational install — no productized installer / wrapper was adopted. Activation surfaces (Claude / Codex managed blocks + Claude `ai-harness-review` skill) were already in canonical steady-state at apply time and recorded as no-op. Closeout ledger: `docs/systems/install-update/STATUS.md` IU-13.
+- **Historical:** the 1st·2nd framing in `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9 BRIEF wording note; the previous "not implemented" status that pre-dates the 2026-05-25 closeout.
+- **Do not use:** the previous "not implemented" framing — self-adoption was performed as of 2026-05-25 (`docs/systems/install-update/STATUS.md` IU-13). Also do not read this closeout as auto-approval of commit / push / publish / release or of any further global mutation; each remains a separate explicit user-approved decision.
 
 ## Q8. backlog / deferred / completed items
 
