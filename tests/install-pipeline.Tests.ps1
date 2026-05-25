@@ -123,7 +123,7 @@ BeforeAll {
         $prevPref = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            $combined = & powershell.exe @procArgs 2>&1
+            $combined = & powershell.exe @procArgs 2>&1   # verify-ps1-allow: step-1-eap-continue-mitigated (intentional pre-Invoke-NativeProcess Step 1 pattern; synthesis report §10 excluded this site from Step D Invoke-NativeProcess migration)
             $exitCode = $LASTEXITCODE
         }
         finally {
@@ -681,7 +681,7 @@ Describe 'install-pipeline 3-7 dry-run coverage extension' {
             & git add . 2>&1 | Out-Null
             & git commit -q -m 'seed' 2>&1 | Out-Null
             $script:DogHeadBefore = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse', 'HEAD')).Stdout.Trim()
-            $script:DogStatusBefore = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()
+            $script:DogStatusBefore = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()   # verify-ps1-allow: step-e-out-of-scope-known (synthesis report §10 Step E migrated only the 4 git rev-parse Out-String lines; this git status capture pair was explicitly left for a future batch and not in this /goal's scope)
         }
         finally { Pop-Location }
 
@@ -706,7 +706,7 @@ Describe 'install-pipeline 3-7 dry-run coverage extension' {
         Push-Location $shared
         try {
             $headAfter   = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse', 'HEAD')).Stdout.Trim()
-            $statusAfter = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()
+            $statusAfter = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()   # verify-ps1-allow: step-e-out-of-scope-known (synthesis report §10 Step E migrated only the 4 git rev-parse Out-String lines; this git status capture pair was explicitly left for a future batch and not in this /goal's scope)
         }
         finally { Pop-Location }
         $headAfter   | Should -Be $script:DogHeadBefore

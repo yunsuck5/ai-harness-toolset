@@ -70,6 +70,19 @@ BeforeAll {
         $null = & git -C $Repo add -- $RelativePath 2>&1
     }
 
+    function script:Add-TestsFixtureFile {
+        # Writes a .ps1 under <Repo>/tests/ for the Step F lint test cases.
+        # The file content is the literal $Body string; the caller composes the
+        # exact pattern (forbidden / allowed / pragma) being exercised.
+        param(
+            [string] $Repo,
+            [string] $RelativePath,
+            [string] $Body
+        )
+        $abs = Join-Path $Repo $RelativePath
+        script:Write-Utf8NoBomFile -Path $abs -Content $Body
+    }
+
     function script:Invoke-VerifyPs1Copy {
         param([string] $Repo)
         $copyPath = Join-Path $Repo 'scripts/verify-ps1.ps1'
@@ -129,5 +142,170 @@ Describe 'verify-ps1 D8 self-target enforcement' {
         $r.ExitCode | Should -Be 0 -Because $r.Output
         $r.Output | Should -Match 'verify-ps1: PASS'
         $r.Output | Should -Not -Match 'FAIL D8 self-target enforcement'
+    }
+}
+
+Describe 'verify-ps1 Step F tests/** raw native stderr-capture lint' {
+    It 'AC-VPS1-F-NO-TESTS-PASS: source repo without any tests/ directory passes the Step F lint' {
+        # The lint must not fail when no tests/ directory exists; D8 path is separate.
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-no-tests'
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'verify-ps1: PASS'
+        $r.Output | Should -Not -Match 'Step F'
+    }
+
+    It 'AC-VPS1-F-CLEAN-PASS: a tests/ directory whose .ps1 files use only allowed forms passes' {
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-clean'
+        $clean = @(
+            '# tests/clean.Tests.ps1 — only allowed forms',
+            '$null = & git -C $repo init --quiet 2>&1',
+            '& git add . 2>&1 | Out-Null',
+            '& git status'                                       # no stderr-merge at all
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/clean.Tests.ps1' -Body $clean
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'verify-ps1: PASS'
+        $r.Output | Should -Not -Match 'FAIL Step F'
+    }
+
+    It 'AC-VPS1-F-CAPTURE-FAIL: $combined = & <exe> ... 2>&1 (captured for use) is a violation' {
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-capture-fail'
+        $body = @(
+            '# tests/forbidden.Tests.ps1',
+            '$procArgs = @(''-NoProfile'',''-Command'',''exit 0'')',
+            '$combined = & powershell.exe @procArgs 2>&1'        # verify-ps1-allow: lint-self-test-fixture (deliberate forbidden-pattern string written into the fake repo's tests/ tree to exercise AC-VPS1-F-CAPTURE-FAIL; not a real native invocation in this test file)
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/forbidden.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL Step F tests/\*\* raw native stderr-capture lint'
+        $r.Output | Should -Match 'tests[\\/]forbidden\.Tests\.ps1:3:'
+        $r.Output | Should -Match '\$combined = & powershell\.exe @procArgs 2>&1'   # verify-ps1-allow: lint-self-test-assertion (regex pattern asserting the FAIL output contains the forbidden snippet)
+        $r.Output | Should -Match 'Invoke-NativeProcess'                # remediation hint present
+    }
+
+    It 'AC-VPS1-F-NULL-ASSIGN-PASS: $null = & <exe> ... 2>&1 (explicit discard) is allowed' {
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-null-assign'
+        $body = @(
+            '# only $null-discard captures',
+            '$null = & git -C $repo init --quiet 2>&1',
+            '$null = & powershell.exe -NoProfile -Command "exit 0" 2>&1'
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/null-discard.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Not -Match 'FAIL Step F'
+    }
+
+    It 'AC-VPS1-F-OUT-NULL-PIPE-PASS: ... 2>&1 | Out-Null (pipe to null) is allowed' {
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-out-null'
+        $body = @(
+            '# only Out-Null pipes',
+            '& git add . 2>&1 | Out-Null',
+            '& powershell.exe -NoProfile -Command "exit 0" 2>&1 | Out-Null'
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/out-null.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Not -Match 'FAIL Step F'
+    }
+
+    It 'AC-VPS1-F-PRAGMA-PASS: a forbidden line with a # verify-ps1-allow: pragma is exempted' {
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-pragma'
+        $body = @(
+            '# pragma-exempted capture site',
+            '$combined = & powershell.exe @procArgs 2>&1   # verify-ps1-allow: documented-known-site'
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/pragma-allowed.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Not -Match 'FAIL Step F'
+    }
+
+    It 'AC-VPS1-F-INLINE-CAPTURE-FAIL: ((& <exe> 2>&1) -join ...) inline capture is a violation' {
+        # Covers the install-pipeline.Tests.ps1:684/709 shape — captured into an
+        # expression rather than into a simple variable. The lint must catch this
+        # too because it is the same merged-stream capture-for-use risk.
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-inline-capture'
+        $body = @(
+            '# inline capture into an expression',
+            '$status = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()'   # verify-ps1-allow: lint-self-test-fixture (deliberate inline-capture forbidden pattern written into the fake repo's tests/ tree to exercise AC-VPS1-F-INLINE-CAPTURE-FAIL)
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/inline-capture.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL Step F'
+        $r.Output | Should -Match 'tests[\\/]inline-capture\.Tests\.ps1:2:'
+    }
+
+    It 'AC-VPS1-F-MULTIPLE-VIOLATIONS: multiple violating lines are all reported with their file:line' {
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-multi'
+        $body = @(
+            '# multiple violations',
+            '$a = & git status 2>&1',                          # verify-ps1-allow: lint-self-test-fixture (deliberate forbidden line 1 for AC-VPS1-F-MULTIPLE-VIOLATIONS)
+            '$b = & powershell.exe -NoProfile -Command "exit 0" 2>&1',   # verify-ps1-allow: lint-self-test-fixture (deliberate forbidden line 2 for AC-VPS1-F-MULTIPLE-VIOLATIONS)
+            '$null = & git init 2>&1'                          # allowed
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/multi.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL Step F'
+        $r.Output | Should -Match 'tests[\\/]multi\.Tests\.ps1:2:'
+        $r.Output | Should -Match 'tests[\\/]multi\.Tests\.ps1:3:'
+        $r.Output | Should -Not -Match 'tests[\\/]multi\.Tests\.ps1:4:'   # the $null = ... line is allowed
+    }
+
+    It 'AC-VPS1-F-COMMENT-ONLY-IGNORED: a comment-only line that quotes the forbidden pattern is not flagged' {
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-comment'
+        $body = @(
+            '# This comment shows the forbidden pattern: & git status 2>&1',   # verify-ps1-allow: lint-self-test-fixture (deliberate comment-only fixture line for AC-VPS1-F-COMMENT-ONLY-IGNORED)
+            '# The lint must skip comment-only lines.'
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/comment-only.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Not -Match 'FAIL Step F'
+    }
+
+    It 'AC-VPS1-F-TARGET-SKIP: a non-source/target context with a violating tests/ file is NOT linted' {
+        # Same gate as D8: outside the source repo context, the lint must not fire.
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-target-skip' -OmitMarkers
+        $body = @(
+            '# this would be a violation in source-repo context',
+            '$combined = & powershell.exe -NoProfile -Command "exit 0" 2>&1'   # verify-ps1-allow: lint-self-test-fixture (deliberate forbidden pattern for AC-VPS1-F-TARGET-SKIP; the test verifies the lint does NOT fire in non-source contexts)
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/target-skip.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'verify-ps1: PASS'
+        $r.Output | Should -Not -Match 'FAIL Step F'
+    }
+
+    It 'AC-VPS1-F-VARIABLE-EXE-IGNORED: `& $exe ... 2>&1` (variable executable) is not flagged' {
+        # The migrated-away pattern was `& <literal-identifier>`. Invocations via
+        # a variable (& $exe) or scriptblock (& { ... }) are not the targeted shape.
+        # This documents the conservative matcher.
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-var-exe'
+        $body = @(
+            '$exe = ''powershell.exe''',
+            '$combined = & $exe -NoProfile -Command "exit 0" 2>&1'
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/variable-exe.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Not -Match 'FAIL Step F'
     }
 }

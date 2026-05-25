@@ -66,5 +66,69 @@ if (Test-IsSourceRepoRoot -Path $repoRoot) {
     }
 }
 
+# Step F tests/** raw native stderr-capture lint.
+#
+# B/C/D/E migrated tests away from `& <native> ... 2>&1` capture patterns
+# toward the Invoke-NativeProcess containment shim (scripts/lib/native-process.ps1)
+# because the raw form interacts badly with file-level $ErrorActionPreference = 'Stop'
+# (NativeCommandError fires before $LASTEXITCODE can be read). This lint prevents
+# accidental reintroduction of the captured-for-use form in tests/**/*.ps1.
+#
+# Scope: source-repo only (gated by Test-IsSourceRepoRoot). Target / project-local
+# contexts don't carry the toolset's own tests/ tree, and even if they have an
+# unrelated tests/ dir, that dir is not the toolset's to lint.
+#
+# Rule: a line in tests/**/*.ps1 matching `& <exe> ... 2>&1` is a violation
+# UNLESS the line ALSO matches one of these allowed forms:
+#   - `$null = & <exe> ... 2>&1`             explicit-discard via $null
+#   - `& <exe> ... 2>&1 | Out-Null`          pipe-to-null discard
+#   - a `# verify-ps1-allow: <non-empty reason>` pragma on the same line
+#     (the matcher requires at least one non-whitespace character after the
+#     colon — a bare `# verify-ps1-allow:` is NOT accepted, so the exemption
+#     must always carry a brief free-form reason)
+#
+# The pragma escape hatch is for known-intentional sites that the synthesis report
+# explicitly excluded from Invoke-NativeProcess migration (e.g. Step 1
+# EAP=Continue try/finally mitigation, or Step E out-of-scope known sites pending
+# a future batch). The required non-empty reason keeps each exemption accountable
+# rather than silent.
+#
+# This lint is intentionally conservative on the matching side. Lines that invoke
+# a native command through a variable (`& $exe`) or scriptblock (`& { ... }`) are
+# NOT linted because they are not the migrated-away pattern. The matcher targets
+# the literal `& <identifier>` shape that the Step D migration replaced.
+if (Test-IsSourceRepoRoot -Path $repoRoot) {
+    $testsDir = Join-Path $repoRoot 'tests'
+    if (Test-Path -LiteralPath $testsDir -PathType Container) {
+        $testFiles = @(Get-ChildItem -Path $testsDir -Recurse -Filter '*.ps1' -File)
+        $stepFViolations = New-Object System.Collections.Generic.List[psobject]
+        foreach ($tf in $testFiles) {
+            $tfPath = $tf.FullName
+            $tfLines = [System.IO.File]::ReadAllLines($tfPath, [System.Text.Encoding]::UTF8)
+            for ($i = 0; $i -lt $tfLines.Count; $i++) {
+                $tfLine = $tfLines[$i]
+                if ($tfLine -notmatch '2>&1') { continue }
+                if ($tfLine -match '#\s*verify-ps1-allow\s*:\s*\S') { continue }   # pragma must carry a non-empty reason after the colon to remain accountable
+                if ($tfLine -match '^\s*#') { continue }
+                if ($tfLine -notmatch '&\s+[A-Za-z][\w.-]*') { continue }
+                if ($tfLine -match '\$null\s*=\s*&\s+[A-Za-z][\w.-]*.*2>&1') { continue }
+                if ($tfLine -match '2>&1\s*\|\s*Out-Null') { continue }
+                $stepFViolations.Add([pscustomobject]@{
+                    Path = $tfPath
+                    Line = ($i + 1)
+                    Text = $tfLine.Trim()
+                })
+            }
+        }
+        if ($stepFViolations.Count -gt 0) {
+            Write-Host 'verify-ps1: FAIL Step F tests/** raw native stderr-capture lint: use Invoke-NativeProcess (scripts/lib/native-process.ps1), $null = ... 2>&1, ... 2>&1 | Out-Null, or add a # verify-ps1-allow: <reason> pragma'
+            foreach ($v in $stepFViolations) {
+                Write-Host ('  {0}:{1}: {2}' -f $v.Path, $v.Line, $v.Text)
+            }
+            exit 1
+        }
+    }
+}
+
 Write-Host ('verify-ps1: PASS ({0} files)' -f $ps1Files.Count)
 exit 0

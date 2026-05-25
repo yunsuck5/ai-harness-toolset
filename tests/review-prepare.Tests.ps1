@@ -54,7 +54,7 @@ BeforeAll {
         $prevPref = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            $combined = & powershell.exe @procArgs 2>&1
+            $combined = & powershell.exe @procArgs 2>&1   # verify-ps1-allow: step-1-eap-continue-mitigated (intentional pre-Invoke-NativeProcess Step 1 pattern; synthesis report §10 excluded this site from Step D Invoke-NativeProcess migration)
             $exitCode = $LASTEXITCODE
         }
         finally {
@@ -152,7 +152,7 @@ Describe 'review-prepare canonical layout' {
         $prevPref = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            $combined = & powershell.exe @procArgs 2>&1
+            $combined = & powershell.exe @procArgs 2>&1   # verify-ps1-allow: step-1-eap-continue-mitigated (intentional pre-Invoke-NativeProcess Step 1 pattern; synthesis report §10 excluded this site from Step D Invoke-NativeProcess migration)
             $exitCode = $LASTEXITCODE
         }
         finally {
