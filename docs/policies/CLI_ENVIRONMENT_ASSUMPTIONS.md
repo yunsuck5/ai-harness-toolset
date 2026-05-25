@@ -6,7 +6,7 @@ ai-harness-toolset의 CLI 환경 의존성은 동일 tier가 아니다. 아래 4
 
 - PowerShell
 
-`scripts/` 아래의 모든 진입점은 `.ps1` 파일이며 PowerShell 호스트가 있어야 실행된다. 현재 MVP는 Windows PowerShell 5.1과 PowerShell 7.x에서 동작한다.
+`scripts/` 아래의 **canonical 진입점**은 `.ps1` 파일이며 PowerShell 호스트가 있어야 실행된다. 현재 MVP는 Windows PowerShell 5.1과 PowerShell 7.x에서 동작한다. `scripts/review-prepare.sh` / `scripts/review-run.sh` / `scripts/review-verify.sh` 는 Bash 호출자가 reviewer lifecycle 진입 시 사용하는 thin invocation adapter 이며, 내부에서 `powershell.exe -File <sibling>.ps1` 로 canonical `.ps1` 을 forward 한다. business logic 은 `.ps1` 에 남고 adapter 는 argument forwarding + 최소 path normalization 만 수행하므로 PowerShell 호스트 요건은 동일하게 유지된다.
 
 ## Tier 2 — Reviewer execution dependency
 
