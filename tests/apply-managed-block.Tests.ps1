@@ -600,9 +600,23 @@ Describe 'apply-managed-block A-2d dry-run / diff' {
         $result.Output | Should -Match 'DRY-RUN \(no file written, no backup created\)'
         $result.Output | Should -Match 'DRY-RUN PASS \(managed block WOULD change\)'
         # Block-level diff markers: the current block body and the proposed body appear.
+        # Use structural matchers (line prefix + line shape) rather than asserting the
+        # exact em-dash byte in the proposed-body line. Rationale: the proposed body's
+        # em-dash (U+2014) is emitted via Write-Host inside the child PowerShell, then
+        # captured by the parent PowerShell pipeline. On a host whose default console
+        # codepage is non-UTF-8 (e.g. CP949 on Korean Windows), that capture chain is
+        # lossy for U+2014 in PS 5.1 regardless of any [Console]::OutputEncoding or
+        # SetOut workaround inside the child, because the parent decodes the child's
+        # stdout via the parent's [Console]::OutputEncoding before any test-side
+        # processing. The em-dash byte preservation on the actual file write path is
+        # tested elsewhere by AC-AMB-OK family cases that read the post-apply file
+        # contents directly (e.g. tests/apply-managed-block.Tests.ps1 lines 114, 292),
+        # so this dry-run case only asserts that the proposed body line appeared in
+        # the diff with the expected prefix + suffix shape.
         $result.Output | Should -Match '- OLD body'
-        $result.Output | Should -Match '\+ # managed payload — v2'
-        $result.Output | Should -Not -Match 'apply-managed-block: PASS'   # not a real apply
+        $result.Output | Should -Match '\+ body line'                              # second line of the new block
+        $result.Output | Should -Match '\+ # managed payload\s+[^A-Za-z0-9\s]+\s*v2'    # first line of the new block; middle requires 1+ non-alphanumeric and non-whitespace chars (em-dash or ?? both ok); rejects alpha words and whitespace-only middles. Residual: punctuation-only middles (e.g. `!!!`) still match — that's the structural limit of regex matching through a lossy console-capture path
+        $result.Output | Should -Not -Match 'apply-managed-block: PASS'             # not a real apply
 
         # Target byte-unchanged and NO backup sidecar created.
         $afterBytes = script:Read-Bytes -Path $target
