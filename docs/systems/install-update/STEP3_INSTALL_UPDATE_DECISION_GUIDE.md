@@ -117,7 +117,6 @@ scope drift:
 
 - Step 4 (install / update validation) 동작의 Step 3 안 수행.
 - self-adoption (`ai-harness-toolset` 자체의 self-target 운영) 의 Step 3 안 수행.
-- GJMNet adoption 의 Step 3 안 수행.
 - BF Level 3 (deterministic Brief maintenance / validation / restore-offer / stale warning / session-start guidance) 의 Step 3 안 implementation.
 - Chatlog system 의 fuller implementation.
 - 실제 `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` global / user filesystem mutation 의 수행.
@@ -668,7 +667,6 @@ dogfooding mode (SHARED_GLOBAL_INVOCATION_CONTRACT §4 D1 의 channel 4 — sour
 - **Actual global / user filesystem apply** — global stable install (`%USERPROFILE%\.claude\ai-harness-toolset\current\`) 의 실제 materialize / refresh, install metadata instance write, managed-block apply (§19.3 의 A-2 managed-block tooling 절차), Claude skill assets install. 모두 §19.4 의 AI-guided global apply 절차로 수행한다. managed-block writer (`scripts/apply-managed-block.ps1` / `scripts/activate-global.ps1`) 는 A-2 closeout 으로 이미 도입되어 managed-block apply 에 사용된다 — 그 외 추가 writer (예: skill writer) 의 도입은 본 toolset 의 작업 후보로 보존하지 않으며, skill 은 §10 의 whole-file copy / update + hash verification 으로 처리한다.
 - ~~**`ai-harness-toolset` self-adoption**~~ — **closed.** Performed at resolved HEAD `8293878d` (apply 2026-05-25) via `INSTALL.md` §2A AI-guided operational install; no productized installer / wrapper adopted. Activation surfaces (Claude / Codex managed blocks + Claude `ai-harness-review` skill) recorded as no-op (steady-state at apply time). Closeout routing: `docs/systems/install-update/STATUS.md` IU-13 / "Self-adoption (Step 5) — performed" + `POST_MVP_PLAN.md` §10 / §11 step 5.
 - **post-MVP closeout 결정** — `POST_MVP_PLAN.md` §11 step 6.
-- **new GJMNet clean adoption** — `POST_MVP_PLAN.md` §11 step 7.
 
 §14 / §15 / §16 / §17 / §18 anchor 의 in-scope 결정 (3-6 boundary 정의, manifest+marker minimum contract, git-url minimum source acquisition contract, source-cut path `deferred with exact boundary`, dogfooding enforcement final shape `-AllowDogfoodSource`) 은 본 §13 closeout 시점의 final shape 다. 그 외 추가 hardening / migration writer / external verifier / cache lifecycle 확장 / source-cut handler / skill writer / boundary 진단 helper 등은 본 toolset 의 작업 후보로 보존하지 않는다 (각 §x.6 참조). (managed-block writer 는 A-2 closeout 으로 이미 도입되었으므로 본 미도입 목록에서 제외된다 — §19.3 reconciliation note 참조.) 손상 / drift 가 발생하면 §19 의 운영 정책에 따라 **class 별로** 처리한다 — generated payload (`current/` + `install.json` + `payload-manifest.json` + `payload-marker.json`) 손상 / drift 는 §19.2 의 manual source 재준비 + deterministic overwrite reinstall, managed-block instruction file (`CLAUDE.md` / `AGENTS.md`) 손상 / 부분 적용은 §19.3 의 A-2 managed-block tooling 절차 (dry-run → 승인 → `apply-managed-block.ps1` / `activate-global.ps1` → 검증), Claude skill drift / mismatch 는 §19.4 / `INSTALL.md` §10 의 source 기준 whole-file copy / update + hash verification (사용자 수정 overwrite 사전 고지) 으로 처리한다.
 
@@ -736,7 +734,7 @@ managed-block / skill replace apply (GLOBAL_ADOPTION_DECISION.md §6 / GLOBAL_AD
 - **diagnostic helper / check-only helper** 의 spec / 위치 / 이름 finalize (§14.4 의 작업 후보 아님 policy 참조; AI operator 의 read-only 직접 확인이 그 자리).
 - **§6 canonical decomposition** 의 ordering / numbering 변경 (3-6 의 위치는 §6 의 7 번째 sub-step 그대로다).
 - **부모 root-level docs** (`GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `GLOBAL_INSTALL_UPDATE_MODEL.md`) 의 본문 mutation. 본 anchor 는 STEP3 guide subordinate scope 안에서 닫는다.
-- **`POST_MVP_PLAN.md` §11 step 4** 의 시작 (install / update validation), step 5–7 의 시작.
+- **`POST_MVP_PLAN.md` §11 step 4** 의 시작 (install / update validation), step 5–6 의 시작.
 - **commit / push / publish / merge / release / adoption**.
 
 본 anchor 는 `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다.

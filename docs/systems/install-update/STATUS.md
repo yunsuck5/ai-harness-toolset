@@ -4,7 +4,7 @@ Current status and completed-ledger for the install / update / global-adoption s
 
 - Routing for "which doc answers which question": `docs/current/SOURCE_OF_TRUTH.md` (Q1).
 - Deferred items (with reopen conditions): `docs/systems/install-update/DEFERRED.md`.
-- Remaining roadmap order (steps 1–7): `docs/roadmap/CURRENT_MILESTONES.md`.
+- Remaining roadmap order (steps 1–6): `docs/roadmap/CURRENT_MILESTONES.md`.
 - Decision-rationale record and the full closeout narrative: `docs/decisions/POST_MVP_PLAN.md` (§1–§9 decisions) and `docs/archive/old-roadmaps/POST_MVP_COMPLETED_NARRATIVE.md` (detailed commit-bound closeout text).
 
 ## Current state

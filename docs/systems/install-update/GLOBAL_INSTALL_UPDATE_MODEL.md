@@ -239,11 +239,10 @@ generated payload (global Claude install layer 의 `current/` runtime payload + 
 
 ### Layer 3 — ProjectRoot
 
-실제 작업 대상 repo 다. 본 모델에서 다루는 ProjectRoot 예시는 다음 셋이다 (현재 system example).
+실제 작업 대상 repo 다. 본 모델에서 다루는 ProjectRoot 예시는 다음 둘이다 (현재 system example).
 
 - `H:\Work\ai-harness-toolset\ai-harness-toolset` (self-dogfooding ProjectRoot — §9 참조)
 - `H:\Work\ai-harness-toolset\ai-harness-toolset-mvp-test-acceptance`
-- `H:\Work\GJMNet\GJMNet-legacy`
 
 ProjectRoot 는 `ai-harness-toolset` payload 를 설치받는 위치가 **아니다.** global Claude layer (Layer 2) 가 실행될 때의 작업 대상일 뿐이다.
 
@@ -372,7 +371,7 @@ self repo 의 `brief/` 는 project-local state 일 뿐이며, 다음 어느 것�
 
 - self-adoption 검증에서는 invocation entrypoint 가 **global `.claude` layer (Layer 2) 에서 시작되어야 한다.**
 - "source repo 안에 local scripts 가 있으니 동작한다" 와 "global install layer 를 통해 동작한다" 를 구분한다. 전자는 source repo 의 부수 효과일 뿐, 목표 모델의 검증이 아니다.
-- self-adoption 은 GJMNet 같은 external target adoption 보다 **먼저** 수행한다.
+- self-adoption 은 external target adoption 보다 **먼저** 수행한다.
 
 self-adoption 의 목적 (검증 대상):
 
@@ -538,7 +537,6 @@ graph TD
 - target project 의 변경.
 - smoke test 의 실행.
 - evidence archive 의 생성.
-- GJMNet adoption 의 시작.
 - installer-first productization.
 - generated payload 에 대한 transaction log / rollback framework / tamper detection / partial-state reconciliation. generated payload 의 materialization atomicity / partial state 회복은 §3.1 의 reinstall-first 로 닫힌다 (managed-block instruction file 의 backup / rollback / dry-run / verification, 그리고 Claude skill 의 whole-file copy / update + hash verification 은 §3.1 / `INSTALL.md` §9.1 / §10 의 별도 영역이며, skill 에는 별도 backup / rollback / dry-run tooling 을 두지 않는다).
 - auto update daemon / watcher / scheduler.

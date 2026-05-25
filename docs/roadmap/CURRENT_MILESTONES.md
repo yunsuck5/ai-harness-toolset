@@ -12,6 +12,5 @@ The post-MVP **remaining-order** milestones, carried 1:1 from `docs/decisions/PO
 | 4 | Install/update validation (Tier A / Tier B) | done — closed | STATUS IU-12; `docs/decisions/POST_MVP_PLAN.md` §11.1 |
 | 5 | `ai-harness-toolset` self-adoption (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9) | done — closed (resolved HEAD `8293878d`, apply 2026-05-25) | STATUS IU-13; `docs/systems/install-update/STATUS.md` "Self-adoption (Step 5) — performed" |
 | 6 | Post-MVP closeout decision | deferred | DEFERRED IU-D-05 |
-| 7 | New GJMNet repo clean adoption (after step 5 + step 2) | deferred | DEFERRED IU-D-06; `docs/decisions/POST_MVP_PLAN.md` §7 |
 
 Operations backlog track (`docs/archive/backlog/operations.md`) runs parallel to this numbered order; items 2·3 there support step 2 / step 5.

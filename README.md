@@ -171,7 +171,7 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 | `docs/systems/review/STATUS.md` (+ `BACKLOG.md`) | active operational | review subsystem status and open backlog. |
 | `docs/systems/brief/STATUS.md` (+ `DEFERRED.md`) | active operational | Brief primitive status and BF Level 3 deferred. |
 | `docs/roadmap/INDEX.md` | active reference | roadmap milestone-routing index; `docs/roadmap/` is routing-only (`INDEX.md` + `CURRENT_MILESTONES.md`). Lists where the former roadmap design/model/decision docs were relocated and where current state lives. |
-| `docs/roadmap/CURRENT_MILESTONES.md` | active reference | post-MVP numbered remaining order (steps 1–7), 1:1 routing view (authority: `docs/decisions/POST_MVP_PLAN.md` §11). |
+| `docs/roadmap/CURRENT_MILESTONES.md` | active reference | post-MVP numbered remaining order (steps 1–6), 1:1 routing view (authority: `docs/decisions/POST_MVP_PLAN.md` §11). |
 | `docs/decisions/POST_MVP_PLAN.md` | mixed decision log | post-MVP decision record (§1–§9) + numbered-order authority (§11); status/completed/deferred routed to current/system homes. |
 | `docs/archive/README.md` | historical reference | archive authority restriction; archive is not current guidance. |
 

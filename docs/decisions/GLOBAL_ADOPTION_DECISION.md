@@ -370,7 +370,6 @@ Can scripts run from global/shared ToolRoot while writing all runtime/state arti
 6. shared / global mode implementation (별도 승인 시에만).
 7. clean target smoke test criteria.
 8. clean target smoke test.
-9. GJMNet clean adoption.
 
 본 문서는 위 순서 중 어떤 단계도 자동 승인하지 않는다.
 

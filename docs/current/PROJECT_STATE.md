@@ -33,7 +33,6 @@ Compact per-system completed-ledgers live in the system status documents (`docs/
 
 - **docs taxonomy / source-of-truth reset** — applied, committed, and pushed to `origin/main`; not in progress as a structural reset, and no follow-on milestone is auto-selected.
 - **Step 6 post-MVP closeout decision** — deferred (`docs/decisions/POST_MVP_PLAN.md` §11 step 6).
-- **Step 7 GJMNet clean adoption** — deferred (`docs/decisions/POST_MVP_PLAN.md` §7, §11 step 7).
 - **Step 3 deferred remainder** — git-url actual network fetch, source-cut actual handling, actual global/user apply, etc. (`docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13.2).
 - **Operations backlog track** — parallel operational-quality items (`docs/archive/backlog/operations.md`).
 
@@ -50,4 +49,4 @@ Per-system current status lives in the system status documents below. They hold 
 | brief | `docs/systems/brief/STATUS.md` + `DEFERRED.md` | `docs/contracts/brief/BRIEF_CONTRACT.md`, `docs/contracts/chatlog/CHATLOG_CONTRACT.md` |
 | self-adoption | `docs/systems/install-update/STATUS.md` "Self-adoption" (sub-topic; performed, IU-13) | `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9, `docs/decisions/POST_MVP_PLAN.md` §11 step 5 |
 
-The numbered remaining-order milestones (steps 1–7) are routed in `docs/roadmap/CURRENT_MILESTONES.md` (authority for the order itself: `docs/decisions/POST_MVP_PLAN.md` §11).
+The numbered remaining-order milestones (steps 1–6) are routed in `docs/roadmap/CURRENT_MILESTONES.md` (authority for the order itself: `docs/decisions/POST_MVP_PLAN.md` §11).

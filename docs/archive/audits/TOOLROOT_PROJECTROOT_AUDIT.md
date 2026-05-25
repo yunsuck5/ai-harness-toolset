@@ -43,7 +43,7 @@
 - 실제 skill install / update / removal.
 - shared / global mode 의 implementation.
 - clean target smoke test 의 실행.
-- legacy ai-harness / GJMNet 의 path handling.
+- legacy ai-harness 의 path handling.
 
 ---
 
@@ -386,7 +386,6 @@ D1–D9 가 결정되기 전에는 shared / global mode 의 invocation contract 
 8. clean target smoke test criteria 의 scoped 승인.
 9. clean target smoke test 실행.
 10. post-MVP closeout 재평가.
-11. new GJMNet repo 의 clean adoption.
 
 위 단계 중 어떤 것도 본 audit 가 자동 승인하지 않는다.
 
@@ -407,7 +406,6 @@ D1–D9 가 결정되기 전에는 shared / global mode 의 invocation contract 
 - launcher script 의 작성.
 - legacy ai-harness 의 path handling 재활용.
 - clean target smoke test 의 실행.
-- GJMNet 접근.
 
 위 항목 중 어느 것이라도 진행하려면 별도 scoped 승인이 필요하다.
 

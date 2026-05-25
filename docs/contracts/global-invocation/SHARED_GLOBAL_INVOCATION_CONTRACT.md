@@ -42,7 +42,6 @@
 - shared / global mode 의 actual implementation.
 - clean target smoke test 의 실행.
 - legacy ai-harness 의 path handling 재활용.
-- GJMNet 접근.
 
 ---
 
@@ -514,7 +513,6 @@ design 단계에서 결정을 내렸지만, implementation / 운영 단계에서
 - automatic commit / push / publish / merge / release.
 - legacy ai-harness 의 path handling 재활용.
 - clean target smoke test 의 실행.
-- GJMNet 접근.
 
 위 항목 중 어느 것이라도 진행하려면 별도 scoped 승인이 필요하다.
 

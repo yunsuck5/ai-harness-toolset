@@ -127,23 +127,6 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 ---
 
-## 7. GJMNet adoption — deferred
-
-- 별도 프로젝트인 GJMNet 으로의 ai-harness-toolset 적용은 **defer** 한다.
-- defer 의 조건은 다음 세 항목 모두가 ready 상태에 도달할 때까지다.
-  - Brief system (canonical 위치, restore-offer behavior, BF Level 3 boundary 포함) 의 방향이 정해진 시점.
-  - BF Level 3 의 design boundary 가 정해진 시점.
-  - packaging (`package-toolset.ps1` 의 책임 / shape) 방향이 정해진 시점.
-- 위 세 항목 중 하나라도 미정인 동안에는 GJMNet 적용은 시작하지 않는다.
-- legacy ai-harness 의 GJMNet 적용 흐름과 별도로, 본 결정은 **새 ai-harness-toolset** 의 GJMNet 적용을 defer 한다는 의미다.
-- 기존 GJMNet 안의 ai-harness-toolset application state 처리 방침.
-  - 기존 GJMNet 안에 남아 있는 ai-harness-toolset 적용 잔여물 (legacy application state) 은 **disposable** 로 간주한다.
-  - 그 잔여물에 대한 migration / cleanup 작업은 **post-MVP 항목이 아니다.** 본 toolset 측에서 해당 작업을 수행하지 않는다.
-  - GJMNet 자체는 위 세 ready 조건 (Brief system / BF Level 3 / packaging) 이 충족된 뒤 **clean git repo 로 재생성** 한다. 재생성 이후의 GJMNet 운용은 본 toolset 의 CLI-only 운용 규칙을 그대로 따른다.
-  - clean GJMNet repo 재생성 자체도 본 문서의 존재로 자동 승인되지 않는다. 별도 scoped 승인을 거친다.
-
----
-
 ## 8. Hard guardrails
 
 본 문서는 post-MVP 결정을 기록하지만, 동시에 다음 guardrail 을 유지한다. 아래 항목은 본 문서가 존재한다는 사실로 절대 자동 승인되지 않는다.
@@ -189,7 +172,6 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - install / update automation implementation 의 deferred 잔여 (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5, §11 step 3; STEP3 guide §13.2 의 git-url actual network fetch / source-cut actual handling / actual global·user filesystem apply 등). **step 4 install / update validation 은 더 이상 deferred 가 아니다 — §10 Completed 의 "POST_MVP_PLAN §11 step 4 install / update validation closeout" (Tier A 100/100 PASS + Tier B mainpc / vanilla pc PASS) 로 닫혔다.** step 3 의 anchored decisions / temp-only skeleton / dry-run / manifest+marker / git-url / source-cut / dogfooding / D-atomicity 진행은 §10 Completed 에 partial-progress closeout 으로 기록되어 있다.
 - ~~`ai-harness-toolset` self-adoption (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9, §11 step 5).~~ — **Resolved** at resolved HEAD `8293878d` (apply 2026-05-25). Closeout ledger: `docs/systems/install-update/STATUS.md` IU-13 / "Self-adoption (Step 5) — performed". Performed via `INSTALL.md` §2A AI-guided operational install; no productized installer / wrapper was adopted. activation surfaces (Claude / Codex managed blocks + Claude `ai-harness-review` skill) recorded as no-op (steady-state at apply time).
 - post-MVP closeout 결정 (§11 step 6).
-- GJMNet clean adoption (§7, §11 step 7).
 - `package-toolset.ps1` implementation (§6).
 - Chatlog system 의 CL 영역 fuller implementation (§4).
 - ~~docs taxonomy 의 실제 path migration~~ — **Resolved** (access-pattern restructure, 2026-05-23). `docs/` 가 access-pattern scope folders (`contracts/` `policies/` `project/` `decisions/` `user_guide/` 등) 로 재배치되고 `docs/` root 는 `README.md` 만 남았으며, placement authority 는 `docs/README.md` 다. path-reference scan + per-batch Codex review 를 거쳤다. risk-resolution pass(2026-05-23)에서 마지막 roadmap 잔류 문서도 이동했다 — `GLOBAL_ADOPTION_DECISION.md` → `docs/decisions/GLOBAL_ADOPTION_DECISION.md`, `STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` → `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md`. `docs/roadmap/` 는 이제 milestone routing only (`INDEX.md`, `CURRENT_MILESTONES.md`) 다.
@@ -205,8 +187,6 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 ### Decisions reaffirmed
 
-- 기존 GJMNet 안의 ai-harness-toolset application state 는 disposable. migration / cleanup 작업은 post-MVP 항목이 아니다 (§7).
-- GJMNet 은 post-MVP foundation 항목 (Brief system / BF Level 3 / packaging) 이 ready 된 뒤 clean git repo 로 재생성한다. 그 이후의 운용은 CLI-only (§7).
 - 설치 / adoption mode 의 방향 결정은 `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §1, §4 에 기록되었고, 그 구체적 layer / path / flow / metadata 모델은 `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` 가 current source-of-truth 다. `copy / link / pinned-link` framing 은 §6 안 historical record 로 보존되며, implementation 세부 중 managed block marker 적용, Claude skill global / update / removal 절차 문서화, ToolRoot / ProjectRoot path handling audit 문서화, shared / global mode invocation contract design 문서화, shared / global mode implementation (§6 의 8 개 split unit 전부), clean target smoke test criteria 정의, global install/update/self-adoption operating model 문서화는 모두 완료되었다 (§10 Completed). 잔여 항목은 install / update implementation 의 deferred 잔여 (step 3; STEP3 guide §13.2) 이며 (§10 Deferred, §11 의 numbered order; global behavior validation 은 §10 Completed 의 step 2 closeout 항목, install / update validation 은 §10 Completed 의 step 4 closeout 항목, self-adoption 은 §10 Deferred 의 Resolved 표기 + §11 step 5 의 in-place annotation 및 `docs/systems/install-update/STATUS.md` IU-13 참조), 모두 별도 scoped 승인이 필요하다 (§6, `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §6, §8, §9, `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`, `docs/archive/audits/TOOLROOT_PROJECTROOT_AUDIT.md` §6–§8, `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §4, §6).
 - shared / global mode implementation 완료와 actual install / update / self-adoption 은 구분된다. 전자는 §10 Completed 이고, 후자의 잔여는 §11 의 remaining order step 3 (install / update implementation 의 deferred 잔여) 로서 별도 scoped 승인이 필요하다 (step 2 manual global activation 검증, step 4 install / update validation, step 5 self-adoption 은 §10 Completed / Resolved 의 각 closeout 항목 — step 5 는 resolved HEAD `8293878d` (apply 2026-05-25; STATUS IU-13) 로 닫혔다 — 참조). POST_MVP_PLAN.md 의 어떤 진술도 실제 global install / global mutation 을 자동 승인하지 않는다 — Step 5 closeout 자체도 그 이후의 임의 mutation 을 자동 승인하지 않는다.
 - docs taxonomy 의 access-pattern path migration 은 **적용되었다** (2026-05-23; placement authority `docs/README.md`; §10 deferred 표의 해당 항목은 Resolved 로 표기됨). risk-resolution pass 에서 roadmap 잔류 문서까지 모두 access-pattern 자리로 이동 완료되어 `docs/roadmap/` 는 milestone routing only 다.
@@ -216,29 +196,28 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 ## 11. Recommended remaining order
 
-> 본 §11 numbered order (1–7) 는 `docs/roadmap/CURRENT_MILESTONES.md` 에 status annotation 과 함께 1:1 로 mirror 되어 있다(routing view). 본 §11 이 numbered order 와 "순서 변경/추가/삭제는 별도 scoped 승인" 규칙의 authority 다 — CURRENT_MILESTONES 는 그 order 를 재정의하지 않고 현행 status 로 라우팅만 한다.
+> 본 §11 numbered order (1–6) 는 `docs/roadmap/CURRENT_MILESTONES.md` 에 status annotation 과 함께 1:1 로 mirror 되어 있다(routing view). 본 §11 이 numbered order 와 "순서 변경/추가/삭제는 별도 scoped 승인" 규칙의 authority 다 — CURRENT_MILESTONES 는 그 order 를 재정의하지 않고 현행 status 로 라우팅만 한다.
 
 본 절은 post-MVP **잔여 항목** 의 권장 처리 순서다. completed step 들은 §10 Completed (source repo side) 에 기록되어 있고, 본 §11 은 그 이후의 remaining work 만 다룬다. **순서 자체는 자동 승인이 아니다.** 각 단계는 §8 guardrail 을 깨지 않는 범위 안에서 별도 scoped 승인을 거친다. 특히 manual global activation 을 포함한 **모든 실제 global mutation 은 separate scoped approval 이 필요하다** — 본 절은 어떤 global mutation, snippets / scripts / config / templates 변경, global `CLAUDE.md` / `AGENTS.md` mutation, commit, push 도 자동 승인하지 않는다.
 
-본 순서는 `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` 를 current global install / update / self-adoption 판단 기준으로 참조한다. `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §9 의 step 1–5, shared / global mode invocation contract design, **shared / global mode implementation (§6 의 8 개 split unit 전부)**, **clean target smoke test criteria 정의 및 full SC1–SC7 실행**, 그리고 **global install / update / self-adoption operating model 문서화** 는 모두 §10 Completed 에 기록되어 본 §11 에서는 제외한다. shared / global mode implementation 완료는 source-side path / invocation 동작이 갖춰졌다는 의미이며, 아래 step 들 (actual global activation / install / update / self-adoption) 의 수행과는 구분된다. 또한 본 순서는 내부 roadmap closeout 판단을 보존하기 위해 GJMNet clean adoption 직전에 post-MVP closeout 결정을 별도 step 으로 유지한다.
+본 순서는 `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` 를 current global install / update / self-adoption 판단 기준으로 참조한다. `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §9 의 step 1–5, shared / global mode invocation contract design, **shared / global mode implementation (§6 의 8 개 split unit 전부)**, **clean target smoke test criteria 정의 및 full SC1–SC7 실행**, 그리고 **global install / update / self-adoption operating model 문서화** 는 모두 §10 Completed 에 기록되어 본 §11 에서는 제외한다. shared / global mode implementation 완료는 source-side path / invocation 동작이 갖춰졌다는 의미이며, 아래 step 들 (actual global activation / install / update / self-adoption) 의 수행과는 구분된다.
 
 본 §11 기준 step 1 (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` 확정) 과 step 2 (manual global activation / controlled global materialization 을 통한 global behavior validation) 는 §10 Completed 에 기록된 대로 모두 이미 충족되어 있다. step 2 closeout 의 evidence binding 은 §10 Completed 의 step 2 closeout 항목에 정리되어 있으며 새 validation 실행 / 새 evidence 체계 / convention 도입이 아니다. 따라서 **다음 실제 milestone 은 step 3 — validation result 를 기준으로 한 install / update implementation** (`GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5) 이며, 이는 실제 global mutation 이므로 별도 scoped 승인이 필요하다.
 
-canonical review task/pass topology refactor (a5d94a5 contract alignment + c81fe45 implementation + 그에 정합한 global payload / managed-block / Claude skill refresh) 는 §10 Completed 에 추가된 source-side milestone 이며, 본 §11 의 numbered order 자체를 변경하지 않는다. step 2 (manual global activation 검증) 의 충족이나, step 3–4 (install / update automation implementation 및 validation) 의 implementation, step 5 (self-adoption) 의 수행, step 6 (post-MVP closeout 결정), step 7 (new GJMNet clean adoption) 의 시작 어느 것도 본 refactor 만으로 자동 충족되지 않는다.
+canonical review task/pass topology refactor (a5d94a5 contract alignment + c81fe45 implementation + 그에 정합한 global payload / managed-block / Claude skill refresh) 는 §10 Completed 에 추가된 source-side milestone 이며, 본 §11 의 numbered order 자체를 변경하지 않는다. step 2 (manual global activation 검증) 의 충족이나, step 3–4 (install / update automation implementation 및 validation) 의 implementation, step 5 (self-adoption) 의 수행, step 6 (post-MVP closeout 결정) 의 시작 어느 것도 본 refactor 만으로 자동 충족되지 않는다.
 
 1. `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` 확정 — **§10 Completed 에 기록된 대로 이미 충족됨.** global install / update / validation / self-adoption operating model 이 current source-of-truth 로 확정되어 있다. 본 step 은 이후 단계의 baseline checkpoint 로 남기며, remaining work 는 step 3 부터다 (step 2 는 아래 항목 참조).
-2. manual global activation / controlled global materialization 으로 global behavior validation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §7.2 의 four-axis: global entrypoint / ToolRoot·ProjectRoot 분리 / target footprint / runtime artifact 위치) — **§10 Completed 에 기록된 대로 d557580 baseline 시점의 기존 evidence 로 이미 충족됨.** 본 closeout 은 step 3–7 어느 것도 자동 승인하지 않으며, `docs/archive/backlog/operations.md` 항목의 status 도 변경하지 않는다.
+2. manual global activation / controlled global materialization 으로 global behavior validation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §7.2 의 four-axis: global entrypoint / ToolRoot·ProjectRoot 분리 / target footprint / runtime artifact 위치) — **§10 Completed 에 기록된 대로 d557580 baseline 시점의 기존 evidence 로 이미 충족됨.** 본 closeout 은 step 3–6 어느 것도 자동 승인하지 않으며, `docs/archive/backlog/operations.md` 항목의 status 도 변경하지 않는다.
 3. validation result 를 기준으로 install / update implementation (`GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5). 본 step 의 작업은 `GLOBAL_INSTALL_UPDATE_MODEL.md` 의 subordinate 인 `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` 를 따른다.
-4. install / update validation. 본 step 의 최소 scope (Tier A fixture-local determinism / Tier B real installed-state validation) 와 deferred / 승인 boundary 는 아래 §11.1 에 anchor 한다. — **§10 Completed 의 "POST_MVP_PLAN §11 step 4 install / update validation closeout" 항목에 기록된 대로 Tier A (100/100 PASS) + Tier B (mainpc / vanilla pc pure-UX git-url update + verification PASS, 두 host 모두 resolved HEAD `0a07d90`) 로 닫혔다.** 본 closeout 은 step 5–7 어느 것도 자동 승인하지 않으며, §11.1.3 의 deferred 항목 status 도 변경하지 않는다.
-5. `ai-harness-toolset` self-adoption (`GLOBAL_INSTALL_UPDATE_MODEL.md` §9) — **§10 Deferred 표의 self-adoption 항목이 Resolved 로 표기된 대로 resolved HEAD `8293878d` (apply 2026-05-25) 로 닫혔다. Closeout ledger: `docs/systems/install-update/STATUS.md` IU-13 / "Self-adoption (Step 5) — performed".** 본 closeout 은 step 6–7 어느 것도 자동 승인하지 않는다.
+4. install / update validation. 본 step 의 최소 scope (Tier A fixture-local determinism / Tier B real installed-state validation) 와 deferred / 승인 boundary 는 아래 §11.1 에 anchor 한다. — **§10 Completed 의 "POST_MVP_PLAN §11 step 4 install / update validation closeout" 항목에 기록된 대로 Tier A (100/100 PASS) + Tier B (mainpc / vanilla pc pure-UX git-url update + verification PASS, 두 host 모두 resolved HEAD `0a07d90`) 로 닫혔다.** 본 closeout 은 step 5–6 어느 것도 자동 승인하지 않으며, §11.1.3 의 deferred 항목 status 도 변경하지 않는다.
+5. `ai-harness-toolset` self-adoption (`GLOBAL_INSTALL_UPDATE_MODEL.md` §9) — **§10 Deferred 표의 self-adoption 항목이 Resolved 로 표기된 대로 resolved HEAD `8293878d` (apply 2026-05-25) 로 닫혔다. Closeout ledger: `docs/systems/install-update/STATUS.md` IU-13 / "Self-adoption (Step 5) — performed".** 본 closeout 은 step 6 을 자동 승인하지 않는다.
 6. post-MVP closeout 결정.
-7. new GJMNet repo 의 clean adoption. self-adoption (step 5) 과 global behavior validation (step 2) 이후로 유지한다 (§7).
 
 순서 변경, 항목 추가, 또는 항목 삭제는 별도 scoped 승인이 필요하다. operations backlog track (§10) 의 항목은 본 numbered order 와 병렬이다. 그 중 PowerShell smoke invocation quoting hardening 은 closed ((W) wrapper, `c183c6b`) 이고, 남은 open 항목 중 Smoke evidence preservation 이 step 2 / step 5 를 지원하는 prerequisite 다.
 
 ### 11.1 Step 4 install / update validation — 최소 scope anchor
 
-본 절은 §11 numbered order 의 step 4 (`install / update validation`) 의 최소 scope 를 anchor 한다. 본 절은 step 4 의 placeholder 를 scope 정의로 구체화하는 docs-only anchor 이며, **step 4 validation 의 실제 실행, 어떤 global / user filesystem mutation, target adoption, commit / push / publish / merge / release 어느 것도 자동 승인하지 않는다.** §11 의 numbered order (1–7) 의 ordering / numbering 도 변경하지 않는다 — 본 절은 step 4 항목의 in-place 구체화다.
+본 절은 §11 numbered order 의 step 4 (`install / update validation`) 의 최소 scope 를 anchor 한다. 본 절은 step 4 의 placeholder 를 scope 정의로 구체화하는 docs-only anchor 이며, **step 4 validation 의 실제 실행, 어떤 global / user filesystem mutation, target adoption, commit / push / publish / merge / release 어느 것도 자동 승인하지 않는다.** §11 의 numbered order (1–6) 의 ordering / numbering 도 변경하지 않는다 — 본 절은 step 4 항목의 in-place 구체화다.
 
 본 절이 검증 대상으로 삼는 install / update automation 의 contract surface 는 `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5, §7 과 그 subordinate `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` (특히 §10–§19) 다. clean-target fixture 검증 형식 (Pre / Action / Pass / Fail / Evidence) 은 `docs/archive/audits/CLEAN_TARGET_SMOKE_CRITERIA.md` 를 baseline 으로 한다.
 

@@ -53,7 +53,7 @@ How to read each entry:
 ## Q5. current milestone / next action
 
 - **Primary:** `docs/current/NEXT_ACTIONS.md` (active queue), then `docs/current/PROJECT_STATE.md` (top-level current summary).
-- **Secondary:** `docs/roadmap/CURRENT_MILESTONES.md` (steps 1–7 routed with status), `docs/systems/install-update/STATUS.md` / `DEFERRED.md`; `docs/decisions/POST_MVP_PLAN.md` §11 (authority for the numbered order) + §10 (status summary).
+- **Secondary:** `docs/roadmap/CURRENT_MILESTONES.md` (steps 1–6 routed with status), `docs/systems/install-update/STATUS.md` / `DEFERRED.md`; `docs/decisions/POST_MVP_PLAN.md` §11 (authority for the numbered order) + §10 (status summary).
 - **Implementation:** n/a (milestone / plan documents have no code implementation).
 - **Historical:** `docs/decisions/POST_MVP_PLAN.md` §10 Completed closeout narrative.
 - **Do not use:** reading `docs/decisions/POST_MVP_PLAN.md` completed items as active instructions, or its deferred items as open backlog.
@@ -69,7 +69,7 @@ How to read each entry:
 ## Q7. self-adoption / Step 5
 
 - **Primary:** `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9 (self-adoption model), `docs/decisions/POST_MVP_PLAN.md` §11 step 5.
-- **Secondary:** `docs/systems/install-update/STATUS.md` "Self-adoption (Step 5) — performed" (sub-topic status; ledger IU-13), `docs/user_guide/OPERATOR_GUIDE_KR.md` §17 (post-MVP CLI-only operating notes, including GJMNet operating boundaries that sit downstream of self-adoption).
+- **Secondary:** `docs/systems/install-update/STATUS.md` "Self-adoption (Step 5) — performed" (sub-topic status; ledger IU-13), `docs/user_guide/OPERATOR_GUIDE_KR.md` §17 (post-MVP CLI-only operating notes).
 - **Implementation:** **performed** at resolved HEAD `8293878d20465aba1132c1bca189fa4a53bc0d43` (apply 2026-05-25). Performed via `INSTALL.md` §2A AI-guided operational install — no productized installer / wrapper was adopted. Activation surfaces (Claude / Codex managed blocks + Claude `ai-harness-review` skill) were already in canonical steady-state at apply time and recorded as no-op. Closeout ledger: `docs/systems/install-update/STATUS.md` IU-13.
 - **Historical:** the 1st·2nd framing in `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9 BRIEF wording note; the previous "not implemented" status that pre-dates the 2026-05-25 closeout.
 - **Do not use:** the previous "not implemented" framing — self-adoption was performed as of 2026-05-25 (`docs/systems/install-update/STATUS.md` IU-13). Also do not read this closeout as auto-approval of commit / push / publish / release or of any further global mutation; each remains a separate explicit user-approved decision.

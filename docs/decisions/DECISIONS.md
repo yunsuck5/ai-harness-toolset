@@ -25,4 +25,4 @@ This is the **active** decision record. Bootstrap-era / historical decisions hav
 
 - CLI-only MVP is closed. Closeout does not approve post-MVP implementation, scope expansion, or commit/push/release.
 - Codex review subsystem moves to maintenance mode after closeout; new features require separate scoped approval.
-- Post-MVP decisions (Brief system as post-MVP core, Chatlog system not yet implemented, BF Level 3 boundary, packaging via `package-toolset.ps1`, GJMNet adoption deferred) are recorded in `docs/decisions/POST_MVP_PLAN.md`. That document is a record, not an implementation authorization.
+- Post-MVP decisions (Brief system as post-MVP core, Chatlog system not yet implemented, BF Level 3 boundary, packaging via `package-toolset.ps1`) are recorded in `docs/decisions/POST_MVP_PLAN.md`. That document is a record, not an implementation authorization.

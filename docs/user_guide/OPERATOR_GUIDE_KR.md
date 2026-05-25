@@ -496,12 +496,6 @@ legacy project-local copy mode (channel 5) 를 평가하는 경우에만 본 부
 
 verdict 의 source-of-truth 는 같은 review task 의 final pass directory `log/review/<review-task-id>/pass-NN/result.md` 의 `## Verdict` 다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 
-### GJMNet 관련 운영
-
-- 기존 GJMNet 안에 남아 있는 ai-harness-toolset 적용 잔여물 (legacy application state) 은 **disposable** 이다. 그 잔여물에 대한 migration / cleanup 작업은 **post-MVP 항목이 아니며**, 본 toolset 측에서 수행하지 않는다 (`docs/decisions/POST_MVP_PLAN.md` §7).
-- GJMNet clean adoption 은 post-MVP foundation 항목 (Brief system, BF Level 3 capability, packaging) 이 ready 된 뒤 별도 scoped 승인을 받아 진행한다. 이 결정과 범위의 source-of-truth 는 **`docs/decisions/POST_MVP_PLAN.md` §7** 이며, "BF Level 3" 의 정의·미구현 경계와 narrow source-side primitive (`scripts/brief-init.ps1` / `brief-check.ps1` / `brief-status.ps1`) 의 책임 한계는 **`docs/contracts/brief/BRIEF_CONTRACT.md`** 가 authority 다 — 본 절은 그 내용을 중복 정의하지 않는다.
-- 재생성된 clean GJMNet 운용은 본 toolset 의 CLI-only 운용 규칙을 그대로 따른다.
-
 ### 별도 scoped 승인 항목
 
 본 가이드 안에서 implementation 을 시작하지 않는다. 모두 deferred 이며, 별도 scoped 승인 절차를 거친다.
