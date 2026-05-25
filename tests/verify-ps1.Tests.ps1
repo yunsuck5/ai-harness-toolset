@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+    . (Join-Path $script:RepoRoot 'scripts/lib/native-process.ps1')
     $script:RealVerifyScript = Join-Path $script:RepoRoot 'scripts/verify-ps1.ps1'
     $script:RealLibPath      = Join-Path $script:RepoRoot 'scripts/lib/path.ps1'
     $script:RealLibGit       = Join-Path $script:RepoRoot 'scripts/lib/git.ps1'
@@ -76,9 +77,9 @@ BeforeAll {
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
             '-File', $copyPath
         )
-        $combined = & powershell.exe @procArgs 2>&1
-        $exitCode = $LASTEXITCODE
-        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+        $exitCode = $proc.ExitCode
+        $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
         return [pscustomobject]@{
             ExitCode = $exitCode
             Output   = $text

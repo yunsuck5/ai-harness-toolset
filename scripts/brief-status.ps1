@@ -9,6 +9,7 @@ $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'lib/encoding.ps1')
 . (Join-Path $PSScriptRoot 'lib/path.ps1')
+. (Join-Path $PSScriptRoot 'lib/native-process.ps1')
 
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 
@@ -39,12 +40,14 @@ if (-not (Test-Path -LiteralPath $briefCheckScript -PathType Leaf)) {
     exit 1
 }
 
-$checkCombined = & powershell.exe -NoProfile -ExecutionPolicy Bypass `
-    -File $briefCheckScript `
-    -ProjectRoot $project `
-    -BriefPath $BriefPath 2>&1
-$checkExitCode = $LASTEXITCODE
-$checkLines = @($checkCombined | ForEach-Object { [string]$_ })
+$checkProc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+    '-NoProfile', '-ExecutionPolicy', 'Bypass',
+    '-File', $briefCheckScript,
+    '-ProjectRoot', $project,
+    '-BriefPath', $BriefPath
+)
+$checkExitCode = $checkProc.ExitCode
+$checkLines = @(($checkProc.Stdout + $checkProc.Stderr) -split "`r?`n")
 
 foreach ($line in $checkLines) {
     if (-not [string]::IsNullOrWhiteSpace($line)) {

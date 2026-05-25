@@ -9,6 +9,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+. (Join-Path $PSScriptRoot 'lib/native-process.ps1')
+
 # A-2e global activation apply orchestration.
 #
 # Maps the repo's activation snippets to their managed-block destinations and drives
@@ -110,9 +112,14 @@ foreach ($item in $plan) {
     )
     if (-not $Apply) { $procArgs += '-DryRun' }
 
-    $output = & powershell.exe @procArgs 2>&1
-    $code = $LASTEXITCODE
-    foreach ($line in $output) { Write-Host ([string]$line) }
+    $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+    $code = $proc.ExitCode
+    $combinedText = ($proc.Stdout + $proc.Stderr).TrimEnd("`r", "`n")
+    if (-not [string]::IsNullOrEmpty($combinedText)) {
+        foreach ($line in ($combinedText -split "`r?`n")) {
+            Write-Host $line
+        }
+    }
 
     if ($code -eq 0) {
         Write-Host ('activate-global: [{0}] OK' -f $item.Name)

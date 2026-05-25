@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 BeforeAll {
     $script:RepoRoot   = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+    . (Join-Path $script:RepoRoot 'scripts/lib/native-process.ps1')
     $script:RunScript     = Join-Path $script:RepoRoot 'scripts/review-run.ps1'
     $script:PrepareScript = Join-Path $script:RepoRoot 'scripts/review-prepare.ps1'
     $script:VerifyScript  = Join-Path $script:RepoRoot 'scripts/review-verify.ps1'
@@ -157,9 +158,9 @@ BeforeAll {
         if (-not [string]::IsNullOrEmpty($Pass)) {
             $procArgs += @('-Pass', $Pass)
         }
-        $combined = & powershell.exe @procArgs 2>&1
-        $exitCode = $LASTEXITCODE
-        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+        $exitCode = $proc.ExitCode
+        $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
         return [pscustomobject]@{
             ExitCode = $exitCode
             Output   = $text
@@ -239,14 +240,14 @@ BeforeAll {
             $env:AI_HARNESS_CODEX_ARGS_FILE_STUB = '1'
         }
         try {
-            $combined = & powershell.exe @procArgs 2>&1
-            $exitCode = $LASTEXITCODE
+            $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+            $exitCode = $proc.ExitCode
         }
         finally {
             $env:AI_HARNESS_CODEX_COMMAND = $previousEnv
             $env:AI_HARNESS_CODEX_ARGS_FILE_STUB = $previousStubFlag
         }
-        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
         return [pscustomobject]@{
             ExitCode = $exitCode
             Output   = $text

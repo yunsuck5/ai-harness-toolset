@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+    . (Join-Path $script:RepoRoot 'scripts/lib/native-process.ps1')
     $script:ReviewVerifyScript = Join-Path $script:RepoRoot 'scripts/review-verify.ps1'
 
     function script:Write-Utf8NoBomFile {
@@ -143,9 +144,9 @@ BeforeAll {
         $procArgs += @('-ToolRoot', $ToolRoot)
         if ($RequireResult) { $procArgs += '-RequireResult' }
 
-        $combined = & powershell.exe @procArgs 2>&1
-        $exitCode = $LASTEXITCODE
-        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+        $exitCode = $proc.ExitCode
+        $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
 
         return [pscustomobject]@{
             ExitCode = $exitCode

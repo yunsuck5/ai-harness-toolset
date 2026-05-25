@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+    . (Join-Path $script:RepoRoot 'scripts/lib/native-process.ps1')
     $script:ApplyScript = Join-Path $script:RepoRoot 'scripts/apply-managed-block.ps1'
     $script:RealClaudeSnippet = Join-Path $script:RepoRoot 'snippets/CLAUDE_SNIPPET.md'
 
@@ -63,9 +64,9 @@ BeforeAll {
             '-TargetPath', $TargetPath
         )
         if ($DryRun) { $procArgs += '-DryRun' }
-        $combined = & powershell.exe @procArgs 2>&1
-        $exitCode = $LASTEXITCODE
-        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+        $exitCode = $proc.ExitCode
+        $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
         return [pscustomobject]@{ ExitCode = $exitCode; Output = $text }
     }
 

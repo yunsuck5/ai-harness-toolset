@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 BeforeAll {
     $script:RepoRoot   = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+    . (Join-Path $script:RepoRoot 'scripts/lib/native-process.ps1')
     $script:Script     = Join-Path $script:RepoRoot 'scripts/activate-global.ps1'
     $script:ClaudeSnip = Join-Path $script:RepoRoot 'snippets/CLAUDE_SNIPPET.md'
     $script:AgentsSnip = Join-Path $script:RepoRoot 'snippets/AGENTS_SNIPPET.md'
@@ -55,9 +56,9 @@ BeforeAll {
         if ($ClaudeHome) { $procArgs += @('-ClaudeHome', $ClaudeHome) }
         if ($CodexHome)  { $procArgs += @('-CodexHome', $CodexHome) }
         if ($Apply)      { $procArgs += '-Apply' }
-        $combined = & powershell.exe @procArgs 2>&1
-        $exitCode = $LASTEXITCODE
-        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+        $exitCode = $proc.ExitCode
+        $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
         return [pscustomobject]@{ ExitCode = $exitCode; Output = $text }
     }
 }

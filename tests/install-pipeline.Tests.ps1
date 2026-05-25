@@ -8,6 +8,7 @@ BeforeAll {
     . (Join-Path $script:RepoRoot 'scripts/lib/encoding.ps1')
     . (Join-Path $script:RepoRoot 'scripts/lib/path.ps1')
     . (Join-Path $script:RepoRoot 'scripts/lib/install-pipeline-core.ps1')
+    . (Join-Path $script:RepoRoot 'scripts/lib/native-process.ps1')
 
     function script:New-FixtureSourceRepo {
         param(
@@ -49,7 +50,7 @@ BeforeAll {
             }
             & git add . 2>&1 | Out-Null
             & git commit -q -m ('seed ' + $MarkerSuffix) 2>&1 | Out-Null
-            $head = (& git rev-parse HEAD 2>&1 | Out-String).Trim()
+            $head = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse', 'HEAD')).Stdout.Trim()
         }
         finally { Pop-Location }
         return [pscustomobject]@{
@@ -71,7 +72,7 @@ BeforeAll {
             }
             & git add . 2>&1 | Out-Null
             & git commit -q -m ('commit ' + $MarkerSuffix) 2>&1 | Out-Null
-            return (& git rev-parse HEAD 2>&1 | Out-String).Trim()
+            return (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse', 'HEAD')).Stdout.Trim()
         }
         finally { Pop-Location }
     }
@@ -679,7 +680,7 @@ Describe 'install-pipeline 3-7 dry-run coverage extension' {
             [System.IO.File]::WriteAllText((Join-Path $shared 'config/reviewer.json'),      '{}',       $utf8NoBom)
             & git add . 2>&1 | Out-Null
             & git commit -q -m 'seed' 2>&1 | Out-Null
-            $script:DogHeadBefore = (& git rev-parse HEAD 2>&1 | Out-String).Trim()
+            $script:DogHeadBefore = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse', 'HEAD')).Stdout.Trim()
             $script:DogStatusBefore = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()
         }
         finally { Pop-Location }
@@ -704,7 +705,7 @@ Describe 'install-pipeline 3-7 dry-run coverage extension' {
         # Source repo HEAD and working tree must be unchanged.
         Push-Location $shared
         try {
-            $headAfter   = (& git rev-parse HEAD 2>&1 | Out-String).Trim()
+            $headAfter   = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse', 'HEAD')).Stdout.Trim()
             $statusAfter = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()
         }
         finally { Pop-Location }

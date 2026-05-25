@@ -216,7 +216,7 @@ Describe 'Caller contract (callsite consumption)' {
 
         $informational = & {
             Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local 6>&1
-        } | Out-String
+        } | Out-String -Width 8192
 
         $informational | Should -Match 'WARN component script resolved via \$PSScriptRoot fallback'
     }

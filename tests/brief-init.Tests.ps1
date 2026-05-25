@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+    . (Join-Path $script:RepoRoot 'scripts/lib/native-process.ps1')
     $script:BriefInitScript = Join-Path $script:RepoRoot 'scripts/brief-init.ps1'
     $script:RealTemplatePath = Join-Path $script:RepoRoot 'templates/brief/BRIEF.md'
 
@@ -68,9 +69,9 @@ BeforeAll {
         if (-not [string]::IsNullOrEmpty($ToolRoot)) {
             $procArgs += @('-ToolRoot', $ToolRoot)
         }
-        $combined = & powershell.exe @procArgs 2>&1
-        $exitCode = $LASTEXITCODE
-        $text = ($combined | ForEach-Object { [string]$_ }) -join "`n"
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+        $exitCode = $proc.ExitCode
+        $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
         return [pscustomobject]@{
             ExitCode = $exitCode
             Output   = $text
