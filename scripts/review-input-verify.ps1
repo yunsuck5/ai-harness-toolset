@@ -51,9 +51,9 @@ foreach ($h in $requiredHeadings) {
     }
 }
 
-$tokenMatch = [regex]::Match($content, '\{\{[A-Za-z_][A-Za-z0-9_]*\}\}')
+$tokenMatch = [regex]::Match($content, '\{\{AI_TO_FILL_[A-Za-z0-9_]+\}\}')
 if ($tokenMatch.Success) {
-    Write-Host ('review-input-verify: FAIL unreplaced template token: {0}' -f $tokenMatch.Value)
+    Write-Host ('review-input-verify: FAIL unreplaced active placeholder: {0}' -f $tokenMatch.Value)
     exit 1
 }
 

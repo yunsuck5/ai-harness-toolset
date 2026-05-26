@@ -328,7 +328,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/log-init.ps1
 
 ### 입력 작성 시 주의 사항
 
-- 각 pass directory 안의 `input.md` (canonical 자리: `log/review/<review-task-id>/pass-NN/input.md`) 는 AI 가 직접 본문을 작성한다. `## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`, `## Final verdict` 5 개의 H2 heading 이 모두 있어야 하고, `## Final verdict` 본문은 `yes / no / yes with risk` 문자열을 포함한다. 빈 본문, `{{TOKEN}}` 잔존, `scripts/review-input-verify.ps1` 의 forbidden-phrase 목록 (`$forbidden` 배열) 의 어떤 substring 도 있으면 거부된다.
+- 각 pass directory 안의 `input.md` (canonical 자리: `log/review/<review-task-id>/pass-NN/input.md`) 는 AI 가 직접 본문을 작성한다. `## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`, `## Final verdict` 5 개의 H2 heading 이 모두 있어야 하고, `## Final verdict` 본문은 `yes / no / yes with risk` 문자열을 포함한다. 빈 본문, `{{AI_TO_FILL_*}}` active placeholder 잔존, `scripts/review-input-verify.ps1` 의 forbidden-phrase 목록 (`$forbidden` 배열) 의 어떤 substring 도 있으면 거부된다. verifier 는 `AI_TO_FILL_` prefix 의 active placeholder 만 검사하므로, 본문에 generic `{{TOKEN}}` 형태 (예: `{{example}}`) 는 documentation literal 로 자유롭게 인용할 수 있다.
 - target file 목록은 input.md 안의 informational `## Target files` section 에 둔다. 별도의 staging file 이나 외부 list file 은 본 contract 가 보장하지 않는다.
 - AI-to-Codex 의 운반 매체는 input.md (Markdown) 하나다. 본문에 한국어 / multi-line / markdown bullets / 인용 부호가 자유롭게 들어갈 수 있다. PowerShell argv 의 quoting / tokenization 은 운반 경로가 아니다.
 

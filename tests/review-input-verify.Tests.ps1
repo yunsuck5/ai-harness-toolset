@@ -116,28 +116,28 @@ Describe 'review-input-verify' {
         $r.Output | Should -Match 'FAIL placeholder remains in ## Required inspection paths'
     }
 
-    It 'AC-IV4: fails when lowercase {{token}} remains (B3 regression)' {
+    It 'AC-IV4: fails when an active lowercase-suffix placeholder {{AI_TO_FILL_token}} remains (I2 active-placeholder grammar regression)' {
         $caseRoot = script:New-InputVerifyCase -CaseName 'iv4'
         $content = script:Build-FilledInput
-        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Custom: {{token}}")
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Custom: {{AI_TO_FILL_token}}")
         $inputPath = Join-Path $caseRoot 'input.md'
         script:Write-Utf8NoBomFile -Path $inputPath -Content $content
 
         $r = script:Invoke-InputVerify -InputPath $inputPath
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'FAIL unreplaced template token'
+        $r.Output | Should -Match 'FAIL unreplaced active placeholder'
     }
 
-    It 'AC-IV5: fails when mixed-case {{Token}} remains (B3 regression)' {
+    It 'AC-IV5: fails when an active mixed-case-suffix placeholder {{AI_TO_FILL_Token}} remains (I2 active-placeholder grammar regression)' {
         $caseRoot = script:New-InputVerifyCase -CaseName 'iv5'
         $content = script:Build-FilledInput
-        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Custom: {{Token}}")
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Custom: {{AI_TO_FILL_Token}}")
         $inputPath = Join-Path $caseRoot 'input.md'
         script:Write-Utf8NoBomFile -Path $inputPath -Content $content
 
         $r = script:Invoke-InputVerify -InputPath $inputPath
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'FAIL unreplaced template token'
+        $r.Output | Should -Match 'FAIL unreplaced active placeholder'
     }
 
     It 'AC-IV6: fails when placeholder text remains under ## Final verdict (B3 regression)' {
@@ -155,40 +155,28 @@ Describe 'review-input-verify' {
         $r.Output | Should -Match 'FAIL placeholder remains in ## Final verdict'
     }
 
-    It 'AC-IV7: passes when backslash-escaped \{\{TOKEN\}\} is cited honestly (V1 convention c)' {
-        $caseRoot = script:New-InputVerifyCase -CaseName 'iv7'
-        $content = script:Build-FilledInput
-        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Cite: \{\{TOKEN\}\}")
-        $inputPath = Join-Path $caseRoot 'input.md'
-        script:Write-Utf8NoBomFile -Path $inputPath -Content $content
-
-        $r = script:Invoke-InputVerify -InputPath $inputPath
-        $r.ExitCode | Should -Be 0
-        $r.Output | Should -Match 'review-input-verify: PASS'
-    }
-
-    It 'AC-IV8: fails when bare {{TOKEN}} remains (V1 bare-form regression)' {
+    It 'AC-IV8: fails when an active uppercase-suffix placeholder {{AI_TO_FILL_TOKEN}} remains (I2 active-placeholder grammar regression)' {
         $caseRoot = script:New-InputVerifyCase -CaseName 'iv8'
         $content = script:Build-FilledInput
-        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Custom: {{TOKEN}}")
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Custom: {{AI_TO_FILL_TOKEN}}")
         $inputPath = Join-Path $caseRoot 'input.md'
         script:Write-Utf8NoBomFile -Path $inputPath -Content $content
 
         $r = script:Invoke-InputVerify -InputPath $inputPath
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'FAIL unreplaced template token'
+        $r.Output | Should -Match 'FAIL unreplaced active placeholder'
     }
 
-    It 'AC-IV9: fails on the bare placeholder when an escaped citation is also present (V1 mixed-form regression)' {
+    It 'AC-IV9: fails on the active placeholder when a generic documentation literal is also present (I2 mixed-form regression)' {
         $caseRoot = script:New-InputVerifyCase -CaseName 'iv9'
         $content = script:Build-FilledInput
-        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Cited: \{\{IDENT\}\}`n- Real: {{REAL}}")
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Cite: {{IDENT}}`n- Real: {{AI_TO_FILL_REAL}}")
         $inputPath = Join-Path $caseRoot 'input.md'
         script:Write-Utf8NoBomFile -Path $inputPath -Content $content
 
         $r = script:Invoke-InputVerify -InputPath $inputPath
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'FAIL unreplaced template token: \{\{REAL\}\}'
+        $r.Output | Should -Match 'FAIL unreplaced active placeholder: \{\{AI_TO_FILL_REAL\}\}'
     }
 
     It 'AC-IV10: fails when a required input H2 appears only in wrong case (H2 case-sensitivity regression)' {
@@ -203,6 +191,54 @@ Describe 'review-input-verify' {
         $r = script:Invoke-InputVerify -InputPath $inputPath
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'FAIL missing heading: ## Context'
+    }
+
+    It 'AC-IV11: passes when a generic documentation literal {{TOKEN}} appears in prose (I2 documentation-literal freedom)' {
+        $caseRoot = script:New-InputVerifyCase -CaseName 'iv11'
+        $content = script:Build-FilledInput
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Doc literal: {{TOKEN}}")
+        $inputPath = Join-Path $caseRoot 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content $content
+
+        $r = script:Invoke-InputVerify -InputPath $inputPath
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'review-input-verify: PASS'
+    }
+
+    It 'AC-IV12: passes when a generic documentation literal {{TOKEN}} appears inside inline backticks (I2 documentation-literal freedom; not a Markdown exemption)' {
+        $caseRoot = script:New-InputVerifyCase -CaseName 'iv12'
+        $content = script:Build-FilledInput
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Doc literal in backticks: ``{{TOKEN}}``")
+        $inputPath = Join-Path $caseRoot 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content $content
+
+        $r = script:Invoke-InputVerify -InputPath $inputPath
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'review-input-verify: PASS'
+    }
+
+    It 'AC-IV13: fails when an active placeholder appears inside inline backticks (I2 active-placeholder safety; not a Markdown exemption)' {
+        $caseRoot = script:New-InputVerifyCase -CaseName 'iv13'
+        $content = script:Build-FilledInput
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Active in backticks: ``{{AI_TO_FILL_X}}``")
+        $inputPath = Join-Path $caseRoot 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content $content
+
+        $r = script:Invoke-InputVerify -InputPath $inputPath
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL unreplaced active placeholder: \{\{AI_TO_FILL_X\}\}'
+    }
+
+    It 'AC-IV14: fails on the active placeholder when a generic documentation literal is also present (I2 mixed-form precedence)' {
+        $caseRoot = script:New-InputVerifyCase -CaseName 'iv14'
+        $content = script:Build-FilledInput
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Doc literal: {{example}}`n- Active: {{AI_TO_FILL_MIXED}}")
+        $inputPath = Join-Path $caseRoot 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content $content
+
+        $r = script:Invoke-InputVerify -InputPath $inputPath
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL unreplaced active placeholder: \{\{AI_TO_FILL_MIXED\}\}'
     }
 }
 
