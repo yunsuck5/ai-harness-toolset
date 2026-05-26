@@ -130,6 +130,11 @@ BeforeAll {
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
                 $body += 'exit 0'
             }
+            'verdict-lowercase-heading' {
+                $body += '$content = "# Review Result`r`n`r`n## verdict`r`n`r`nyes`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 0'
+            }
             default {
                 throw "Unknown stub mode: $Mode"
             }
@@ -496,5 +501,27 @@ Describe 'review-run canonical pass directory' {
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-1' -StubPath $stub
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'invalid Pass'
+    }
+
+    It 'AC-RR12: wrong-case ## verdict heading is not treated as the canonical Verdict heading (H2 case-sensitivity regression)' {
+        # Mirrors review-verify AC-VF-RR18: review-run's Get-VerdictFromResultMd must
+        # reject "## verdict" (lowercase) so it does not silently extract a verdict line
+        # from a result.md whose heading would be rejected by review-verify -RequireResult
+        # downstream. With case-sensitive matching the function returns '' and review-run
+        # reports "Could not parse verdict".
+        $project = script:New-RunCase -CaseName 'rr12'
+        $taskId  = 'rr12-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr12-lower' -Mode 'verdict-lowercase-heading'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'Could not parse verdict'
+
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
     }
 }

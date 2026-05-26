@@ -34,7 +34,7 @@ $headingPositions = @{}
 for ($i = 0; $i -lt $lines.Count; $i++) {
     $trimmed = $lines[$i].TrimEnd()
     foreach ($h in $requiredHeadings) {
-        if ($trimmed -eq $h) {
+        if ($trimmed -ceq $h) {
             if ($headingPositions.ContainsKey($h)) {
                 Write-Host ('review-input-verify: FAIL duplicate heading: {0}' -f $h)
                 exit 1

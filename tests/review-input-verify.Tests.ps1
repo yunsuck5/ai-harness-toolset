@@ -190,6 +190,20 @@ Describe 'review-input-verify' {
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'FAIL unreplaced template token: \{\{REAL\}\}'
     }
+
+    It 'AC-IV10: fails when a required input H2 appears only in wrong case (H2 case-sensitivity regression)' {
+        $caseRoot = script:New-InputVerifyCase -CaseName 'iv10'
+        $content = script:Build-FilledInput
+        # Lower-case the ## Context heading. With case-sensitive matching the verifier
+        # must see "## Context" as missing even though "## context" is on the line.
+        $content = $content.Replace('## Context', '## context')
+        $inputPath = Join-Path $caseRoot 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content $content
+
+        $r = script:Invoke-InputVerify -InputPath $inputPath
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL missing heading: ## Context'
+    }
 }
 
 Describe 'templates/review-input.md output contract regression' {

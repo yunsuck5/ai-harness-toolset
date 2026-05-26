@@ -120,7 +120,7 @@ function Get-VerdictFromResultMd {
 
     $headingPositions = @()
     for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i].TrimEnd() -eq '## Verdict') {
+        if ($lines[$i].TrimEnd() -ceq '## Verdict') {
             $headingPositions += $i
         }
     }
