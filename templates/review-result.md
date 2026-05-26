@@ -30,11 +30,11 @@ reviewer 가 발견한 사항을 한 항목씩 나열한다. 본문이 길어도
 
 ## Review limitations
 
-(recommended) reviewer 가 직접 검증하지 못한 영역을 명시한다. 예: `--sandbox read-only` 안에서 mutating 명령 (Pester / verify-ps1 / migration script) 실행 불가, operator 가 작성한 evidence file 본문의 시점적 사실성을 reviewer 가 cross-execute 하지 못함. 없으면 `none`.
+(recommended) reviewer 가 직접 검증하지 못한 영역을 명시한다. 예: `--sandbox read-only` 안에서 mutating 명령 (Pester / verify-ps1 / migration script) 실행 불가, operator 가 작성한 evidence file 본문의 시점적 사실성을 reviewer 가 cross-execute 하지 못함, operator prose 안의 **mechanical behavior claim** (특정 regex / parser / verifier / script 가 특정 input 에 대해 어떻게 동작하는지에 대한 claim) 에 대해 **minimal reproducible check** (literal string 에 대한 tiny regex match 등 narrow 한 점검; full test suite 가 아님) 이 sandbox 환경 제약으로 불가능. 없으면 `none`.
 
 ## Assumptions relied on
 
-(recommended) reviewer 가 verdict 도출 시 신뢰한 전제를 명시한다. 예: operator prose 의 validation result claim 의 truthfulness, R1 `## Validation evidence` 본문의 정직 작성, 명시되지 않은 source 의 stale 여부. 전제가 깨지면 verdict 도 stale. 없으면 `none`.
+(recommended) reviewer 가 verdict 도출 시 신뢰한 전제를 명시한다. 예: operator prose 의 validation result claim 의 truthfulness, R1 `## Validation evidence` 본문의 정직 작성, 명시되지 않은 source 의 stale 여부, reviewer 가 수행한 mechanical behavior claim 의 minimal reproducible check 결과 (positive check 결과도 동일 surface 가능). 전제가 깨지면 verdict 도 stale. 없으면 `none`.
 
 ## Risks
 

@@ -89,6 +89,10 @@ required shape:
 
 `result.md` 의 shape 기준은 `templates/review-result.md` 다.
 
+### 3b. Mechanical behavior claim verification (P4)
+
+reviewer 의 verdict 가 input.md (또는 review 대상 source) 안의 **mechanical behavior claim** — 특정 regex, parser, verifier, 또는 script 가 특정 input 에 대해 실제로 어떻게 동작하는지에 대한 claim — 에 의존할 때, reviewer 는 그 claim 을 prose 만으로 수용하지 않는다. read-only sandbox 안에서 가능한 한 그 claim 의 **minimal reproducible check** 을 수행한다 — literal string 에 대한 tiny regex match, small parser input, small verifier fixture, any available scripting environment 에서의 isolated string / character inspection, one-line shell exit-code check 등. 본 check 는 의도적으로 narrow 다 — 수 초의 점검이지 full test suite 실행이 아니다. check 가 sandbox 환경 제약으로 불가능한 경우 (가용 scripting environment 부재, mutation 없이 artifact 를 exercise 할 수 없음 등) reviewer 는 미검증 mechanical claim 을 `## Review limitations` 에 기록한다 — prose 를 증명으로 취급하지 않는다. check 가 수행된 경우 그 결과는 `## Notes` 또는 `## Assumptions relied on` 에 surface 한다.
+
 ## 3a. Markdown validation evidence convention (R1)
 
 input.md 가 validation execution 결과 (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean 등) 를 본문 prose 로 기록할 때, 그 prose 만으로는 reviewer 가 truthfulness 를 직접 확인할 수단이 좁다. R1 convention 은 그 claim 의 근거가 되는 evidence 를 별도 Markdown file 로 두고, input.md 가 그 file path 를 referencing 하여 reviewer 가 read-only sandbox 안에서 직접 본문을 inspect 할 수 있게 한다.
@@ -168,6 +172,7 @@ operator-role AI 는 다음을 담당한다.
 4. `## Findings` / `## Risks` / `## Notes` 본문을 읽고 finding 의 의미와 정당성, 수정 필요 scope, re-review 필요 여부를 판단.
 5. 필요한 수정이 사용자가 승인한 scope 안이면 수정 후 같은 `<review-task-id>` 아래에 새 `pass-NN` 를 만들어 re-review.
 6. 사용자에게 review task path, 최종 pass, verdict, corrective loop count, changed files / validation / risk / next decision 을 보고.
+7. operator 가 input.md (또는 본 AI 가 commit 하려는 template / snippet / contract) 안에 **mechanical behavior claim** — 특정 regex / parser / verifier / script 가 특정 input 에 대해 실제로 어떻게 동작하는지에 대한 claim — 을 적기 전에, reasoning 만으로 결정하지 않고 **minimal reproducible check** 으로 검증한다 (literal string 에 대한 tiny regex match, small parser input, small verifier fixture, any available scripting environment 에서의 isolated string / character inspection, one-line shell exit-code check 등). 본 check 는 의도적으로 narrow 다 — full test suite 실행이 아니라 prose 가 잘못된 mechanics 를 단언할 확률을 줄이는 좁은 점검이다. claim 이 현재 환경에서 검증 불가능하면 operator 는 `## Known concerns` 에 unverified 로 disclose 한다. 본 의무 (O1) 는 본 contract 의 §3b reviewer-side check (P4) 와 짝을 이룬다.
 
 AI 는 verdict 의 의미 정의를 바꾸지 않는다. `yes` / `no` / `yes with risk` 는 본 contract 의 vocabulary 다.
 
