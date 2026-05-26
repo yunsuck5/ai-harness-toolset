@@ -459,6 +459,24 @@ Describe 'review-run canonical pass directory' {
         $stdin | Should -Match 'restore-offer'
         $stdin | Should -Match 'Do NOT ask the user any question'
         $stdin | Should -Match '## Verdict'
+        # RV-B-05 V2 four required disclosure H2s must be named in the preamble so
+        # the reviewer produces them; without this the post-Codex review-verify
+        # -RequireResult rejects any result.md missing one.
+        $stdin | Should -Match '## Blocking findings'
+        $stdin | Should -Match '## Non-blocking concerns'
+        $stdin | Should -Match '## Review limitations'
+        $stdin | Should -Match '## Assumptions relied on'
+        # Each V2 H2 must appear inside the preamble (before the closing BEGIN REVIEW
+        # INPUT delimiter line), not only as a side-effect of being mentioned somewhere
+        # in the input.md. The delimiter line is anchored with the leading "=====" so it
+        # does not collide with the descriptive sentence "...the BEGIN REVIEW INPUT
+        # marker below..." earlier in the preamble.
+        $beginMarker = $stdin.IndexOf('===== BEGIN REVIEW INPUT')
+        $beginMarker | Should -BeGreaterThan 0
+        ($stdin.IndexOf('## Blocking findings'))     | Should -BeLessThan $beginMarker
+        ($stdin.IndexOf('## Non-blocking concerns')) | Should -BeLessThan $beginMarker
+        ($stdin.IndexOf('## Review limitations'))    | Should -BeLessThan $beginMarker
+        ($stdin.IndexOf('## Assumptions relied on')) | Should -BeLessThan $beginMarker
         # The original input.md content must still follow the preamble marker.
         $stdin | Should -Match 'BEGIN REVIEW INPUT'
         $stdin | Should -Match 'pester context line\.'
