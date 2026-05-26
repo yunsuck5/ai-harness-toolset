@@ -154,6 +154,42 @@ Describe 'review-input-verify' {
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'FAIL placeholder remains in ## Final verdict'
     }
+
+    It 'AC-IV7: passes when backslash-escaped \{\{TOKEN\}\} is cited honestly (V1 convention c)' {
+        $caseRoot = script:New-InputVerifyCase -CaseName 'iv7'
+        $content = script:Build-FilledInput
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Cite: \{\{TOKEN\}\}")
+        $inputPath = Join-Path $caseRoot 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content $content
+
+        $r = script:Invoke-InputVerify -InputPath $inputPath
+        $r.ExitCode | Should -Be 0
+        $r.Output | Should -Match 'review-input-verify: PASS'
+    }
+
+    It 'AC-IV8: fails when bare {{TOKEN}} remains (V1 bare-form regression)' {
+        $caseRoot = script:New-InputVerifyCase -CaseName 'iv8'
+        $content = script:Build-FilledInput
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Custom: {{TOKEN}}")
+        $inputPath = Join-Path $caseRoot 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content $content
+
+        $r = script:Invoke-InputVerify -InputPath $inputPath
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL unreplaced template token'
+    }
+
+    It 'AC-IV9: fails on the bare placeholder when an escaped citation is also present (V1 mixed-form regression)' {
+        $caseRoot = script:New-InputVerifyCase -CaseName 'iv9'
+        $content = script:Build-FilledInput
+        $content = $content.Replace('- Reasoning effort: medium', "- Reasoning effort: medium`n- Cited: \{\{IDENT\}\}`n- Real: {{REAL}}")
+        $inputPath = Join-Path $caseRoot 'input.md'
+        script:Write-Utf8NoBomFile -Path $inputPath -Content $content
+
+        $r = script:Invoke-InputVerify -InputPath $inputPath
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL unreplaced template token: \{\{REAL\}\}'
+    }
 }
 
 Describe 'templates/review-input.md output contract regression' {
