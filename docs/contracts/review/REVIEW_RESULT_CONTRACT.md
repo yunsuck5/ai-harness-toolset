@@ -45,7 +45,8 @@ input.md 안에는 위 5 개의 required heading 외에 다음 informational sec
 
 - `## Stage` — design | implementation | test | review | release.
 - `## Purpose` — 한 줄 의도.
-- `## Target files` — repo-relative path 의 bullet list. forward slash. reviewer 가 읽어야 할 코어 파일 집합.
+- `## Target files` — repo-relative path 의 bullet list. forward slash. reviewer 가 읽어야 할 코어 파일 집합. source-managed file 만 담는 자리이며 `log/` 하위 runtime artifact 는 적지 않는다.
+- `## Validation evidence` — operator 가 validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean 등) 의 근거 evidence Markdown file path 를 명시할 자리. 의미와 boundary 는 §3a (R1 Markdown evidence convention) 가 source-of-truth.
 
 `{{TOKEN}}` 형태의 unfilled template token, 또는 forbidden placeholder phrase (`Replace this placeholder`, `(Provide context here.)`, `(Provide review questions here.)`) 가 본문에 남아 있으면 `scripts/review-input-verify.ps1` 가 거부한다.
 
@@ -80,6 +81,35 @@ required shape:
 - `## Notes` — 자유 형식 참고.
 
 `result.md` 의 shape 기준은 `templates/review-result.md` 다.
+
+## 3a. Markdown validation evidence convention (R1)
+
+input.md 가 validation execution 결과 (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean 등) 를 본문 prose 로 기록할 때, 그 prose 만으로는 reviewer 가 truthfulness 를 직접 확인할 수단이 좁다. R1 convention 은 그 claim 의 근거가 되는 evidence 를 별도 Markdown file 로 두고, input.md 가 그 file path 를 referencing 하여 reviewer 가 read-only sandbox 안에서 직접 본문을 inspect 할 수 있게 한다.
+
+evidence file 의 자리와 본문 shape:
+
+- evidence path 는 `<ProjectRoot>/log/evidence/<scope>/<case>/validation-evidence.md` 또는 `log/evidence/` 하위의 동등 Markdown path (`.md` 한 파일) 다.
+- evidence file 의 본문 shape 의 source-of-truth 는 `docs/contracts/evidence/EVIDENCE_CONTRACT.md` 다. 본 contract 는 path referencing 의 의미만 정의한다.
+- R1 convention 의 `## Validation evidence` referencing 대상은 **single Markdown bundle 한 form 으로 한정** 한다 (path 형식: `validation-evidence.md` 또는 case directory 안의 동등 `.md`). EVIDENCE_CONTRACT.md 의 5-file recipe (`command.txt` / `exit-code.txt` / `stdout.txt` / `stderr.txt` / `notes.md`) 는 evidence 의 일반 form 으로 별도 보존되며, **R1 convention 의 path referencing target 은 아니다**. 5-file form 의 case directory 또는 그 안의 개별 file 이 reviewer inspection 에 필요하면 `## Required inspection paths` 에 일반 inspection path 로 명시한다 — 이는 R1 의 Markdown evidence convention 의 일부가 아니다.
+
+input.md 의 referencing 자리:
+
+- `## Validation evidence` informational section (§2 참조) 에 evidence path 를 적는다. reviewer 가 inspect 해야 하면 `## Required inspection paths` 에도 동일 path 를 추가로 명시한다.
+- `## Target files` 는 source-managed file 만 담는 자리이므로 evidence path 를 적지 않는다.
+
+Markdown evidence 의 의미적 boundary:
+
+- evidence 는 **reviewer-readable runtime supporting material** 이다. reviewer 는 input.md 가 가리킨 evidence file 의 본문을 read 하여 prose-only claim 의 근거를 확인할 수 있다.
+- evidence 는 **command re-execution 이 아니다.** Codex reviewer 는 `--sandbox read-only` 안에서 evidence file 의 본문은 read 할 수 있으나, 그 본문이 시점 t 에 그 command 가 실제로 그렇게 실행되었음을 deterministic 하게 보장하지는 않는다. evidence 는 operator 가 정직히 작성한 file 이며 그 정직성은 운영자 책임이다.
+- evidence 는 **deterministic truth oracle 이 아니다.** evidence 의 존재만으로 verdict 가 자동 정당화되지 않는다.
+- evidence 는 **freshness binding 이 아니다.** evidence file 의 mtime / 본문 timestamp 와 reviewed source 의 시점 일치를 본 contract 가 자동 검증하지 않는다. staleness 판단은 operator 와 사용자 책임이며, 본 toolset 의 script gate 는 이를 enforcement 하지 않는다.
+- evidence 는 **source-of-truth 로 승격되지 않는다.** evidence 는 `log/` 하위 runtime artifact 이며 commit / push 대상이 아니다. canonical review record (input.md + result.md) 의 sidecar 도 아니다 (§1 의 pass-dir sidecar 금지 그대로 유지).
+
+R1 first batch 의 scope 와 boundary:
+
+- evidence file 의 작성 / referencing 은 operator 의 자발적 convention 이다. `scripts/review-input-verify.ps1` 가 본 informational section 의 존재 / 형식을 lint 하지 않는다 (R1 first batch 의 design choice).
+- evidence path referencing 은 **conditional** 이다. validation execution claim 이 있는 round 에서 권장된다. claim 자체가 부적용인 round (예: pure design review) 에서는 `## Validation evidence` 본문을 짧은 명시 (예: "N/A — no validation execution claims in this round.") 로 둔다.
+- evidence-section 의 required vs optional 강제, sub-shape lint, evidence freshness / hash / mtime binding, deterministic validation runner, automatic validation execution 은 본 R1 batch 의 scope 밖이며 별도 Review input governance 후속 작업에서 결정한다 (§10 참조).
 
 ## 4. Script responsibility (deterministic gate only)
 
@@ -126,7 +156,7 @@ script 가 하지 않는 일:
 operator-role AI 는 다음을 담당한다.
 
 1. 사용자의 자연어 의도와 승인 boundary 에서 review scope 를 잡고, 그 작업에 사용할 `<review-task-id>` 를 결정한다 (한 `/goal` 작업 또는 한 review gate 단위).
-2. `templates/review-input.md` 기준으로 `log/review/<review-task-id>/pass-NN/input.md` 본문을 직접 작성한다. target files / context / required inspection paths / review questions / constraints / final verdict instruction 을 모두 input.md 한 파일 안에 담는다. 첫 attempt 는 `pass-01`, 이후 corrective loop attempt 는 `pass-02`, `pass-03` ... 으로 증가한다.
+2. `templates/review-input.md` 기준으로 `log/review/<review-task-id>/pass-NN/input.md` 본문을 직접 작성한다. target files / context / required inspection paths / review questions / constraints / final verdict instruction 을 모두 input.md 한 파일 안에 담는다. 첫 attempt 는 `pass-01`, 이후 corrective loop attempt 는 `pass-02`, `pass-03` ... 으로 증가한다. validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean) 이 있는 round 에서는 그 근거 Markdown evidence (§3a) 의 path 를 `## Validation evidence` informational section 에 명시하여 reviewer 가 직접 read-only inspect 할 수 있도록 한다. claim 자체가 부적용인 round 에서는 같은 section 본문을 짧은 명시 ("N/A — no validation execution claims in this round." 같은 한 줄) 로 둔다.
 3. `result.md` 의 `## Verdict` 다음 첫 줄을 읽어 verdict 값을 확정.
 4. `## Findings` / `## Risks` / `## Notes` 본문을 읽고 finding 의 의미와 정당성, 수정 필요 scope, re-review 필요 여부를 판단.
 5. 필요한 수정이 사용자가 승인한 scope 안이면 수정 후 같은 `<review-task-id>` 아래에 새 `pass-NN` 를 만들어 re-review.
@@ -181,5 +211,8 @@ failed / incomplete pass (예: Codex 실패 또는 verdict parsing 실패로 `re
 - target project 의 `CLAUDE.md` / `AGENTS.md` / `.gitignore` / global filesystem 자동 변경.
 - daemon, watcher, scheduler, CI integration.
 - evidence / chatlog / brief subsystem 과의 cross-tree 보장.
+- `## Validation evidence` informational section 의 required 강제, sub-shape lint, conditional 강제 자동화. R1 first batch 는 convention-by-docs 만 도입하고 script enforcement 는 Review input governance 후속 작업으로 분리된다.
+- evidence file 의 freshness / hash / mtime binding, source-state staleness 의 자동 검증.
+- deterministic validation runner, automatic validation execution, JSON schema for evidence. 본 contract 는 evidence path referencing convention (§3a, Markdown-only) 만을 담는다.
 
 removed legacy artifact design 의 historical reason 은 `docs/archive/backlog/review.md` 및 `docs/archive/backlog/operations.md` 에 격리되어 있다. 그 항목은 operator path 가 아니며 normal workflow 의 일부도 아니다.

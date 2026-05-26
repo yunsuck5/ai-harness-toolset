@@ -56,13 +56,45 @@
 
 위 이름은 권장이다. 이름이 다르면 안 된다는 의미가 아니라, 같은 의도의 파일이라면 이 이름을 쓰라는 합의다.
 
+## Single Markdown evidence bundle (R1 convention)
+
+위 5-file recipe (`command.txt` / `exit-code.txt` / `stdout.txt` / `stderr.txt` / `notes.md`) 외에 본 contract 는 **single Markdown evidence bundle** 도 accepted form 으로 인정한다. R1 Markdown evidence convention (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3a) 의 referencing 대상이다.
+
+- file path: `<ProjectRoot>/log/evidence/<scope>/<case>/validation-evidence.md` (또는 case directory 안의 동등 `.md` filename).
+- 본문 구성: command / exit-code / stdout / stderr / notes 항목을 한 Markdown file 안의 명확한 heading section 으로 누적한다. 별도 file 로 분리하지 않는다.
+- 권장 본문 skeleton:
+
+  ```markdown
+  # Validation evidence — <scope>/<case>
+
+  ## Command
+  <command line; multi-line 허용>
+
+  ## Exit code
+  <integer>
+
+  ## Stdout
+  <captured stdout; fenced code block 권장>
+
+  ## Stderr
+  <captured stderr; stderr 가 비었어도 빈 section 으로 남긴다>
+
+  ## Notes
+  <free-form 해석 / 재현 절차 / environment fingerprint>
+  ```
+
+- 5-file recipe 와 single-Markdown bundle 은 **양립**한다. 같은 case 안에서 둘 중 한 형식만 두어도 되고, 두 형식이 공존해도 본 contract 의 위반 아니다. 운영자 / 사용자가 case 단위로 형식을 선택한다.
+- 단, **R1 Markdown evidence convention** (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3a) 의 `## Validation evidence` referencing 대상은 **single Markdown bundle 한 form 으로 한정** 된다 — 5-file form 은 본 contract 의 일반 evidence 로 보존되지만 R1 convention 의 path referencing target 은 아니다. 5-file form 의 case directory 또는 그 안의 개별 file 이 reviewer inspection 에 필요하면 `input.md` 의 `## Required inspection paths` 에 일반 inspection path 로 적는다.
+- single-Markdown bundle 의 본문은 `input.md` 가 referencing 할 수 있는 reviewer-readable supporting material 이다. 그 referencing 의 의미와 boundary 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3a 가 source-of-truth.
+- 본 form 도 manual convention first 다. wrapper / runner / schema validator 를 추가하지 않는다. 본문 정직성은 운영자 책임이며 본 contract 의 script gate 는 이를 enforcement 하지 않는다.
+
 ## MVP 규칙
 
 - 모든 파일을 필수로 강제하지 않는다.
 - `command.txt`와 `exit-code.txt`는 recommended로 둔다.
 - `stdout.txt`, `stderr.txt`, `notes.md`, `files/`는 필요할 때만 둔다.
 - evidence는 review subsystem의 품질 게이트가 아니다.
-- review packet freshness 판단은 review subsystem이 담당한다 (`scripts/review-prepare.ps1`, `scripts/review-verify.ps1`).
+- review packet 의 shape gate (heading 존재, placeholder / token 잔존, `## Verdict` shape) 는 `scripts/review-prepare.ps1` / `scripts/review-input-verify.ps1` / `scripts/review-verify.ps1` 의 deterministic 책임이다. evidence file 의 freshness / 본문 사실성 / staleness 판단은 본 contract 와 review subsystem 의 script gate 가 enforcement 하지 않으며 operator 와 사용자 책임이다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3a 참조).
 - evidence는 실행 사실, command output, 재현 단서, file snapshot을 보관하는 보조 기록이다.
 - source snapshot에는 `log/`를 포함하지 않는다.
 - `log/evidence/`는 gitignored runtime artifact로 유지한다 (`.gitignore`의 `log/` 규칙).
@@ -139,10 +171,12 @@ review subsystem은 별도 경로를 사용한다:
 - canonical review record는 `<ProjectRoot>/log/review/<review-task-id>/pass-NN/{input.md, result.md}` 두 단계 layout 에 생성된다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 - review record 의 shape 검증, `## Verdict` 형식, `-RequireResult` binding 등은 `scripts/review-prepare.ps1` / `scripts/review-run.ps1` / `scripts/review-verify.ps1` / `scripts/review-input-verify.ps1` 가 담당한다.
 
-evidence는 review subsystem의 input이 아니며, output도 아니다. 두 트리는 같은 `log/` 아래에 있지만 책임이 다르다:
+evidence는 canonical review record 의 input 도 output 도 아니다. canonical review record (`<ProjectRoot>/log/review/<review-task-id>/pass-NN/{input.md, result.md}`) 의 sidecar 가 evidence file 안에 들어가지 않고, evidence file 본문이 canonical record 의 일부도 아니다. 다만 `input.md` 본문이 evidence file 의 path 를 referencing 하여 reviewer 가 그 본문을 read-only 로 inspect 할 수 있다 — 이 referencing 은 R1 Markdown evidence convention 의 일부이며 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3a 가 의미 source-of-truth 다.
 
-- `log/review/` — review subsystem이 생성하고 검증하는 packet.
-- `log/evidence/` — 사람이 또는 자유형 capture가 남기는 보조 기록.
+두 트리는 같은 `log/` 아래에 있지만 책임이 다르다:
+
+- `log/review/` — review subsystem이 생성하고 검증하는 canonical record.
+- `log/evidence/` — 사람이 또는 자유형 capture가 남기는 보조 기록. `input.md` 가 path 로 referencing 할 수 있는 reviewer-readable supporting material.
 
 ## source vs runtime 경계
 

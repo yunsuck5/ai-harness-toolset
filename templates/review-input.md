@@ -6,6 +6,8 @@
 
 본 template 의 `{{AI_TO_FILL_*}}` placeholder 는 모두 AI 가 실제 내용으로 교체해야 한다. unfilled placeholder 가 남아 있으면 `scripts/review-input-verify.ps1` 의 `\{\{[A-Za-z_][A-Za-z0-9_]*\}\}` regex 가 거부한다.
 
+informational sections (`## Stage` / `## Purpose` / `## Target files` / `## Validation evidence`) 는 `scripts/review-input-verify.ps1` 의 strict shape gate 대상이 아니지만 reviewer 가 본문을 읽는다. validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean) 이 있는 round 에서는 `## Validation evidence` 본문에 그 근거 Markdown evidence 의 path (예: `log/evidence/<scope>/<case>/validation-evidence.md`) 를 적어 reviewer 가 read-only inspect 할 수 있도록 한다. claim 자체가 부적용인 round 에서는 `N/A — no validation execution claims in this round.` 같은 짧은 명시를 본문에 둔다. 의미와 boundary 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3a 가 source-of-truth.
+
 ## Stage
 
 {{AI_TO_FILL_STAGE}}
@@ -17,6 +19,10 @@
 ## Target files
 
 {{AI_TO_FILL_TARGET_FILES}}
+
+## Validation evidence
+
+{{AI_TO_FILL_VALIDATION_EVIDENCE}}
 
 ## Context
 
