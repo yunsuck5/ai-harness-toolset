@@ -82,6 +82,22 @@ BeforeAll {
         $body += ''
         $body += 'No blocking findings.'
         $body += ''
+        $body += '## Blocking findings'
+        $body += ''
+        $body += 'none'
+        $body += ''
+        $body += '## Non-blocking concerns'
+        $body += ''
+        $body += 'none'
+        $body += ''
+        $body += '## Review limitations'
+        $body += ''
+        $body += 'none'
+        $body += ''
+        $body += '## Assumptions relied on'
+        $body += ''
+        $body += 'none'
+        $body += ''
         return ($body -join "`n")
     }
 
@@ -306,5 +322,78 @@ Describe 'review-verify -RequireResult mode (canonical)' {
         $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
         $r.ExitCode | Should -Be 0 -Because $r.Output
         $r.Output | Should -Match 'review-verify: PASS'
+    }
+
+    It 'AC-VF-RR11: passes and surfaces the disclosure-sections-present status line when all 4 required H2s are present (V2 baseline)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-ds-baseline' -WithResult -Verdict 'yes'
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'disclosure sections present'
+        $r.Output | Should -Match 'review-verify: PASS'
+    }
+
+    It 'AC-VF-RR12: fails when ## Blocking findings is missing (V2 regression)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-ds-no-blocking' -WithResult -Verdict 'yes'
+        $body = (script:Build-ResultMd -Verdict 'yes') -replace "(?ms)^## Blocking findings\r?\n\r?\nnone\r?\n(\r?\n)?", ''
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content $body
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'disclosure sections invalid'
+        $r.Output | Should -Match 'missing required disclosure heading: ## Blocking findings'
+    }
+
+    It 'AC-VF-RR13: fails when ## Non-blocking concerns is missing (V2 regression)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-ds-no-nonblocking' -WithResult -Verdict 'yes'
+        $body = (script:Build-ResultMd -Verdict 'yes') -replace "(?ms)^## Non-blocking concerns\r?\n\r?\nnone\r?\n(\r?\n)?", ''
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content $body
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'missing required disclosure heading: ## Non-blocking concerns'
+    }
+
+    It 'AC-VF-RR14: fails when ## Review limitations is missing (V2 regression)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-ds-no-limitations' -WithResult -Verdict 'yes'
+        $body = (script:Build-ResultMd -Verdict 'yes') -replace "(?ms)^## Review limitations\r?\n\r?\nnone\r?\n(\r?\n)?", ''
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content $body
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'missing required disclosure heading: ## Review limitations'
+    }
+
+    It 'AC-VF-RR15: fails when ## Assumptions relied on is missing (V2 regression)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-ds-no-assumptions' -WithResult -Verdict 'yes'
+        $body = (script:Build-ResultMd -Verdict 'yes') -replace "(?ms)^## Assumptions relied on\r?\n\r?\nnone\r?\n(\r?\n)?", ''
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content $body
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'missing required disclosure heading: ## Assumptions relied on'
+    }
+
+    It 'AC-VF-RR16: fails when one of the 4 required H2s appears twice (V2 duplicate regression)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-ds-duplicate' -WithResult -Verdict 'yes'
+        $body = (script:Build-ResultMd -Verdict 'yes') + "`n## Review limitations`n`nduplicate line.`n"
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content $body
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'duplicate required disclosure heading: ## Review limitations'
+    }
+
+    It 'AC-VF-RR17: fails when a required disclosure H2 appears only in wrong case (V2 case-sensitivity regression)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-ds-wrongcase' -WithResult -Verdict 'yes'
+        # Replace the exact-cased heading with a lowercase variant. The verifier must reject this as missing.
+        $body = (script:Build-ResultMd -Verdict 'yes') -replace '(?m)^## Blocking findings$', '## blocking findings'
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content $body
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'missing required disclosure heading: ## Blocking findings'
+    }
+
+    It 'AC-VF-RR18: fails when ## Verdict heading appears only in wrong case (verdict-heading case-sensitivity regression)' {
+        $packet = script:Initialize-CanonicalPass -CaseName 'rr-verdict-wrongcase' -WithResult -Verdict 'yes'
+        $body = (script:Build-ResultMd -Verdict 'yes') -replace '(?m)^## Verdict$', '## verdict'
+        script:Write-Utf8NoBomFile -Path $packet.ResultPath -Content $body
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'no "## Verdict" heading found'
     }
 }

@@ -112,6 +112,8 @@ When you must honestly cite a template placeholder token (e.g., the `AI_TO_FILL_
 
 Before stating a **mechanical behavior claim** in `input.md` — a claim about how a specific regex, parser, verifier, or script actually behaves on specific input — verify it with a **minimal reproducible check** rather than relying on reasoning alone. A minimal reproducible check is narrow: a tiny regex match against a literal string, a small parser input, a small verifier fixture, an isolated string / character inspection in any available scripting environment, a one-line shell exit-code check. It is not the full test suite — it is a check just narrow enough to reduce the chance that prose-stated mechanics are wrong. The same discipline applies when about to commit such a claim into any template, snippet, or contract surface; reasoning-only mechanical claims have repeatedly led to corrective loops in this toolset, and the check is cheap while the corrective is expensive. If the claim cannot be verified in the current environment, disclose it as unverified under `## Known concerns` so the reviewer can decide how to treat it.
 
+Tell the reviewer in `input.md` (e.g., as a constraint or in the `## Final verdict` instruction) that `result.md` must contain these four H2 headings, each exactly once: `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`. If a section has no substance, the reviewer should still emit the heading with `none` as the body. `scripts/review-verify.ps1 -RequireResult` rejects the pass when any of the four is missing or duplicated (mechanical presence/count check; no sub-shape lint). Without this instruction in `input.md`, the reviewer may omit one of the sections and force a corrective pass.
+
 If you ran a Claude self-review (intent 2), summarize your own findings inside `## Context` and put your unresolved doubts into `## Review questions` so Codex's pass builds on your reading.
 
 ### 5. Run the reviewer exactly once
@@ -129,7 +131,7 @@ If `review-run.ps1` exits non-zero, stop. Report the exit code and the last stat
 
 ### 6. Verify the canonical artifacts and confirm the verdict
 
-After step 5 exits cleanly, invoke `<ToolRoot>/scripts/review-verify.ps1 -ReviewTaskId <id> -Pass <pass-NN> -RequireResult` once. This is the post-hoc canonical-artifact check; it does **not** invoke Codex. It re-validates `input.md` shape and the `## Verdict` shape inside `result.md`. If it exits non-zero, stop and report the exit code and the last status line. Do not edit files in the pass directory to make it pass.
+After step 5 exits cleanly, invoke `<ToolRoot>/scripts/review-verify.ps1 -ReviewTaskId <id> -Pass <pass-NN> -RequireResult` once. This is the post-hoc canonical-artifact check; it does **not** invoke Codex. It re-validates `input.md` shape, the `## Verdict` shape inside `result.md`, and the presence (each exactly once) of the four required disclosure H2 headings in `result.md`: `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`. If it exits non-zero, stop and report the exit code and the last status line. Do not edit files in the pass directory to make it pass — allocate a new `pass-NN` under the same `<review-task-id>` with a corrected `input.md` (typically: re-emphasize the four required H2s to the reviewer).
 
 After `review-verify.ps1` exits cleanly, read `log/review/<review-task-id>/pass-NN/result.md`:
 

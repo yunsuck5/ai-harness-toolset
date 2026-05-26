@@ -34,7 +34,7 @@ function Test-VerdictShape {
 
     $headingPositions = @()
     for ($i = 0; $i -lt $lines.Count; $i++) {
-        if ($lines[$i].TrimEnd() -eq '## Verdict') {
+        if ($lines[$i].TrimEnd() -ceq '## Verdict') {
             $headingPositions += $i
         }
     }
@@ -59,6 +59,42 @@ function Test-VerdictShape {
         return [pscustomobject]@{ Ok = $false; Reason = ('first non-empty line after "## Verdict" is not one of yes / no / yes with risk: "{0}"' -f $candidate); Verdict = '' }
     }
     return [pscustomobject]@{ Ok = $false; Reason = 'no non-empty content after "## Verdict" heading'; Verdict = '' }
+}
+
+function Test-DisclosureSections {
+    param([string] $Path)
+
+    $text = Read-Utf8 -Path $Path
+    $lines = $text -split "`r?`n"
+
+    $required = @(
+        '## Blocking findings',
+        '## Non-blocking concerns',
+        '## Review limitations',
+        '## Assumptions relied on'
+    )
+
+    $counts = @{}
+    foreach ($h in $required) { $counts[$h] = 0 }
+    foreach ($line in $lines) {
+        $trimmed = $line.TrimEnd()
+        foreach ($h in $required) {
+            if ($trimmed -ceq $h) {
+                $counts[$h] = $counts[$h] + 1
+            }
+        }
+    }
+
+    foreach ($h in $required) {
+        if ($counts[$h] -eq 0) {
+            return [pscustomobject]@{ Ok = $false; Reason = ('missing required disclosure heading: {0}' -f $h) }
+        }
+        if ($counts[$h] -gt 1) {
+            return [pscustomobject]@{ Ok = $false; Reason = ('duplicate required disclosure heading: {0} (count={1})' -f $h, $counts[$h]) }
+        }
+    }
+
+    return [pscustomobject]@{ Ok = $true; Reason = '' }
 }
 
 try {
@@ -138,6 +174,12 @@ if ($RequireResult) {
         exit 1
     }
     Write-Host ('review-verify: result.md verdict shape valid (verdict={0})' -f $shape.Verdict)
+    $disc = Test-DisclosureSections -Path $resultPath
+    if (-not $disc.Ok) {
+        Write-Host ('review-verify: FAIL result.md disclosure sections invalid: {0}' -f $disc.Reason)
+        exit 1
+    }
+    Write-Host 'review-verify: result.md disclosure sections present (## Blocking findings / ## Non-blocking concerns / ## Review limitations / ## Assumptions relied on)'
 }
 else {
     if (Test-Path -LiteralPath $resultPath -PathType Leaf) {
