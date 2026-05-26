@@ -6,7 +6,13 @@
 
 본 template 의 `{{AI_TO_FILL_*}}` placeholder 는 모두 AI 가 실제 내용으로 교체해야 한다. unfilled placeholder 가 남아 있으면 `scripts/review-input-verify.ps1` 의 `\{\{[A-Za-z_][A-Za-z0-9_]*\}\}` regex 가 거부한다.
 
-informational sections (`## Stage` / `## Purpose` / `## Target files` / `## Validation evidence`) 는 `scripts/review-input-verify.ps1` 의 strict shape gate 대상이 아니지만 reviewer 가 본문을 읽는다. validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean) 이 있는 round 에서는 `## Validation evidence` 본문에 그 근거 Markdown evidence 의 path (예: `log/evidence/<scope>/<case>/validation-evidence.md`) 를 적어 reviewer 가 read-only inspect 할 수 있도록 한다. claim 자체가 부적용인 round 에서는 `N/A — no validation execution claims in this round.` 같은 짧은 명시를 본문에 둔다. 의미와 boundary 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3a 가 source-of-truth.
+informational sections (`## Stage` / `## Purpose` / `## Target files` / `## Validation evidence` / `## Known concerns`) 는 `scripts/review-input-verify.ps1` 의 strict shape gate 대상이 아니지만 reviewer 가 본문을 읽는다. validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean) 이 있는 round 에서는 `## Validation evidence` 본문에 그 근거 Markdown evidence 의 path (예: `log/evidence/<scope>/<case>/validation-evidence.md`) 를 적어 reviewer 가 read-only inspect 할 수 있도록 한다. claim 자체가 부적용인 round 에서는 `N/A — no validation execution claims in this round.` 같은 짧은 명시를 본문에 둔다. 본 evidence 는 reviewer-readable runtime supporting material 이며 command re-execution 또는 deterministic truth oracle 이 아니다 — freshness binding 도 아니고 source-of-truth 로 승격되지도 않는다.
+
+`## Known concerns` informational section 은 operator 가 review 호출 전에 이미 인지한 compromise / convention deviation / skipped alternative / baseline failure / validation limitation / operator assumption 을 reviewer 에게 사전 disclose 하는 자리다. recommended sub-categories: convention deviation, skipped alternatives, validation limitations, baseline failures, direct verification not performed, operator assumptions. operator 가 본 section 에 disclose 하지 않은 known concern 이 사후에 발견되면 그 verdict 는 stale-by-omission 으로 간주되어 commit/push 결정의 근거로 사용할 수 없으며 omitted concerns 가 disclosed 된 새 pass 의 re-review 가 필요하다. concerns 가 없는 round 에서는 본문을 `N/A — no known concerns disclosed.` 같은 짧은 명시로 둔다.
+
+`## Review questions` 의 본문 (AI 가 채울 questions) 은 **neutral phrasing** 으로 작성한다. confirmation-seeking (예: `Are exactly N X migrated?`) 보다 open-ended (예: `How many X were migrated, and is that the intended scope?`) 권장. 마지막 권장 question 으로 reviewer 에게 framing-tilt self-audit 을 요청한다 — 예: `Does the input above nudge the reviewer toward a particular verdict? If so, surface the tilt in ## Notes.` 이 question 은 informational 권장이며 강제 아님. reviewer 의 답은 verdict vocabulary 자체를 변경하지 않고 `## Notes` 에 surface 한다.
+
+본문에서 template placeholder token (예: `AI_TO_FILL_*` 형태) 을 정직히 인용해야 할 때는 review-input-verify 의 token regex `\{\{[A-Za-z_][A-Za-z0-9_]*\}\}` 의 false positive 를 회피하기 위해 다음 셋 중 하나의 operator convention 을 사용한다 — (a) brace-less identifier 만 인용 (예: `AI_TO_FILL_VALIDATION_EVIDENCE`), (b) wildcard form (예: `AI_TO_FILL_*` 같이 specific full name 비포함), (c) backslash-escaped literal form (예: `\{\{TOKEN\}\}`). 세 form 모두 mechanical-safe 다 — (a) 와 (b) 는 두-brace literal substring 자체가 input 에 없어 매칭 시도가 시작되지 않고, (c) 는 regex 가 첫 `\{\{` 매칭 후 identifier 다음에 literal `}}` 를 기대하는데 backslash 가 그 위치에 있어 매칭 실패 (regex 의 `[A-Za-z0-9_]*` 가 backslash 를 character class 밖이라 매칭 못 하고, 그 다음 `\}` literal 매칭도 backslash 와 `}` 의 mismatch 로 실패). 본 convention 은 operator 책임이며 script-side regex 는 본 first batch 에서 변경되지 않는다.
 
 ## Stage
 
@@ -23,6 +29,10 @@ informational sections (`## Stage` / `## Purpose` / `## Target files` / `## Vali
 ## Validation evidence
 
 {{AI_TO_FILL_VALIDATION_EVIDENCE}}
+
+## Known concerns
+
+{{AI_TO_FILL_KNOWN_CONCERNS}}
 
 ## Context
 

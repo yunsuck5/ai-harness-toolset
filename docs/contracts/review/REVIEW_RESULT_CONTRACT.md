@@ -47,6 +47,7 @@ input.md 안에는 위 5 개의 required heading 외에 다음 informational sec
 - `## Purpose` — 한 줄 의도.
 - `## Target files` — repo-relative path 의 bullet list. forward slash. reviewer 가 읽어야 할 코어 파일 집합. source-managed file 만 담는 자리이며 `log/` 하위 runtime artifact 는 적지 않는다.
 - `## Validation evidence` — operator 가 validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean 등) 의 근거 evidence Markdown file path 를 명시할 자리. 의미와 boundary 는 §3a (R1 Markdown evidence convention) 가 source-of-truth.
+- `## Known concerns` — operator 가 review 호출 전에 인지한 compromise / convention deviation / skipped alternative / baseline failure / validation limitation / operator assumption 을 reviewer 에게 사전 disclose 할 자리. recommended sub-categories: convention deviation, skipped alternatives, validation limitations, baseline failures, direct verification not performed, operator assumptions. operator 가 본 section 에 disclose 하지 않은 known concern 이 사후에 발견되면 §7 의 stale-by-omission 규칙이 발동한다.
 
 `{{TOKEN}}` 형태의 unfilled template token, 또는 forbidden placeholder phrase (`Replace this placeholder`, `(Provide context here.)`, `(Provide review questions here.)`) 가 본문에 남아 있으면 `scripts/review-input-verify.ps1` 가 거부한다.
 
@@ -77,8 +78,14 @@ required shape:
 추가로 자유롭게 둘 수 있는 section (의무 아님):
 
 - `## Findings` — 권장. 발견 사항을 항목별로 기록.
-- `## Risks` — `yes with risk` 가 verdict 일 때 권장.
+- `## Blocking findings` — recommended. blocking finding 으로 판단되는 항목들을 항목별로 기록 (§6 의 blocking finding 정의 참조). verdict `no` 면 1 개 이상 존재; verdict `yes` 또는 `yes with risk` 면 비어 있거나 `none`.
+- `## Non-blocking concerns` — recommended. blocking 은 아니지만 supervisor / 사용자 가 알아야 할 우려 사항을 항목별로 기록.
+- `## Review limitations` — recommended. reviewer 가 직접 검증하지 못한 영역 (예: read-only sandbox 안에서 mutating 명령 실행 불가, operator 가 작성한 evidence file 본문의 시점적 사실성을 reviewer 가 cross-execute 하지 못함) 을 명시.
+- `## Assumptions relied on` — recommended. reviewer 가 verdict 도출 시 신뢰한 전제 (예: operator prose 의 validation result claim 의 truthfulness, R1 evidence file 본문의 정직 작성). 전제가 깨지면 verdict 도 stale.
+- `## Risks` — `yes with risk` 가 verdict 일 때 권장. supervisor / 사용자 의 explicit acceptance 가 필요한 risk substance.
 - `## Notes` — 자유 형식 참고.
+
+위 4 개 권장 disclosure section (`## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`) 은 **recommended** 다. `scripts/review-input-verify.ps1` / `scripts/review-verify.ps1` 가 본 section 의 존재 / 형식을 parser-required H2 로 강제하지 않는다 (R1 first batch 와 동일한 docs/contracts/templates/snippets-first design choice 의 연장). 본 section 의 parser-required 강제 / sub-shape lint 는 별도 Review input governance 후속 batch 의 대상이며, 본 first batch 의 scope 밖이다.
 
 `result.md` 의 shape 기준은 `templates/review-result.md` 다.
 
@@ -156,7 +163,7 @@ script 가 하지 않는 일:
 operator-role AI 는 다음을 담당한다.
 
 1. 사용자의 자연어 의도와 승인 boundary 에서 review scope 를 잡고, 그 작업에 사용할 `<review-task-id>` 를 결정한다 (한 `/goal` 작업 또는 한 review gate 단위).
-2. `templates/review-input.md` 기준으로 `log/review/<review-task-id>/pass-NN/input.md` 본문을 직접 작성한다. target files / context / required inspection paths / review questions / constraints / final verdict instruction 을 모두 input.md 한 파일 안에 담는다. 첫 attempt 는 `pass-01`, 이후 corrective loop attempt 는 `pass-02`, `pass-03` ... 으로 증가한다. validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean) 이 있는 round 에서는 그 근거 Markdown evidence (§3a) 의 path 를 `## Validation evidence` informational section 에 명시하여 reviewer 가 직접 read-only inspect 할 수 있도록 한다. claim 자체가 부적용인 round 에서는 같은 section 본문을 짧은 명시 ("N/A — no validation execution claims in this round." 같은 한 줄) 로 둔다.
+2. `templates/review-input.md` 기준으로 `log/review/<review-task-id>/pass-NN/input.md` 본문을 직접 작성한다. target files / context / required inspection paths / review questions / constraints / final verdict instruction 을 모두 input.md 한 파일 안에 담는다. 첫 attempt 는 `pass-01`, 이후 corrective loop attempt 는 `pass-02`, `pass-03` ... 으로 증가한다. validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean) 이 있는 round 에서는 그 근거 Markdown evidence (§3a) 의 path 를 `## Validation evidence` informational section 에 명시하여 reviewer 가 직접 read-only inspect 할 수 있도록 한다. claim 자체가 부적용인 round 에서는 같은 section 본문을 짧은 명시 ("N/A — no validation execution claims in this round." 같은 한 줄) 로 둔다. review 호출 전에 operator 가 인지한 known compromise / convention deviation / skipped alternative / baseline failure / validation limitation / operator assumption 은 `## Known concerns` informational section 에 사전 disclose 한다 — 본 disclose 의 누락은 §7 의 stale-by-omission 규칙에 의해 verdict 의 commit-fitness 를 ex-post 무효화할 수 있다.
 3. `result.md` 의 `## Verdict` 다음 첫 줄을 읽어 verdict 값을 확정.
 4. `## Findings` / `## Risks` / `## Notes` 본문을 읽고 finding 의 의미와 정당성, 수정 필요 scope, re-review 필요 여부를 판단.
 5. 필요한 수정이 사용자가 승인한 scope 안이면 수정 후 같은 `<review-task-id>` 아래에 새 `pass-NN` 를 만들어 re-review.
@@ -168,11 +175,28 @@ AI 는 verdict 의 의미 정의를 바꾸지 않는다. `yes` / `no` / `yes wit
 
 다음 셋이 본 contract 의 vocabulary 다:
 
-- `yes` — 본 review scope 안에서 진행 가능.
-- `no` — 본 review scope 안에서 진행 불가.
-- `yes with risk` — 진행은 가능하나 명시된 risk 를 수반.
+- `yes` — **blocking finding 이 없다.** 본 review scope 안에서 진행 가능. commit / push 의 자동 승인 아니다.
+- `no` — **blocking finding 이 있다.** 본 review scope 안에서 corrective 가 필요하다.
+- `yes with risk` — **blocking finding 은 없으나 명시 risk 가 disclosure 되어야 하고, 그 risk substance 에 대한 supervisor / 사용자 의 explicit acceptance 가 commit / push 전에 필요하다.** `yes` 의 자동 equivalent 가 아니다 — 단순히 yes-with-risk 가 yes 와 같은 다음 단계로 흡수되지 않는다.
 
 verdict 는 review scope 안의 판단만을 담는다. commit / push / publish / merge / release / deployment / upload / adoption / config mutation 의 자동 승인이 아니다. 다음 단계는 사용자가 별도 명시 결정으로 처리한다.
+
+### Blocking finding 의 정의
+
+본 contract 에서 **blocking finding** 은 review scope 안에서 그 finding 을 해결하지 않고는 commit / push / publish / merge / release / adoption 의 다음 단계로 진행하면 안 되는 issue 다. 다음 항목들이 일반적으로 blocking 에 해당한다:
+
+- review scope 안의 명시적 요구 (allowed mutation scope / boundaries / contract wording) 위반.
+- review scope 안의 contract / template / snippet / script / test 의 정합성 깨짐 (예: assertion regression, contract self-conflict, wording 의 self-conflict).
+- review scope 안의 truthfulness 검증 가능 영역에서 발견된 misstatement.
+
+다음 항목들은 일반적으로 blocking 이 아닌 **non-blocking concern** 으로 분류되며 `yes` 또는 `yes with risk` verdict 에서 함께 disclosure 된다:
+
+- review scope 밖의 wording 보강 권고.
+- 후속 batch / 후속 governance 의 input 으로 surface 되어야 할 design 관찰.
+- reviewer 의 sandbox / capability 한계로 인한 미검증 영역의 명시 (이는 `## Review limitations` 에 surface).
+- operator prose 에 의존한 validation claim 의 truthfulness (이는 `## Assumptions relied on` 에 surface).
+
+blocking 과 non-blocking 의 경계는 review scope 와 finding 의 substance 가 함께 결정한다 — 같은 종류의 finding 이 다른 review scope 에서는 blocking 일 수도 non-blocking 일 수도 있다. reviewer 가 본 contract 의 가이드를 base 로 finding 마다 판단하여 `## Blocking findings` 또는 `## Non-blocking concerns` 중 적절한 section 에 기록한다.
 
 ## 7. Re-review on staleness
 
@@ -183,6 +207,12 @@ verdict 는 review scope 안의 판단만을 담는다. commit / push / publish 
 review 작업 자체가 바뀌면 (다른 `/goal` 또는 다른 review gate) 새 `<review-task-id>/` 를 사용한다 — 이전 task 의 pass 디렉터리를 재활용하지 않는다.
 
 stale 판단의 책임은 operator-role AI 와 사용자에게 있다. 본 contract 는 stale 자동 detection 을 script 책임으로 두지 않는다.
+
+### Stale by omission
+
+operator 가 review 호출 전에 알았던 compromise / convention deviation / skipped alternative / baseline failure / validation limitation / operator assumption 을 `input.md` 의 `## Known concerns` informational section (또는 동등 본문 위치) 에 disclose 하지 않은 경우, review 가 끝난 후라도 그 verdict 는 commit / push / merge / release / adoption 결정의 근거로 사용할 수 없다. operator 가 사후에 발견 / 명시 announce 한 시점부터 그 pass 는 **stale-by-omission** 으로 간주되며, 같은 `<review-task-id>/` 아래에 새 `pass-NN/` 로 omitted concerns 가 disclose 된 `input.md` 의 re-review 가 필요하다.
+
+본 stale-by-omission 의 mechanical 검증은 script 책임이 아니다 — script 는 operator 가 review 호출 전에 무엇을 알았는지 자동 추론할 수 없다. 본 규칙은 operator 의 정직성 invariant 와 supervisor / 사용자 의 판단에 의존한다. operator 가 review input 작성 시 known compromise / limitation 의 정직 disclosure 는 본 contract 의 §5 AI responsibility 의 implicit 의무이며, 그 의무 위반의 ex-post 발견은 verdict 의 commit-fitness 를 무효화한다.
 
 ## 8. Source repo vs target payload, runtime artifact 경계
 

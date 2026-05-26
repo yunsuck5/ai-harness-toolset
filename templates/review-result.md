@@ -8,6 +8,10 @@
 
 `## Verdict` heading 직후 첫 비어있지 않은 줄은 lowercase 정확히 다음 셋 중 하나여야 한다 — `yes`, `no`, `yes with risk`. 다른 토큰, qualifier, inline 형태 (`Verdict: yes`, `Final verdict: yes`), prose 안 verdict 는 모두 거부된다. 따라서 본 template 의 `## Verdict` 본문은 그 contract 를 따르는 형태로 비워 두며, reviewer 는 이 첫 비어있지 않은 줄을 실제 verdict 값으로 교체하기만 한다. 본 contract 안내는 `## Verdict` heading 밖 (위 본문 또는 `## Notes`) 에 둔다.
 
+verdict 어휘의 의미 narrowing — `yes` = no blocking finding (commit / push 의 자동 승인 아님); `no` = blocking finding 존재 (review scope 안 corrective 필요); `yes with risk` = blocking finding 은 없으나 명시 risk disclosure 가 필요하고 supervisor / 사용자 의 explicit acceptance 가 commit / push 전에 필요. `yes with risk` 가 `yes` 의 자동 equivalent 가 아니다. blocking finding 의 의미는 본 template 의 `## Blocking findings` section 의 안내 참조.
+
+reviewer 는 verdict 외에 다음 4 recommended disclosure section 을 본문에 채워 finding 의 분류 와 reviewer-side limitation / assumption 을 명시 surface 한다 — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`. 4 section 은 **recommended** 이며 parser-required 아님 — `scripts/review-verify.ps1` 가 본 section 의 존재 / 형식을 parser-required H2 로 강제하지 않는다. recommended-only 의 의미이며 reviewer 가 본 section 들을 자율 채택하여 verdict 의 substance 를 surface 한다.
+
 ## Verdict
 
 yes
@@ -15,6 +19,22 @@ yes
 ## Findings
 
 reviewer 가 발견한 사항을 한 항목씩 나열한다. 본문이 길어도 무방하다. 발견한 사항이 없으면 `No blocking findings.` 와 같이 명시한다.
+
+## Blocking findings
+
+(recommended) commit / push / merge / release 의 다음 단계로 진행하기 전에 반드시 해결되어야 할 finding 을 항목별로 기록한다. verdict `no` 면 1 개 이상이 존재; verdict `yes` 또는 `yes with risk` 면 비어 있거나 `none`. blocking finding 의 일반 정의: review scope 안의 명시적 요구 (allowed mutation scope / boundaries / contract wording) 위반, contract / template / snippet / script / test 의 정합성 깨짐, truthfulness 검증 가능 영역의 misstatement — 본 finding 을 해결하지 않고는 commit / push / merge / release / adoption 의 다음 단계로 진행하면 안 된다.
+
+## Non-blocking concerns
+
+(recommended) blocking 은 아니지만 supervisor / 사용자 가 알아야 할 우려 사항을 항목별로 기록한다. 예: review scope 밖의 wording 보강 권고, 후속 batch 의 input 으로 surface 되어야 할 design 관찰. 없으면 `none`.
+
+## Review limitations
+
+(recommended) reviewer 가 직접 검증하지 못한 영역을 명시한다. 예: `--sandbox read-only` 안에서 mutating 명령 (Pester / verify-ps1 / migration script) 실행 불가, operator 가 작성한 evidence file 본문의 시점적 사실성을 reviewer 가 cross-execute 하지 못함. 없으면 `none`.
+
+## Assumptions relied on
+
+(recommended) reviewer 가 verdict 도출 시 신뢰한 전제를 명시한다. 예: operator prose 의 validation result claim 의 truthfulness, R1 `## Validation evidence` 본문의 정직 작성, 명시되지 않은 source 의 stale 여부. 전제가 깨지면 verdict 도 stale. 없으면 `none`.
 
 ## Risks
 
