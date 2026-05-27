@@ -42,6 +42,10 @@ reviewer 가 발견한 사항을 한 항목씩 나열한다. 본문이 길어도
 
 (선택) verdict 가 `yes with risk` 또는 `yes` 인 경우에 후속 단계에서 인지해야 할 risk 를 나열한다. risk 가 없으면 본 section 을 생략해도 무방하다.
 
+## Counter-argument
+
+(선택, strongly-recommended; non-parser) verdict 에 대한 가장 강한 반대 사례 (strongest case AGAINST the reviewer's own verdict) 를 dedicated position 으로 articulate 한다. verdict 가 `yes` 또는 `yes with risk` 인 round 에서 reviewer 는 substantive 한 본문을 작성한다. deliberate pressure-test 후 material counter-argument 가 발견되지 않으면 본문은 짧은 literal — `none` 또는 `no material counter-argument identified` — 로 두며 ceremonial boilerplate ("the alternative interpretation is X, but I dismiss it because Y" 의 substance 없는 일반적 pattern) 는 회피한다. verdict 가 `no` 인 round 에서는 본 section 을 생략해도 무방하다 — `## Blocking findings` 의 corrective scope 자체가 case-against-yes 의 articulation 이다. 본 section 은 parser-required 가 아니며 `scripts/review-verify.ps1 -RequireResult` 의 4-H2 disclosure gate 와 무관하다. `## Notes` 와의 substance boundary (본 section = verdict pressure-test 의 dedicated position; `## Notes` = freeform reviewer-narrative bucket) 와 boilerplate-degeneration mitigation 의 자세한 안내는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3c 참조.
+
 ## Notes
 
 (선택) 추가 코멘트, 참고 evidence path, 후속 inspection 권고 등을 자유 형식으로 기록한다. 본 section 도 생략 가능하다.
