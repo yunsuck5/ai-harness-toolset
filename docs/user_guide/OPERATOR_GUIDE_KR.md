@@ -102,7 +102,7 @@ flowchart TD
     R --> F[scripts/review-input-verify.ps1<br/>required headings + no leftover placeholders]
     F -- fail --> X1[FAIL: write-once — allocate a new<br/>pass-NN under the same review-task-id<br/>(rerun review-prepare)]
     F -- pass --> G[Codex CLI exec, one-shot<br/>--output-last-message = result.md]
-    G --> H[script checks result.md:<br/>exactly one '## Verdict' heading +<br/>first non-empty line is one of<br/>yes / no / yes with risk]
+    G --> H[script checks result.md:<br/>exactly one '## Verdict' heading +<br/>first non-empty line is one of<br/>yes / no / yes with risk +<br/>each of the four required disclosure H2s<br/>'## Blocking findings' / '## Non-blocking concerns' /<br/>'## Review limitations' / '## Assumptions relied on'<br/>present exactly once<br/>(disclosure gate via review-verify -RequireResult)]
     H -- check fail --> X2[FAIL: failed pass preserved<br/>for inspection; allocate a new pass-NN]
     H -- check ok --> L{verdict}
     L -- yes --> M1[user decides next step]
@@ -147,7 +147,7 @@ sequenceDiagram
     else input verify PASS
         RR->>CX: codex exec --sandbox read-only<br/>--output-last-message result.md, stdin = input.md
         CX-->>RR: writes pass result.md, exit 0
-        RR->>RR: check exactly one "## Verdict" heading<br/>and first non-empty line is yes / no / yes with risk
+        RR->>RR: check exactly one "## Verdict" heading<br/>and first non-empty line is yes / no / yes with risk;<br/>review-verify -RequireResult adds the disclosure gate:<br/>four required H2s ("## Blocking findings" /<br/>"## Non-blocking concerns" / "## Review limitations" /<br/>"## Assumptions relied on") each present exactly once
         alt check FAIL
             RR-->>CC: FAIL, failed pass preserved
         else check OK
@@ -296,7 +296,10 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 #    (b) AI 가 pass input.md 본문을 review request 로 직접 작성.
 #    (c) review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN> 호출 -- review-input-verify.ps1
 #        로 heading shape 를 검증한 뒤 Codex CLI 를 1 회 실행, 같은 pass directory 에
-#        result.md 를 작성하고 `## Verdict` shape 를 검증.
+#        result.md 를 작성하고 `## Verdict` shape 를 검증. result.md 의 4 required
+#        disclosure H2 (`## Blocking findings` / `## Non-blocking concerns` /
+#        `## Review limitations` / `## Assumptions relied on`) 의 1 회 존재 검증은
+#        후속 `review-verify.ps1 -RequireResult` 단계의 책임이다.
 #    canonical contract 는 두 파일 (input.md, result.md) 외의 어떤 sidecar artifact 도
 #    보장하지 않는다.
 #    정확한 entry point / 인자 조합 reference 는
@@ -342,7 +345,7 @@ canonical review artifact 는 `log/review/<review-task-id>/pass-NN/` 의 두 파
 
 ## 11. verdict handling
 
-`result.md` 의 `## Verdict` 다음 첫 줄은 `yes` / `no` / `yes with risk` 중 정확히 하나다 (lowercase 정확 매치; `Verdict: yes` 같은 inline 형태 거부). 운영 관점 요약: `yes` → 다음 단계로 진행 (commit / push / release 는 별도 승인), `yes with risk` → `result.md` 의 `## Risks` 를 읽고 사용자가 수용 여부 판단 (자동 게이트 아님), `no` → `## Findings` 를 보정한 뒤 같은 `<review-task-id>` 아래 새 `pass-NN` 으로 재실행. verdict vocabulary 와 parsing 규칙의 source-of-truth 는 **`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`** 다.
+`result.md` 의 `## Verdict` 다음 첫 줄은 `yes` / `no` / `yes with risk` 중 정확히 하나다 (lowercase 정확 매치; `Verdict: yes` 같은 inline 형태 거부). V2 부터 `result.md` 는 4 required disclosure H2 — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` — 를 각각 정확히 1 회 포함해야 하며 (`scripts/review-verify.ps1 -RequireResult` 의 parser-required gate), substance 가 없는 section 의 본문은 `none` 한 단어로 둔다. 운영 관점 요약: `yes` → 다음 단계로 진행 (commit / push / release 는 별도 승인), `yes with risk` → `result.md` 의 `## Risks` (또는 4 H2 안의 risk-관련 disclosure) 를 읽고 사용자가 수용 여부 판단 (자동 게이트 아님), `no` → `## Blocking findings` (및 보조로 `## Findings`) 를 보정한 뒤 같은 `<review-task-id>` 아래 새 `pass-NN` 으로 재실행. verdict vocabulary 와 parsing 규칙의 source-of-truth 는 **`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`** 다.
 
 ---
 
@@ -393,8 +396,9 @@ BF Level 은 path 가 아니라 save / restore capability maturity 다 (`docs/co
 [ ] runtime artifact 가 ProjectRoot 의 log/ 아래에만 생성되고, ToolRoot (channel 3 payload) 는 변경되지 않는다.
 [ ] 각 pass directory <review-task-id>/pass-NN 아래 canonical artifact 두 파일 (input.md, result.md) 이 모두 존재한다.
 [ ] result.md 의 ## Verdict 다음 첫 줄이 yes / no / yes with risk 중 정확히 하나다.
+[ ] result.md 가 4 required disclosure H2 (## Blocking findings / ## Non-blocking concerns / ## Review limitations / ## Assumptions relied on) 를 각각 정확히 1 회 포함한다 (review-verify.ps1 -RequireResult 의 parser-required gate; substance 없는 section 은 본문이 'none').
 [ ] verdict 가 yes 여도 toolset 이 commit / push / merge / release 를 자동으로 시도하지 않는다.
-[ ] Codex 실패 / verdict shape 실패 시 그 pass directory 가 디스크에 보존된다 (자동 삭제 없음).
+[ ] Codex 실패 / verdict shape 실패 / 4 H2 disclosure shape 실패 시 그 pass directory 가 디스크에 보존된다 (자동 삭제 없음).
 [ ] global CLAUDE.md / AGENTS.md 가 implicit / automatic 으로 변경되지 않았다.
 ```
 
@@ -408,7 +412,7 @@ legacy project-local copy mode (channel 5) 를 평가하는 경우에만 본 부
 [ ] .ai-harness/scripts/log-init.ps1 실행 후 log/{chatlog,evidence,review}/ 가 생성된다.
 [ ] .ai-harness/scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>] 호출 -> AI 가 pass input.md 본문 직접 작성 -> .ai-harness/scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN> 호출의 두 단계로 한 pass review 가 닫힌다.
 [ ] 각 pass directory <review-task-id>/pass-NN 아래 canonical artifact 두 파일 (input.md, result.md) 이 모두 존재한다.
-[ ] verdict 형식 검증 항목은 위 shared / global checklist 와 동일하다.
+[ ] verdict 형식 및 4 required disclosure H2 (## Blocking findings / ## Non-blocking concerns / ## Review limitations / ## Assumptions relied on) 의 1 회 존재 검증 항목은 위 shared / global checklist 와 동일하다.
 ```
 
 ---
@@ -475,7 +479,7 @@ legacy project-local copy mode (channel 5) 를 평가하는 경우에만 본 부
 ### review 의 운영 위치 (재확인)
 
 - toolset 의 review 진입 script 는 quality gate 다. commit / push / publish / merge / release / upload / deployment 의 자동 승인이 아니다 (§12 와 동일).
-- canonical artifact 두 파일 (`input.md`, `result.md`) 이 모두 존재하고 `result.md` 의 `## Verdict` 가 본 contract 의 vocabulary 안에 있을 때에만 다음 operator 결정의 input 으로 사용한다 (§10, §13).
+- canonical artifact 두 파일 (`input.md`, `result.md`) 이 모두 존재하고 `result.md` 의 `## Verdict` 가 본 contract 의 vocabulary 안에 있으며 4 required disclosure H2 (`## Blocking findings` / `## Non-blocking concerns` / `## Review limitations` / `## Assumptions relied on`) 가 각각 정확히 1 회 존재 (`review-verify.ps1 -RequireResult` 의 parser-required gate 통과) 할 때에만 다음 operator 결정의 input 으로 사용한다 (§10, §13).
 - effort / cost 통제는 `docs/policies/REVIEW_EFFORT_GUIDE.md` 의 권고를 따른다. 본 가이드는 그 contract 를 재정의하지 않는다.
 
 ### Verdict 처리 (post-MVP 운용 관점)
@@ -494,7 +498,7 @@ legacy project-local copy mode (channel 5) 를 평가하는 경우에만 본 부
 - `log/chatlog/current/resume.md` / `summary.md` (`docs/contracts/chatlog/CHATLOG_CONTRACT.md`, canonical 자리가 아닌 legacy / deprecation candidate; reviewer verdict 와 무관).
 - `scripts/brief-check.ps1` 의 PASS / FAIL (BRIEF shape 검증, reviewer 판단이 아님).
 
-verdict 의 source-of-truth 는 같은 review task 의 final pass directory `log/review/<review-task-id>/pass-NN/result.md` 의 `## Verdict` 다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
+verdict 의 source-of-truth 는 같은 review task 의 final pass directory `log/review/<review-task-id>/pass-NN/result.md` 의 `## Verdict` 다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). 같은 `result.md` 안의 4 required disclosure H2 (`## Blocking findings` / `## Non-blocking concerns` / `## Review limitations` / `## Assumptions relied on`) 본문은 verdict 의 합리적 후속 판단 (commit / push / risk acceptance / corrective pass) 의 input 으로 함께 읽는다.
 
 ### 별도 scoped 승인 항목
 
