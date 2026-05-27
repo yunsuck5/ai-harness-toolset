@@ -482,14 +482,19 @@ Describe 'review-run canonical pass directory' {
         ($stdin.IndexOf('## Non-blocking concerns')) | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Review limitations'))    | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Assumptions relied on')) | Should -BeLessThan $beginMarker
-        # RV-B-05 Batch II (light P3 wording): the preamble must instruct the
-        # reviewer to articulate the strongest case AGAINST its own conclusion
-        # in ## Notes before issuing the verdict. Wording-only; no new H2,
-        # no parser gate.
+        # RV-B-05 Batch II (light P3 wording) + Stage 4-R1 (Counter-argument
+        # runtime alignment): the preamble must instruct the reviewer to
+        # articulate the strongest case AGAINST its own conclusion in
+        # ## Counter-argument (per REVIEW_RESULT_CONTRACT.md §3c, the dedicated
+        # pressure-test surface) before issuing the verdict. Wording-only; no
+        # new parser-required H2 (## Counter-argument remains optional /
+        # strongly-recommended / non-parser).
         $stdin | Should -Match 'strongest case AGAINST'
         $stdin | Should -Match 'pressure-test'
+        $stdin | Should -Match '## Counter-argument'
         ($stdin.IndexOf('strongest case AGAINST')) | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('pressure-test'))          | Should -BeLessThan $beginMarker
+        ($stdin.IndexOf('## Counter-argument'))    | Should -BeLessThan $beginMarker
         # The original input.md content must still follow the preamble marker.
         $stdin | Should -Match 'BEGIN REVIEW INPUT'
         $stdin | Should -Match 'pester context line\.'

@@ -351,11 +351,13 @@ verdict 별 Claude Code 의 next-action mapping:
 
 | Verdict | 의미 | Claude Code next action |
 |---|---|---|
-| `yes` | review scope 안 blocking finding 없음 | `## Non-blocking concerns` + `## Review limitations` + `## Assumptions relied on` (그리고 선택 `## Findings` / `## Risks` / `## Notes`) 를 함께 사용자에게 보고. 다음 단계 (commit / push / release / 후속 batch) 는 별도 사용자 명시 결정 — 자동 진행 금지. |
+| `yes` | review scope 안 blocking finding 없음 | `## Non-blocking concerns` + `## Review limitations` + `## Assumptions relied on` (그리고 선택 `## Findings` / `## Risks` / `## Counter-argument` / `## Notes`) 를 함께 사용자에게 보고. 다음 단계 (commit / push / release / 후속 batch) 는 별도 사용자 명시 결정 — 자동 진행 금지. |
 | `no` | review scope 안 blocking finding 존재 | `## Blocking findings` 본문 각 항목을 batch / `/goal` approved scope 안 / 밖으로 분류. scope 안 finding 은 corrective patch + validation + 같은 `<review-task-id>/` 아래 새 `pass-NN/` 로 corrected-state re-review. scope 밖 finding 은 stop / report 후 별도 scoped 승인 요청. `no` verdict 만으로 batch closure 금지. |
 | `yes with risk` | blocking finding 없으나 disclosed risk 존재 | `## Risks` (있을 시) + `## Review limitations` + `## Assumptions relied on` + risk-관련 `## Non-blocking concerns` 를 사용자에게 summarize 하여 보고하고, supervisor / 사용자 의 explicit risk acceptance 요청. risk 수용 전에는 commit / push / release 진행 금지. `yes` 의 자동 equivalent 아님 — corrective loop 가 아니라 risk acceptance path. |
 
 본 mapping 의 source-of-truth 는 **`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a** (Verdict → next-action mapping) 다 — verdict vocabulary 와 parsing 규칙의 source-of-truth 인 같은 contract 의 §6 / §3 과 함께 cross-reference. AI 는 result.md 를 structured artifact 로 다루어 verdict line 만이 아니라 4 required disclosure section + 선택 section 까지 함께 읽는다 (§6a Output consumption guidance). blocking 여부의 source-of-truth 는 `## Blocking findings` section 의 내용이며, 선택 `## Findings` 와 충돌 시 `## Blocking findings` 가 우선한다.
+
+result.md 는 4 required disclosure H2 외에 **`## Counter-argument`** H2 를 optional, strongly-recommended (non-parser) section 으로 둘 수 있다 (Phase 2 Batch 1A, commit `76033f4` 에서 codify). verdict 가 `yes` 또는 `yes with risk` 인 round 에서 reviewer 는 본 section 에 verdict 의 strongest case AGAINST 를 dedicated position 으로 articulate 한다. substance 가 없으면 짧은 literal (`none` 또는 `no material counter-argument identified`) 로 두며 ceremonial boilerplate 는 회피. parser-required 가 아니므로 omission 이 parser FAIL 은 아니지만, operator 는 result.md 를 읽을 때 본 section 의 substance 도 함께 surface 한다. convention 의 source-of-truth 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3c.
 
 ---
 

@@ -166,7 +166,7 @@ R1 first batch 의 scope 와 boundary:
 - 새 verdict token 의 도입.
 - `## Counter-argument` 본문의 sub-shape lint (substance vs boilerplate 의 deterministic check). 본 lint 는 §10 non-goals 와 동일 posture — semantic judgment 없이 brittle / high false-positive 한 surface 로 판단된다.
 - canonical 2-file contract (input.md + result.md) 의 expand 또는 sidecar 도입.
-- `scripts/review-run.ps1` H1 reviewer-mode preamble 의 wording 확장 (preamble 의 strongest-case-against instruction 은 Phase 1 Batch II 의 light P3 wording 그대로 유지; `## Counter-argument` 의 mention 추가는 본 §3c 의 도입 batch 의 scope 외부 — 별도 scripts/tests batch 의 결정 영역).
+- `scripts/review-run.ps1` H1 reviewer-mode preamble 의 wording 확장 (본 §3c 의 도입 batch 인 Phase 2 Batch 1A (commit `76033f4`) 에서는 preamble 의 strongest-case-against instruction 을 Phase 1 Batch II 의 light P3 wording — `## Notes` target — 그대로 유지; `## Counter-argument` 로의 redirect 는 별도 scripts/tests batch 의 결정 영역이었으며, Stage 4-R1 (별도 batch) 에서 수행되어 H1 preamble runtime instruction 이 §3c 의 dedicated pressure-test surface 와 정합화 되었다 — `docs/systems/review/STATUS.md` Accepted residual risks 의 'H1 preamble / Counter-argument surface alignment (closed by Stage 4-R1)' 참조).
 - 본 §3c 의 mirror 의 operator-facing documentation / public-facing README / Tier D managed-block snippets 로의 확장 (Batch 1B mirror surfaces — 본 §3c 의 도입 batch 의 scope 외부; 별도 batch 의 결정 영역).
 
 ### 3c.6 Mirror surfaces
