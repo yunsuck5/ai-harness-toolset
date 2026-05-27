@@ -88,7 +88,7 @@ required disclosure section (각각 정확히 1 회 존재해야 함, parser-enf
 - `## Risks` — `yes with risk` 가 verdict 일 때 권장. supervisor / 사용자 의 explicit acceptance 가 필요한 risk substance.
 - `## Notes` — 자유 형식 참고.
 
-위 4 개 required disclosure section (`## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`) 은 `scripts/review-verify.ps1 -RequireResult` 의 deterministic gate 다 — 각 heading 이 정확히 1 회 존재해야 한다. 부재 (count == 0) 또는 중복 (count > 1) 이면 verify FAIL. 본 enforcement 는 mechanical presence/count check 이며, 각 section 본문의 sub-shape (예: `## Known concerns` 의 sub-categories) lint 는 본 enforcement 의 범위가 아니다 — sub-shape lint 는 별도 후속 batch 의 대상으로 남는다.
+위 4 개 required disclosure section (`## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`) 은 `scripts/review-verify.ps1 -RequireResult` 의 deterministic gate 다 — 각 heading 이 정확히 1 회 존재해야 한다. 부재 (count == 0) 또는 중복 (count > 1) 이면 verify FAIL. 본 enforcement 는 mechanical presence/count check 이며, 각 section 본문의 sub-shape (예: `## Known concerns` 의 sub-categories) lint 는 본 enforcement 의 범위가 아니다 — `## Known concerns` 의 sub-shape lint 와 `## Validation evidence` 의 sub-shape lint 는 §10 non-goals 에 기록된 대로 deterministic-lint scope 로 도입하지 않는 결정이다 (reopen 은 concrete evidence 에 한정).
 
 `result.md` 의 shape 기준은 `templates/review-result.md` 다.
 
@@ -173,7 +173,7 @@ operator-role AI 는 다음을 담당한다.
 1. 사용자의 자연어 의도와 승인 boundary 에서 review scope 를 잡고, 그 작업에 사용할 `<review-task-id>` 를 결정한다 (한 `/goal` 작업 또는 한 review gate 단위).
 2. `templates/review-input.md` 기준으로 `log/review/<review-task-id>/pass-NN/input.md` 본문을 직접 작성한다. target files / context / required inspection paths / review questions / constraints / final verdict instruction 을 모두 input.md 한 파일 안에 담는다. 첫 attempt 는 `pass-01`, 이후 corrective loop attempt 는 `pass-02`, `pass-03` ... 으로 증가한다. validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean) 이 있는 round 에서는 그 근거 Markdown evidence (§3a) 의 path 를 `## Validation evidence` informational section 에 명시하여 reviewer 가 직접 read-only inspect 할 수 있도록 한다. claim 자체가 부적용인 round 에서는 같은 section 본문을 짧은 명시 ("N/A — no validation execution claims in this round." 같은 한 줄) 로 둔다. review 호출 전에 operator 가 인지한 known compromise / convention deviation / skipped alternative / baseline failure / validation limitation / operator assumption 은 `## Known concerns` informational section 에 사전 disclose 한다 — 본 disclose 의 누락은 §7 의 stale-by-omission 규칙에 의해 verdict 의 commit-fitness 를 ex-post 무효화할 수 있다.
 3. `result.md` 의 `## Verdict` 다음 첫 줄을 읽어 verdict 값을 확정.
-4. `## Blocking findings` / `## Non-blocking concerns` / `## Review limitations` / `## Assumptions relied on` (V2 부터 parser-required 인 4 disclosure section) 그리고 `## Findings` / `## Risks` / `## Notes` (선택 section) 본문을 함께 읽고 finding 의 의미와 정당성, 수정 필요 scope, re-review 필요 여부를 판단. blocking 여부는 `## Blocking findings` section 의 내용이 우선이며, reviewer 의 미검증 영역 / 신뢰 전제는 `## Review limitations` / `## Assumptions relied on` 에서 함께 읽는다.
+4. `## Blocking findings` / `## Non-blocking concerns` / `## Review limitations` / `## Assumptions relied on` (V2 부터 parser-required 인 4 disclosure section) 그리고 `## Findings` / `## Risks` / `## Notes` (선택 section) 본문을 함께 읽고 finding 의 의미와 정당성, 수정 필요 scope, re-review 필요 여부를 판단. blocking 여부는 `## Blocking findings` section 의 내용이 우선이며, reviewer 의 미검증 영역 / 신뢰 전제는 `## Review limitations` / `## Assumptions relied on` 에서 함께 읽는다. verdict 별 next-action mapping 은 §6a 가 codify 한다.
 5. 필요한 수정이 사용자가 승인한 scope 안이면 수정 후 같은 `<review-task-id>` 아래에 새 `pass-NN` 를 만들어 re-review.
 6. 사용자에게 review task path, 최종 pass, verdict, corrective loop count, changed files / validation / risk / next decision 을 보고.
 7. operator 가 input.md (또는 본 AI 가 commit 하려는 template / snippet / contract) 안에 **mechanical behavior claim** — 특정 regex / parser / verifier / script 가 특정 input 에 대해 실제로 어떻게 동작하는지에 대한 claim — 을 적기 전에, reasoning 만으로 결정하지 않고 **minimal reproducible check** 으로 검증한다 (literal string 에 대한 tiny regex match, small parser input, small verifier fixture, any available scripting environment 에서의 isolated string / character inspection, one-line shell exit-code check 등). 본 check 는 의도적으로 narrow 다 — full test suite 실행이 아니라 prose 가 잘못된 mechanics 를 단언할 확률을 줄이는 좁은 점검이다. claim 이 현재 환경에서 검증 불가능하면 operator 는 `## Known concerns` 에 unverified 로 disclose 한다. 본 의무 (O1) 는 본 contract 의 §3b reviewer-side check (P4) 와 짝을 이룬다.
@@ -206,6 +206,70 @@ verdict 는 review scope 안의 판단만을 담는다. commit / push / publish 
 - operator prose 에 의존한 validation claim 의 truthfulness (이는 `## Assumptions relied on` 에 surface).
 
 blocking 과 non-blocking 의 경계는 review scope 와 finding 의 substance 가 함께 결정한다 — 같은 종류의 finding 이 다른 review scope 에서는 blocking 일 수도 non-blocking 일 수도 있다. reviewer 가 본 contract 의 가이드를 base 로 finding 마다 판단하여 `## Blocking findings` 또는 `## Non-blocking concerns` 중 적절한 section 에 기록한다.
+
+## 6a. Verdict → next-action mapping
+
+§6 는 verdict 의 의미를 정의한다. 본 §6a 는 operator-role AI (Claude Code) 가 result.md 의 verdict 와 4 required disclosure section 본문을 읽은 뒤 수행해야 할 next-action mapping 을 codify 한다. 본 §6a 는 새 verdict token 을 도입하지 않으며 §6 의 narrowing (`yes` / `no` / `yes with risk`) 을 유지한다.
+
+### yes
+
+- 의미: §6 — review scope 안에서 blocking finding 없음.
+- AI next action:
+  1. `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` 본문 (그리고 선택 `## Findings` / `## Risks` / `## Notes`) 을 함께 읽고 사용자에게 surface — 사용자가 후속 결정의 input 으로 사용한다.
+  2. commit / push / publish / merge / release / deployment / upload / adoption / config mutation 의 자동 진행 금지 — 사용자의 별도 명시 결정 필요.
+  3. 후속 단계 (배포 / closeout / 다음 batch 진입) 권고가 적합하면 사용자에게 추천만 제시하고, 명시 승인 전에는 실행하지 않는다.
+
+### no
+
+- 의미: §6 — review scope 안에서 blocking finding 존재.
+- AI next action:
+  1. `## Blocking findings` 본문 각 항목을 읽고, 각 finding 이 사용자가 사전 승인한 batch / `/goal` scope 안인지 분류.
+  2. scope 안 finding: corrective patch + repo-local validation + 같은 `<review-task-id>/` 아래 새 `pass-NN/` 로 corrected-state re-review. closure-for-laziness 금지.
+  3. scope 밖 finding: 본 batch 안에서 silently 흡수 금지. stop / report 후 사용자의 별도 scoped 승인 요청.
+  4. `no` verdict 만으로 batch closure 금지 — concrete re-review 결과 (`yes`, 또는 사용자 명시 risk-acceptance 가 적용된 `yes with risk`) 까지 진행해야 batch 가 닫힌다.
+
+### yes with risk
+
+- 의미: §6 — blocking finding 은 없으나 명시 risk 가 disclosure 됨. `yes` 의 자동 equivalent 아님.
+- AI next action:
+  1. `## Risks` (있을 시) + `## Review limitations` + `## Assumptions relied on` 의 risk-bearing 항목 (그리고 risk-관련 `## Non-blocking concerns`) 을 사용자에게 summarize 하여 보고.
+  2. supervisor / 사용자 의 explicit risk acceptance 요청 — 수용 / 거부 / 수정 / 별도 batch 분리 중 하나의 결정 대기.
+  3. risk 가 본 batch 의 approved scope 안에서 correct 가능하면 corrective patch + corrected-state re-review 가 옵션. corrective 가 scope 밖이면 그 사실 자체를 risk acceptance 의 input 으로 surface.
+  4. 사용자 / supervisor 의 risk 수용 전에는 commit / push / publish / merge / release / deployment / upload / adoption 진행 금지.
+  5. `yes with risk` 는 corrective loop path 가 아니라 risk acceptance path 다 — 사용자가 수용 / 거부 / 별도 batch 분리 중 하나를 결정한다.
+
+### Output consumption guidance (V3)
+
+본 §6a 의 매핑은 verdict line 만으로 결정되지 않는다. AI 는 result.md 를 **structured review artifact** 로 다루어 다음을 모두 읽는다.
+
+- `## Verdict` — vocabulary 안의 lowercase exact match (필요 조건; 충분 조건 아님).
+- `## Blocking findings` — `no` verdict 의 corrective scope 분류 input.
+- `## Non-blocking concerns` — `yes` / `yes with risk` 의 후속 user-facing surface.
+- `## Review limitations` — reviewer 가 미검증한 영역; commit fitness 의 후속 판단 input.
+- `## Assumptions relied on` — verdict 가 의존한 전제; 전제가 깨지면 verdict 도 stale (§7).
+- 선택 section (`## Findings`, `## Risks`, `## Notes`) 이 있으면 함께 읽는다. V2 4 required disclosure H2 와의 역할 차이: 4 required H2 는 mechanical-enforced disclosure 위치이고, 선택 section 은 reviewer 의 자유 prose narrative 다. **precedence rule**: blocking 여부의 source-of-truth 는 `## Blocking findings` section 의 내용이며, 선택 `## Findings` section 의 본문이 그와 충돌하는 경우에는 `## Blocking findings` 가 우선한다.
+
+result.md 가 shape gate (`review-verify -RequireResult`) 를 통과하더라도, 본문 내용이 commit fitness 에 영향을 주는 limitation / assumption / risk 를 disclose 한다면 AI 는 그 substance 를 사용자에게 surface 해야 한다 — shape PASS 가 commit fitness 의 자동 보증이 아니다.
+
+### Staleness re-review boundary
+
+§7 의 stale-on-source-mutation 과 stale-by-omission 규칙은 본 §6a 의 mapping 위에서 다음과 같이 적용된다.
+
+- 어떤 verdict 든, review pass 후 source / docs / template / snippet / test 가 수정되면 그 pass 는 stale 이며 corrected-state re-review 필요 (§7).
+- operator 가 review 호출 전에 인지했지만 `## Known concerns` 에 disclose 하지 않은 compromise / limitation / assumption 이 사후에 발견되면 그 pass 는 stale-by-omission 이며 같은 `<review-task-id>/` 아래 새 `pass-NN/` 로 omitted concerns 가 disclose 된 re-review 필요 (§7 Stale by omission).
+
+### Mirror surfaces
+
+본 §6a 의 mapping mirror 와 cross-reference 관계:
+
+- `templates/review-input.md` `## Final verdict` section — verdict vocabulary + 본 §6a 의 pointer.
+- `templates/review-result.md` — verdict / 4 H2 / 선택 section 의 작성 방법 + reader 가 §6a 의 next-action mapping 에 따라 sections 를 읽는다는 pointer.
+- `snippets/claude-skills/ai-harness-review/SKILL.md` step 6 (verify and read), step 7 (report) — practical operator behavior mirror.
+- `docs/user_guide/OPERATOR_GUIDE_KR.md` §11 (verdict handling), §17 Verdict 처리 (post-MVP 운용 관점) — operator-facing mirror.
+- `README.md` — public-facing 1-line pointer to §6a.
+- Tier D managed-block snippets (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) — minimal guard sentence + cross-reference (mapping table 자체는 포함하지 않음; long-term migration direction = skill / hooks / scripts / contracts).
+
+mirror surface 의 wording 이 본 §6a 와 충돌하면 본 §6a 가 우선한다.
 
 ## 7. Re-review on staleness
 
@@ -251,6 +315,7 @@ failed / incomplete pass (예: Codex 실패 또는 verdict parsing 실패로 `re
 - daemon, watcher, scheduler, CI integration.
 - evidence / chatlog / brief subsystem 과의 cross-tree 보장.
 - `## Validation evidence` informational section 의 required 강제, sub-shape lint, conditional 강제 자동화. R1 first batch 는 convention-by-docs 만 도입하고 script enforcement 는 Review input governance 후속 작업으로 분리된다.
+- `## Known concerns` informational section 의 sub-shape lint (recommended sub-categories — convention deviation / skipped alternatives / validation limitations / baseline failures / direct verification not performed / operator assumptions — 의 본문 deterministic check). 본 lint 는 deterministic-lint scope 로 도입하지 않는다. operator 의 정직성 invariant + §7 stale-by-omission rule + supervisor 판단이 currently effective handling path 이며, sub-category 본문의 regex / string lint 는 semantic judgment 없이 brittle / high false-positive 한 surface 로 판단된다. reopen 은 informational disclosure omission 또는 misformatting 이 unsound verdict 를 유발한 concrete evidence 에 한정한다.
 - evidence file 의 freshness / hash / mtime binding, source-state staleness 의 자동 검증.
 - deterministic validation runner, automatic validation execution, JSON schema for evidence. 본 contract 는 evidence path referencing convention (§3a, Markdown-only) 만을 담는다.
 

@@ -59,7 +59,7 @@ The only valid final verdict values for this toolset are exactly:
 - `no`
 - `yes with risk`
 
-A reviewer verdict does not approve commit, push, publish, merge, release, upload, or adoption.
+A reviewer verdict does not approve commit, push, publish, merge, release, upload, or adoption. `yes` means no blocking finding in the reviewed scope and the user still decides the next step; `no` means a blocking finding exists and a corrective action is needed (classify whether the fix is within or outside the approved scope before acting); `yes with risk` means no blocking finding but disclosed risks require explicit user / supervisor risk acceptance before commit / push — it is not the automatic equivalent of `yes`. Detailed verdict → next-action mapping and result-consumption guidance live in `snippets/claude-skills/ai-harness-review/SKILL.md` step 6 + step 7 and `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a — they are intentionally not duplicated here.
 
 ## Brief
 

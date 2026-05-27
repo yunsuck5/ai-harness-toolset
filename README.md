@@ -90,6 +90,8 @@ The toolset script that drives a pass performs only deterministic gates: pass-di
 - No external staging folders, no sidecar JSON, no hash-binding files, and no flat single-level run-id layout are part of the canonical contract. Historical references to removed-legacy artifact shapes live only in `docs/archive/backlog/review.md` and `docs/archive/backlog/operations.md` and are not operator paths.
 - AI-to-Codex transport is Markdown inside `input.md`. Multi-line content, Korean, ASCII double-quotes, and bullet lists live inside the file. PowerShell argv quoting is not the transport.
 
+When reading `result.md`, Claude Code treats it as a structured artifact — the `## Verdict` line alone is not sufficient for the next action, and the four required disclosure H2s are read alongside it. The verdict → next-action mapping (`yes` / `no` / `yes with risk` each map to a different operator response) is codified in `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a; the operator-facing mirror lives in `docs/user_guide/OPERATOR_GUIDE_KR.md` §11 and the review skill (`snippets/claude-skills/ai-harness-review/SKILL.md` step 6 + step 7).
+
 Full contract: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`. Day-to-day natural-language UX, modes A/B, and the acceptance checklist: `docs/user_guide/OPERATOR_GUIDE_KR.md` §7, §10, §13. CLI / runtime dependency boundary: `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md`.
 
 ## Evidence and chatlog

@@ -12,6 +12,8 @@ verdict 어휘의 의미 narrowing — `yes` = no blocking finding (commit / pus
 
 reviewer 는 verdict 외에 다음 4 required disclosure section 을 본문에 정확히 1 회씩 채워 finding 의 분류 와 reviewer-side limitation / assumption 을 명시 surface 한다 — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`. 4 section 은 **required** (parser-enforced) 다 — `scripts/review-verify.ps1 -RequireResult` 가 본 4 H2 의 존재 (각 1 회) 를 parser-required 로 검증한다. 본 section 에 surface 할 substance 가 없을 때는 본문을 `none` 한 줄로 둔다. 본 enforcement 는 mechanical presence/count check 이며, 각 section 본문의 sub-shape (예: `## Known concerns` 의 sub-categories) lint 는 본 enforcement 의 범위가 아니다.
 
+operator-role AI (Claude Code) 가 본 file 을 읽을 때는 verdict line 만이 아니라 위 4 disclosure section 본문 (그리고 아래 선택 section) 을 함께 읽어 next-action 을 결정한다. 그 mapping 의 source-of-truth 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a (Verdict → next-action mapping) 다. **Precedence rule**: blocking 여부의 source-of-truth 는 `## Blocking findings` section 의 내용이며, 선택 `## Findings` 와 충돌 시 `## Blocking findings` 가 우선한다.
+
 ## Verdict
 
 yes

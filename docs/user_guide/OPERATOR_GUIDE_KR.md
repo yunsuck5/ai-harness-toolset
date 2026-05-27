@@ -345,7 +345,17 @@ canonical review artifact 는 `log/review/<review-task-id>/pass-NN/` 의 두 파
 
 ## 11. verdict handling
 
-`result.md` 의 `## Verdict` 다음 첫 줄은 `yes` / `no` / `yes with risk` 중 정확히 하나다 (lowercase 정확 매치; `Verdict: yes` 같은 inline 형태 거부). V2 부터 `result.md` 는 4 required disclosure H2 — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` — 를 각각 정확히 1 회 포함해야 하며 (`scripts/review-verify.ps1 -RequireResult` 의 parser-required gate), substance 가 없는 section 의 본문은 `none` 한 단어로 둔다. 운영 관점 요약: `yes` → 다음 단계로 진행 (commit / push / release 는 별도 승인), `yes with risk` → `result.md` 의 `## Risks` (또는 4 H2 안의 risk-관련 disclosure) 를 읽고 사용자가 수용 여부 판단 (자동 게이트 아님), `no` → `## Blocking findings` (및 보조로 `## Findings`) 를 보정한 뒤 같은 `<review-task-id>` 아래 새 `pass-NN` 으로 재실행. verdict vocabulary 와 parsing 규칙의 source-of-truth 는 **`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`** 다.
+`result.md` 의 `## Verdict` 다음 첫 줄은 `yes` / `no` / `yes with risk` 중 정확히 하나다 (lowercase 정확 매치; `Verdict: yes` 같은 inline 형태 거부). V2 부터 `result.md` 는 4 required disclosure H2 — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` — 를 각각 정확히 1 회 포함해야 하며 (`scripts/review-verify.ps1 -RequireResult` 의 parser-required gate), substance 가 없는 section 의 본문은 `none` 한 단어로 둔다.
+
+verdict 별 Claude Code 의 next-action mapping:
+
+| Verdict | 의미 | Claude Code next action |
+|---|---|---|
+| `yes` | review scope 안 blocking finding 없음 | `## Non-blocking concerns` + `## Review limitations` + `## Assumptions relied on` (그리고 선택 `## Findings` / `## Risks` / `## Notes`) 를 함께 사용자에게 보고. 다음 단계 (commit / push / release / 후속 batch) 는 별도 사용자 명시 결정 — 자동 진행 금지. |
+| `no` | review scope 안 blocking finding 존재 | `## Blocking findings` 본문 각 항목을 batch / `/goal` approved scope 안 / 밖으로 분류. scope 안 finding 은 corrective patch + validation + 같은 `<review-task-id>/` 아래 새 `pass-NN/` 로 corrected-state re-review. scope 밖 finding 은 stop / report 후 별도 scoped 승인 요청. `no` verdict 만으로 batch closure 금지. |
+| `yes with risk` | blocking finding 없으나 disclosed risk 존재 | `## Risks` (있을 시) + `## Review limitations` + `## Assumptions relied on` + risk-관련 `## Non-blocking concerns` 를 사용자에게 summarize 하여 보고하고, supervisor / 사용자 의 explicit risk acceptance 요청. risk 수용 전에는 commit / push / release 진행 금지. `yes` 의 자동 equivalent 아님 — corrective loop 가 아니라 risk acceptance path. |
+
+본 mapping 의 source-of-truth 는 **`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a** (Verdict → next-action mapping) 다 — verdict vocabulary 와 parsing 규칙의 source-of-truth 인 같은 contract 의 §6 / §3 과 함께 cross-reference. AI 는 result.md 를 structured artifact 로 다루어 verdict line 만이 아니라 4 required disclosure section + 선택 section 까지 함께 읽는다 (§6a Output consumption guidance). blocking 여부의 source-of-truth 는 `## Blocking findings` section 의 내용이며, 선택 `## Findings` 와 충돌 시 `## Blocking findings` 가 우선한다.
 
 ---
 
@@ -484,11 +494,11 @@ legacy project-local copy mode (channel 5) 를 평가하는 경우에만 본 부
 
 ### Verdict 처리 (post-MVP 운용 관점)
 
-§11 의 verdict 표를 post-MVP 운용 절차 wording 으로 다시 명시한다.
+§11 의 verdict 표를 post-MVP 운용 절차 wording 으로 다시 명시한다. 본 절의 핵심 규칙은 contract `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a (Verdict → next-action mapping) 가 source-of-truth 이며, 아래 3-line 요약은 본 §6a 의 운영 관점 mirror 다.
 
-- `yes` — 다음 operator 결정 (commit / push / release 등) 의 준비 상태를 보고한다. 자동 진행하지 않는다.
-- `yes with risk` — result.md 의 risk 항목을 인용해 사용자에게 보고하고, 명시적 go / no-go 를 묻는다.
-- `no` — scoped fix plan 을 제안하고 사용자 승인을 기다린다. 자동 corrective pass 는 실행하지 않는다.
+- `yes` — 다음 operator 결정 (commit / push / release 등) 의 준비 상태를 `## Non-blocking concerns` / `## Review limitations` / `## Assumptions relied on` 본문과 함께 보고한다. 자동 진행하지 않는다.
+- `yes with risk` — result.md 의 risk 항목 (`## Risks` 그리고 risk-bearing `## Review limitations` / `## Assumptions relied on` / `## Non-blocking concerns`) 을 인용해 사용자에게 보고하고, 명시적 go / no-go 를 묻는다. `yes` 의 자동 equivalent 아님.
+- `no` — `## Blocking findings` 본문을 보고 각 finding 을 사용자가 사전 승인한 batch / `/goal` approved scope 안 / 밖으로 분류한다. **scope 안 finding**: corrective patch + repo-local validation + 같은 `<review-task-id>/` 아래 새 `pass-NN/` 로 corrected-state re-review 진행 (사용자의 기존 batch 승인 안에서). **scope 밖 finding**: stop / report 후 별도 scoped 승인 요청 — 본 batch 안에서 silently 흡수 금지. `no` verdict 만으로 batch closure 금지 — concrete re-review 결과 (`yes` 또는 사용자 명시 risk-acceptance 가 적용된 `yes with risk`) 까지 진행해야 batch 가 닫힌다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a 와 동일).
 
 ### Reviewer verdict 가 아닌 artifact
 
