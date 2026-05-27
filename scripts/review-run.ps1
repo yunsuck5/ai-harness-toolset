@@ -58,6 +58,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
 - Do NOT ask the user any question, and do NOT request clarification. There is no interactive user in this run.
 - ALWAYS produce a canonical review result as your final message: exactly one top-level "## Verdict" heading whose first non-empty following line is EXACTLY one of: yes | no | yes with risk. You may also add "## Findings", "## Risks", "## Notes".
 - ALWAYS include each of these four H2 disclosure headings exactly once in result.md, case-sensitive (parser-required by review-verify -RequireResult since RV-B-05 V2): "## Blocking findings", "## Non-blocking concerns", "## Review limitations", "## Assumptions relied on". If a section has no substance, set its body to the single word "none".
+- Before issuing the final verdict, articulate the strongest case AGAINST your own conclusion in "## Notes" (especially when the verdict is "yes" or "yes with risk"). Treat this as a pressure-test of your verdict, not a courtesy aside. No new required H2; this is light wording-level guidance, not a parser gate.
 - If the input is insufficient to approve, do NOT ask — return "no" or "yes with risk" and record the missing evidence under "## Findings" / "## Risks".
 - Writing a question, a restore-offer, or any final message without a canonical "## Verdict" heading is a review FAILURE.
 ===== BEGIN REVIEW INPUT (input.md) =====

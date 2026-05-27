@@ -180,6 +180,46 @@ operator-role AI 는 다음을 담당한다.
 
 AI 는 verdict 의 의미 정의를 바꾸지 않는다. `yes` / `no` / `yes with risk` 는 본 contract 의 vocabulary 다.
 
+## 5a. Operator stance and discipline
+
+§5 가 operator-role AI (Claude Code) 의 책임 7 items 를 정의한다. 본 §5a 는 review process 안에서 AI 가 지켜야 할 operator stance 와 discipline 을 5 개 rule 로 codify 한다. 본 §5a 는 §5 의 7 items 를 변경하지 않으며 §6 verdict vocabulary 또는 §6a verdict → next-action mapping 의 의미를 재정의하지 않는다 — 또한 commit / push / publish / merge / release / deployment 의 자동 승인 semantics 를 도입하지 않는다. 본 5 rule 은 review 의 discovery / reporting / scope discipline 의 invariant 이며, mirror surfaces (`snippets/claude-skills/ai-harness-review/SKILL.md` step 2 / 4 / 5 / 7, Tier D managed-block snippets 의 최소 guard) 의 wording 이 본 §5a 와 충돌하면 본 §5a 가 우선한다.
+
+### 5a.1 Target file accuracy verification
+
+AI 가 `input.md` 의 `## Target files` 와 `## Required inspection paths` 를 작성할 때, 그 set 이 실제 변경 범위 (Mode A — `git status --porcelain=v1` + `git diff` 의 changed file set) 또는 호명된 subsystem 의 tracked file set (Mode B — `git ls-files` 의 subsystem 일치 file set) 과 정합한지 verify 한다. 변경된 파일이 누락되거나 무관한 파일이 잘못 포함되면 reviewer 가 잘못된 surface 만 보게 되어 verdict 가 잘못된 base 위에서 도출된다. 의도된 차이 (예: 특정 파일을 disclose 후 의도적으로 review 밖으로 두는 결정) 는 `## Known concerns` 에 사전 disclose 한다. sandbox-relative path 의 resolvability 도 함께 확인 — repo-relative forward-slash path 를 사용하며, reviewer sandbox 가 read 할 수 없는 path (예: `log/` 안의 transient runtime artifact 의 stale snapshot, 또는 repo-outside `polishing/` material 의 path 만 인용) 를 source-of-truth 위치로 두지 않는다 — 그런 material 이 review-relevant 하면 §5a.2 의 inline 규칙을 따른다.
+
+### 5a.2 Off-repo / reference material handling
+
+`polishing/`, sibling handoff doc, snapshot, manifest, user-provided text 같은 **off-repo / reference material** 은 source-of-truth 로 승격하지 않는다. 본 material 이 `input.md` 의 `## Context` 또는 `## Required inspection paths` 에 인용 / referencing 될 때는 명시적 reference / advisory / planning / user-provided context 로 그 role 을 disclose 한다. reviewer sandbox 가 repo-outside path 를 read 하지 못할 수 있으므로 외부 reference doc 의 본문이 review-relevant 하면 `## Context` 또는 dedicated `## Anchor draft body` subsection 안에 verbatim inline 한다 (path 만 인용한 채 본문을 sandbox 밖에 두지 않는다). source mutation 의 대상은 항상 repo source-managed 파일이며, 본 boundary 를 넘는 mutation 이 필요해 보이면 §5a.3 stop/report 가 발동한다.
+
+### 5a.3 Stop/report vs self-correct boundary
+
+approved scope 안의 finding 은 corrective patch + repo-local validation + 같은 `<review-task-id>/` 아래 새 `pass-NN/` 로 corrected-state re-review 가 가능하다 (§6a `no` next-action 과 일치). 다음 boundary 중 어느 것에 finding 이 닿으면 **stop / report 후 사용자 결정** 이 필요하다 — 본 batch 안에서 silently 흡수 금지:
+
+- 사용자가 사전 승인한 batch / `/goal` scope 밖의 source mutation.
+- `<ProjectRoot>/log/` 아래 runtime artifact 의 mutation (gitignored runtime tree; §8).
+- `polishing/`, `repo_snapshot/`, 또는 repo-outside material 의 mutation.
+- `%USERPROFILE%\.claude\`, `%USERPROFILE%\.codex\`, user-global `CLAUDE.md` / `AGENTS.md` (managed block 또는 whole-file) 의 mutation.
+- `%USERPROFILE%\.claude\ai-harness-toolset\current\` (channel 3 install payload) 의 refresh.
+- commit / push / publish / merge / release / deployment / upload / adoption / config mutation.
+
+본 invariant 의 위반 (조용한 scope 확장) 은 review process 의 integrity 손상으로 간주된다.
+
+### 5a.4 Retraction / correction reporting protocol
+
+AI 가 이전 turn 의 판단 / input wording / validation execution claim / review framing / scope classification / target-file selection 이 잘못되었음을 발견하면 (review 진행 중이든 종료 후든) **숨기지 않고 사용자에게 보고한다**. 단순히 고친 결과만 surface 하지 말고 (a) 무엇을 retract / correct 했는지, (b) 왜 이전 판단이 틀렸는지, (c) 현재 상태가 어떤지를 명시한다. 본 retraction 의무는 AI 의 정직성 invariant 의 일부이며 §7 의 stale-by-omission 규칙 (review 호출 전 인지한 사항을 disclose 하지 않은 경우의 ex-post 무효) 의 짝이다 — §7 가 review-time 의 pre-disclosure 의무, §5a.4 가 in-progress / post-discovery 의 retraction 의무.
+
+### 5a.5 Source / runtime / sibling report scope discipline
+
+AI 는 다음 4 boundary 를 구분하여 mutation / referencing 한다:
+
+- **Source repo file** — `templates/`, `docs/`, `snippets/`, `config/`, `scripts/`, `tests/`, `README.md` 같은 source-managed 파일. source mutation batch 의 정상 mutation target.
+- **Runtime artifact** — `<ProjectRoot>/log/review/`, `log/evidence/`, `log/chatlog/`, `log/brief/`. gitignored runtime tree (§8). source-of-truth 로 승격하지 않으며 source mutation batch 의 mutation target 도 아니다. 본 batch 의 wording / contract / template 변경에 runtime artifact 의 내용을 source-of-truth 로 inline 하지 않는다 (필요 시 evidence path referencing 으로만 사용 — §3a).
+- **Sibling report / planning reference** — `polishing/`, `repo_snapshot/`, snapshot, manifest 같은 repo-outside material. advisory / planning material. source-of-truth 가 아니며 source mutation batch 의 mutation target 도 아니다 (§5a.2 inline 규칙 따라 reviewer 가 sandbox 안에서 read 가능하도록 `## Context` 에 verbatim inline).
+- **User / global filesystem** — `%USERPROFILE%\.claude\` / `%USERPROFILE%\.codex\` 등 user-global file, `%USERPROFILE%\.claude\ai-harness-toolset\current\` channel 3 install payload, user-global `CLAUDE.md` / `AGENTS.md` (managed block 포함). source mutation batch 안에서 mutation 하지 않으며 각각 별도 explicit user approval boundary 다.
+
+source mutation batch 안에서 위 4 boundary 중 source repo file 외의 영역에 mutation 이 필요해 보이면 §5a.3 stop/report 가 발동한다.
+
 ## 6. Verdict vocabulary
 
 다음 셋이 본 contract 의 vocabulary 다:

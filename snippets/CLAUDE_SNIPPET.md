@@ -61,6 +61,10 @@ The only valid final verdict values for this toolset are exactly:
 
 A reviewer verdict does not approve commit, push, publish, merge, release, upload, or adoption. `yes` means no blocking finding in the reviewed scope and the user still decides the next step; `no` means a blocking finding exists and a corrective action is needed (classify whether the fix is within or outside the approved scope before acting); `yes with risk` means no blocking finding but disclosed risks require explicit user / supervisor risk acceptance before commit / push — it is not the automatic equivalent of `yes`. Detailed verdict → next-action mapping and result-consumption guidance live in `snippets/claude-skills/ai-harness-review/SKILL.md` step 6 + step 7 and `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a — they are intentionally not duplicated here.
 
+## Operator stance
+
+Stay within the user-approved review / `/goal` scope. If a finding or fix would cross a source / runtime / sibling-report / user-global / global-install / commit-push boundary, stop and report instead of silently absorbing it. If you discover an earlier judgment of yours was wrong, retract it explicitly rather than overwriting it. The full operator stance (target-file accuracy, off-repo material handling, stop/report vs self-correct, retraction protocol, scope discipline) lives in `snippets/claude-skills/ai-harness-review/SKILL.md` and `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §5a — not duplicated here.
+
 ## Brief
 
 - **Brief** is a project's durable restore source-of-truth. The current operator — or a new AI agent session — reads it first as a local restore entrypoint when (re)starting work. It is not a shared project handoff document.

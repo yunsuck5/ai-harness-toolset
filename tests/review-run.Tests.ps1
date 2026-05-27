@@ -482,6 +482,14 @@ Describe 'review-run canonical pass directory' {
         ($stdin.IndexOf('## Non-blocking concerns')) | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Review limitations'))    | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Assumptions relied on')) | Should -BeLessThan $beginMarker
+        # RV-B-05 Batch II (light P3 wording): the preamble must instruct the
+        # reviewer to articulate the strongest case AGAINST its own conclusion
+        # in ## Notes before issuing the verdict. Wording-only; no new H2,
+        # no parser gate.
+        $stdin | Should -Match 'strongest case AGAINST'
+        $stdin | Should -Match 'pressure-test'
+        ($stdin.IndexOf('strongest case AGAINST')) | Should -BeLessThan $beginMarker
+        ($stdin.IndexOf('pressure-test'))          | Should -BeLessThan $beginMarker
         # The original input.md content must still follow the preamble marker.
         $stdin | Should -Match 'BEGIN REVIEW INPUT'
         $stdin | Should -Match 'pester context line\.'
