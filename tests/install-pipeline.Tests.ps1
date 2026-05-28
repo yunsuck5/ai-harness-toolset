@@ -1573,6 +1573,99 @@ Describe 'install-pipeline verify — install.json schema strictness (C-task)' {
         ($vr.errors -match 'metadata.toolRoot must be empty for git-url mode').Count   | Should -BeGreaterThan 0
     }
 
+    It 'AC-IP-SCHEMA-6b: local-clone install rejects a non-empty repoUrl (mode-conditional must-be-empty rule)' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-6b' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-6b'
+        $proj = script:New-ProjectRoot -CaseName 'schema-6b'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # Baseline: clean local-clone (sourcePath/toolRoot non-empty, repoUrl empty) verifies clean.
+        (Invoke-InstallPipelineVerify -InstallArea $area).ok | Should -BeTrue
+
+        # INSTALL.md §4 / §5: local-clone requires repoUrl empty (the source is a local clone,
+        # not a remote URL). A non-empty repoUrl is a mode-conditional schema mismatch.
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.repoUrl = 'https://example.invalid/should-be-empty-for-local-clone.git'
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata.repoUrl must be empty for local-clone mode').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-6c: local-clone install rejects an empty toolRoot (required-non-empty rule, post-consolidation regression lock)' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-6c' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-6c'
+        $proj = script:New-ProjectRoot -CaseName 'schema-6c'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.toolRoot = ''
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata.toolRoot empty for local-clone mode').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-6d: git-url install rejects an empty repoUrl (required-non-empty rule)' {
+        $bare = script:New-FixtureBareRepo -CaseName 'schema-6d' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-6d'
+        $proj = script:New-ProjectRoot -CaseName 'schema-6d'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='git-url';
+            RepoUrl=$bare.BareUrl; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # Baseline: clean git-url install verifies clean.
+        (Invoke-InstallPipelineVerify -InstallArea $area).ok | Should -BeTrue
+
+        # INSTALL.md §4 / §5: git-url requires repoUrl non-empty. An empty repoUrl is a
+        # mode-conditional schema mismatch. (sourcePath / toolRoot stay empty, which is correct
+        # for git-url, so only the repoUrl-empty error fires.)
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.repoUrl = ''
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata.repoUrl empty for git-url mode').Count | Should -BeGreaterThan 0
+    }
+
+    It 'AC-IP-SCHEMA-6e: local-clone install rejects an empty sourcePath (required-non-empty rule)' {
+        $src  = script:New-FixtureSourceRepo -CaseName 'schema-6e' -MarkerSuffix 'v1'
+        $area = script:New-InstallArea -CaseName 'schema-6e'
+        $proj = script:New-ProjectRoot -CaseName 'schema-6e'
+        script:Invoke-InstallPipeline -Params @{
+            Action='install'; InstallArea=$area; InstallMode='local-clone';
+            SourcePath=$src.Root; Branch='main'; Remote='origin';
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        } | Out-Null
+
+        # Baseline: clean local-clone install verifies clean.
+        (Invoke-InstallPipelineVerify -InstallArea $area).ok | Should -BeTrue
+
+        # INSTALL.md §4 / §5: local-clone requires sourcePath non-empty. An empty sourcePath is a
+        # mode-conditional schema mismatch. (toolRoot stays non-empty and repoUrl stays empty,
+        # both correct for local-clone, so only the sourcePath-empty error fires.)
+        $md = script:Read-MetadataFromArea -InstallArea $area
+        $md.sourcePath = ''
+        script:Write-MetadataToArea -InstallArea $area -Metadata $md
+
+        $vr = Invoke-InstallPipelineVerify -InstallArea $area
+        $vr.ok | Should -BeFalse
+        ($vr.errors -match 'metadata.sourcePath empty for local-clone mode').Count | Should -BeGreaterThan 0
+    }
+
     It 'AC-IP-SCHEMA-7: missing a directly-read field returns ok=false structurally (does not throw under StrictMode)' {
         $src  = script:New-FixtureSourceRepo -CaseName 'schema-7' -MarkerSuffix 'v1'
         $area = script:New-InstallArea -CaseName 'schema-7'

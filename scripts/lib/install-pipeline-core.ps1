@@ -744,12 +744,6 @@ function Invoke-InstallPipelineVerify {
             if (@('git-url', 'local-clone') -notcontains $md.installMode) {
                 $errors.Add("metadata.installMode invalid: $($md.installMode)")
             }
-            # toolRoot is required for local-clone (= user-supplied source path identity).
-            # For git-url it is intentionally empty under the run-scoped temporary work area
-            # policy (INSTALL.md §2) — the cache is transient and not a persistent identity.
-            if ($md.installMode -eq 'local-clone' -and [string]::IsNullOrEmpty([string]$md.toolRoot)) {
-                $errors.Add('metadata.toolRoot empty for local-clone mode')
-            }
             if ([string]::IsNullOrEmpty([string]$md.installedHead)) {
                 $errors.Add('metadata.installedHead empty')
             }
@@ -765,6 +759,10 @@ function Invoke-InstallPipelineVerify {
                     $errors.Add("metadata.$shaField is not a 40-hex sha: $shaVal")
                 }
             }
+            # Mode-conditional source-identity schema (INSTALL.md §4 / §5). Each mode has both
+            # a required-non-empty set and a complementary must-be-empty set; the two are kept
+            # symmetric so a mismatched install.json (e.g. local-clone carrying a repoUrl) is
+            # rejected by canonical verify rather than silently passing.
             if ($md.installMode -eq 'git-url') {
                 if ([string]::IsNullOrEmpty([string]$md.repoUrl)) {
                     $errors.Add('metadata.repoUrl empty for git-url mode')
@@ -778,8 +776,19 @@ function Invoke-InstallPipelineVerify {
                     $errors.Add('metadata.toolRoot must be empty for git-url mode')
                 }
             }
-            if ($md.installMode -eq 'local-clone' -and [string]::IsNullOrEmpty([string]$md.sourcePath)) {
-                $errors.Add('metadata.sourcePath empty for local-clone mode')
+            elseif ($md.installMode -eq 'local-clone') {
+                # local-clone records the user-supplied source path identity: sourcePath and
+                # toolRoot are required. repoUrl must be empty (mirroring the git-url rule) since
+                # the source is a local clone, not a remote URL.
+                if ([string]::IsNullOrEmpty([string]$md.sourcePath)) {
+                    $errors.Add('metadata.sourcePath empty for local-clone mode')
+                }
+                if ([string]::IsNullOrEmpty([string]$md.toolRoot)) {
+                    $errors.Add('metadata.toolRoot empty for local-clone mode')
+                }
+                if (-not [string]::IsNullOrEmpty([string]$md.repoUrl)) {
+                    $errors.Add('metadata.repoUrl must be empty for local-clone mode')
+                }
             }
             if ($md.targetFootprintPolicy -ne $script:InstallPipelineFootprint) {
                 $errors.Add("metadata.targetFootprintPolicy mismatch: $($md.targetFootprintPolicy) (expected $script:InstallPipelineFootprint)")
