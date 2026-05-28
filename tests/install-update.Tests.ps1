@@ -1640,3 +1640,60 @@ Describe 'install-update — Phase 3.6 activation follow-up UX' {
         $readme | Should -Match 'install-root directory'
     }
 }
+
+Describe 'install-update — Phase 3.7 cleanup / backup UX micro-polish docs' {
+
+    BeforeAll {
+        $script:Phase37RootReadme = Join-Path $script:RepoRoot 'templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
+        $script:Phase37ClaudeSnip = Join-Path $script:RepoRoot 'snippets/CLAUDE_SNIPPET.md'
+        $script:Phase37CodexSnip  = Join-Path $script:RepoRoot 'snippets/AGENTS_SNIPPET.md'
+    }
+
+    It 'P37-T1: INSTALL.md says the operator bootstrap clone is auto-deleted on success with no prompt, and reports a leftover only in the exception cases' {
+        $md = Get-Content -LiteralPath $script:InstallMd -Raw -Encoding UTF8
+        $md | Should -Match 'Operator bootstrap clone cleanup'
+        # success path: auto-delete, no "delete it?" prompt
+        $md | Should -Match '자동 삭제'
+        $md | Should -Match '삭제할까요'
+        $md | Should -Match '묻지 않는다'
+        # exceptions that report a leftover path + reason
+        $md | Should -Match 'investigation-needed'
+        $md | Should -Match 'evidence-preserve-needed'
+        $md | Should -Match 'leftover path'
+    }
+
+    It 'P37-T2: INSTALL.md documents the .amb-backup lifecycle from actual script behavior (removed on success; fail-fast on existing; not timestamped)' {
+        $md = Get-Content -LiteralPath $script:InstallMd -Raw -Encoding UTF8
+        $md | Should -Match 'amb-backup'
+        $md | Should -Match 'apply-managed-block\.ps1'
+        # removed on success (happy path leaves none)
+        $md | Should -Match '성공 apply'
+        # a new apply refuses an existing backup, fixed-name (not timestamped), never overwritten
+        $md | Should -Match 'fail-fast'
+        $md | Should -Match 'refuse'
+        $md | Should -Match 'timestamped'
+        # no automatic backup cleanup is introduced
+        $md | Should -Match '자동 cleanup 미도입'
+    }
+
+    It 'P37-T3: the installed root README carries the bootstrap-clone cleanup note and the accurate .amb-backup lifecycle note' {
+        $readme = Get-Content -LiteralPath $script:Phase37RootReadme -Raw -Encoding UTF8
+        $readme | Should -Match 'Bootstrap clone cleanup'
+        $readme | Should -Match 'one-shot'
+        # .amb-backup removed on success; leftover = abnormal
+        $readme | Should -Match 'amb-backup'
+        $readme | Should -Match 'removes it on success'
+        $readme | Should -Match '(?i)leftover'
+    }
+
+    It 'P37-T4: snippets carry no operator update OR cleanup/backup procedure (that guidance lives only in INSTALL.md / the root README)' {
+        foreach ($p in @($script:Phase37ClaudeSnip, $script:Phase37CodexSnip)) {
+            Test-Path -LiteralPath $p -PathType Leaf | Should -BeTrue
+            $body = Get-Content -LiteralPath $p -Raw -Encoding UTF8
+            $body | Should -Not -Match '(?i)Updating this install'
+            $body | Should -Not -Match '(?i)update to the latest version'
+            $body | Should -Not -Match '(?i)bootstrap clone'
+            $body | Should -Not -Match 'amb-backup'
+        }
+    }
+}

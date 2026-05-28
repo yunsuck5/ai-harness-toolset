@@ -29,10 +29,12 @@ After explicit approval, apply activation with `current/scripts/activate-global.
 - dry-run preview: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\activate-global.ps1" -Scope All`
 - apply: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\activate-global.ps1" -Scope All -Apply`
 
-`-Apply` **modifies your global instruction files** (`CLAUDE.md` / `AGENTS.md`) and creates `.amb-backup` sidecars. The dry-run prints a **compact change summary** by default; add `-ShowFullDiff` for the full managed-block before/after. (`update-source` prints these exact commands for you when it reports `activation_pending`.)
+`-Apply` **modifies your global instruction files** (`CLAUDE.md` / `AGENTS.md`). During each surface's apply it creates a `<target>.amb-backup` rollback backup and **removes it on success** — a clean apply leaves no `.amb-backup` behind. The dry-run prints a **compact change summary** by default; add `-ShowFullDiff` for the full managed-block before/after. (`update-source` prints these exact commands for you when it reports `activation_pending`.)
 
 ## Notes
 
 - This `README.md` is a **managed install artifact** — a canonical output of a normal install and of any payload-rewriting `update-source`, materialized deterministically from the in-payload template. `verify` checks that it exists and is byte-identical to that template.
 - It is **not self-healing**. A legacy install area may not have it yet; a real install/update (a deterministic overwrite) creates it. If it is missing, stale, or modified on an otherwise up-to-date install, that is an **install integrity failure** — recover with a reinstall (a deterministic overwrite: re-run install, or a payload-rewriting `update-source`), not by relying on a no-op update.
+- **Bootstrap clone cleanup.** The latest-source clone you make to run the update is a **temporary, one-shot** clone — remove it once the update/activation/verify succeed. A successful run does not need it, and you should not be re-prompted to keep it; keep it only if a cleanup fails or you need it for investigation.
+- **`.amb-backup` leftover.** Activation apply removes its `.amb-backup` rollback backup on success, so you normally won't see one. A leftover `<target>.amb-backup` next to `CLAUDE.md`/`AGENTS.md` means an apply did not close cleanly — it holds your original bytes, so resolve it before re-applying (a new apply refuses to overwrite an existing one). No automatic cleanup is performed.
 - For anything beyond this quick reference, use the **latest source clone's `INSTALL.md`** as the operative contract.
