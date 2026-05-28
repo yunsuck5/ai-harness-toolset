@@ -372,6 +372,9 @@ entrypoint 가 stdout 으로 emit 하는 final status 는 다음 enumeration 의
 - **mutation 은 explicit approval surface 위에서만** → default 는 command-implied approval (operator 의 명시 update-source 호출 + 사용자 명시 update 지시 + plan-report; §13.8). hard guards (source-cut / metadata-unknown / identity / destination / resolve-failure) 위반 시 `failed` 로 mutation 차단 — command 가 우회 못 한다. `-ConfirmInteractive` 사용 시 confirm 이 Yes 가 아니거나 terminal 부재면 `update_aborted_no_approval` (mutation 미수행).
 - **command-implied 적용 범위 한정** → 기존 identity-consistent install 의 update-source 에만 적용. fresh install / 새 destination 생성 / activation apply 자동화 / source-cut override 에는 적용되지 않는다 (§7.1.1).
 - **status 는 단일 terminal value** — 한 run 에 두 status 를 emit 하지 않는다 (§13.9 precedence).
+- **`activation_pending` / activation-only `verify_failed` 는 payload corruption 을 의미하지 않을 수 있다 (I03 docs 명료화).** payload integrity (14-field schema + manifest digest + cross-binding) 와 activation byte-identity (3 surface) 는 **별개의 검사축** 이다. `update-source` 가 `activation_pending` 을 emit 하거나 `verify` 가 오직 activation surface byte-mismatch 때문에 `verify_failed` 를 emit 한 경우, base payload 는 정합 (`payload-manifest.json.head` == `payload-marker.json.head` == `install.json.lastUpdatedHead`) 일 수 있고 남은 것은 별도 activation apply (§2A phase 2 / §10) 라는 **follow-up 단계** 뿐이다. 즉 `verify_failed` / `activation_pending` + exit 1 이 항상 "payload 가 깨졌다" 를 뜻하지는 않는다 — `reasons` array 가 어느 축이 미충족인지 명시하므로, payload-축 reason 없이 activation-축 reason 만 있으면 payload 는 OK 이고 activation follow-up 만 필요한 상태다. (payloadStatus / activationStatus 같은 별도 top-level field 분리, activation-only drift 의 exit-code 변경은 behavioral schema change 이므로 별도 later phase 결정으로 남긴다 — 본 invariant 는 docs 명료화이며 status / exit-code semantics 를 바꾸지 않는다.)
+- **평가되지 않은 inspect/verify diagnostic 을 `false`/`null` 로 emit 금지 (I01).** `update-source` 의 stdout JSON 은 inspect/verify diagnostic field (`installState` / `metadataValid` / `manifestMarkerCrossBindingOk` 등) 을 **실제 post-apply 평가값** 으로만 emit 하고, apply 가 평가하지 않은 field 는 `false` / `null` default 로 채우지 않고 **생략** 한다. 따라서 `complete` / `activation_pending` / `noop_already_current` 옆에 `metadataValid:false` / `manifestMarkerCrossBindingOk:false` / `installState:null` 같은 오해성 default 신호가 나타나지 않는다 (성공 / 후속 status 는 실제 `present` / `true` 값을 emit). `inspect` mode 는 항상 전체 diagnostic group 을 평가하므로 영향받지 않는다.
+- **`leftoverPaths` 는 항상 JSON array (I12).** empty 여도 `{}` 가 아니라 `[]` 로 직렬화한다 — PowerShell 5.1 의 if-expression empty-array 직렬화 quirk (`$body['leftoverPaths'] = if (...) {} else {}` 가 empty 를 `{}` 로 만든다) 를 피하기 위해 branch-local 할당을 쓴다.
 
 ### 13.3 Exit code mapping
 
@@ -430,7 +433,7 @@ field 는 세 group 으로 나뉜다 — **core** (모든 mode 의 stdout + run.
 - **core group** (`schemaVersion`, `tool`, `mode`, `installAreaPath`, `status`, `exitCode`, `reasons`): inspect / verify mode 의 stdout JSON 과 run.json 둘 다 emit.
 - **inspect/verify diagnostic group** (`installState`, `metadataValid`, `installMode`, `lastUpdatedHead`, `sourceResolvedHead`, `payloadDeltaRequired`, `manifestMarkerCrossBindingOk`, `activationSurfaces`): inspect mode stdout 은 전부, verify mode stdout 은 `activationSurfaces` (+ core) 를 emit. run.json 도 이 group 을 포함한다. `lastUpdatedHead` 는 `install.json.lastUpdatedHead` (현재 installed identity), `sourceResolvedHead` 는 resolve 된 source HEAD 다.
 - **run.json-only group** (`runId`, `startedAt`, `finishedAt`, `branch`, `remote`, `payloadUpdated`, `activationRequired`, `activationApproved`, `activationApplied`, `managedBlockVerified`, `skillMirrorVerified`, `cleanup`): future write 시점의 lifecycle + mutation-outcome. inspect / verify mode 의 stdout 은 이 group 을 emit 하지 않는다.
-- **update-source apply-outcome (stdout 포함)**: `update-source` mode 의 stdout 은 core + inspect/verify diagnostic group 에 더해 `leftoverPaths` 와 `smoke` 를 emit 한다 — `cleanup_failed_with_leftover` 의 §13.2 invariant 가 현재 evidence surface (stdout JSON) 에서 구조적으로 충족되도록. 두 이름 모두 위 run.json schema 에 존재하므로 stdout 의 strict field-name subset 관계는 유지된다 (`leftoverPaths` / `smoke` 는 update-source stdout 과 run.json 양쪽에 emit, 나머지 run.json-only group 은 stdout 미포함).
+- **update-source apply-outcome (stdout 포함)**: `update-source` mode 의 stdout 은 core + inspect/verify diagnostic group 의 **평가된 subset** 에 더해 `leftoverPaths` 와 `smoke` 를 emit 한다. diagnostic field 는 apply 가 실제로 평가한 것만 real post-apply 값으로 emit 하고, 평가하지 않은 field (예: guard-failure 경로) 는 `false` / `null` 로 채우지 않고 생략한다 (§13.2 I01 invariant). `leftoverPaths` 는 empty 여도 항상 JSON array `[]` 로 emit 하며 (§13.2 I12), `cleanup_failed_with_leftover` 의 §13.2 invariant 가 현재 evidence surface (stdout JSON) 에서 구조적으로 충족되도록 한다. `leftoverPaths` / `smoke` 두 이름 모두 위 run.json schema 에 존재하므로 stdout 의 strict field-name subset 관계는 유지된다 (나머지 run.json-only group 은 stdout 미포함).
 - `schemaVersion = 1`. unknown schemaVersion 은 fail-fast — silent downgrade 금지 (§4 standing rule 와 정합).
 - `runId` 는 placeholder shape `<YYYYMMDDTHHmmssZ>-<short-sha>` 다. 본 절에는 concrete literal runId 를 cite 하지 않는다 — implementation 시점에 runtime 으로 합성된다.
 - `activationSurfaces` 의 각 entry 는 `{ name, path, exists, byteIdentical, reason }` 다 — §13.1 의 activation byte-identity 분류 (Claude managed block / Codex managed block / skill mirror) 가 emit 하는 surface-level 결과다. Codex managed block 의 `path` 는 `AGENTS.override.md` 가 존재하면 그 effective destination 을 가리킨다 (§10 valid-destination precedence).
@@ -450,10 +453,10 @@ field 는 세 group 으로 나뉜다 — **core** (모든 mode 의 stdout + run.
 
 ### 13.7 Operational smoke (update-source)
 
-`update-source` 는 payload 갱신 + verify + activation byte-identity + cleanup 후 **operational smoke** 를 수행한다 (`-SkipSmoke` 로 생략 가능). smoke 는 갱신된 payload (`<InstallArea>/current/`) 의 `scripts/brief-init.ps1` 을 **throwaway workspace** 에 대해 실행하고, seed 된 `<workspace>/log/brief/BRIEF.md` 가 payload 의 `templates/brief/BRIEF.md` 와 SHA-256 byte-identical 한지, runtime artifact 가 그 workspace 의 `log/` 아래로만 격리되는지를 확인한 뒤 workspace 를 정리한다.
+`update-source` 는 payload 갱신 + verify + activation byte-identity + cleanup 후 **operational smoke** 를 수행한다 (`-SkipSmoke` 로 생략 가능). smoke 는 갱신된 payload (`<InstallArea>/current/`) 의 `scripts/brief-init.ps1` 을 **throwaway workspace** 에 대해 실행하고, seed 된 `<workspace>/log/brief/BRIEF.md` 가 payload 의 `templates/brief/BRIEF.md` 와 SHA-256 byte-identical 한지, runtime artifact 가 그 workspace 의 `log/` 아래로만 격리되는지를 확인한 뒤 (성공 시) workspace 를 정리한다 (smoke 실패 시에는 debugging 을 위해 보존하고 path 를 보고한다 — 아래 bullet).
 
 - payload 에 smoke 전제 (`current/scripts/brief-init.ps1` + `current/templates/brief/BRIEF.md`) 가 없으면 smoke 는 **skip** (실패 아님) 으로 보고된다.
-- smoke 실패는 `smoke_failed` 로 보고된다 (payload 는 이미 갱신됐어도 `complete` 가 아니다).
+- smoke 실패는 `smoke_failed` 로 보고된다 (payload 는 이미 갱신됐어도 `complete` 가 아니다). 실패 시 throwaway workspace 는 debugging 을 위해 **보존** 되고 그 path 가 보고된다 (smoke result 의 `WorkspacePath` + 실패 reason 에 포함되며, caller 가 그 reason 을 `reasons` array 에 fold 한다). pass / skip 에서는 workspace 를 정리한다. 이는 `cleanup_failed_with_leftover` 의 "삭제하지 말고 path 를 보고" 계약과 대칭이며, 보존된 workspace 는 자동 재삭제하지 않고 별도 정리 결정에 맡긴다.
 - 본 smoke 는 갱신된 payload 의 brief-init + template 정합을 증명한다. global install 의 channel-3-without-`-ToolRoot` resolution smoke (§2A phase 4a) 는 InstallArea 가 실제 global install 일 때의 operational smoke 이며, 본 entrypoint 의 payload-internal smoke 와 별개다.
 
 ### 13.8 Mutation approval — command-implied (primary) + optional two-choice selector
@@ -478,3 +481,11 @@ field 는 세 group 으로 나뉜다 — **core** (모든 mode 의 stdout + run.
 ### 13.10 Pester 회귀 lock
 
 본 절의 enumeration / shape / invariant / selector decision 로직 / update-source apply orchestration 은 source repo 의 Pester suite 가 회귀 lock 으로 보호한다.
+
+### 13.11 Output stream contract (`-Json`)
+
+`scripts/install-update.ps1` 의 출력 stream 계약은 다음과 같다 (모든 mode 공통, I13 명료화). 본 계약은 의도된 동작이며 behavior change 가 아니다.
+
+- **`-Json` 지정 시**: **stdout** 은 machine-readable JSON object **하나만** emit 한다 (단일 `ConvertTo-Json` body). human-readable 진행 / 상태 line (`install-update: mode=... / status=... / exitCode=...` + reasons) 과 최종 `install-update: PASS` / `FAIL` line 은 **stderr** 로 간다. 따라서 `-Json` 호출자는 stdout 을 그대로 JSON parser 에 넣을 수 있고 (stdout 에는 human line 이 섞이지 않는다), stderr 는 사람용 로그로 분리해 읽는다.
+- **`-Json` 미지정 시**: human report 와 JSON 을 모두 **stdout** 에 쓴다 — JSON 은 `--- BEGIN JSON ---` / `--- END JSON ---` marker 로 감싸 사람이 구분할 수 있게 하고, 최종 `install-update: PASS` / `FAIL` 도 stdout 으로 간다.
+- stderr 출력 자체는 실패 신호가 아니다 (git progress 와 동일 — §5.1). 성공 / 실패 판정은 exit code (§13.3) 와 stdout JSON 의 `status` 로 한다.

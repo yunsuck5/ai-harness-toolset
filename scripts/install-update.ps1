@@ -775,25 +775,34 @@ function script:Format-StdoutJson {
         reasons                      = @($Result.Reasons)
         activationSurfaces           = $surfaces
     }
-    # inspect and update-source carry the inspect/verify diagnostic field group (verify emits
-    # only core + activationSurfaces). Emitted by property-existence so the apply result object
-    # (update-source) surfaces the same diagnostic fields.
+    # inspect/verify diagnostic group. Emit each field ONLY when the result object actually evaluated
+    # it (true property-existence, NO false/null default), so update-source never reports an
+    # UNEVALUATED diagnostic as metadataValid:false / manifestMarkerCrossBindingOk:false /
+    # installState:null next to a success or follow-up status (I01). inspect always populates all of
+    # these, so inspect stdout is unchanged; update-source emits the evaluated subset with real
+    # post-apply values, and omits any field it did not evaluate (e.g. on a guard-failure path).
+    $names = @($Result.PSObject.Properties.Name)
     if ($Mode -eq 'inspect' -or $Mode -eq 'update-source') {
-        $body['installState']                 = if (@($Result.PSObject.Properties.Name) -ccontains 'InstallState')                 { $Result.InstallState }                 else { $null }
-        $body['metadataValid']                = if (@($Result.PSObject.Properties.Name) -ccontains 'MetadataValid')                { $Result.MetadataValid }                else { $false }
-        $body['installMode']                  = if (@($Result.PSObject.Properties.Name) -ccontains 'InstallMode')                  { $Result.InstallMode }                  else { $null }
-        $body['lastUpdatedHead']              = if (@($Result.PSObject.Properties.Name) -ccontains 'LastUpdatedHead')              { $Result.LastUpdatedHead }              else { $null }
-        $body['sourceResolvedHead']           = if (@($Result.PSObject.Properties.Name) -ccontains 'SourceResolvedHead')           { $Result.SourceResolvedHead }           else { $null }
-        $body['payloadDeltaRequired']         = if (@($Result.PSObject.Properties.Name) -ccontains 'PayloadDeltaRequired')         { $Result.PayloadDeltaRequired }         else { $false }
-        $body['manifestMarkerCrossBindingOk'] = if (@($Result.PSObject.Properties.Name) -ccontains 'ManifestMarkerCrossBindingOk') { $Result.ManifestMarkerCrossBindingOk } else { $false }
+        if ($names -ccontains 'InstallState')                 { $body['installState']                 = $Result.InstallState }
+        if ($names -ccontains 'MetadataValid')                { $body['metadataValid']                = $Result.MetadataValid }
+        if ($names -ccontains 'InstallMode')                  { $body['installMode']                  = $Result.InstallMode }
+        if ($names -ccontains 'LastUpdatedHead')              { $body['lastUpdatedHead']              = $Result.LastUpdatedHead }
+        if ($names -ccontains 'SourceResolvedHead')           { $body['sourceResolvedHead']           = $Result.SourceResolvedHead }
+        if ($names -ccontains 'PayloadDeltaRequired')         { $body['payloadDeltaRequired']         = $Result.PayloadDeltaRequired }
+        if ($names -ccontains 'ManifestMarkerCrossBindingOk') { $body['manifestMarkerCrossBindingOk'] = $Result.ManifestMarkerCrossBindingOk }
     }
     # update-source apply-outcome fields needed by the §13.2 cleanup invariant: leftoverPaths is
-    # emitted whenever the apply produced one (so cleanup_failed_with_leftover always carries the
-    # structured paths in the current stdout-JSON evidence surface), and smoke surfaces its result.
-    # Both names exist in the §13.4.1 run.json schema, so the stdout-subset relationship holds.
+    # always emitted (so cleanup_failed_with_leftover carries the structured paths in the current
+    # stdout-JSON evidence surface), and smoke surfaces its result. Both names exist in the §13.4.1
+    # run.json schema, so the stdout-subset relationship holds. The assignment is done INSIDE each
+    # branch (not `$body['leftoverPaths'] = if (...) {} else {}`) because PowerShell 5.1
+    # ConvertTo-Json serializes an empty array returned from an if-EXPRESSION as `{}` rather than
+    # `[]`; branch-local assignment preserves an empty leftoverPaths as a JSON array `[]` (I12).
     if ($Mode -eq 'update-source') {
-        $body['leftoverPaths'] = if (@($Result.PSObject.Properties.Name) -ccontains 'LeftoverPaths') { @($Result.LeftoverPaths) } else { @() }
-        $body['smoke']         = if (@($Result.PSObject.Properties.Name) -ccontains 'Smoke')         { $Result.Smoke }            else { $null }
+        if ($names -ccontains 'LeftoverPaths') { $body['leftoverPaths'] = @($Result.LeftoverPaths) }
+        else                                   { $body['leftoverPaths'] = @() }
+        if ($names -ccontains 'Smoke') { $body['smoke'] = $Result.Smoke }
+        else                           { $body['smoke'] = $null }
     }
 
     return ($body | ConvertTo-Json -Depth 8)
@@ -940,10 +949,15 @@ function script:Invoke-OperationalSmoke {
     $template    = Join-Path $PayloadRoot $templateRel
 
     if (-not (Test-Path -LiteralPath $briefInit -PathType Leaf) -or -not (Test-Path -LiteralPath $template -PathType Leaf)) {
-        return [pscustomobject]@{ Smoke = 'skip'; Reason = ('smoke prerequisites missing under payload (' + $briefInit + ' / ' + $templateRel + ')') }
+        return [pscustomobject]@{ Smoke = 'skip'; Reason = ('smoke prerequisites missing under payload (' + $briefInit + ' / ' + $templateRel + ')'); WorkspacePath = $null }
     }
 
     $workspace = Join-Path ([System.IO.Path]::GetTempPath()) ('iu-smoke-' + [Guid]::NewGuid().ToString('N'))
+    # On smoke FAILURE the throwaway workspace is PRESERVED for debugging and its path is reported
+    # (in the result WorkspacePath + in the failure Reason, which the caller folds into reasons[]),
+    # mirroring the cleanup_failed_with_leftover "report, don't silently delete" contract (I14).
+    # It is removed only on pass. The path is surfaced so a failing smoke can be inspected.
+    $preserveForDebug = $false
     try {
         $null = New-Item -ItemType Directory -Path $workspace -Force
         # brief-init resolves ToolRoot from the payload and seeds <ProjectRoot>/log/brief/BRIEF.md.
@@ -952,29 +966,34 @@ function script:Invoke-OperationalSmoke {
             '-ToolRoot', $PayloadRoot, '-ProjectRoot', $workspace
         )
         if ($proc.ExitCode -ne 0) {
-            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('brief-init exit ' + $proc.ExitCode + ': ' + (($proc.Stdout + ' ' + $proc.Stderr).Trim())) }
+            $preserveForDebug = $true
+            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('brief-init exit ' + $proc.ExitCode + ' (workspace preserved: ' + $workspace + '): ' + (($proc.Stdout + ' ' + $proc.Stderr).Trim())); WorkspacePath = $workspace }
         }
         $seeded = Join-Path $workspace 'log/brief/BRIEF.md'
         if (-not (Test-Path -LiteralPath $seeded -PathType Leaf)) {
-            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('seeded BRIEF.md not found at ' + $seeded) }
+            $preserveForDebug = $true
+            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('seeded BRIEF.md not found at ' + $seeded + ' (workspace preserved: ' + $workspace + ')'); WorkspacePath = $workspace }
         }
         $seededSha   = Get-FileSha256 -Path $seeded
         $templateSha = Get-FileSha256 -Path $template
         if ($seededSha -ne $templateSha) {
-            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('seeded BRIEF.md sha256 differs from payload template (' + $seededSha + ' vs ' + $templateSha + ')') }
+            $preserveForDebug = $true
+            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('seeded BRIEF.md sha256 differs from payload template (' + $seededSha + ' vs ' + $templateSha + ') (workspace preserved: ' + $workspace + ')'); WorkspacePath = $workspace }
         }
         # Isolation: the only runtime artifact must be under <workspace>/log/.
         $outsideLog = @(Get-ChildItem -LiteralPath $workspace -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'log' })
         if ($outsideLog.Count -gt 0) {
-            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('smoke produced artifacts outside log/: ' + (($outsideLog | ForEach-Object { $_.Name }) -join ', ')) }
+            $preserveForDebug = $true
+            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('smoke produced artifacts outside log/: ' + (($outsideLog | ForEach-Object { $_.Name }) -join ', ') + ' (workspace preserved: ' + $workspace + ')'); WorkspacePath = $workspace }
         }
-        return [pscustomobject]@{ Smoke = 'pass'; Reason = $null }
+        return [pscustomobject]@{ Smoke = 'pass'; Reason = $null; WorkspacePath = $null }
     }
     catch {
-        return [pscustomobject]@{ Smoke = 'fail'; Reason = ('smoke exception: ' + $_.Exception.Message) }
+        $preserveForDebug = $true
+        return [pscustomobject]@{ Smoke = 'fail'; Reason = ('smoke exception: ' + $_.Exception.Message + ' (workspace preserved: ' + $workspace + ')'); WorkspacePath = $workspace }
     }
     finally {
-        if (Test-Path -LiteralPath $workspace) {
+        if (-not $preserveForDebug -and (Test-Path -LiteralPath $workspace)) {
             Remove-Item -LiteralPath $workspace -Recurse -Force -ErrorAction SilentlyContinue
         }
     }
@@ -1158,7 +1177,37 @@ function script:Invoke-UpdateSourceApply {
         $reasons.Add('smoke skipped by -SkipSmoke')
     }
 
-    # 9. Final status by precedence (payload was rewritten; do not over-claim complete).
+    # 9. Post-apply diagnostics from REAL on-disk evidence (I01). These are evaluated, not
+    #    unevaluated defaults, so the stdout JSON does not show installState:null /
+    #    metadataValid:false / manifestMarkerCrossBindingOk:false next to a success or follow-up
+    #    status. installState reflects the materialized payload; metadataValid reuses the canonical
+    #    schema check on the post-apply install.json; crossBindingOk re-checks the post-apply
+    #    manifest/marker head binding to the just-applied resolved SHA. On a post-apply verify
+    #    failure these read their true (possibly false) values, with granular detail in reasons.
+    $postInstallState = 'absent'
+    $postMetadataValid = $false
+    $postCrossBindingOk = $false
+    try {
+        $postMd = Read-InstallPipelineMetadata -InstallArea $installAreaResolved
+        if ($null -ne $postMd) {
+            $postInstallState = 'present'
+            $schemaCheckReasons = New-Object System.Collections.Generic.List[string]
+            $postMetadataValid = [bool](script:Test-MetadataSchemaOk -Metadata $postMd -Reasons $schemaCheckReasons)
+        }
+    }
+    catch { $postInstallState = 'partial' }
+    try {
+        $postManifest = Read-InstallPipelineManifest -InstallArea $installAreaResolved
+        $postMarker   = Read-InstallPipelineMarker   -InstallArea $installAreaResolved
+        if ($null -ne $postManifest -and $null -ne $postMarker) {
+            $mh = if (@($postManifest.PSObject.Properties.Name) -ccontains 'head') { [string]$postManifest.head } else { '' }
+            $kh = if (@($postMarker.PSObject.Properties.Name)   -ccontains 'head') { [string]$postMarker.head }   else { '' }
+            $postCrossBindingOk = (-not [string]::IsNullOrEmpty($mh)) -and ($mh -eq $kh) -and ($mh -eq [string]$resolvedHead)
+        }
+    }
+    catch { }
+
+    # 10. Final status by precedence (payload was rewritten; do not over-claim complete).
     $status = 'complete'
     if (-not $verifyOk)            { $status = 'verify_failed' }
     elseif (-not $activationClean) { $status = 'activation_pending' }
@@ -1168,17 +1217,20 @@ function script:Invoke-UpdateSourceApply {
     $exitCode = if ($status -eq 'complete') { 0 } else { 1 }
 
     return [pscustomobject]@{
-        Status               = $status
-        ExitCode             = $exitCode
-        InstallAreaPath      = $installAreaResolved
-        Reasons              = @($reasons)
-        ActivationSurfaces   = $surfaceResults
-        InstallMode          = $installMode
-        LastUpdatedHead      = $resolvedHead
-        SourceResolvedHead   = $resolvedHead
-        PayloadDeltaRequired = $true
-        LeftoverPaths        = @($leftoverPaths)
-        Smoke                = $smoke
+        Status                       = $status
+        ExitCode                     = $exitCode
+        InstallAreaPath              = $installAreaResolved
+        Reasons                      = @($reasons)
+        ActivationSurfaces           = $surfaceResults
+        InstallState                 = $postInstallState
+        MetadataValid                = $postMetadataValid
+        InstallMode                  = $installMode
+        LastUpdatedHead              = $resolvedHead
+        SourceResolvedHead           = $resolvedHead
+        PayloadDeltaRequired         = $true
+        ManifestMarkerCrossBindingOk = $postCrossBindingOk
+        LeftoverPaths                = @($leftoverPaths)
+        Smoke                        = $smoke
     }
 }
 
@@ -1219,12 +1271,12 @@ function script:Invoke-Main {
             }
             elseif ($pre.Status -eq 'inspect_clean') {
                 # No payload delta and activation already byte-identical → nothing to mutate.
-                $result = [pscustomobject]@{ Status = 'noop_already_current'; ExitCode = 0; InstallAreaPath = $pre.InstallAreaPath; Reasons = @('already at source HEAD with clean payload + activation; no update needed'); ActivationSurfaces = $pre.ActivationSurfaces; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false; ManifestMarkerCrossBindingOk = $pre.ManifestMarkerCrossBindingOk }
+                $result = [pscustomobject]@{ Status = 'noop_already_current'; ExitCode = 0; InstallAreaPath = $pre.InstallAreaPath; Reasons = @('already at source HEAD with clean payload + activation; no update needed'); ActivationSurfaces = $pre.ActivationSurfaces; InstallState = $pre.InstallState; MetadataValid = $pre.MetadataValid; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false; ManifestMarkerCrossBindingOk = $pre.ManifestMarkerCrossBindingOk }
             }
             elseif (($pre.Status -eq 'inspect_activation_drift') -and (-not $pre.PayloadDeltaRequired)) {
                 # Payload already current; only activation drifted. update-source does not apply
                 # activation surfaces, so it cannot resolve this — report without mutation.
-                $result = [pscustomobject]@{ Status = 'activation_pending'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('payload already current; activation drift requires a separate activation apply (out of scope for update-source); no mutation performed') + @($pre.Reasons)); ActivationSurfaces = $pre.ActivationSurfaces; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false }
+                $result = [pscustomobject]@{ Status = 'activation_pending'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('payload already current; activation drift requires a separate activation apply (out of scope for update-source); no mutation performed') + @($pre.Reasons)); ActivationSurfaces = $pre.ActivationSurfaces; InstallState = $pre.InstallState; MetadataValid = $pre.MetadataValid; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false; ManifestMarkerCrossBindingOk = $pre.ManifestMarkerCrossBindingOk }
             }
             else {
                 # A payload delta exists (source drift or payload drift). Command-implied approval

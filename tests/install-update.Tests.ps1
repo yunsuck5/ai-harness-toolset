@@ -1113,4 +1113,110 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         $res.Status | Should -BeExactly 'complete'
         (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue   # cross-binding restored
     }
+
+    It 'B2-T12: update-source success stdout shows REAL post-apply diagnostics, no misleading false/null (I01)' {
+        # Dogfood panic: `complete` emitted next to metadataValid:false / manifestMarkerCrossBindingOk:false
+        # / installState:null (unevaluated defaults). After the fix those fields carry real post-apply
+        # evidence (present / true / true) and the misleading defaults must not appear next to success.
+        $fx = script:New-UpdatableFixture -CaseName 'b2t12'
+        $newHead = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t12'
+        $newHead | Should -Not -BeExactly $fx.SeedHead
+
+        $res = script:Invoke-UpdateSourceApply -InstallArea $fx.Area -ClaudeHome $fx.Homes.ClaudeHome -CodexHome $fx.Homes.CodexHome -SourcePath $fx.Source.Root -SkipSmoke
+        $res.Status | Should -BeExactly 'complete'
+
+        $json = script:Format-StdoutJson -Mode 'update-source' -Result $res
+        $obj = $json | ConvertFrom-Json
+        $obj.status                       | Should -BeExactly 'complete'
+        $obj.installState                 | Should -BeExactly 'present'
+        $obj.metadataValid                | Should -BeExactly $true
+        $obj.manifestMarkerCrossBindingOk | Should -BeExactly $true
+        # The misleading unevaluated defaults must NOT appear next to a success status.
+        $json | Should -Not -Match '"metadataValid"\s*:\s*false'
+        $json | Should -Not -Match '"manifestMarkerCrossBindingOk"\s*:\s*false'
+        $json | Should -Not -Match '"installState"\s*:\s*null'
+    }
+
+    It 'B2-T9b: Format-StdoutJson serializes an EMPTY leftoverPaths as a JSON array [] not {} (I12)' {
+        # PowerShell 5.1 ConvertTo-Json renders an empty array returned from an if-EXPRESSION as `{}`.
+        # The serializer uses branch-local assignment so an empty leftoverPaths stays a JSON array `[]`.
+        $successResult = [pscustomobject]@{
+            Status               = 'complete'
+            ExitCode             = 0
+            InstallAreaPath      = 'C:\fake\area'
+            Reasons              = @()
+            ActivationSurfaces   = @()
+            InstallState         = 'present'
+            MetadataValid        = $true
+            InstallMode          = 'git-url'
+            LastUpdatedHead      = ('a' * 40)
+            SourceResolvedHead   = ('a' * 40)
+            PayloadDeltaRequired = $true
+            ManifestMarkerCrossBindingOk = $true
+            LeftoverPaths        = @()
+            Smoke                = 'pass'
+        }
+        $json = script:Format-StdoutJson -Mode 'update-source' -Result $successResult
+        $json | Should -Match '"leftoverPaths"\s*:\s*\[\s*\]'
+        $json | Should -Not -Match '"leftoverPaths"\s*:\s*\{'
+        $obj = $json | ConvertFrom-Json
+        @($obj.leftoverPaths).Count | Should -BeExactly 0
+    }
+
+    It 'B2-T13: -Json mode puts machine JSON on stdout and human log + PASS/FAIL on stderr (I13)' {
+        $src = script:New-FixtureGitRepo -CaseName 'b2t13'
+        $area = script:New-FixtureInstallArea -CaseName 'b2t13'
+        $homes = script:New-FixtureHomeRoots -CaseName 'b2t13'
+        script:Initialize-CleanInstallFixture -InstallArea $area -ClaudeHome $homes.ClaudeHome -CodexHome $homes.CodexHome -SourcePath $src.Root -Head $src.Head
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'inspect'
+            InstallArea = $area
+            ClaudeHome = $homes.ClaudeHome
+            CodexHome = $homes.CodexHome
+            SourcePath = $src.Root
+            Json = $true
+        }
+        $r.ExitCode | Should -BeExactly 0
+        # stdout = single machine-readable JSON object: no BEGIN/END wrapper, no human lines, parseable on its own.
+        $r.Stdout | Should -Not -Match '--- BEGIN JSON ---'
+        $r.Stdout | Should -Not -Match 'install-update: mode='
+        # stdout must parse as a single JSON object on its own (throws here if it carries human noise).
+        $stdoutObj = $r.Stdout | ConvertFrom-Json
+        $stdoutObj.status | Should -BeExactly 'inspect_clean'
+        # human log + final PASS/FAIL go to stderr under -Json.
+        $r.Stderr | Should -Match 'install-update: mode='
+        $r.Stderr | Should -Match 'install-update: PASS'
+    }
+
+    It 'B2-T14: operational smoke failure surfaces and preserves the workspace path for debugging (I14)' {
+        # A payload whose brief-init seeds a BRIEF that does NOT match the template forces a smoke
+        # sha-mismatch failure; the failure result must expose the (preserved) workspace path.
+        $payload = Join-Path $TestDrive 'smokefail-payload'
+        if (Test-Path -LiteralPath $payload) { Remove-Item -LiteralPath $payload -Recurse -Force }
+        $null = New-Item -ItemType Directory -Path (Join-Path $payload 'scripts') -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path $payload 'templates/brief') -Force
+        script:Write-TextFile (Join-Path $payload 'templates/brief/BRIEF.md') 'CANONICAL TEMPLATE BODY'
+        $stub = @'
+[CmdletBinding()] param([string] $ToolRoot, [string] $ProjectRoot)
+$dest = Join-Path $ProjectRoot 'log/brief/BRIEF.md'
+$null = New-Item -ItemType Directory -Path (Split-Path -Parent $dest) -Force
+[System.IO.File]::WriteAllText($dest, 'DIFFERENT BODY', (New-Object System.Text.UTF8Encoding($false)))
+exit 0
+'@
+        script:Write-TextFile (Join-Path $payload 'scripts/brief-init.ps1') $stub
+
+        $res = script:Invoke-OperationalSmoke -PayloadRoot $payload
+        try {
+            $res.Smoke         | Should -BeExactly 'fail'
+            $res.WorkspacePath | Should -Not -BeNullOrEmpty
+            (Test-Path -LiteralPath $res.WorkspacePath) | Should -BeTrue       # preserved for debugging
+            $res.Reason | Should -Match ([regex]::Escape($res.WorkspacePath))  # path surfaced in the reason
+        }
+        finally {
+            if ($res.WorkspacePath -and (Test-Path -LiteralPath $res.WorkspacePath)) {
+                Remove-Item -LiteralPath $res.WorkspacePath -Recurse -Force -ErrorAction SilentlyContinue
+            }
+        }
+    }
 }
