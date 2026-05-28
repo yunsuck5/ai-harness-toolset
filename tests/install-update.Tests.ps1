@@ -896,14 +896,15 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         (script:Resolve-TwoChoiceKeySequence -Keys @())                  | Should -BeExactly 'no'    # empty → fail-safe No
     }
 
-    It 'B2-T2: update-source via child process is noninteractive → aborts with no mutation, no auto-yes' {
+    It 'B2-T2: command-implied — update-source via child process (noninteractive) applies the delta → complete (no selector required)' {
         $fx = script:New-UpdatableFixture -CaseName 'b2t2'
-        # Advance the source HEAD so a payload delta exists (otherwise it would be noop).
+        # Advance the source HEAD so a payload delta exists.
         $newHead = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t2'
         $newHead | Should -Not -BeExactly $fx.SeedHead
 
-        $snapBefore = script:Get-PathTreeSnapshot -Root $fx.Area
-        # Child-process invocation has redirected stdin (noninteractive) → must NOT auto-approve.
+        # A child-process invocation has redirected stdin (the normal Claude Code shell shape).
+        # Under command-implied approval the explicit update-source invocation IS the approval, so
+        # the delta is applied without a terminal selector — this is the dogfood-gap fix.
         $r = script:Invoke-InstallUpdate -CallParams @{
             Mode = 'update-source'
             InstallArea = $fx.Area
@@ -912,11 +913,49 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
             SourcePath = $fx.Source.Root
             SkipSmoke = $true
         }
+        $r.ExitCode | Should -BeExactly 0
+        $r.Json.status | Should -BeExactly 'complete'
+        # Payload advanced to the new source HEAD.
+        [string](Read-InstallPipelineMetadata -InstallArea $fx.Area).lastUpdatedHead | Should -BeExactly $newHead
+    }
+
+    It 'B2-T2b: command-implied does NOT override the source-cut guard — noninteractive update-source with a differing -Branch → failed, no mutation' {
+        $fx = script:New-UpdatableFixture -CaseName 'b2t2b'   # installed with branch=main
+        $null = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t2b'   # payload delta exists
+        $snapBefore = script:Get-PathTreeSnapshot -Root $fx.Area
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'
+            InstallArea = $fx.Area
+            ClaudeHome = $fx.Homes.ClaudeHome
+            CodexHome = $fx.Homes.CodexHome
+            SourcePath = $fx.Source.Root
+            Branch = 'release-x'   # differs from install.json.branch=main → source-cut
+            SkipSmoke = $true
+        }
+        $r.ExitCode | Should -BeExactly 1
+        $r.Json.status | Should -BeExactly 'failed'
+        (@($r.Json.reasons) -join "`n") | Should -Match '(?i)source-cut'
+        $snapAfter = script:Get-PathTreeSnapshot -Root $fx.Area
+        script:Assert-PathTreeUnchanged -Before $snapBefore -After $snapAfter -Label 'InstallArea (command-implied + source-cut guard)'
+    }
+
+    It 'B2-T2c: -ConfirmInteractive requested but noninteractive child process → update_aborted_no_approval, no mutation (no silent fall-through)' {
+        $fx = script:New-UpdatableFixture -CaseName 'b2t2c'
+        $null = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t2c'   # payload delta exists
+        $snapBefore = script:Get-PathTreeSnapshot -Root $fx.Area
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'
+            InstallArea = $fx.Area
+            ClaudeHome = $fx.Homes.ClaudeHome
+            CodexHome = $fx.Homes.CodexHome
+            SourcePath = $fx.Source.Root
+            ConfirmInteractive = $true   # explicit confirm requested, but child process has no TTY
+            SkipSmoke = $true
+        }
         $r.ExitCode | Should -BeExactly 1
         $r.Json.status | Should -BeExactly 'update_aborted_no_approval'
-        # No mutation occurred (3-axis identity unchanged).
         $snapAfter = script:Get-PathTreeSnapshot -Root $fx.Area
-        script:Assert-PathTreeUnchanged -Before $snapBefore -After $snapAfter -Label 'InstallArea (noninteractive update-source)'
+        script:Assert-PathTreeUnchanged -Before $snapBefore -After $snapAfter -Label 'InstallArea (-ConfirmInteractive no TTY)'
     }
 
     It 'B2-T3: update-source apply (approval implied) mutates payload, preserves installedHead, updates lastUpdatedHead, verify_pass→complete' {
@@ -927,8 +966,9 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         $newHead = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t3'
         $newHead | Should -Not -BeExactly $fx.SeedHead
 
-        # Invoke the apply orchestration directly (approval already granted by the caller in
-        # production via the interactive selector; here the test stands in for that approval).
+        # Invoke the apply orchestration directly. In production this function is reached under
+        # command-implied approval (the explicit update-source invocation is the approval); here
+        # the direct call stands in for that command-implied path.
         $res = script:Invoke-UpdateSourceApply -InstallArea $fx.Area -ClaudeHome $fx.Homes.ClaudeHome -CodexHome $fx.Homes.CodexHome -SourcePath $fx.Source.Root -SkipSmoke
         $res.Status   | Should -BeExactly 'complete'
         $res.ExitCode | Should -BeExactly 0
@@ -1034,5 +1074,43 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         @($obj.leftoverPaths).Count | Should -BeExactly 1
         @($obj.leftoverPaths)[0]    | Should -BeExactly 'C:\fake\area\source-cache'
         $obj.smoke                  | Should -BeExactly 'skip'
+    }
+
+    It 'B2-T10: command-implied update-source on a destination with no install identity (no install.json) → failed, no mutation' {
+        # An InstallArea that is NOT an existing install (no install.json) must not be turned into
+        # a new install by command-implied update-source — that is fresh install (§6) territory.
+        $src = script:New-FixtureGitRepo -CaseName 'b2t10'
+        $area = script:New-FixtureInstallArea -CaseName 'b2t10'   # empty area, no install.json
+        $homes = script:New-FixtureHomeRoots -CaseName 'b2t10'
+        $snapBefore = script:Get-PathTreeSnapshot -Root $area
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'
+            InstallArea = $area
+            ClaudeHome = $homes.ClaudeHome
+            CodexHome = $homes.CodexHome
+            SourcePath = $src.Root
+            SkipSmoke = $true
+        }
+        $r.ExitCode | Should -BeExactly 1
+        $r.Json.status | Should -BeExactly 'failed'
+        $snapAfter = script:Get-PathTreeSnapshot -Root $area
+        script:Assert-PathTreeUnchanged -Before $snapBefore -After $snapAfter -Label 'InstallArea (no install identity)'
+    }
+
+    It 'B2-T11: command-implied update-source recovers a payload-drifted (valid-identity) install via reinstall-first → complete' {
+        # install.json identity is valid but the marker is corrupted (cross-binding broken) — a
+        # payload drift, not an identity loss. update-source must RECOVER it (deterministic overwrite
+        # from the identity-consistent source), not refuse it (§9 reinstall-first), and reach complete.
+        $fx = script:New-UpdatableFixture -CaseName 'b2t11'
+        $marker = Read-InstallPipelineMarker -InstallArea $fx.Area
+        $marker.head = ('0' * 40)   # break cross-binding (payload drift) while metadata stays valid
+        Write-InstallPipelineMarker -InstallArea $fx.Area -Marker $marker
+        # Confirm preflight sees payload drift.
+        $pre = script:Invoke-InstallUpdate -CallParams @{ Mode = 'inspect'; InstallArea = $fx.Area; ClaudeHome = $fx.Homes.ClaudeHome; CodexHome = $fx.Homes.CodexHome; SourcePath = $fx.Source.Root }
+        $pre.Json.status | Should -BeExactly 'inspect_payload_drift'
+
+        $res = script:Invoke-UpdateSourceApply -InstallArea $fx.Area -ClaudeHome $fx.Homes.ClaudeHome -CodexHome $fx.Homes.CodexHome -SourcePath $fx.Source.Root -SkipSmoke
+        $res.Status | Should -BeExactly 'complete'
+        (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue   # cross-binding restored
     }
 }

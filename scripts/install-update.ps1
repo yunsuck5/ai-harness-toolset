@@ -1,10 +1,11 @@
 ﻿[CmdletBinding()]
 param(
-    # inspect / verify are READ-ONLY (no mutation, no approval). update-source is the
-    # APPROVAL-GATED mutation mode (INSTALL.md §7.1 / §13): it rewrites the InstallArea
-    # payload + metadata only after explicit two-choice (Yes/No) approval.
-    # Not Mandatory so the script can be dot-sourced for testing without prompting;
-    # Invoke-Main enforces that -Mode / -InstallArea are supplied for real invocations.
+    # inspect / verify are READ-ONLY (no mutation, no approval). update-source is the mutation
+    # mode (INSTALL.md §7.1.1 / §13): it rewrites the InstallArea payload + metadata under
+    # command-implied approval (the explicit update-source invocation on an existing valid
+    # install is the approval), gated by the hard guards; -ConfirmInteractive optionally adds
+    # the two-choice terminal selector. Not Mandatory so the script can be dot-sourced for
+    # testing without prompting; Invoke-Main enforces -Mode / -InstallArea for real invocations.
     [ValidateSet('inspect', 'verify', 'update-source')]
     [string] $Mode,
 
@@ -20,6 +21,11 @@ param(
     [string] $CodexHome,
 
     [switch] $SkipSmoke,
+    # Optional: require an interactive two-choice (Yes/No) confirmation before update-source
+    # mutates (direct-terminal use). Default OFF — update-source uses command-implied approval
+    # (the explicit invocation is the approval). With -ConfirmInteractive set but no interactive
+    # terminal available, update-source aborts (it does not silently fall through to apply).
+    [switch] $ConfirmInteractive,
     [switch] $Json
 )
 
@@ -45,9 +51,15 @@ $ErrorActionPreference = 'Stop'
 #     (managed blocks / skill mirror) — those are VERIFIED by byte-identity, not applied here
 #     (managed-block / skill apply is scripts/activate-global.ps1 + scripts/apply-managed-block.ps1,
 #     a separate explicit step). It writes no run.json global file (INSTALL.md §13.4 contract-only).
-#   - update-source requires explicit two-choice (Yes/No) approval via the interactive selector.
-#     There is NO auto-approval: a noninteractive / redirected-stdin / CI context resolves to No
-#     and performs no mutation. No timeout selects Yes.
+#   - update-source uses COMMAND-IMPLIED approval (INSTALL.md §7.1.1 / §13.8): the operator's
+#     explicit update-source invocation on an existing identity-consistent install is the approval,
+#     so a normal noninteractive Claude Code shell is not blocked. The hard guards still gate the
+#     mutation (source-cut / missing-or-invalid metadata / missing source identity / unresolved
+#     HEAD → failed, no mutation). The interactive two-choice (Yes/No) selector is an OPTIONAL
+#     secondary path (-ConfirmInteractive) for direct-terminal use; it is not the mandatory gate,
+#     and with -ConfirmInteractive but no terminal the run aborts rather than auto-applying.
+#     command-implied approval applies ONLY to update-source of an existing install — never to
+#     fresh install, new destination creation, activation apply, or a source-cut override.
 #   - The legacy installer/framework/rollback/wizard/package-manager/daemon classes remain out of
 #     scope (INSTALL.md §11 (a)); this is a deterministic narrow entrypoint (INSTALL.md §11 (b)).
 #
@@ -77,11 +89,11 @@ if ([string]::IsNullOrEmpty($CodexHome)) {
 }
 
 # ---------------------------------------------------------------------------
-# Production guard — the mutation surface is the explicit `update-source` mode only,
-# and only after two-choice approval. There is NO mutation FLAG; this guard fail-fasts
-# if a future mutation flag is wired in without explicit handling here, so a stray flag
-# can never trigger a mutation the entrypoint did not intend. Exercised by the Pester
-# regression suite so a regression that drops the throw is caught at source-side review.
+# Production guard — the mutation surface is the explicit `update-source` mode only
+# (command-implied approval; optionally gated by -ConfirmInteractive). There is NO mutation
+# FLAG; this guard fail-fasts if a future mutation flag is wired in without explicit handling
+# here, so a stray flag can never trigger a mutation the entrypoint did not intend. Exercised
+# by the Pester regression suite so a regression that drops the throw is caught at source review.
 # ---------------------------------------------------------------------------
 function script:Assert-NoMutationPath {
     [CmdletBinding()]
@@ -969,10 +981,11 @@ function script:Invoke-OperationalSmoke {
 }
 
 # ---------------------------------------------------------------------------
-# update-source apply orchestration (MUTATION). Assumes approval is already granted
-# by the caller (Invoke-Main runs the selector first). Tests invoke this function directly
-# against a temp fixture InstallArea with approval implied — there is no production code path
-# that reaches this function without an explicit interactive Yes.
+# update-source apply orchestration (MUTATION). Reached only via Invoke-Main's update-source
+# branch under command-implied approval (the explicit update-source invocation is the approval;
+# optionally gated by -ConfirmInteractive). This function still enforces the hard guards
+# (existing valid install identity, source-cut, resolved HEAD) and never mutates when a guard
+# trips. Tests invoke it directly against a temp fixture InstallArea.
 # ---------------------------------------------------------------------------
 
 function script:Invoke-UpdateSourceApply {
@@ -1214,15 +1227,39 @@ function script:Invoke-Main {
                 $result = [pscustomobject]@{ Status = 'activation_pending'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('payload already current; activation drift requires a separate activation apply (out of scope for update-source); no mutation performed') + @($pre.Reasons)); ActivationSurfaces = $pre.ActivationSurfaces; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false }
             }
             else {
-                # A payload delta exists (source drift or payload drift) → explicit approval, then apply.
-                $prompt = ('Apply update-source to {0}? This rewrites current/ + install.json + payload-manifest.json + payload-marker.json.' -f $pre.InstallAreaPath)
-                $approval = script:Get-MutationApproval -Prompt $prompt
-                if ($approval.Decision -ne 'yes') {
-                    $abortReasons = @('update-source aborted: approval not granted')
-                    if (-not [string]::IsNullOrEmpty($approval.Reason)) { $abortReasons += $approval.Reason }
-                    $result = [pscustomobject]@{ Status = 'update_aborted_no_approval'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = $abortReasons; ActivationSurfaces = @(); InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $true }
+                # A payload delta exists (source drift or payload drift). Command-implied approval
+                # model (INSTALL.md §7.1.1 / §13.8): the operator's explicit update command on an
+                # existing identity-consistent install IS the approval surface — the apply proceeds
+                # without a mandatory terminal selector, so a normal noninteractive Claude Code shell
+                # is no longer blocked. The hard guards (source-cut / metadata-unknown / identity /
+                # destination / resolve-failure) still stop the mutation: they are enforced by the
+                # read-only preflight above and inside Invoke-UpdateSourceApply (which only mutates an
+                # existing identity-consistent install area). The interactive Yes/No selector is an
+                # OPTIONAL secondary path for direct-terminal use, requested via -ConfirmInteractive.
+                if ($ConfirmInteractive) {
+                    if (-not (script:Test-ApprovalInteractive)) {
+                        # Explicit interactive confirm was requested but no terminal is available;
+                        # do NOT silently fall through to command-implied apply — abort instead.
+                        $result = [pscustomobject]@{ Status = 'update_aborted_no_approval'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @('-ConfirmInteractive requested but no interactive terminal is available; no mutation performed'); ActivationSurfaces = @(); InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $true }
+                    }
+                    else {
+                        $prompt = ('Apply update-source to {0}? This rewrites current/ + install.json + payload-manifest.json + payload-marker.json.' -f $pre.InstallAreaPath)
+                        $approval = script:Get-MutationApproval -Prompt $prompt
+                        if ($approval.Decision -ne 'yes') {
+                            $abortReasons = @('update-source aborted: interactive approval not granted')
+                            if (-not [string]::IsNullOrEmpty($approval.Reason)) { $abortReasons += $approval.Reason }
+                            $result = [pscustomobject]@{ Status = 'update_aborted_no_approval'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = $abortReasons; ActivationSurfaces = @(); InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $true }
+                        }
+                        else {
+                            $result = script:Invoke-UpdateSourceApply -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref -SkipSmoke:$SkipSmoke
+                        }
+                    }
                 }
                 else {
+                    # Command-implied approval (default): the explicit update-source invocation is the
+                    # approval. Guards inside Invoke-UpdateSourceApply (source-cut, missing/invalid
+                    # metadata, missing source identity, unresolved HEAD) still return failed without
+                    # mutation; verify / activation / cleanup outcomes map to their fixed statuses.
                     $result = script:Invoke-UpdateSourceApply -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref -SkipSmoke:$SkipSmoke
                 }
             }
