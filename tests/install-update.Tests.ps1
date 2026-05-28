@@ -1275,3 +1275,48 @@ Describe 'install-update — Phase 2 bootstrap / name-based update discoverabili
         foreach ($rx in $script:TierB)  { $script:S72 | Should -Not -Match $rx }
     }
 }
+
+Describe 'install-update — Phase 3 source identity / acquisition ergonomics docs' {
+
+    BeforeAll {
+        $script:Md3 = Get-Content -LiteralPath $script:InstallMd -Raw -Encoding UTF8
+        $script:S71_3 = script:Get-InstallMdSection -Content $script:Md3 -HeadingRegex '^#{2,3}\s+7\.1\s'
+    }
+
+    It 'P3-T1 (I10): §7.1 documents source-identity / -RepoUrl source-cut ergonomics (omit -RepoUrl; no normalization; override outside command-implied)' {
+        $script:S71_3 | Should -Not -BeNullOrEmpty
+        $script:S71_3 | Should -Match 'Source identity 주의'
+        $script:S71_3 | Should -Match '-RepoUrl'
+        $script:S71_3 | Should -Match 'omit'
+        $script:S71_3 | Should -Match 'install\.json\.repoUrl'
+        $script:S71_3 | Should -Match 'URL 정규화'
+        $script:S71_3 | Should -Match '\.git'
+        # casing alone must NOT be documented as a source-cut trip (comparison is OrdinalIgnoreCase).
+        $script:S71_3 | Should -Match '대소문자 차이만으로는 발동하지 않'
+        $script:S71_3 | Should -Match 'command-implied approval 범위 밖'
+    }
+
+    It 'P3-T2 (I09): §7.1 documents the deliberate double acquisition + distinct cleanup ownership; cache reuse / -AcquisitionClonePath deferred; -SourcePath caveat' {
+        $script:S71_3 | Should -Match '이중 acquisition'
+        $script:S71_3 | Should -Match 'cleanup ownership'
+        $script:S71_3 | Should -Match 'AcquisitionClonePath'
+        $script:S71_3 | Should -Match '-SourcePath'
+        # the -SourcePath rationale must be accurate: git-url apply IGNORES -SourcePath (no source-cut from it).
+        $script:S71_3 | Should -Match '사용하지 않'
+    }
+
+    It 'P3-T3 (polish): §7.1 says an installed update-source does not change the cloned-latest-script rule' {
+        $script:S71_3 | Should -Match 'installed copy 에 update-source 가 있어도'
+        $script:S71_3 | Should -Match 'latest source clone'
+        $script:S71_3 | Should -Match 'operative contract'
+    }
+
+    It 'P3-T4 (guard intact): the source-cut comparison code is unchanged (normalization-free identity equality; Phase 3 added no code)' {
+        $core = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'scripts/lib/install-pipeline-core.ps1') -Raw -Encoding UTF8
+        $core | Should -Match 'function Test-InstallPipelineSourceCut'
+        # still the same field set + ordinal-insensitive string equality, no URL normalization helper.
+        $core | Should -Match "compareFields\s*=\s*@\(\s*'installMode',\s*'repoUrl',\s*'sourcePath',\s*'toolRoot',\s*'branch',\s*'remote'\s*\)"
+        $core | Should -Match '\[System\.StringComparison\]::OrdinalIgnoreCase'
+        $core | Should -Not -Match '(?i)Normalize-RepoUrl'
+    }
+}
