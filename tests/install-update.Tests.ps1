@@ -1220,3 +1220,58 @@ exit 0
         }
     }
 }
+
+Describe 'install-update — Phase 2 bootstrap / name-based update discoverability docs' {
+
+    BeforeAll {
+        $script:Md  = Get-Content -LiteralPath $script:InstallMd -Raw -Encoding UTF8
+        $script:S71 = script:Get-InstallMdSection -Content $script:Md -HeadingRegex '^#{2,3}\s+7\.1\s'
+        $script:S72 = script:Get-InstallMdSection -Content $script:Md -HeadingRegex '^#{2,3}\s+7\.2\s'
+    }
+
+    It 'P2-T1 (I06): §7.1 carries a self-contained name-based update quickstart (NL request + inspect/update-source/verify)' {
+        $script:S71 | Should -Not -BeNullOrEmpty
+        $script:S71 | Should -Match 'Name-based update quickstart'
+        $script:S71 | Should -Match '최신버전으로 업데이트'
+        $script:S71 | Should -Match '-Mode inspect'
+        $script:S71 | Should -Match '-Mode update-source'
+        $script:S71 | Should -Match '-Mode verify'
+    }
+
+    It 'P2-T2 (I02): legacy bootstrap note says run the CLONED latest script, not the installed copy, and not to conclude un-updatable' {
+        $script:S71 | Should -Match 'Legacy bootstrap'
+        $script:S71 | Should -Match 'install-pipeline\.ps1'
+        $script:S71 | Should -Match 'cloned'
+        $script:S71 | Should -Match '불가능하다고 결론'
+    }
+
+    It 'P2-T3 (I11): operator bootstrap clone cleanup rule is documented and distinct from the internal source-cache cleanup' {
+        $script:S71 | Should -Match 'bootstrap clone cleanup'
+        $script:S71 | Should -Match 'source-cache'
+        $script:S71 | Should -Match '자동 삭제'
+        $script:S71 | Should -Match 'leftover path'
+    }
+
+    It 'P2-T4 (I07): §7.2 flow matrix distinguishes fresh / name-based update / activation refresh with payload-only update-source' {
+        $script:S72 | Should -Not -BeNullOrEmpty
+        $script:S72 | Should -Match 'Flow comparison'
+        $script:S72 | Should -Match 'Fresh / full operational install'
+        $script:S72 | Should -Match 'Name-based existing install update'
+        $script:S72 | Should -Match 'Activation refresh'
+        $script:S72 | Should -Match 'byte-identity verify only'
+        $script:S72 | Should -Match 'command-implied approval'
+    }
+
+    It 'P2-T5 (no behavior change): activation apply stays a separate/later explicit step, update-source stays the payload entrypoint' {
+        $script:S72 | Should -Match '별도 explicit'
+        $script:S72 | Should -Match 'later phase'
+        $script:S72 | Should -Match 'activate-global\.ps1'
+        $script:S72 | Should -Match 'install-update\.ps1 -Mode update-source'
+    }
+
+    It 'P2-T6 (hygiene): §7.2 span carries no Tier A/B deployable-reference violations' {
+        $script:S72 | Should -Not -BeNullOrEmpty
+        foreach ($lit in $script:TierA) { $script:S72 | Should -Not -Match ([regex]::Escape($lit)) }
+        foreach ($rx in $script:TierB)  { $script:S72 | Should -Not -Match $rx }
+    }
+}
