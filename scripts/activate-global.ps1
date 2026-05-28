@@ -3,7 +3,10 @@ param(
     [ValidateSet('Claude', 'Codex', 'All')] [string] $Scope = 'All',
     [string] $ClaudeHome,
     [string] $CodexHome,
-    [switch] $Apply
+    [switch] $Apply,
+    # Dry-run only: forward -ShowFullDiff to apply-managed-block so each surface prints the full
+    # managed-block before/after dump instead of the default compact change summary. No effect with -Apply.
+    [switch] $ShowFullDiff
 )
 
 Set-StrictMode -Version Latest
@@ -110,7 +113,10 @@ foreach ($item in $plan) {
         '-SnippetPath', $item.Snippet,
         '-TargetPath', $item.Target
     )
-    if (-not $Apply) { $procArgs += '-DryRun' }
+    if (-not $Apply) {
+        $procArgs += '-DryRun'
+        if ($ShowFullDiff) { $procArgs += '-ShowFullDiff' }
+    }
 
     $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
     $code = $proc.ExitCode

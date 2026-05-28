@@ -2,7 +2,12 @@
 param(
     [Parameter(Mandatory = $true)] [string] $SnippetPath,
     [Parameter(Mandatory = $true)] [string] $TargetPath,
-    [switch] $DryRun
+    [switch] $DryRun,
+    # Dry-run only: print the full managed-block before/after dump (legacy behavior). Without it,
+    # dry-run prints a COMPACT change summary (line counts + unchanged prefix/suffix + changed window
+    # + first differing line), which keeps a one-line drift readable instead of dumping the whole
+    # block twice. Has no effect outside -DryRun; does not change apply behavior.
+    [switch] $ShowFullDiff
 )
 
 Set-StrictMode -Version Latest
@@ -25,8 +30,10 @@ $ErrorActionPreference = 'Stop'
 #   - On any validation failure the tool fails fast BEFORE writing — no partial write.
 #   - With -DryRun the tool runs the full pre-write validation path (existence, BOM,
 #     strict UTF-8 read, U+FFFD sentinel, marker validation, new-content construction)
-#     and prints a block-level before/after preview, but writes nothing and creates no
-#     backup. It is a whole-managed-block preview, not a line-level diff engine.
+#     and prints a COMPACT change summary (line counts + unchanged prefix/suffix + changed
+#     window + first differing line) by default, but writes nothing and creates no backup.
+#     -ShowFullDiff additionally prints the whole managed-block before/after dump. This is
+#     line-position trimming for the summary, not an LCS diff engine.
 #
 # Scope guard: this tool edits a caller-supplied destination path only. It does not
 # resolve, target, or apply to %USERPROFILE%\.claude or %USERPROFILE%\.codex on its
@@ -73,10 +80,9 @@ catch {
 
 # A-2d dry-run / diff preview. By this point every pre-write gate has run (existence,
 # BOM, strict UTF-8, U+FFFD sentinel, marker validation) and the would-be new content
-# is constructed. Dry-run reuses that exact path, then prints a block-level before/after
-# preview and exits WITHOUT writing the target or creating a backup — the backup/write
-# section below is never reached. The preview is the whole managed block (current vs
-# proposed), not a line-level diff engine, which keeps it small and deterministic.
+# is constructed. Dry-run reuses that exact path, then prints a COMPACT change summary
+# (default) or the whole managed-block before/after dump (-ShowFullDiff), and exits WITHOUT
+# writing the target or creating a backup — the backup/write section below is never reached.
 if ($DryRun) {
     $oldBlock = Get-ManagedBlockContent -Content $target  -Label 'destination'
     $newBlock = Get-ManagedBlockContent -Content $snippet -Label 'snippet'
@@ -98,9 +104,31 @@ if ($DryRun) {
     Write-Host ('apply-managed-block: target {0}' -f $TargetPath)
     Write-Host ('apply-managed-block: source snippet {0}' -f $SnippetPath)
     if ($changed) {
-        Write-Host 'apply-managed-block: managed block diff (- current / + proposed):'
-        foreach ($line in $oldBlock) { Write-Host ('- {0}' -f $line) }
-        foreach ($line in $newBlock) { Write-Host ('+ {0}' -f $line) }
+        # Compact change summary (default). Trim the common prefix/suffix so the reported "changed
+        # window" is tight — a one-line drift shows as -1/+1 instead of dumping the whole block twice.
+        # This is line-position trimming, not an LCS diff engine, which keeps it small and deterministic.
+        $min = [Math]::Min($oldBlock.Count, $newBlock.Count)
+        $prefix = 0
+        while ($prefix -lt $min -and ($oldBlock[$prefix] -ceq $newBlock[$prefix])) { $prefix++ }
+        $suffix = 0
+        while ($suffix -lt ($min - $prefix) -and ($oldBlock[$oldBlock.Count - 1 - $suffix] -ceq $newBlock[$newBlock.Count - 1 - $suffix])) { $suffix++ }
+        $oldWin = $oldBlock.Count - $prefix - $suffix
+        $newWin = $newBlock.Count - $prefix - $suffix
+
+        Write-Host 'apply-managed-block: managed block WOULD change (compact summary; use -ShowFullDiff for full before/after)'
+        Write-Host ('apply-managed-block:   block lines: current={0} proposed={1}' -f $oldBlock.Count, $newBlock.Count)
+        Write-Host ('apply-managed-block:   unchanged: prefix={0} suffix={1}' -f $prefix, $suffix)
+        Write-Host ('apply-managed-block:   changed window: current=-{0} proposed=+{1} at block line {2}' -f $oldWin, $newWin, ($prefix + 1))
+        if ($oldWin -gt 0) { Write-Host ('apply-managed-block:   first changed current line: {0}' -f $oldBlock[$prefix]) }
+        else               { Write-Host 'apply-managed-block:   first changed current line: (none; lines only added)' }
+        if ($newWin -gt 0) { Write-Host ('apply-managed-block:   first changed proposed line: {0}' -f $newBlock[$prefix]) }
+        else               { Write-Host 'apply-managed-block:   first changed proposed line: (none; lines only removed)' }
+
+        if ($ShowFullDiff) {
+            Write-Host 'apply-managed-block: managed block diff (- current / + proposed):'
+            foreach ($line in $oldBlock) { Write-Host ('- {0}' -f $line) }
+            foreach ($line in $newBlock) { Write-Host ('+ {0}' -f $line) }
+        }
         Write-Host 'apply-managed-block: DRY-RUN PASS (managed block WOULD change)'
     }
     else {

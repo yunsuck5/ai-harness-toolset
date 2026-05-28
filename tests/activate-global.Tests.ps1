@@ -49,13 +49,15 @@ BeforeAll {
             [string] $Scope,
             [string] $ClaudeHome,
             [string] $CodexHome,
-            [switch] $Apply
+            [switch] $Apply,
+            [switch] $ShowFullDiff
         )
         $procArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script:Script)
         if ($Scope)      { $procArgs += @('-Scope', $Scope) }
         if ($ClaudeHome) { $procArgs += @('-ClaudeHome', $ClaudeHome) }
         if ($CodexHome)  { $procArgs += @('-CodexHome', $CodexHome) }
         if ($Apply)      { $procArgs += '-Apply' }
+        if ($ShowFullDiff) { $procArgs += '-ShowFullDiff' }
         $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
         $exitCode = $proc.ExitCode
         $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
@@ -103,6 +105,39 @@ Describe 'activate-global dry-run safety (no write, no backup)' {
         [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $ct), [byte[]]$cBefore) | Should -BeTrue
         [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $at), [byte[]]$aBefore) | Should -BeTrue
         @(Get-ChildItem -Path $dir -Recurse -Filter '*.amb-backup' -ErrorAction SilentlyContinue).Count | Should -Be 0
+    }
+}
+
+Describe 'activate-global dry-run compact diff (Phase 3.6)' {
+    It 'AC-AG-DRYRUN-COMPACT: default dry-run prints a compact per-surface summary, not the full block dump' {
+        $dir = script:New-CaseDir -CaseName 'dryrun-compact'
+        $ch  = Join-Path $dir '.claude'
+        $cx  = Join-Path $dir '.codex'
+        script:Write-MarkedTarget -Path (Join-Path $ch 'CLAUDE.md')
+        script:Write-MarkedTarget -Path (Join-Path $cx 'AGENTS.md')
+
+        $result = script:Invoke-Activate -Scope 'All' -ClaudeHome $ch -CodexHome $cx
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'compact summary; use -ShowFullDiff'
+        $result.Output | Should -Match 'changed window:'
+        # Default (no -ShowFullDiff) must NOT dump the full managed block.
+        $result.Output | Should -Not -Match 'managed block diff \(- current / \+ proposed\)'
+        $result.Output | Should -Match 'activate-global: PASS'
+    }
+
+    It 'AC-AG-DRYRUN-FULLDIFF: -ShowFullDiff is forwarded so each surface prints the full before/after dump' {
+        $dir = script:New-CaseDir -CaseName 'dryrun-fulldiff'
+        $ch  = Join-Path $dir '.claude'
+        $cx  = Join-Path $dir '.codex'
+        script:Write-MarkedTarget -Path (Join-Path $ch 'CLAUDE.md')
+        script:Write-MarkedTarget -Path (Join-Path $cx 'AGENTS.md')
+
+        $result = script:Invoke-Activate -Scope 'All' -ClaudeHome $ch -CodexHome $cx -ShowFullDiff
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'managed block diff \(- current / \+ proposed\)'
+        # The target's pre-change block body appears as a removed line in the full dump.
+        $result.Output | Should -Match '(?m)^- OLD body'
+        $result.Output | Should -Match 'activate-global: PASS'
     }
 }
 

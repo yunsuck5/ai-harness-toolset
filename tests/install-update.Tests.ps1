@@ -1163,7 +1163,7 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         @($obj.leftoverPaths).Count | Should -BeExactly 0
     }
 
-    It 'B2-T13: -Json mode puts machine JSON on stdout and human log + PASS/FAIL on stderr (I13)' {
+    It 'B2-T13: -Json mode puts machine JSON on stdout and the human log + final label line (one of PASS / INCOMPLETE / FAIL; PASS for this clean run) on stderr (I13)' {
         $src = script:New-FixtureGitRepo -CaseName 'b2t13'
         $area = script:New-FixtureInstallArea -CaseName 'b2t13'
         $homes = script:New-FixtureHomeRoots -CaseName 'b2t13'
@@ -1184,7 +1184,7 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         # stdout must parse as a single JSON object on its own (throws here if it carries human noise).
         $stdoutObj = $r.Stdout | ConvertFrom-Json
         $stdoutObj.status | Should -BeExactly 'inspect_clean'
-        # human log + final PASS/FAIL go to stderr under -Json.
+        # human log + the final human label line (one of PASS / INCOMPLETE / FAIL; PASS for this clean run) go to stderr under -Json.
         $r.Stderr | Should -Match 'install-update: mode='
         $r.Stderr | Should -Match 'install-update: PASS'
     }
@@ -1527,5 +1527,116 @@ Describe 'install-update — Phase 3.5 managed installed-root README' {
             $body | Should -Not -Match '(?i)Updating this install'
             $body | Should -Not -Match '(?i)update to the latest version'
         }
+    }
+}
+
+Describe 'install-update — Phase 3.6 activation follow-up UX' {
+
+    BeforeAll {
+        . $script:Entry
+        $script:Phase36RootReadmeTemplate = Join-Path $script:RepoRoot 'templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
+
+        # A payload-current install whose activation has drifted (skill mirror), so update-source's
+        # read-only preflight lands on the activation_pending short-circuit (no payload delta, no
+        # mutation). Reused by the activation_pending output tests.
+        function script:New-ActivationPendingFixture {
+            param([string] $CaseName)
+            $src   = script:New-FixtureGitRepo -CaseName $CaseName
+            $area  = script:New-FixtureInstallArea -CaseName $CaseName
+            $homes = script:New-FixtureHomeRoots -CaseName $CaseName
+            script:Initialize-CleanInstallFixture -InstallArea $area -ClaudeHome $homes.ClaudeHome -CodexHome $homes.CodexHome -SourcePath $src.Root -Head $src.Head
+            # Drift exactly one activation surface so the post-preflight status is activation_pending.
+            script:Write-TextFile (Join-Path $homes.ClaudeHome 'skills/ai-harness-review/SKILL.md') "---`nname: ai-harness-review`n---`n# DRIFTED`n"
+            return [pscustomobject]@{ Source = $src; Area = $area; Homes = $homes }
+        }
+
+        $script:P36Fx = script:New-ActivationPendingFixture -CaseName 'p36-actpending'
+    }
+
+    It 'P36-T1: activation_pending human output reads as a follow-up + prints the exact activate-global next command (INCOMPLETE, not FAIL)' {
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'
+            InstallArea = $script:P36Fx.Area
+            ClaudeHome = $script:P36Fx.Homes.ClaudeHome
+            CodexHome = $script:P36Fx.Homes.CodexHome
+            SkipSmoke = $true
+        }
+        $r.ExitCode | Should -Be 1                         # follow-up still required, so exit stays 1
+        $r.Json.status | Should -BeExactly 'activation_pending'
+        $out = $r.Stdout + $r.Stderr
+        $out | Should -Match 'followUpRequired=activation'
+        $out | Should -Match 'payload=ok'
+        $out | Should -Match 'activation=pending'
+        $out | Should -Match 'result=INCOMPLETE \(payload OK; activation follow-up required'
+        # Exact, copy-paste next command in installed context, with both dry-run and apply forms.
+        $out | Should -Match ([regex]::Escape('current\scripts\activate-global.ps1'))
+        $out | Should -Match '-Scope All -Apply'
+        $out | Should -Match '(?i)MODIFIES your global/user instruction files'
+        # Final human label is INCOMPLETE, NOT a hard FAIL.
+        $out | Should -Match 'install-update: INCOMPLETE \(payload OK; activation follow-up required\)'
+        $out | Should -Not -Match 'install-update: FAIL'
+    }
+
+    It 'P36-T2: activation_pending does not change the machine status vocabulary (status=activation_pending, exitCode=1)' {
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'
+            InstallArea = $script:P36Fx.Area
+            ClaudeHome = $script:P36Fx.Homes.ClaudeHome
+            CodexHome = $script:P36Fx.Homes.CodexHome
+            SkipSmoke = $true
+        }
+        $r.Json.status   | Should -BeExactly 'activation_pending'   # machine status unchanged (not 'INCOMPLETE')
+        $r.Json.exitCode | Should -Be 1
+    }
+
+    It 'P36-T3: a hard failure stays FAIL and is distinguishable from activation_pending INCOMPLETE' {
+        $area  = script:New-FixtureInstallArea -CaseName 'p36t3'   # empty area, no install.json
+        $homes = script:New-FixtureHomeRoots -CaseName 'p36t3'
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'
+            InstallArea = $area
+            ClaudeHome = $homes.ClaudeHome
+            CodexHome = $homes.CodexHome
+            SkipSmoke = $true
+        }
+        $r.Json.status | Should -BeExactly 'failed'
+        $out = $r.Stdout + $r.Stderr
+        $out | Should -Match 'install-update: FAIL'
+        $out | Should -Not -Match 'install-update: INCOMPLETE'
+        $out | Should -Not -Match 'followUpRequired=activation'
+    }
+
+    It 'P36-T4: passing current/ as -InstallArea is classified inspect_mode_unknown with a "did you mean its parent" hint' {
+        $currentDir = Join-Path $script:P36Fx.Area 'current'
+        Test-Path -LiteralPath $currentDir -PathType Container | Should -BeTrue
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'inspect'
+            InstallArea = $currentDir
+            ClaudeHome = $script:P36Fx.Homes.ClaudeHome
+            CodexHome = $script:P36Fx.Homes.CodexHome
+        }
+        $r.Json.status | Should -BeExactly 'inspect_mode_unknown'
+        $out = $r.Stdout + $r.Stderr
+        $out | Should -Match '(?i)did you mean its parent'
+        $out | Should -Match 'install ROOT'
+    }
+
+    It 'P36-T5: INSTALL.md documents the activation_pending follow-up contract, next command, and dry-run compact summary' {
+        $md = Get-Content -LiteralPath $script:InstallMd -Raw -Encoding UTF8
+        $md | Should -Match 'INCOMPLETE \(payload OK; activation follow-up required\)'
+        $md | Should -Match 'activate-global\.ps1'
+        $md | Should -Match '-Scope All -Apply'
+        $md | Should -Match '-ShowFullDiff'
+        $md | Should -Match 'compact change summary'
+        $md | Should -Match 'install ROOT'
+    }
+
+    It 'P36-T6: the installed root README documents the activation apply command, dry-run, and -InstallArea-is-root' {
+        $readme = Get-Content -LiteralPath $script:Phase36RootReadmeTemplate -Raw -Encoding UTF8
+        $readme | Should -Match 'activate-global\.ps1'
+        $readme | Should -Match '-Scope All -Apply'
+        $readme | Should -Match '-ShowFullDiff'
+        $readme | Should -Match 'INCOMPLETE'
+        $readme | Should -Match 'install-root directory'
     }
 }

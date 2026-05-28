@@ -55,7 +55,7 @@ BeforeAll {
     }
 
     function script:Invoke-Apply {
-        param([string] $SnippetPath, [string] $TargetPath, [switch] $DryRun)
+        param([string] $SnippetPath, [string] $TargetPath, [switch] $DryRun, [switch] $ShowFullDiff)
         $procArgs = @(
             '-NoProfile',
             '-ExecutionPolicy', 'Bypass',
@@ -64,10 +64,23 @@ BeforeAll {
             '-TargetPath', $TargetPath
         )
         if ($DryRun) { $procArgs += '-DryRun' }
+        if ($ShowFullDiff) { $procArgs += '-ShowFullDiff' }
         $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
         $exitCode = $proc.ExitCode
         $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
         return [pscustomobject]@{ ExitCode = $exitCode; Output = $text }
+    }
+
+    # A managed-block snippet/target pair that differs by exactly ONE middle line, with a
+    # large ASCII common prefix and suffix — exercises the compact dry-run summary's
+    # prefix/suffix trim (a one-line drift should report as -1/+1, not a full block dump).
+    function script:New-OneLineDriftPair {
+        $lines = @('alpha','bravo','charlie','delta','echo','foxtrot')
+        $proposed = $lines.Clone()
+        $proposed[3] = 'delta-CHANGED'   # change exactly the 4th block line
+        $snippetBlock = ($script:Begin + "`n" + ($proposed -join "`n") + "`n" + $script:End + "`n")
+        $targetBlock  = ("head`n" + $script:Begin + "`n" + ($lines -join "`n") + "`n" + $script:End + "`ntail`n")
+        return [pscustomobject]@{ Snippet = $snippetBlock; Target = $targetBlock }
     }
 
     # A minimal, well-formed snippet block (BEGIN .. END inclusive). Includes an
@@ -595,32 +608,81 @@ Describe 'apply-managed-block A-2d dry-run / diff' {
         script:Write-Utf8NoBomFile -Path $target -Content $original
         $beforeBytes = script:Read-Bytes -Path $target
 
+        # Phase 3.6: default dry-run now prints a COMPACT change summary (not the full block dump).
         $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target -DryRun
         $result.ExitCode | Should -Be 0 -Because $result.Output
         $result.Output | Should -Match 'DRY-RUN \(no file written, no backup created\)'
         $result.Output | Should -Match 'DRY-RUN PASS \(managed block WOULD change\)'
-        # Block-level diff markers: the current block body and the proposed body appear.
-        # Use structural matchers (line prefix + line shape) rather than asserting the
-        # exact em-dash byte in the proposed-body line. Rationale: the proposed body's
-        # em-dash (U+2014) is emitted via Write-Host inside the child PowerShell, then
-        # captured by the parent PowerShell pipeline. On a host whose default console
-        # codepage is non-UTF-8 (e.g. CP949 on Korean Windows), that capture chain is
-        # lossy for U+2014 in PS 5.1 regardless of any [Console]::OutputEncoding or
-        # SetOut workaround inside the child, because the parent decodes the child's
-        # stdout via the parent's [Console]::OutputEncoding before any test-side
-        # processing. The em-dash byte preservation on the actual file write path is
-        # tested elsewhere by AC-AMB-OK family cases that read the post-apply file
-        # contents directly (e.g. tests/apply-managed-block.Tests.ps1 lines 114, 292),
-        # so this dry-run case only asserts that the proposed body line appeared in
-        # the diff with the expected prefix + suffix shape.
-        $result.Output | Should -Match '- OLD body'
-        $result.Output | Should -Match '\+ body line'                              # second line of the new block
-        $result.Output | Should -Match '\+ # managed payload\s+[^A-Za-z0-9\s]+\s*v2'    # first line of the new block; middle requires 1+ non-alphanumeric and non-whitespace chars (em-dash or ?? both ok); rejects alpha words and whitespace-only middles. Residual: punctuation-only middles (e.g. `!!!`) still match — that's the structural limit of regex matching through a lossy console-capture path
+        # Compact summary surface: header + line counts + changed-window + first changed current line.
+        # Get-ManagedBlockContent includes the BEGIN/END marker lines, so the blocks are
+        # 3 lines (BEGIN/OLD body/END) -> 4 lines (BEGIN/# managed payload/body line/END); the
+        # markers are the common prefix(1)/suffix(1), leaving a -1/+2 changed window at block line 2.
+        $result.Output | Should -Match 'compact summary; use -ShowFullDiff'
+        $result.Output | Should -Match 'block lines: current=3 proposed=4'
+        $result.Output | Should -Match 'unchanged: prefix=1 suffix=1'
+        $result.Output | Should -Match 'changed window: current=-1 proposed=\+2 at block line 2'
+        # The current side is ASCII; assert it. The proposed first line carries an em-dash whose
+        # cross-process console capture is lossy on a non-UTF-8 host (see the AC-AMB-OK file-read
+        # cases for the byte-preservation guarantee), so it is NOT asserted here.
+        $result.Output | Should -Match 'first changed current line: OLD body'
+        # Compact default does NOT emit the full before/after dump.
+        $result.Output | Should -Not -Match 'managed block diff \(- current / \+ proposed\)'
+        $result.Output | Should -Not -Match '(?m)^\+ body line'                     # second new line only appears in the full dump
         $result.Output | Should -Not -Match 'apply-managed-block: PASS'             # not a real apply
 
         # Target byte-unchanged and NO backup sidecar created.
         $afterBytes = script:Read-Bytes -Path $target
         [System.Linq.Enumerable]::SequenceEqual([byte[]]$beforeBytes, [byte[]]$afterBytes) | Should -BeTrue
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-DRYRUN-COMPACT-1LINE: a one-line drift reports a tight changed window, not a full block dump' {
+        $dir = script:New-CaseDir -CaseName 'dryrun-compact-1line'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        $pair = script:New-OneLineDriftPair
+        script:Write-Utf8NoBomFile -Path $snippet -Content $pair.Snippet
+        script:Write-Utf8NoBomFile -Path $target  -Content $pair.Target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target -DryRun
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'DRY-RUN PASS \(managed block WOULD change\)'
+        # 6 content lines + BEGIN/END markers = 8 block lines; single middle change at the 4th content
+        # line => common prefix 4 (BEGIN+alpha+bravo+charlie), suffix 3 (echo+foxtrot+END), window
+        # -1/+1 at block line 5.
+        $result.Output | Should -Match 'block lines: current=8 proposed=8'
+        $result.Output | Should -Match 'unchanged: prefix=4 suffix=3'
+        $result.Output | Should -Match 'changed window: current=-1 proposed=\+1 at block line 5'
+        $result.Output | Should -Match 'first changed current line: delta'
+        $result.Output | Should -Match 'first changed proposed line: delta-CHANGED'
+        # Compact: the full dump and the unchanged lines must NOT be printed by default.
+        $result.Output | Should -Not -Match 'managed block diff \(- current / \+ proposed\)'
+        $result.Output | Should -Not -Match '(?m)^- alpha'
+        $result.Output | Should -Not -Match '(?m)^\+ foxtrot'
+
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-DRYRUN-FULLDIFF: -ShowFullDiff prints the full managed-block before/after on top of the summary' {
+        $dir = script:New-CaseDir -CaseName 'dryrun-fulldiff'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        $pair = script:New-OneLineDriftPair
+        script:Write-Utf8NoBomFile -Path $snippet -Content $pair.Snippet
+        script:Write-Utf8NoBomFile -Path $target  -Content $pair.Target
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target -DryRun -ShowFullDiff
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'DRY-RUN PASS \(managed block WOULD change\)'
+        # The compact summary is still present...
+        $result.Output | Should -Match 'changed window: current=-1 proposed=\+1 at block line 5'
+        # ...and the full before/after dump now appears, including the UNCHANGED lines on both sides.
+        $result.Output | Should -Match 'managed block diff \(- current / \+ proposed\)'
+        $result.Output | Should -Match '(?m)^- alpha'
+        $result.Output | Should -Match '(?m)^\+ alpha'
+        $result.Output | Should -Match '(?m)^- delta$'
+        $result.Output | Should -Match '(?m)^\+ delta-CHANGED'
+
         (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
     }
 

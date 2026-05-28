@@ -9,6 +9,11 @@ param(
     [ValidateSet('inspect', 'verify', 'update-source')]
     [string] $Mode,
 
+    # The install ROOT — the directory that CONTAINS current/, install.json, payload-manifest.json,
+    # and payload-marker.json (e.g. %USERPROFILE%\.claude\ai-harness-toolset). It is NOT the current/
+    # payload subdirectory. There is intentionally no default: update-source mutates the supplied
+    # InstallArea, so inferring a default could mutate the real global install unintentionally. Passing
+    # current/ yields an "install.json missing" classification with a hint to use its parent.
     [string] $InstallArea,
 
     [string] $SourcePath,
@@ -429,6 +434,26 @@ function script:Resolve-SourceHead {
 # Mode dispatch.
 # ---------------------------------------------------------------------------
 
+# Phase 3.6: when install.json is absent under the supplied -InstallArea, return a one-line hint if
+# the path looks like the operator passed current/ instead of the install ROOT — either the leaf is
+# literally 'current', or the PARENT directory carries install.json (so the parent is the real root).
+# Returns $null when there is no such signal, so a genuinely uninstalled area is not mis-hinted.
+function script:Get-InstallAreaRootHint {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] [string] $InstallAreaResolved)
+    $leaf   = Split-Path -Leaf $InstallAreaResolved
+    $parent = Split-Path -Parent $InstallAreaResolved
+    $parentHasMeta = $false
+    if (-not [string]::IsNullOrEmpty($parent)) {
+        $parentMeta = Join-Path $parent 'install.json'
+        $parentHasMeta = Test-Path -LiteralPath $parentMeta -PathType Leaf
+    }
+    if (($leaf -ieq 'current') -or $parentHasMeta) {
+        return ("hint: -InstallArea must be the install ROOT (the directory containing current/, install.json, payload-manifest.json, payload-marker.json), not current/. You passed '{0}'; did you mean its parent '{1}'?" -f $InstallAreaResolved, $parent)
+    }
+    return $null
+}
+
 function script:Invoke-InspectMode {
     [CmdletBinding()]
     param(
@@ -456,6 +481,8 @@ function script:Invoke-InspectMode {
     $metadataPath = Get-InstallPipelineMetadataPath -InstallArea $installAreaResolved
     if (-not (Test-Path -LiteralPath $metadataPath -PathType Leaf)) {
         $reasons.Add('install.json missing at ' + $metadataPath)
+        $areaHint = script:Get-InstallAreaRootHint -InstallAreaResolved $installAreaResolved
+        if ($null -ne $areaHint) { $reasons.Add($areaHint) }
         return [pscustomobject]@{
             Status                       = 'inspect_mode_unknown'
             ExitCode                     = 0
@@ -873,6 +900,20 @@ function script:Write-HumanReport {
         }
         if ($rNames -ccontains 'RootReadme') {
             $lines += ('install-update: rootReadme={0} (managed landing page at <installAreaRoot>/README.md)' -f $Result.RootReadme)
+        }
+        # Phase 3.6: activation_pending is a FOLLOW-UP state, not a hard payload failure. Make the
+        # human output say so plainly and hand the operator the exact next command. activation_pending
+        # is reached only when the payload verified OK but >=1 activation surface is not byte-identical
+        # (status precedence: verify_failed outranks activation_pending), so payload=ok holds here.
+        if ($Result.Status -eq 'activation_pending') {
+            $activateScript = [System.IO.Path]::Combine([string]$Result.InstallAreaPath, 'current', 'scripts', 'activate-global.ps1')
+            $lines += 'install-update: followUpRequired=activation'
+            $lines += 'install-update: payload=ok'
+            $lines += 'install-update: activation=pending'
+            $lines += 'install-update: result=INCOMPLETE (payload OK; activation follow-up required — NOT a payload failure, NOT verify_failed)'
+            $lines += 'install-update: next step — activation apply MODIFIES your global/user instruction files and creates .amb-backup; run it only after your explicit approval:'
+            $lines += ('install-update:   dry-run preview : powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" -Scope All' -f $activateScript)
+            $lines += ('install-update:   apply           : powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" -Scope All -Apply' -f $activateScript)
         }
     }
 
@@ -1411,7 +1452,16 @@ function script:Invoke-Main {
         Write-Host '--- END JSON ---'
     }
 
-    $finalLabel = if ($result.ExitCode -eq 0) { 'PASS' } else { 'FAIL' }
+    # Final human label. exitCode / machine status vocabulary are unchanged; this label is human
+    # output only. activation_pending keeps exitCode 1 (a follow-up IS still required) but is labelled
+    # INCOMPLETE — not FAIL — so a payload-OK-with-activation-follow-up run does not read as a hard
+    # failure. Every other non-zero exit (verify_failed / smoke_failed / cleanup_failed_with_leftover /
+    # failed / update_aborted_no_approval) stays FAIL.
+    $resultStatus = if (@($result.PSObject.Properties.Name) -ccontains 'Status') { [string]$result.Status } else { '' }
+    $finalLabel =
+        if ($result.ExitCode -eq 0) { 'PASS' }
+        elseif ($resultStatus -eq 'activation_pending') { 'INCOMPLETE (payload OK; activation follow-up required)' }
+        else { 'FAIL' }
     if ($Json) {
         [Console]::Error.WriteLine('install-update: ' + $finalLabel)
     }
