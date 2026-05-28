@@ -1320,3 +1320,174 @@ Describe 'install-update — Phase 3 source identity / acquisition ergonomics do
         $core | Should -Not -Match '(?i)Normalize-RepoUrl'
     }
 }
+
+Describe 'install-update — Phase 3.5 managed installed-root README' {
+
+    BeforeAll {
+        # Dot-source the entrypoint so the full lib set (incl. lib/path.ps1 -> Test-IsSourceRepoRoot,
+        # used by Invoke-InstallPipelineDispatch's D3 check) is available when the tests call the
+        # pipeline directly. The dot-source guard prevents Invoke-Main from running.
+        . $script:Entry
+        $script:RootReadmeTemplateRel = 'templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
+        $script:RealTemplatePath = Join-Path $script:RepoRoot $script:RootReadmeTemplateRel
+        $script:FixtureEntry = Join-Path $script:RepoRoot 'tests/support/install-pipeline-fixture.ps1'
+
+        function script:New-RootReadmeFixture {
+            param([string] $CaseName, [string] $TemplateBody, [switch] $WithoutTemplate)
+            $src = script:New-FixtureGitRepo -CaseName $CaseName
+            Push-Location $src.Root
+            try {
+                foreach ($r in 'config','scripts','snippets','templates') {
+                    $null = New-Item -ItemType Directory -Path (Join-Path $src.Root $r) -Force
+                }
+                # D3 markers required by Test-IsSourceRepoRoot + one file per payload root so git
+                # tracks every root (git does not archive empty dirs; an empty payload root would
+                # fail install verify with "runtime payload root missing").
+                script:Write-TextFile (Join-Path $src.Root 'scripts/verify-ps1.ps1')    '# marker'
+                script:Write-TextFile (Join-Path $src.Root 'templates/review-input.md') '# marker'
+                script:Write-TextFile (Join-Path $src.Root 'config/reviewer.json')      '{}'
+                script:Write-TextFile (Join-Path $src.Root 'snippets/marker.txt')       'marker'
+                if (-not $WithoutTemplate) {
+                    script:Write-TextFile (Join-Path $src.Root $script:RootReadmeTemplateRel) $TemplateBody
+                }
+                & git add . 2>&1 | Out-Null
+                & git commit -q -m 'payload (+root readme template)' 2>&1 | Out-Null
+                $head = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse','HEAD')).Stdout.Trim()
+            }
+            finally { Pop-Location }
+
+            $area = script:New-FixtureInstallArea -CaseName $CaseName
+            $homes = script:New-FixtureHomeRoots -CaseName $CaseName
+            $proj = Join-Path $TestDrive ('proj35-' + $CaseName)
+            if (Test-Path -LiteralPath $proj) { Remove-Item -LiteralPath $proj -Recurse -Force }
+            $null = New-Item -ItemType Directory -Path $proj -Force
+            $null = New-Item -ItemType Directory -Path (Join-Path $proj '.git') -Force
+            $install = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+                '-NoProfile','-ExecutionPolicy','Bypass','-File',$script:FixtureEntry,
+                '-Action','install','-InstallArea',$area,'-InstallMode','local-clone',
+                '-SourcePath',$src.Root,'-Branch','main','-Remote','origin',
+                '-ProjectRoot',$proj,'-RuntimeToolRoot',$proj
+            )
+            if ($install.ExitCode -ne 0) { throw ('fixture install failed: ' + $install.Stdout + $install.Stderr) }
+            return [pscustomobject]@{ Source = $src; Area = $area; Head = $head; Homes = $homes }
+        }
+    }
+
+    It 'P35-T1: the source root README template exists, is hygiene-clean, and reads as a landing page (not the full contract)' {
+        Test-Path -LiteralPath $script:RealTemplatePath -PathType Leaf | Should -BeTrue
+        $body = Get-Content -LiteralPath $script:RealTemplatePath -Raw -Encoding UTF8
+        foreach ($lit in $script:TierA) { $body | Should -Not -Match ([regex]::Escape($lit)) }
+        foreach ($rx in $script:TierB)  { $body | Should -Not -Match $rx }
+        $body | Should -Match 'global install area'
+        $body | Should -Match 'install-update\.ps1'
+        $body | Should -Match 'inspect'
+        $body | Should -Match 'update-source'
+        $body | Should -Match 'verify'
+        $body | Should -Match '-InstallArea'
+        $body | Should -Match '-RepoUrl'
+        $body | Should -Match 'INSTALL\.md'        # latest source clone's INSTALL.md is the operative contract
+        $body | Should -Match 'activation_pending' # activation apply is a separate explicit step
+        $body | Should -Match 'operator landing page'
+        $body | Should -Match 'not the full'       # explicitly NOT the full source contract
+    }
+
+    It 'P35-T2: fresh install materializes the install-area README.md byte-identical to the in-payload template, and verify passes' {
+        $fx = script:New-RootReadmeFixture -CaseName 'p35t2' -TemplateBody "ROOT README BODY v1`ninspect / update-source / verify`n"
+        $readme = Join-Path $fx.Area 'README.md'
+        Test-Path -LiteralPath $readme -PathType Leaf | Should -BeTrue
+        $tpl = Join-Path $fx.Area 'current/templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
+        (Get-FileHash -LiteralPath $readme -Algorithm SHA256).Hash | Should -BeExactly (Get-FileHash -LiteralPath $tpl -Algorithm SHA256).Hash
+        (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue
+    }
+
+    It 'P35-T3: a corrupted root README makes verify fail with a sha256 mismatch' {
+        $fx = script:New-RootReadmeFixture -CaseName 'p35t3' -TemplateBody "ROOT README BODY v1`n"
+        Add-Content -LiteralPath (Join-Path $fx.Area 'README.md') -Value 'TAMPERED'
+        $res = Invoke-InstallPipelineVerify -InstallArea $fx.Area
+        $res.ok | Should -BeFalse
+        (@($res.errors) -join "`n") | Should -Match '(?i)root README sha256 mismatch'
+    }
+
+    It 'P35-T4: a missing root README makes verify fail' {
+        $fx = script:New-RootReadmeFixture -CaseName 'p35t4' -TemplateBody "ROOT README BODY v1`n"
+        Remove-Item -LiteralPath (Join-Path $fx.Area 'README.md') -Force
+        $res = Invoke-InstallPipelineVerify -InstallArea $fx.Area
+        $res.ok | Should -BeFalse
+        (@($res.errors) -join "`n") | Should -Match '(?i)root README missing'
+    }
+
+    It 'P35-T5: update-source (dispatch) re-materializes / overwrites a corrupted root README' {
+        $fx = script:New-RootReadmeFixture -CaseName 'p35t5' -TemplateBody "ROOT README BODY v1`n"
+        $readme = Join-Path $fx.Area 'README.md'
+        Set-Content -LiteralPath $readme -Value 'STALE' -NoNewline -Encoding utf8
+        (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeFalse
+        $tuple = New-InstallPipelineTuple -Action 'update-source' -InstallMode 'local-clone' -SourceLocation $fx.Source.Root -ResolvedRefSha $fx.Head -RefKind 'commit' -ToolRoot $fx.Source.Root -ProjectRoot $fx.Area -SourceUpdatePolicy 'fetch-and-update'
+        Invoke-InstallPipelineDispatch -Tuple $tuple -InstallArea $fx.Area -Branch 'main' -Remote 'origin'
+        (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue
+        $tpl = Join-Path $fx.Area 'current/templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
+        (Get-FileHash -LiteralPath $readme -Algorithm SHA256).Hash | Should -BeExactly (Get-FileHash -LiteralPath $tpl -Algorithm SHA256).Hash
+    }
+
+    It 'P35-T6: a payload WITHOUT the template is unaffected (template-conditional skip; verify passes, no README created)' {
+        $fx = script:New-RootReadmeFixture -CaseName 'p35t6' -WithoutTemplate
+        (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $fx.Area 'README.md')) | Should -BeFalse
+    }
+
+    It 'P35-T7: PUBLIC update-source repairs a missing root README even when the payload is already current (no payload delta)' {
+        # Regression for the public-entrypoint gap: when the payload is already current, update-source
+        # short-circuits (noop_already_current / activation_pending) before dispatch — so the managed
+        # root README must still be healed in place on that path. (Here activation surfaces are absent,
+        # so the preflight lands on the activation_pending branch; payload has no delta.)
+        $fx = script:New-RootReadmeFixture -CaseName 'p35t7' -TemplateBody "ROOT README BODY v1`n"
+        $readme = Join-Path $fx.Area 'README.md'
+        Test-Path -LiteralPath $readme -PathType Leaf | Should -BeTrue
+        Remove-Item -LiteralPath $readme -Force   # README missing; payload still current
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'
+            InstallArea = $fx.Area
+            ClaudeHome = $fx.Homes.ClaudeHome
+            CodexHome = $fx.Homes.CodexHome
+            SourcePath = $fx.Source.Root
+            SkipSmoke = $true
+        }
+        # The public entrypoint repaired the README in place (no re-clone needed).
+        (Test-Path -LiteralPath $readme -PathType Leaf) | Should -BeTrue
+        $tpl = Join-Path $fx.Area 'current/templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
+        (Get-FileHash -LiteralPath $readme -Algorithm SHA256).Hash | Should -BeExactly (Get-FileHash -LiteralPath $tpl -Algorithm SHA256).Hash
+        # Core payload+README verify passes after the repair (activation surfaces are a separate layer).
+        (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue
+        # The repair is reported in reasons without changing status/exit-code vocabulary.
+        ($r.Stdout + $r.Stderr) | Should -Match '(?i)root README .*refreshed in place'
+    }
+
+    It 'P35-T8: Repair-RootReadmeInPlace (the shared healer used by BOTH payload-current branches) — ok / repaired / skipped-no-template' {
+        # Unit-test the in-place repair helper that both the noop_already_current and the
+        # activation_pending branches call, so the repair logic is locked independently of which
+        # short-circuit branch reaches it.
+        $area = script:New-FixtureInstallArea -CaseName 'p35t8'
+        $tplDir = Join-Path $area 'current/templates/install-root'
+        $null = New-Item -ItemType Directory -Path $tplDir -Force
+        $tpl = Join-Path $tplDir 'AI_HARNESS_TOOLSET_ROOT_README.md'
+        script:Write-TextFile $tpl "TEMPLATE BODY v1`n"
+        $readme = Join-Path $area 'README.md'
+
+        # missing root README => repaired (and now byte-identical to the template).
+        script:Repair-RootReadmeInPlace -InstallArea $area | Should -BeExactly 'repaired'
+        Test-Path -LiteralPath $readme -PathType Leaf | Should -BeTrue
+        (Get-FileHash -LiteralPath $readme -Algorithm SHA256).Hash | Should -BeExactly (Get-FileHash -LiteralPath $tpl -Algorithm SHA256).Hash
+
+        # already byte-identical => ok (idempotent, no spurious 'repaired').
+        script:Repair-RootReadmeInPlace -InstallArea $area | Should -BeExactly 'ok'
+
+        # drifted root README => repaired again.
+        Add-Content -LiteralPath $readme -Value 'TAMPERED'
+        script:Repair-RootReadmeInPlace -InstallArea $area | Should -BeExactly 'repaired'
+        (Get-FileHash -LiteralPath $readme -Algorithm SHA256).Hash | Should -BeExactly (Get-FileHash -LiteralPath $tpl -Algorithm SHA256).Hash
+
+        # payload carries no template => skipped (template-conditional).
+        Remove-Item -LiteralPath $tpl -Force
+        script:Repair-RootReadmeInPlace -InstallArea $area | Should -BeExactly 'skipped-no-template'
+    }
+}

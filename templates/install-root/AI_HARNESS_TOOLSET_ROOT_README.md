@@ -1,0 +1,27 @@
+# ai-harness-toolset — global install area
+
+This directory is the **ai-harness-toolset global install area**. The **InstallArea root** is the directory that contains this `README.md` (the runtime payload lives in `current/`, with sibling `install.json` / `payload-manifest.json` / `payload-marker.json`).
+
+This file is an **operator landing page**, not the full operative contract. The full install/update contract is the **latest source clone's `INSTALL.md`** — re-adopt it for any update (see "Updating" below).
+
+## Updating this install ("update to the latest version")
+
+Normal update flow is three steps: **inspect → update-source → verify**.
+
+1. **Clone the latest source** and read its `INSTALL.md` — that cloned `INSTALL.md` is the operative contract for the update.
+2. Run the **cloned latest source's** `scripts/install-update.ps1` (not this installed copy) — even if this installed copy already has an `update-source` mode, the latest source's script + `INSTALL.md` are the update source-of-truth, because this installed payload may still be at an older version during bootstrap:
+   - `scripts/install-update.ps1 -Mode inspect      -InstallArea <this directory>`
+   - `scripts/install-update.ps1 -Mode update-source -InstallArea <this directory>`
+   - `scripts/install-update.ps1 -Mode verify        -InstallArea <this directory>`
+3. For an existing install, pass `-InstallArea <this directory>` and usually **omit `-RepoUrl`** — the script derives the source from `install.json`. Passing a differently-spelled URL (for example a `.git`-suffix or trailing-slash difference) can trip the source-cut guard; omitting it is the safe default.
+
+## What update-source does (and does not) do
+
+- `update-source` updates the **payload** (`current/` + the three sibling files) and **verifies activation surfaces by byte-identity only** — it does **not** apply activation.
+- If the run reports `activation_pending` (or an activation-only `verify_failed`), the payload is fine and only a **separate, explicit activation apply step** remains — `update-source` does not perform it.
+- If the run reaches `complete` and activation is already in sync, **no activation re-apply is needed**.
+
+## Notes
+
+- An older (legacy) install area may not contain this `README.md`; it is created/refreshed on the next successful update.
+- For anything beyond this quick reference, use the **latest source clone's `INSTALL.md`** as the operative contract.

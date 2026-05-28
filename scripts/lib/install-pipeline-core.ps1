@@ -72,6 +72,15 @@ $script:InstallPipelineMarkerSchemaVersion  = 1
 $script:InstallPipelineMarkerName           = 'payload-marker.json'
 $script:InstallPipelineSourceCacheName      = 'source-cache'
 $script:InstallPipelineGitUrlDefaultRemote  = 'origin'
+# Managed root artifact (Phase 3.5): an operator landing page placed at the InstallArea root
+# (sibling of current/). Its source is an in-payload template under current/<this rel path>, so the
+# template's bytes are already covered by payload-manifest.json; the root copy is then verified by
+# byte-identity (SHA-256) against that manifest-covered template (no manifest-schema change). The
+# feature is template-conditional: if the payload does not carry the template, materialization and
+# verification skip it (mirrors the operational-smoke skip-on-missing-prerequisite pattern), so a
+# source/fixture without the template is unaffected.
+$script:InstallPipelineRootReadmeName        = 'README.md'
+$script:InstallPipelineRootReadmeTemplateRel = 'templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
 
 function Get-InstallPipelinePayloadRoots {
     return ,$script:InstallPipelinePayloadRoots
@@ -111,6 +120,50 @@ function Get-InstallPipelineMarkerPath {
         [string] $InstallArea
     )
     return [System.IO.Path]::GetFullPath((Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineMarkerName))
+}
+
+# Installed root artifact path: <InstallArea>/README.md (sibling of current/).
+function Get-InstallPipelineRootReadmePath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $InstallArea
+    )
+    return [System.IO.Path]::GetFullPath((Join-Path -Path $InstallArea -ChildPath $script:InstallPipelineRootReadmeName))
+}
+
+# In-payload source template path: current/templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md.
+# This is what the root README is materialized from and verified against. It lives under a payload
+# root (templates/), so payload-manifest.json already covers its bytes.
+function Get-InstallPipelineRootReadmeTemplatePath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $InstallArea
+    )
+    $currentDir = Get-InstallPipelineCurrentDir -InstallArea $InstallArea
+    $rel = $script:InstallPipelineRootReadmeTemplateRel -replace '/', [System.IO.Path]::DirectorySeparatorChar
+    return [System.IO.Path]::GetFullPath((Join-Path -Path $currentDir -ChildPath $rel))
+}
+
+# Materialize the managed root README from the in-payload template (template-conditional):
+# copy current/templates/install-root/...README.md -> <InstallArea>/README.md. If the payload does
+# not carry the template (e.g. a pre-Phase-3.5 source or a minimal test fixture), this is a no-op
+# (skip) so such sources are unaffected. Returns the action taken for caller diagnostics.
+function Set-InstallPipelineRootReadme {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $InstallArea
+    )
+    $templatePath = Get-InstallPipelineRootReadmeTemplatePath -InstallArea $InstallArea
+    $readmePath   = Get-InstallPipelineRootReadmePath -InstallArea $InstallArea
+    if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
+        return 'skipped-no-template'
+    }
+    # Deterministic overwrite from the in-payload template (byte-for-byte copy).
+    Copy-Item -LiteralPath $templatePath -Destination $readmePath -Force
+    return 'materialized'
 }
 
 # source-cache directory used as a RUN-SCOPED TEMPORARY WORK AREA for git-url mode.
@@ -653,6 +706,13 @@ function Invoke-InstallPipelineDispatch {
 
     Invoke-InstallMaterialization -Tuple $Tuple -InstallArea $InstallArea
 
+    # Phase 3.5: materialize the managed root README (operator landing page) at <InstallArea>/README.md
+    # from the just-materialized in-payload template. Template-conditional: a no-op when the payload
+    # does not carry the template. Both install and update-source reach this path (dispatch is the
+    # single orchestration point), so the root README is created on fresh install and overwritten on
+    # update-source. Verified later by Invoke-InstallPipelineVerify (byte-identity vs the template).
+    $null = Set-InstallPipelineRootReadme -InstallArea $InstallArea
+
     # STEP3 guide §15.4 write hook — manifest + marker right after materialization,
     # before install.json. install.json lastUpdatedHead must equal manifest.head and
     # marker.head; verify hook (§15.4) re-checks that binding.
@@ -913,6 +973,34 @@ function Invoke-InstallPipelineVerify {
         }
         if (-not [string]::IsNullOrEmpty($mdLastUpdatedHead) -and $marker.head -ne $mdLastUpdatedHead) {
             $errors.Add("marker.head ($($marker.head)) does not match metadata.lastUpdatedHead ($mdLastUpdatedHead)")
+        }
+    }
+
+    # Phase 3.5: managed root README verification (template-conditional). The root artifact at
+    # <InstallArea>/README.md must be byte-identical (SHA-256) to the in-payload template at
+    # current/templates/install-root/...README.md, whose bytes are already covered by the manifest
+    # digest above — so this gives the root README transitive integrity without a manifest-schema
+    # change. Skip when the payload does not carry the template (pre-Phase-3.5 source / minimal
+    # fixture), mirroring the materialization skip. Missing / stale / corrupted root README is a
+    # verify failure.
+    $rootReadmeTemplatePath = Get-InstallPipelineRootReadmeTemplatePath -InstallArea $InstallArea
+    if (Test-Path -LiteralPath $rootReadmeTemplatePath -PathType Leaf) {
+        $rootReadmePath = Get-InstallPipelineRootReadmePath -InstallArea $InstallArea
+        if (-not (Test-Path -LiteralPath $rootReadmePath -PathType Leaf)) {
+            $errors.Add("managed root README missing: $rootReadmePath (expected a byte-identical copy of current/$($script:InstallPipelineRootReadmeTemplateRel); re-run update-source)")
+        }
+        else {
+            $tplBytes = [System.IO.File]::ReadAllBytes($rootReadmeTemplatePath)
+            $rdBytes  = [System.IO.File]::ReadAllBytes($rootReadmePath)
+            $sha = [System.Security.Cryptography.SHA256]::Create()
+            try {
+                $tplHex = ([System.BitConverter]::ToString($sha.ComputeHash($tplBytes))).Replace('-','').ToLowerInvariant()
+                $rdHex  = ([System.BitConverter]::ToString($sha.ComputeHash($rdBytes))).Replace('-','').ToLowerInvariant()
+            }
+            finally { $sha.Dispose() }
+            if ($rdHex -ne $tplHex) {
+                $errors.Add("managed root README sha256 mismatch: $rootReadmePath (root=$rdHex; template=$tplHex) — stale or modified; re-run update-source")
+            }
         }
     }
 

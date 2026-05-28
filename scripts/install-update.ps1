@@ -826,6 +826,26 @@ function script:Write-HumanReport {
         foreach ($r in $Result.Reasons) { $lines += ('  - ' + $r) }
     }
 
+    # Phase 3.5: update-source informational lines (human output only — not JSON; no status/exit-code
+    # change). Clarifies the InstallArea root, whether activation is in sync (no follow-up apply
+    # needed) vs drifted (separate explicit apply step), and the managed root README state.
+    $rNames = @($Result.PSObject.Properties.Name)
+    if ($Mode -eq 'update-source') {
+        $lines += ('install-update: installAreaRoot={0} (InstallArea root; operator landing page README.md; full update contract = latest source clone INSTALL.md)' -f $Result.InstallAreaPath)
+        if ($rNames -ccontains 'ActivationSurfaces' -and @($Result.ActivationSurfaces).Count -gt 0) {
+            $drift = @($Result.ActivationSurfaces | Where-Object { -not $_.ByteIdentical })
+            if ($drift.Count -eq 0) {
+                $lines += 'install-update: activation=in-sync (byte-identical; no activation apply needed)'
+            }
+            else {
+                $lines += ('install-update: activation=drift ({0} surface(s) not byte-identical) — payload OK; activation apply is a SEPARATE explicit step (status activation_pending), not performed by update-source' -f $drift.Count)
+            }
+        }
+        if ($rNames -ccontains 'RootReadme') {
+            $lines += ('install-update: rootReadme={0} (managed landing page at <installAreaRoot>/README.md)' -f $Result.RootReadme)
+        }
+    }
+
     foreach ($line in $lines) {
         if ($ToStderr) {
             [Console]::Error.WriteLine($line)
@@ -1207,6 +1227,18 @@ function script:Invoke-UpdateSourceApply {
     }
     catch { }
 
+    # 9b. Managed root README state (Phase 3.5), for the human report only — NOT emitted in the
+    #     stdout JSON (so the §13.4 stdout-is-a-run.json-field-subset invariant is unaffected). The
+    #     dispatch above materialized it from the in-payload template; here we record the on-disk
+    #     outcome. 'skipped-no-template' when the payload does not carry the template (no README is
+    #     expected); 'materialized' when present; 'missing' if it should exist but does not (the
+    #     post-apply verify also flags this via verify_failed).
+    $rootReadmeState = 'skipped-no-template'
+    $rootReadmeTpl = Get-InstallPipelineRootReadmeTemplatePath -InstallArea $installAreaResolved
+    if (Test-Path -LiteralPath $rootReadmeTpl -PathType Leaf) {
+        $rootReadmeState = if (Test-Path -LiteralPath (Get-InstallPipelineRootReadmePath -InstallArea $installAreaResolved) -PathType Leaf) { 'materialized' } else { 'missing' }
+    }
+
     # 10. Final status by precedence (payload was rewritten; do not over-claim complete).
     $status = 'complete'
     if (-not $verifyOk)            { $status = 'verify_failed' }
@@ -1231,7 +1263,30 @@ function script:Invoke-UpdateSourceApply {
         ManifestMarkerCrossBindingOk = $postCrossBindingOk
         LeftoverPaths                = @($leftoverPaths)
         Smoke                        = $smoke
+        RootReadme                   = $rootReadmeState
     }
+}
+
+# ---------------------------------------------------------------------------
+# Phase 3.5: heal a drifted/missing managed root README IN PLACE from the already-present, current
+# in-payload template (no re-clone). The public update-source path short-circuits to
+# noop_already_current / activation_pending BEFORE dispatch when the payload is already current, so
+# without this the managed root README would not be repaired by "re-run update-source" (the recovery
+# path the verify error messages and §7.3 point operators to). The payload is verified-current on
+# those branches, so its current/ template is a trusted source for the root README. Returns
+# 'skipped-no-template' (payload carries no template) | 'ok' (already byte-identical) | 'repaired'.
+# ---------------------------------------------------------------------------
+function script:Repair-RootReadmeInPlace {
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] [string] $InstallArea)
+    $tpl = Get-InstallPipelineRootReadmeTemplatePath -InstallArea $InstallArea
+    if (-not (Test-Path -LiteralPath $tpl -PathType Leaf)) { return 'skipped-no-template' }
+    $rd = Get-InstallPipelineRootReadmePath -InstallArea $InstallArea
+    if ((Test-Path -LiteralPath $rd -PathType Leaf) -and ((Get-FileSha256 -Path $rd) -eq (Get-FileSha256 -Path $tpl))) {
+        return 'ok'
+    }
+    $null = Set-InstallPipelineRootReadme -InstallArea $InstallArea
+    return 'repaired'
 }
 
 # ---------------------------------------------------------------------------
@@ -1270,13 +1325,23 @@ function script:Invoke-Main {
                 $result = [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('cannot update-source: source HEAD could not be resolved') + @($pre.Reasons)); ActivationSurfaces = @() }
             }
             elseif ($pre.Status -eq 'inspect_clean') {
-                # No payload delta and activation already byte-identical → nothing to mutate.
-                $result = [pscustomobject]@{ Status = 'noop_already_current'; ExitCode = 0; InstallAreaPath = $pre.InstallAreaPath; Reasons = @('already at source HEAD with clean payload + activation; no update needed'); ActivationSurfaces = $pre.ActivationSurfaces; InstallState = $pre.InstallState; MetadataValid = $pre.MetadataValid; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false; ManifestMarkerCrossBindingOk = $pre.ManifestMarkerCrossBindingOk }
+                # No payload delta and activation already byte-identical → nothing to mutate. The
+                # managed root README is still healed in place if it drifted (Phase 3.5), so
+                # "re-run update-source" repairs a missing/stale README even when the payload is
+                # already current (the payload-rewrite path is skipped here).
+                $noopReasons = @('already at source HEAD with clean payload + activation; no payload update needed')
+                $rr = script:Repair-RootReadmeInPlace -InstallArea $InstallArea
+                if ($rr -eq 'repaired') { $noopReasons += 'managed root README was missing/stale and has been refreshed in place from the in-payload template (a managed-artifact repair, separate from payload/activation mutation)' }
+                $result = [pscustomobject]@{ Status = 'noop_already_current'; ExitCode = 0; InstallAreaPath = $pre.InstallAreaPath; Reasons = $noopReasons; ActivationSurfaces = $pre.ActivationSurfaces; InstallState = $pre.InstallState; MetadataValid = $pre.MetadataValid; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false; ManifestMarkerCrossBindingOk = $pre.ManifestMarkerCrossBindingOk; RootReadme = $rr }
             }
             elseif (($pre.Status -eq 'inspect_activation_drift') -and (-not $pre.PayloadDeltaRequired)) {
                 # Payload already current; only activation drifted. update-source does not apply
-                # activation surfaces, so it cannot resolve this — report without mutation.
-                $result = [pscustomobject]@{ Status = 'activation_pending'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('payload already current; activation drift requires a separate activation apply (out of scope for update-source); no mutation performed') + @($pre.Reasons)); ActivationSurfaces = $pre.ActivationSurfaces; InstallState = $pre.InstallState; MetadataValid = $pre.MetadataValid; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false; ManifestMarkerCrossBindingOk = $pre.ManifestMarkerCrossBindingOk }
+                # activation surfaces, so it cannot resolve this — report without mutation. The
+                # managed root README is still healed in place if it drifted (Phase 3.5).
+                $apReasons = @('payload already current; activation drift requires a separate activation apply (out of scope for update-source); no payload or activation mutation performed') + @($pre.Reasons)
+                $rr = script:Repair-RootReadmeInPlace -InstallArea $InstallArea
+                if ($rr -eq 'repaired') { $apReasons += 'managed root README was missing/stale and has been refreshed in place from the in-payload template (a managed-artifact repair, separate from payload/activation mutation)' }
+                $result = [pscustomobject]@{ Status = 'activation_pending'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = $apReasons; ActivationSurfaces = $pre.ActivationSurfaces; InstallState = $pre.InstallState; MetadataValid = $pre.MetadataValid; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false; ManifestMarkerCrossBindingOk = $pre.ManifestMarkerCrossBindingOk; RootReadme = $rr }
             }
             else {
                 # A payload delta exists (source drift or payload drift). Command-implied approval
