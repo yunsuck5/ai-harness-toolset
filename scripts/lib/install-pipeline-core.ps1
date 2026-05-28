@@ -166,6 +166,56 @@ function Set-InstallPipelineRootReadme {
     return 'materialized'
 }
 
+# Managed root README integrity state (template-conditional). Single-sources the byte-identity
+# check used by both Invoke-InstallPipelineVerify and the inspect-mode classifier so the recovery
+# guidance stays consistent. The managed root README is a CANONICAL output of a normal install /
+# payload-rewriting update-source — it is NOT a self-healing target: a missing / stale / corrupt
+# root README on an otherwise-current install is an install-integrity failure, recovered by the
+# standard reinstall-first deterministic overwrite (INSTALL.md section 9), never by a no-op
+# in-place repair. Returns a state object:
+#   State        : 'skipped-no-template' | 'ok' | 'missing' | 'stale'
+#   ReadmePath   : <InstallArea>/README.md
+#   TemplatePath : current/templates/install-root/...README.md
+#   Reason       : $null for ok/skip; an install-integrity reason (reinstall-first guidance) for missing/stale
+function Get-InstallPipelineRootReadmeState {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $InstallArea
+    )
+    $templatePath = Get-InstallPipelineRootReadmeTemplatePath -InstallArea $InstallArea
+    $readmePath   = Get-InstallPipelineRootReadmePath -InstallArea $InstallArea
+    if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
+        return [pscustomobject]@{ State = 'skipped-no-template'; ReadmePath = $readmePath; TemplatePath = $templatePath; Reason = $null }
+    }
+    $rel = $script:InstallPipelineRootReadmeTemplateRel
+    if (-not (Test-Path -LiteralPath $readmePath -PathType Leaf)) {
+        return [pscustomobject]@{
+            State        = 'missing'
+            ReadmePath   = $readmePath
+            TemplatePath = $templatePath
+            Reason       = "managed root README missing: $readmePath (expected a byte-identical copy of current/$rel) — install integrity failure; recover by a reinstall-first deterministic overwrite (INSTALL.md section 9), not a no-op update-source"
+        }
+    }
+    $tplBytes = [System.IO.File]::ReadAllBytes($templatePath)
+    $rdBytes  = [System.IO.File]::ReadAllBytes($readmePath)
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $tplHex = ([System.BitConverter]::ToString($sha.ComputeHash($tplBytes))).Replace('-','').ToLowerInvariant()
+        $rdHex  = ([System.BitConverter]::ToString($sha.ComputeHash($rdBytes))).Replace('-','').ToLowerInvariant()
+    }
+    finally { $sha.Dispose() }
+    if ($rdHex -ne $tplHex) {
+        return [pscustomobject]@{
+            State        = 'stale'
+            ReadmePath   = $readmePath
+            TemplatePath = $templatePath
+            Reason       = "managed root README sha256 mismatch: $readmePath (root=$rdHex; template=$tplHex) — install integrity failure (stale or modified); recover by a reinstall-first deterministic overwrite (INSTALL.md section 9), not a no-op update-source"
+        }
+    }
+    return [pscustomobject]@{ State = 'ok'; ReadmePath = $readmePath; TemplatePath = $templatePath; Reason = $null }
+}
+
 # source-cache directory used as a RUN-SCOPED TEMPORARY WORK AREA for git-url mode.
 # Per INSTALL.md §2 / §6 / §7 / §9 the cache is NOT a persistent canonical install output;
 # the fixture entry script (tests/support/install-pipeline-fixture.ps1) creates it at action start and removes it
@@ -976,32 +1026,17 @@ function Invoke-InstallPipelineVerify {
         }
     }
 
-    # Phase 3.5: managed root README verification (template-conditional). The root artifact at
-    # <InstallArea>/README.md must be byte-identical (SHA-256) to the in-payload template at
+    # Phase 3.5 / 3.5.1: managed root README verification (template-conditional). The root artifact
+    # at <InstallArea>/README.md must be byte-identical (SHA-256) to the in-payload template at
     # current/templates/install-root/...README.md, whose bytes are already covered by the manifest
     # digest above — so this gives the root README transitive integrity without a manifest-schema
     # change. Skip when the payload does not carry the template (pre-Phase-3.5 source / minimal
-    # fixture), mirroring the materialization skip. Missing / stale / corrupted root README is a
-    # verify failure.
-    $rootReadmeTemplatePath = Get-InstallPipelineRootReadmeTemplatePath -InstallArea $InstallArea
-    if (Test-Path -LiteralPath $rootReadmeTemplatePath -PathType Leaf) {
-        $rootReadmePath = Get-InstallPipelineRootReadmePath -InstallArea $InstallArea
-        if (-not (Test-Path -LiteralPath $rootReadmePath -PathType Leaf)) {
-            $errors.Add("managed root README missing: $rootReadmePath (expected a byte-identical copy of current/$($script:InstallPipelineRootReadmeTemplateRel); re-run update-source)")
-        }
-        else {
-            $tplBytes = [System.IO.File]::ReadAllBytes($rootReadmeTemplatePath)
-            $rdBytes  = [System.IO.File]::ReadAllBytes($rootReadmePath)
-            $sha = [System.Security.Cryptography.SHA256]::Create()
-            try {
-                $tplHex = ([System.BitConverter]::ToString($sha.ComputeHash($tplBytes))).Replace('-','').ToLowerInvariant()
-                $rdHex  = ([System.BitConverter]::ToString($sha.ComputeHash($rdBytes))).Replace('-','').ToLowerInvariant()
-            }
-            finally { $sha.Dispose() }
-            if ($rdHex -ne $tplHex) {
-                $errors.Add("managed root README sha256 mismatch: $rootReadmePath (root=$rdHex; template=$tplHex) — stale or modified; re-run update-source")
-            }
-        }
+    # fixture), mirroring the materialization skip. A missing / stale / corrupted root README is an
+    # install-integrity failure (verify_failed) recovered by reinstall-first deterministic overwrite
+    # (INSTALL.md section 9) — NOT by a no-op self-heal. Single-sourced via Get-InstallPipelineRootReadmeState.
+    $rootReadmeState = Get-InstallPipelineRootReadmeState -InstallArea $InstallArea
+    if (@('missing','stale') -contains $rootReadmeState.State) {
+        $errors.Add($rootReadmeState.Reason)
     }
 
     return [PSCustomObject]@{

@@ -1434,14 +1434,43 @@ Describe 'install-update — Phase 3.5 managed installed-root README' {
         (Test-Path -LiteralPath (Join-Path $fx.Area 'README.md')) | Should -BeFalse
     }
 
-    It 'P35-T7: PUBLIC update-source repairs a missing root README even when the payload is already current (no payload delta)' {
-        # Regression for the public-entrypoint gap: when the payload is already current, update-source
-        # short-circuits (noop_already_current / activation_pending) before dispatch — so the managed
-        # root README must still be healed in place on that path. (Here activation surfaces are absent,
-        # so the preflight lands on the activation_pending branch; payload has no delta.)
+    It 'P35-T7: inspect surfaces a missing root README as inspect_payload_drift (read-only; no self-heal) with reinstall-first guidance' {
+        # Phase 3.5.1: the dogfood gap was a payload-current install with a missing managed root
+        # README reporting inspect_clean ("fully healthy"). inspect must now classify it as an
+        # install-integrity failure (inspect_payload_drift), point reasons to reinstall-first
+        # recovery, and — being read-only — must NOT recreate the README.
         $fx = script:New-RootReadmeFixture -CaseName 'p35t7' -TemplateBody "ROOT README BODY v1`n"
         $readme = Join-Path $fx.Area 'README.md'
         Test-Path -LiteralPath $readme -PathType Leaf | Should -BeTrue
+        Remove-Item -LiteralPath $readme -Force   # README missing; payload still current
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'inspect'
+            InstallArea = $fx.Area
+            ClaudeHome = $fx.Homes.ClaudeHome
+            CodexHome = $fx.Homes.CodexHome
+            SourcePath = $fx.Source.Root
+        }
+        $r.ExitCode   | Should -BeExactly 0          # drift classification is still a successful inspect run
+        $r.Json.status | Should -BeExactly 'inspect_payload_drift'
+        ($r.Stdout + $r.Stderr) | Should -Match '(?i)root README missing'
+        ($r.Stdout + $r.Stderr) | Should -Match '(?i)reinstall'
+        # inspect is read-only — it did NOT self-heal the README.
+        (Test-Path -LiteralPath $readme -PathType Leaf) | Should -BeFalse
+    }
+
+    It 'P35-T8: the in-place self-heal is removed — payload-current update-source recovers a missing root README via the standard deterministic-overwrite apply, not a no-op surgical repair' {
+        # Phase 3.5.1 removes Repair-RootReadmeInPlace (the surgical no-op-path healer). The source
+        # must no longer define it or report "refreshed in place". A payload-current install with a
+        # missing README is no longer a noop_already_current in-place repair: the preflight classifies
+        # it inspect_payload_drift and the standard apply re-materializes the README as canonical
+        # output (reinstall-first), not a surgical patch.
+        $entrySrc = Get-Content -LiteralPath $script:Entry -Raw -Encoding UTF8
+        $entrySrc | Should -Not -Match 'Repair-RootReadmeInPlace'
+        $entrySrc | Should -Not -Match 'refreshed in place'
+
+        $fx = script:New-RootReadmeFixture -CaseName 'p35t8' -TemplateBody "ROOT README BODY v1`n"
+        $readme = Join-Path $fx.Area 'README.md'
         Remove-Item -LiteralPath $readme -Force   # README missing; payload still current
 
         $r = script:Invoke-InstallUpdate -CallParams @{
@@ -1452,42 +1481,51 @@ Describe 'install-update — Phase 3.5 managed installed-root README' {
             SourcePath = $fx.Source.Root
             SkipSmoke = $true
         }
-        # The public entrypoint repaired the README in place (no re-clone needed).
+        # Not a no-op: the missing managed artifact routed update-source to the real apply path.
+        # This fixture sets up no activation surfaces, so the real apply re-materializes the payload
+        # (incl. README) and then reports activation_pending — exactly, not merely "not noop".
+        $r.Json.status | Should -BeExactly 'activation_pending'
+        # No surgical in-place self-heal language in the output.
+        ($r.Stdout + $r.Stderr) | Should -Not -Match '(?i)refreshed in place'
+        # The standard deterministic-overwrite apply re-materialized the README as canonical output.
         (Test-Path -LiteralPath $readme -PathType Leaf) | Should -BeTrue
         $tpl = Join-Path $fx.Area 'current/templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
         (Get-FileHash -LiteralPath $readme -Algorithm SHA256).Hash | Should -BeExactly (Get-FileHash -LiteralPath $tpl -Algorithm SHA256).Hash
-        # Core payload+README verify passes after the repair (activation surfaces are a separate layer).
         (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue
-        # The repair is reported in reasons without changing status/exit-code vocabulary.
-        ($r.Stdout + $r.Stderr) | Should -Match '(?i)root README .*refreshed in place'
     }
 
-    It 'P35-T8: Repair-RootReadmeInPlace (the shared healer used by BOTH payload-current branches) — ok / repaired / skipped-no-template' {
-        # Unit-test the in-place repair helper that both the noop_already_current and the
-        # activation_pending branches call, so the repair logic is locked independently of which
-        # short-circuit branch reaches it.
-        $area = script:New-FixtureInstallArea -CaseName 'p35t8'
-        $tplDir = Join-Path $area 'current/templates/install-root'
-        $null = New-Item -ItemType Directory -Path $tplDir -Force
-        $tpl = Join-Path $tplDir 'AI_HARNESS_TOOLSET_ROOT_README.md'
-        script:Write-TextFile $tpl "TEMPLATE BODY v1`n"
-        $readme = Join-Path $area 'README.md'
+    It 'P35-T9: verify reasons for a missing/stale root README point to reinstall-first recovery, not "re-run update-source"' {
+        # missing case
+        $fxm = script:New-RootReadmeFixture -CaseName 'p35t9m' -TemplateBody "ROOT README BODY v1`n"
+        Remove-Item -LiteralPath (Join-Path $fxm.Area 'README.md') -Force
+        $rm = Invoke-InstallPipelineVerify -InstallArea $fxm.Area
+        $rm.ok | Should -BeFalse
+        $rmText = (@($rm.errors) -join "`n")
+        $rmText | Should -Match '(?i)root README missing'
+        $rmText | Should -Match '(?i)reinstall'
+        $rmText | Should -Not -Match '(?i)re-run update-source'
 
-        # missing root README => repaired (and now byte-identical to the template).
-        script:Repair-RootReadmeInPlace -InstallArea $area | Should -BeExactly 'repaired'
-        Test-Path -LiteralPath $readme -PathType Leaf | Should -BeTrue
-        (Get-FileHash -LiteralPath $readme -Algorithm SHA256).Hash | Should -BeExactly (Get-FileHash -LiteralPath $tpl -Algorithm SHA256).Hash
+        # stale / modified case
+        $fxs = script:New-RootReadmeFixture -CaseName 'p35t9s' -TemplateBody "ROOT README BODY v1`n"
+        Add-Content -LiteralPath (Join-Path $fxs.Area 'README.md') -Value 'TAMPERED'
+        $rs = Invoke-InstallPipelineVerify -InstallArea $fxs.Area
+        $rs.ok | Should -BeFalse
+        $rsText = (@($rs.errors) -join "`n")
+        $rsText | Should -Match '(?i)root README sha256 mismatch'
+        $rsText | Should -Match '(?i)reinstall'
+        $rsText | Should -Not -Match '(?i)re-run update-source'
+    }
 
-        # already byte-identical => ok (idempotent, no spurious 'repaired').
-        script:Repair-RootReadmeInPlace -InstallArea $area | Should -BeExactly 'ok'
-
-        # drifted root README => repaired again.
-        Add-Content -LiteralPath $readme -Value 'TAMPERED'
-        script:Repair-RootReadmeInPlace -InstallArea $area | Should -BeExactly 'repaired'
-        (Get-FileHash -LiteralPath $readme -Algorithm SHA256).Hash | Should -BeExactly (Get-FileHash -LiteralPath $tpl -Algorithm SHA256).Hash
-
-        # payload carries no template => skipped (template-conditional).
-        Remove-Item -LiteralPath $tpl -Force
-        script:Repair-RootReadmeInPlace -InstallArea $area | Should -BeExactly 'skipped-no-template'
+    It 'P35-T10: the operator update quickstart lives only in the root README landing page — snippets carry no update procedure' {
+        # Boundary (Phase 3.5.1): the global instruction snippets are role-neutral and must NOT gain
+        # an operator "update to the latest version" procedure; that guidance lives only in the
+        # installed root README landing page.
+        foreach ($snip in @('snippets/CLAUDE_SNIPPET.md','snippets/AGENTS_SNIPPET.md')) {
+            $p = Join-Path $script:RepoRoot $snip
+            Test-Path -LiteralPath $p -PathType Leaf | Should -BeTrue
+            $body = Get-Content -LiteralPath $p -Raw -Encoding UTF8
+            $body | Should -Not -Match '(?i)Updating this install'
+            $body | Should -Not -Match '(?i)update to the latest version'
+        }
     }
 }

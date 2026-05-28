@@ -23,5 +23,6 @@ Normal update flow is three steps: **inspect → update-source → verify**.
 
 ## Notes
 
-- An older (legacy) install area may not contain this `README.md`; it is created/refreshed on the next successful update.
+- This `README.md` is a **managed install artifact** — a canonical output of a normal install and of any payload-rewriting `update-source`, materialized deterministically from the in-payload template. `verify` checks that it exists and is byte-identical to that template.
+- It is **not self-healing**. A legacy install area may not have it yet; a real install/update (a deterministic overwrite) creates it. If it is missing, stale, or modified on an otherwise up-to-date install, that is an **install integrity failure** — recover with a reinstall (a deterministic overwrite: re-run install, or a payload-rewriting `update-source`), not by relying on a no-op update.
 - For anything beyond this quick reference, use the **latest source clone's `INSTALL.md`** as the operative contract.
