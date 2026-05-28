@@ -1,10 +1,13 @@
 ﻿[CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)]
-    [ValidateSet('inspect', 'verify')]
+    # inspect / verify are READ-ONLY (no mutation, no approval). update-source is the
+    # APPROVAL-GATED mutation mode (INSTALL.md §7.1 / §13): it rewrites the InstallArea
+    # payload + metadata only after explicit two-choice (Yes/No) approval.
+    # Not Mandatory so the script can be dot-sourced for testing without prompting;
+    # Invoke-Main enforces that -Mode / -InstallArea are supplied for real invocations.
+    [ValidateSet('inspect', 'verify', 'update-source')]
     [string] $Mode,
 
-    [Parameter(Mandatory = $true)]
     [string] $InstallArea,
 
     [string] $SourcePath,
@@ -16,33 +19,48 @@ param(
     [string] $ClaudeHome,
     [string] $CodexHome,
 
+    [switch] $SkipSmoke,
     [switch] $Json
 )
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# install/update post-MVP hardening Batch 1 — read-only operator entrypoint.
-# See INSTALL.md §11 (b) and §13 for the contract codified by this script:
-#   - read-only inspect + verify mode (no mutation flag exists in this contract).
-#   - fixed-vocabulary final status (§13.1) emitted to stdout.
-#   - run.json shape (§13.4) emitted as stdout JSON; no file is written.
-#   - run evidence is evidence only, not source-of-truth — install source-of-truth
-#     is the install.json / payload-manifest.json / payload-marker.json cross-binding
-#     defined in INSTALL.md §4.
+# install/update operator entrypoint (post-MVP hardening). See INSTALL.md §7.1, §11 (b),
+# and §13 for the operative contract codified by this script.
 #
-# Mutation invariant. This script has NO mutation flag (-ApplyActivation /
-# -UpdateSource / -ApplyPayload / -RefreshSkill). The production guard
-# Assert-NoMutationPath below fail-fasts on accidental future addition that
-# omits guard updates. The script also uses no file-write API (Set-Content,
-# Out-File, [IO.File]::WriteAllText, New-Item, Set-Acl). Stdout / stderr are the
-# only outputs.
+# Modes:
+#   - inspect  : READ-ONLY. Classify install state vs source + activation byte-identity.
+#   - verify   : READ-ONLY. Canonical schema/manifest/marker/cross-binding + activation.
+#   - update-source : APPROVAL-GATED MUTATION. Rewrites the InstallArea payload + metadata
+#                     via the canonical pipeline (New-InstallPipelineTuple action=update-source
+#                     → Invoke-InstallPipelineDispatch), preserving installedHead/installedAt and
+#                     updating lastUpdatedHead/lastUpdatedAt, then post-apply verify + activation
+#                     byte-identity + cleanup + optional operational smoke.
+#
+# Mutation invariant:
+#   - inspect / verify never write any file (stdout/stderr only).
+#   - update-source mutates ONLY the supplied -InstallArea payload (current/ + install.json +
+#     payload-manifest.json + payload-marker.json). It does NOT write activation surfaces
+#     (managed blocks / skill mirror) — those are VERIFIED by byte-identity, not applied here
+#     (managed-block / skill apply is scripts/activate-global.ps1 + scripts/apply-managed-block.ps1,
+#     a separate explicit step). It writes no run.json global file (INSTALL.md §13.4 contract-only).
+#   - update-source requires explicit two-choice (Yes/No) approval via the interactive selector.
+#     There is NO auto-approval: a noninteractive / redirected-stdin / CI context resolves to No
+#     and performs no mutation. No timeout selects Yes.
+#   - The legacy installer/framework/rollback/wizard/package-manager/daemon classes remain out of
+#     scope (INSTALL.md §11 (a)); this is a deterministic narrow entrypoint (INSTALL.md §11 (b)).
+#
+# Install source-of-truth is the install.json / payload-manifest.json / payload-marker.json
+# cross-binding (INSTALL.md §4); run evidence is evidence only.
 
 . (Join-Path $PSScriptRoot 'lib/encoding.ps1')
 . (Join-Path $PSScriptRoot 'lib/hash.ps1')
 . (Join-Path $PSScriptRoot 'lib/git.ps1')
+. (Join-Path $PSScriptRoot 'lib/path.ps1')
 . (Join-Path $PSScriptRoot 'lib/managed-block.ps1')
 . (Join-Path $PSScriptRoot 'lib/install-pipeline-core.ps1')
+. (Join-Path $PSScriptRoot 'lib/native-process.ps1')
 
 # Resolve activation surface home defaults (overridable so tests can point at
 # TestDrive without touching the real user-global instruction roots).
@@ -59,11 +77,11 @@ if ([string]::IsNullOrEmpty($CodexHome)) {
 }
 
 # ---------------------------------------------------------------------------
-# Production guard skeleton — Self-imposed invariant: no mutation flag exists
-# in this contract. Future mutation flag additions must add explicit handling
-# here; absent that update, the invocation fail-fasts so the script never
-# mutates by accident. The guard is also exercised by the Pester regression
-# suite so a regression that drops the throw is caught at source-side review.
+# Production guard — the mutation surface is the explicit `update-source` mode only,
+# and only after two-choice approval. There is NO mutation FLAG; this guard fail-fasts
+# if a future mutation flag is wired in without explicit handling here, so a stray flag
+# can never trigger a mutation the entrypoint did not intend. Exercised by the Pester
+# regression suite so a regression that drops the throw is caught at source-side review.
 # ---------------------------------------------------------------------------
 function script:Assert-NoMutationPath {
     [CmdletBinding()]
@@ -72,18 +90,15 @@ function script:Assert-NoMutationPath {
         [string] $Mode,
         [hashtable] $RequestedFlags = @{}
     )
-    $mutationFlags = @('ApplyActivation', 'UpdateSource', 'ApplyPayload', 'RefreshSkill')
+    # These names are reserved future mutation FLAGS that are intentionally NOT implemented.
+    # update-source is a MODE (handled with approval), not a flag, so it is not listed here.
+    $mutationFlags = @('ApplyActivation', 'ApplyPayload', 'RefreshSkill')
     foreach ($flag in $mutationFlags) {
         if ($RequestedFlags.ContainsKey($flag) -and $RequestedFlags[$flag]) {
-            throw "install-update: FAIL mutation flag '$flag' is not allowed (read-only contract)."
+            throw "install-update: FAIL mutation flag '$flag' is not allowed (use -Mode update-source with explicit approval)."
         }
     }
 }
-
-# Exercise the guard on every invocation. The contract has no mutation flag,
-# so this is always a no-op in practice — it is here so a stray future flag
-# without a matching guard update fail-fasts at the entrypoint.
-script:Assert-NoMutationPath -Mode $Mode -RequestedFlags @{}
 
 # ---------------------------------------------------------------------------
 # Path / source-of-truth resolution helpers.
@@ -748,7 +763,10 @@ function script:Format-StdoutJson {
         reasons                      = @($Result.Reasons)
         activationSurfaces           = $surfaces
     }
-    if ($Mode -eq 'inspect') {
+    # inspect and update-source carry the inspect/verify diagnostic field group (verify emits
+    # only core + activationSurfaces). Emitted by property-existence so the apply result object
+    # (update-source) surfaces the same diagnostic fields.
+    if ($Mode -eq 'inspect' -or $Mode -eq 'update-source') {
         $body['installState']                 = if (@($Result.PSObject.Properties.Name) -ccontains 'InstallState')                 { $Result.InstallState }                 else { $null }
         $body['metadataValid']                = if (@($Result.PSObject.Properties.Name) -ccontains 'MetadataValid')                { $Result.MetadataValid }                else { $false }
         $body['installMode']                  = if (@($Result.PSObject.Properties.Name) -ccontains 'InstallMode')                  { $Result.InstallMode }                  else { $null }
@@ -756,6 +774,14 @@ function script:Format-StdoutJson {
         $body['sourceResolvedHead']           = if (@($Result.PSObject.Properties.Name) -ccontains 'SourceResolvedHead')           { $Result.SourceResolvedHead }           else { $null }
         $body['payloadDeltaRequired']         = if (@($Result.PSObject.Properties.Name) -ccontains 'PayloadDeltaRequired')         { $Result.PayloadDeltaRequired }         else { $false }
         $body['manifestMarkerCrossBindingOk'] = if (@($Result.PSObject.Properties.Name) -ccontains 'ManifestMarkerCrossBindingOk') { $Result.ManifestMarkerCrossBindingOk } else { $false }
+    }
+    # update-source apply-outcome fields needed by the §13.2 cleanup invariant: leftoverPaths is
+    # emitted whenever the apply produced one (so cleanup_failed_with_leftover always carries the
+    # structured paths in the current stdout-JSON evidence surface), and smoke surfaces its result.
+    # Both names exist in the §13.4.1 run.json schema, so the stdout-subset relationship holds.
+    if ($Mode -eq 'update-source') {
+        $body['leftoverPaths'] = if (@($Result.PSObject.Properties.Name) -ccontains 'LeftoverPaths') { @($Result.LeftoverPaths) } else { @() }
+        $body['smoke']         = if (@($Result.PSObject.Properties.Name) -ccontains 'Smoke')         { $Result.Smoke }            else { $null }
     }
 
     return ($body | ConvertTo-Json -Depth 8)
@@ -790,45 +816,454 @@ function script:Write-HumanReport {
 }
 
 # ---------------------------------------------------------------------------
-# Main.
+# Approval — exact two-choice (Yes/No) terminal selector for mutation approval.
+# Used ONLY by update-source (mutation). inspect / verify never call it.
 # ---------------------------------------------------------------------------
 
-try {
-    if ($Mode -eq 'inspect') {
-        $result = script:Invoke-InspectMode -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref
+function script:Test-ApprovalInteractive {
+    # True only when a real interactive console is available. There is NO auto-approval:
+    # a noninteractive / redirected-stdin / CI context returns $false, and the caller then
+    # resolves the decision to 'no' (never 'yes'). No environment variable can flip this to
+    # an auto-yes — that would be a forbidden noninteractive auto-approval.
+    [CmdletBinding()]
+    param()
+    try {
+        if ([Console]::IsInputRedirected) { return $false }
     }
-    elseif ($Mode -eq 'verify') {
-        $result = script:Invoke-VerifyMode -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome
+    catch {
+        return $false
+    }
+    if (-not [Environment]::UserInteractive) { return $false }
+    return $true
+}
+
+function script:Resolve-TwoChoiceKeySequence {
+    # PURE decision logic (no console IO) so the selector semantics are unit-testable
+    # without a real keypress. Models the selector as: default highlight = Yes; 'Up' moves
+    # highlight to Yes; 'Down' moves highlight to No; 'Enter' confirms the highlighted option;
+    # 'Escape' resolves to No. Any other token is ignored. If the sequence ends with no
+    # Enter/Escape, the decision is the fail-safe 'no' (never an implicit 'yes').
+    [CmdletBinding()]
+    param([string[]] $Keys = @())
+
+    $highlight = 'yes'   # default highlighted option
+    foreach ($k in $Keys) {
+        switch ($k) {
+            'Up'     { $highlight = 'yes' }
+            'Down'   { $highlight = 'no' }
+            'Enter'  { return $highlight }
+            'Escape' { return 'no' }
+            default  { }
+        }
+    }
+    return 'no'
+}
+
+function script:Read-TwoChoiceApproval {
+    # Console driver for the two-choice selector. Renders Yes / No with Yes highlighted by
+    # default; Up/Down move the highlight; Enter confirms; Esc resolves to No. No timeout can
+    # auto-select. Ctrl+C is left to the host default (process abort) — a safe abort because
+    # approval is requested BEFORE any mutation, so aborting performs no mutation. This console
+    # key-reading is source-reviewed; the pure mapping it mirrors is Resolve-TwoChoiceKeySequence
+    # (unit-tested). Caller MUST gate on Test-ApprovalInteractive before calling.
+    [CmdletBinding()]
+    param([string] $Prompt = 'Apply this global/user mutation?')
+
+    $highlight = 'yes'
+    $render = {
+        param($h)
+        $yesMark = if ($h -eq 'yes') { '>' } else { ' ' }
+        $noMark  = if ($h -eq 'no')  { '>' } else { ' ' }
+        [Console]::Error.WriteLine('')
+        [Console]::Error.WriteLine($Prompt)
+        [Console]::Error.WriteLine(('  {0} Yes' -f $yesMark))
+        [Console]::Error.WriteLine(('  {0} No'  -f $noMark))
+        [Console]::Error.WriteLine('(Up/Down to move, Enter to confirm, Esc = No)')
+    }
+    & $render $highlight
+    while ($true) {
+        $keyInfo = [Console]::ReadKey($true)
+        switch ($keyInfo.Key) {
+            'UpArrow'   { $highlight = 'yes'; & $render $highlight }
+            'DownArrow' { $highlight = 'no';  & $render $highlight }
+            'Enter'     { return $highlight }
+            'Escape'    { return 'no' }
+            default     { }
+        }
+    }
+}
+
+function script:Get-MutationApproval {
+    # Returns @{ Decision = 'yes'|'no'; Reason = <string|null> }. Decision is 'yes' ONLY when
+    # an interactive console returned an explicit Yes from the selector. Noninteractive contexts
+    # resolve to 'no' with a reason; there is no auto-approval.
+    [CmdletBinding()]
+    param([string] $Prompt = 'Apply this global/user mutation?')
+
+    if (-not (script:Test-ApprovalInteractive)) {
+        return [pscustomobject]@{
+            Decision = 'no'
+            Reason   = 'explicit approval required but no interactive terminal is available (noninteractive / redirected stdin); refusing to auto-approve'
+        }
+    }
+    $decision = script:Read-TwoChoiceApproval -Prompt $Prompt
+    return [pscustomobject]@{ Decision = $decision; Reason = $null }
+}
+
+# ---------------------------------------------------------------------------
+# Operational smoke (optional; gated by -SkipSmoke). Runs the UPDATED payload's
+# brief-init against a throwaway workspace and asserts the seeded BRIEF.md is
+# byte-identical (SHA-256) to the payload template, with runtime artifacts
+# isolated to the workspace log/ and the workspace cleaned up afterward.
+# ---------------------------------------------------------------------------
+
+function script:Invoke-OperationalSmoke {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)] [string] $PayloadRoot
+    )
+
+    $briefInit   = Join-Path $PayloadRoot 'scripts/brief-init.ps1'
+    $templateRel = 'templates/brief/BRIEF.md'
+    $template    = Join-Path $PayloadRoot $templateRel
+
+    if (-not (Test-Path -LiteralPath $briefInit -PathType Leaf) -or -not (Test-Path -LiteralPath $template -PathType Leaf)) {
+        return [pscustomobject]@{ Smoke = 'skip'; Reason = ('smoke prerequisites missing under payload (' + $briefInit + ' / ' + $templateRel + ')') }
+    }
+
+    $workspace = Join-Path ([System.IO.Path]::GetTempPath()) ('iu-smoke-' + [Guid]::NewGuid().ToString('N'))
+    try {
+        $null = New-Item -ItemType Directory -Path $workspace -Force
+        # brief-init resolves ToolRoot from the payload and seeds <ProjectRoot>/log/brief/BRIEF.md.
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $briefInit,
+            '-ToolRoot', $PayloadRoot, '-ProjectRoot', $workspace
+        )
+        if ($proc.ExitCode -ne 0) {
+            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('brief-init exit ' + $proc.ExitCode + ': ' + (($proc.Stdout + ' ' + $proc.Stderr).Trim())) }
+        }
+        $seeded = Join-Path $workspace 'log/brief/BRIEF.md'
+        if (-not (Test-Path -LiteralPath $seeded -PathType Leaf)) {
+            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('seeded BRIEF.md not found at ' + $seeded) }
+        }
+        $seededSha   = Get-FileSha256 -Path $seeded
+        $templateSha = Get-FileSha256 -Path $template
+        if ($seededSha -ne $templateSha) {
+            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('seeded BRIEF.md sha256 differs from payload template (' + $seededSha + ' vs ' + $templateSha + ')') }
+        }
+        # Isolation: the only runtime artifact must be under <workspace>/log/.
+        $outsideLog = @(Get-ChildItem -LiteralPath $workspace -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'log' })
+        if ($outsideLog.Count -gt 0) {
+            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('smoke produced artifacts outside log/: ' + (($outsideLog | ForEach-Object { $_.Name }) -join ', ')) }
+        }
+        return [pscustomobject]@{ Smoke = 'pass'; Reason = $null }
+    }
+    catch {
+        return [pscustomobject]@{ Smoke = 'fail'; Reason = ('smoke exception: ' + $_.Exception.Message) }
+    }
+    finally {
+        if (Test-Path -LiteralPath $workspace) {
+            Remove-Item -LiteralPath $workspace -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# update-source apply orchestration (MUTATION). Assumes approval is already granted
+# by the caller (Invoke-Main runs the selector first). Tests invoke this function directly
+# against a temp fixture InstallArea with approval implied — there is no production code path
+# that reaches this function without an explicit interactive Yes.
+# ---------------------------------------------------------------------------
+
+function script:Invoke-UpdateSourceApply {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)] [string] $InstallArea,
+        [string] $ClaudeHome,
+        [string] $CodexHome,
+        [string] $SourcePath,
+        [string] $RepoUrl,
+        [string] $Branch,
+        [string] $Remote,
+        [string] $Ref,
+        [switch] $SkipSmoke
+    )
+
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $installAreaResolved = [System.IO.Path]::GetFullPath($InstallArea)
+
+    # 1. Existing metadata is required (update-source is not a fresh install).
+    $metadata = $null
+    try { $metadata = Read-InstallPipelineMetadata -InstallArea $installAreaResolved } catch { }
+    if ($null -eq $metadata) {
+        $reasons.Add('cannot update-source: no existing install.json at ' + $installAreaResolved)
+        return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @() }
+    }
+    $installMode = [string]$metadata.installMode
+    $prevLastUpdatedHead = if (@($metadata.PSObject.Properties.Name) -ccontains 'lastUpdatedHead') { [string]$metadata.lastUpdatedHead } else { '' }
+
+    # 2. Acquire source + resolve head + tuple toolRoot, per installMode.
+    $cleanupCache = $false
+    $cacheDir = $null
+    $sourceLocation = $null
+    $tupleToolRoot = $null
+    $resolvedHead = $null
+    try {
+        if ($installMode -eq 'local-clone') {
+            $sourceLocation = if (-not [string]::IsNullOrEmpty($SourcePath)) { $SourcePath } else { [string]$metadata.sourcePath }
+            if ([string]::IsNullOrEmpty($sourceLocation)) {
+                $reasons.Add('local-clone update-source needs a source path (-SourcePath or install.json.sourcePath)')
+                return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @() }
+            }
+            $sourceLocation = [System.IO.Path]::GetFullPath($sourceLocation)
+            $resolvedHead = Get-InstallPipelineSourceHead -SourceLocation $sourceLocation
+            $tupleToolRoot = $sourceLocation
+        }
+        elseif ($installMode -eq 'git-url') {
+            $url = if (-not [string]::IsNullOrEmpty($RepoUrl)) { $RepoUrl } else { [string]$metadata.repoUrl }
+            if ([string]::IsNullOrEmpty($url)) {
+                $reasons.Add('git-url update-source needs a repo URL (-RepoUrl or install.json.repoUrl)')
+                return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @() }
+            }
+            # Full (non-shallow) clone into the run-scoped source-cache work area, so every ref
+            # SHA is available; cleaned up after the run regardless of outcome.
+            $cacheDir = Invoke-InstallPipelineGitUrlClone -InstallArea $installAreaResolved -RepoUrl $url
+            $cleanupCache = $true
+            $branchForHead = if (-not [string]::IsNullOrEmpty($Branch)) { $Branch } elseif (@($metadata.PSObject.Properties.Name) -ccontains 'branch') { [string]$metadata.branch } else { '' }
+            if (-not [string]::IsNullOrEmpty($Ref)) {
+                $resolvedHead = Resolve-InstallPipelineRef -SourceLocation $cacheDir -Ref $Ref
+            }
+            elseif (-not [string]::IsNullOrEmpty($branchForHead)) {
+                $resolvedHead = Get-InstallPipelineGitUrlRemoteHead -InstallArea $installAreaResolved -Remote $Remote -Branch $branchForHead
+            }
+            else {
+                $resolvedHead = Get-InstallPipelineSourceHead -SourceLocation $cacheDir
+            }
+            $sourceLocation = $url
+            $tupleToolRoot = $cacheDir
+        }
+        else {
+            $reasons.Add('install.json.installMode invalid for update-source: ' + $installMode)
+            return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @() }
+        }
+
+        if ([string]::IsNullOrEmpty($resolvedHead) -or ($resolvedHead -notmatch '^[0-9a-f]{40}$')) {
+            $reasons.Add('could not resolve a 40-hex source HEAD for update-source')
+            if ($cleanupCache -and $null -ne $cacheDir -and (Test-Path -LiteralPath $cacheDir)) {
+                Remove-Item -LiteralPath $cacheDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @() }
+        }
+
+        # 3. Source-cut guard — a changed source identity is not auto-resolved here. The comparison
+        #    must mirror the canonical helper's field set (installMode / repoUrl / sourcePath /
+        #    toolRoot / branch / remote): an explicit -Branch / -Remote that differs from the
+        #    recorded tracking metadata is a source-cut (e.g. switching the tracked branch), not a
+        #    silent one-shot override. Only explicitly-supplied identity values are compared.
+        $invocationParams = @{ installMode = $installMode }
+        if ($installMode -eq 'git-url')     { $invocationParams['repoUrl']    = $sourceLocation }
+        if ($installMode -eq 'local-clone') { $invocationParams['sourcePath'] = $sourceLocation }
+        if (-not [string]::IsNullOrEmpty($Branch)) { $invocationParams['branch'] = $Branch }
+        if (-not [string]::IsNullOrEmpty($Remote)) { $invocationParams['remote'] = $Remote }
+        if (Test-InstallPipelineSourceCut -Metadata $metadata -InvocationParams $invocationParams) {
+            $reasons.Add('source-cut detected (source identity — installMode/repoUrl/sourcePath/toolRoot/branch/remote — differs from install.json); not auto-resolved — re-run as a separate explicit decision')
+            if ($cleanupCache -and $null -ne $cacheDir -and (Test-Path -LiteralPath $cacheDir)) {
+                Remove-Item -LiteralPath $cacheDir -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @(); InstallMode = $installMode; LastUpdatedHead = $prevLastUpdatedHead; SourceResolvedHead = $resolvedHead; PayloadDeltaRequired = $true }
+        }
+
+        # 4. Canonical deterministic materialization via tuple + dispatch.
+        #    Dispatch preserves installedHead/installedAt and updates lastUpdatedHead/lastUpdatedAt,
+        #    and rewrites current/ + payload-manifest.json + payload-marker.json consistently.
+        $tuple = New-InstallPipelineTuple `
+            -Action 'update-source' `
+            -InstallMode $installMode `
+            -SourceLocation $sourceLocation `
+            -ResolvedRefSha $resolvedHead `
+            -RefKind 'commit' `
+            -ToolRoot $tupleToolRoot `
+            -ProjectRoot $installAreaResolved `
+            -SourceUpdatePolicy 'fetch-and-update'
+        Invoke-InstallPipelineDispatch -Tuple $tuple -InstallArea $installAreaResolved -Branch $Branch -Remote $Remote
+    }
+    catch {
+        $reasons.Add('apply failed: ' + $_.Exception.Message)
+        if ($cleanupCache -and $null -ne $cacheDir -and (Test-Path -LiteralPath $cacheDir)) {
+            Remove-Item -LiteralPath $cacheDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+        return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @(); InstallMode = $installMode; LastUpdatedHead = $prevLastUpdatedHead; SourceResolvedHead = $resolvedHead; PayloadDeltaRequired = $true }
+    }
+
+    # 5. Post-apply canonical verify (schema + manifest digest + marker + cross-binding).
+    $verifyResult = Invoke-InstallPipelineVerify -InstallArea $installAreaResolved
+    $verifyOk = $verifyResult.ok
+    if (-not $verifyOk) { foreach ($e in $verifyResult.errors) { $reasons.Add('verify: ' + $e) } }
+
+    # 6. Activation surfaces — byte-identity verification only (NO rewrite). A byte-identical
+    #    surface is a verified no-op; a drifted/absent surface is reported (activation_pending),
+    #    not silently applied (managed-block / skill apply is a separate explicit step).
+    $surfacesObj = script:Get-ActivationSurfacePaths -InstallArea $installAreaResolved -ClaudeHome $ClaudeHome -CodexHome $CodexHome
+    $surfaceResults = @()
+    $activationClean = $true
+    foreach ($s in $surfacesObj.Surfaces) {
+        $r = script:Test-ActivationSurface -Surface $s
+        $surfaceResults += $r
+        if (-not $r.ByteIdentical) {
+            $activationClean = $false
+            $reasons.Add(('activation surface not byte-identical (verify-only, not applied): {0} ({1})' -f $r.Name, $r.Reason))
+        }
+    }
+
+    # 7. Cleanup the run-scoped source-cache (git-url). Cleanup failure is reported as leftover,
+    #    never turned into an approval prompt.
+    $leftoverPaths = @()
+    $cleanupOk = $true
+    if ($cleanupCache -and $null -ne $cacheDir) {
+        try {
+            if (Test-Path -LiteralPath $cacheDir) { Remove-Item -LiteralPath $cacheDir -Recurse -Force }
+            if (Test-Path -LiteralPath $cacheDir) { $cleanupOk = $false; $leftoverPaths += $cacheDir }
+        }
+        catch {
+            $cleanupOk = $false
+            $leftoverPaths += $cacheDir
+            $reasons.Add('cleanup failed: ' + $_.Exception.Message)
+        }
+        if (-not $cleanupOk) { $reasons.Add('source-cache cleanup left leftover path: ' + $cacheDir) }
+    }
+
+    # 8. Operational smoke (optional). Runs the updated payload's brief-init in a throwaway
+    #    workspace and asserts BRIEF == template by SHA-256, isolated + cleaned up.
+    $smoke = 'skip'
+    if (-not $SkipSmoke) {
+        $smokeResult = script:Invoke-OperationalSmoke -PayloadRoot (Get-InstallPipelineCurrentDir -InstallArea $installAreaResolved)
+        $smoke = $smokeResult.Smoke
+        if ($smoke -eq 'fail') { $reasons.Add('smoke: ' + $smokeResult.Reason) }
+        elseif ($smoke -eq 'skip' -and -not [string]::IsNullOrEmpty($smokeResult.Reason)) { $reasons.Add('smoke skipped: ' + $smokeResult.Reason) }
     }
     else {
-        Write-Host ('install-update: FAIL unknown mode: ' + $Mode)
-        exit 1
+        $reasons.Add('smoke skipped by -SkipSmoke')
+    }
+
+    # 9. Final status by precedence (payload was rewritten; do not over-claim complete).
+    $status = 'complete'
+    if (-not $verifyOk)            { $status = 'verify_failed' }
+    elseif (-not $activationClean) { $status = 'activation_pending' }
+    elseif (-not $cleanupOk)       { $status = 'cleanup_failed_with_leftover' }
+    elseif ($smoke -eq 'fail')     { $status = 'smoke_failed' }
+    else                           { $status = 'complete' }
+    $exitCode = if ($status -eq 'complete') { 0 } else { 1 }
+
+    return [pscustomobject]@{
+        Status               = $status
+        ExitCode             = $exitCode
+        InstallAreaPath      = $installAreaResolved
+        Reasons              = @($reasons)
+        ActivationSurfaces   = $surfaceResults
+        InstallMode          = $installMode
+        LastUpdatedHead      = $resolvedHead
+        SourceResolvedHead   = $resolvedHead
+        PayloadDeltaRequired = $true
+        LeftoverPaths        = @($leftoverPaths)
+        Smoke                = $smoke
     }
 }
-catch {
-    Write-Host ('install-update: FAIL unhandled exception: ' + $_.Exception.Message)
-    exit 1
+
+# ---------------------------------------------------------------------------
+# Main entrypoint flow (only runs when the script is invoked directly, not dot-sourced).
+# ---------------------------------------------------------------------------
+
+function script:Invoke-Main {
+    [CmdletBinding()]
+    param()
+
+    if ([string]::IsNullOrEmpty($Mode)) {
+        Write-Host 'install-update: FAIL -Mode is required (inspect | verify | update-source).'
+        exit 1
+    }
+    if ([string]::IsNullOrEmpty($InstallArea)) {
+        Write-Host 'install-update: FAIL -InstallArea is required.'
+        exit 1
+    }
+    # Guard: no mutation FLAG may be wired in (mutation is the update-source MODE only).
+    script:Assert-NoMutationPath -Mode $Mode -RequestedFlags @{}
+
+    try {
+        if ($Mode -eq 'inspect') {
+            $result = script:Invoke-InspectMode -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref
+        }
+        elseif ($Mode -eq 'verify') {
+            $result = script:Invoke-VerifyMode -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome
+        }
+        elseif ($Mode -eq 'update-source') {
+            # Preflight (read-only) to decide whether a payload mutation is actually needed.
+            $pre = script:Invoke-InspectMode -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref
+            if ($pre.Status -eq 'inspect_mode_unknown') {
+                $result = [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('cannot update-source: install metadata unknown') + @($pre.Reasons)); ActivationSurfaces = @() }
+            }
+            elseif (($pre.Status -eq 'inspect_source_drift') -and ($null -eq $pre.SourceResolvedHead)) {
+                $result = [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('cannot update-source: source HEAD could not be resolved') + @($pre.Reasons)); ActivationSurfaces = @() }
+            }
+            elseif ($pre.Status -eq 'inspect_clean') {
+                # No payload delta and activation already byte-identical → nothing to mutate.
+                $result = [pscustomobject]@{ Status = 'noop_already_current'; ExitCode = 0; InstallAreaPath = $pre.InstallAreaPath; Reasons = @('already at source HEAD with clean payload + activation; no update needed'); ActivationSurfaces = $pre.ActivationSurfaces; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false; ManifestMarkerCrossBindingOk = $pre.ManifestMarkerCrossBindingOk }
+            }
+            elseif (($pre.Status -eq 'inspect_activation_drift') -and (-not $pre.PayloadDeltaRequired)) {
+                # Payload already current; only activation drifted. update-source does not apply
+                # activation surfaces, so it cannot resolve this — report without mutation.
+                $result = [pscustomobject]@{ Status = 'activation_pending'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('payload already current; activation drift requires a separate activation apply (out of scope for update-source); no mutation performed') + @($pre.Reasons)); ActivationSurfaces = $pre.ActivationSurfaces; InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $false }
+            }
+            else {
+                # A payload delta exists (source drift or payload drift) → explicit approval, then apply.
+                $prompt = ('Apply update-source to {0}? This rewrites current/ + install.json + payload-manifest.json + payload-marker.json.' -f $pre.InstallAreaPath)
+                $approval = script:Get-MutationApproval -Prompt $prompt
+                if ($approval.Decision -ne 'yes') {
+                    $abortReasons = @('update-source aborted: approval not granted')
+                    if (-not [string]::IsNullOrEmpty($approval.Reason)) { $abortReasons += $approval.Reason }
+                    $result = [pscustomobject]@{ Status = 'update_aborted_no_approval'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = $abortReasons; ActivationSurfaces = @(); InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $true }
+                }
+                else {
+                    $result = script:Invoke-UpdateSourceApply -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref -SkipSmoke:$SkipSmoke
+                }
+            }
+        }
+        else {
+            Write-Host ('install-update: FAIL unknown mode: ' + $Mode)
+            exit 1
+        }
+    }
+    catch {
+        Write-Host ('install-update: FAIL unhandled exception: ' + $_.Exception.Message)
+        exit 1
+    }
+
+    $jsonBody = script:Format-StdoutJson -Mode $Mode -Result $result
+
+    if ($Json) {
+        script:Write-HumanReport -Mode $Mode -Result $result -ToStderr
+        Write-Host $jsonBody
+    }
+    else {
+        script:Write-HumanReport -Mode $Mode -Result $result
+        Write-Host '--- BEGIN JSON ---'
+        Write-Host $jsonBody
+        Write-Host '--- END JSON ---'
+    }
+
+    $finalLabel = if ($result.ExitCode -eq 0) { 'PASS' } else { 'FAIL' }
+    if ($Json) {
+        [Console]::Error.WriteLine('install-update: ' + $finalLabel)
+    }
+    else {
+        Write-Host ('install-update: ' + $finalLabel)
+    }
+    exit $result.ExitCode
 }
 
-$jsonBody = script:Format-StdoutJson -Mode $Mode -Result $result
-
-if ($Json) {
-    # JSON-only on stdout; human report to stderr.
-    script:Write-HumanReport -Mode $Mode -Result $result -ToStderr
-    Write-Host $jsonBody
+# Run the entrypoint only when executed directly (not when dot-sourced for testing).
+# Dot-source sets $MyInvocation.InvocationName to '.'; a -File / call invocation sets it
+# to the script path. This lets the Pester suite dot-source the file to unit-test the pure
+# selector logic and the apply orchestration without running the main flow.
+if ($MyInvocation.InvocationName -ne '.') {
+    script:Invoke-Main
 }
-else {
-    script:Write-HumanReport -Mode $Mode -Result $result
-    Write-Host '--- BEGIN JSON ---'
-    Write-Host $jsonBody
-    Write-Host '--- END JSON ---'
-}
-
-$finalLabel = if ($result.ExitCode -eq 0) { 'PASS' } else { 'FAIL' }
-if ($Json) {
-    [Console]::Error.WriteLine('install-update: ' + $finalLabel)
-}
-else {
-    Write-Host ('install-update: ' + $finalLabel)
-}
-exit $result.ExitCode

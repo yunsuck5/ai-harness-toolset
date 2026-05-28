@@ -303,7 +303,7 @@ BeforeAll {
         'inspect_clean','inspect_payload_drift','inspect_source_drift','inspect_activation_drift','inspect_mode_unknown',
         'verify_pass','verify_failed',
         'noop_already_current','complete','activation_pending','activation_applied_verify_failed',
-        'smoke_failed','cleanup_failed_with_leftover','failed'
+        'smoke_failed','cleanup_failed_with_leftover','failed','update_aborted_no_approval'
     )
 
     # Hygiene scan literal + regex sets (mirror of design §4.7 Tier A / Tier B).
@@ -807,16 +807,232 @@ Describe 'install-update.ps1 — deployable-reference hygiene scan' {
 
 Describe 'install-update.ps1 — production guard skeleton (T13)' {
 
-    It 'install-update.ps1 source defines Assert-NoMutationPath with throw on mutation flag' {
+    It 'install-update.ps1 source defines Assert-NoMutationPath with throw on reserved mutation flags (update-source is a mode, not a flag)' {
         $content = Get-Content -LiteralPath $script:Entry -Raw -Encoding UTF8
         $content | Should -Match 'function\s+script:Assert-NoMutationPath'
-        $content | Should -Match 'mutationFlags\s*=\s*@\(\s*''ApplyActivation'',\s*''UpdateSource'',\s*''ApplyPayload'',\s*''RefreshSkill''\s*\)'
+        # update-source is now a real MODE (approval-gated), so it is intentionally NOT in the
+        # reserved-flag list; the remaining names stay reserved-and-unimplemented flags.
+        $content | Should -Match 'mutationFlags\s*=\s*@\(\s*''ApplyActivation'',\s*''ApplyPayload'',\s*''RefreshSkill''\s*\)'
         $content | Should -Match 'throw\s+"install-update:\s*FAIL mutation flag'
-        # Each known mutation flag listed.
-        foreach ($flag in @('ApplyActivation','UpdateSource','ApplyPayload','RefreshSkill')) {
+        foreach ($flag in @('ApplyActivation','ApplyPayload','RefreshSkill')) {
             $content | Should -Match $flag
         }
-        # Entrypoint exercises the guard on every invocation (no-op in this contract).
+        # The reserved-flag list must NOT contain 'UpdateSource' anymore (it is a mode).
+        $content | Should -Not -Match 'mutationFlags\s*=\s*@\([^\)]*''UpdateSource''[^\)]*\)'
+        # Invoke-Main exercises the guard.
         $content | Should -Match 'script:Assert-NoMutationPath\s+-Mode\s+\$Mode\s+-RequestedFlags'
+    }
+}
+
+Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
+
+    BeforeAll {
+        # Dot-source the entrypoint to unit-test its internal functions without running main.
+        # The dot-source guard (InvocationName -eq '.') prevents Invoke-Main from executing.
+        . $script:Entry
+
+        function script:New-UpdatableFixture {
+            # A fixture whose source repo carries the payload roots so update-source can
+            # archive a new HEAD into current/. Returns source + install area + homes + seedHead.
+            param([string] $CaseName)
+            $src = script:New-FixtureGitRepo -CaseName $CaseName
+            # Add the 4 payload roots + D3 markers to the source so it is a valid ai-harness source.
+            Push-Location $src.Root
+            try {
+                foreach ($r in 'config','scripts','snippets','templates') {
+                    $null = New-Item -ItemType Directory -Path (Join-Path $src.Root $r) -Force
+                }
+                script:Write-TextFile (Join-Path $src.Root 'scripts/verify-ps1.ps1')    '# marker'
+                script:Write-TextFile (Join-Path $src.Root 'templates/review-input.md') '# marker'
+                script:Write-TextFile (Join-Path $src.Root 'config/reviewer.json')      '{}'
+                script:Write-TextFile (Join-Path $src.Root 'snippets/CLAUDE_SNIPPET.md')                        (script:Get-FixtureClaudeSnippetText)
+                script:Write-TextFile (Join-Path $src.Root 'snippets/AGENTS_SNIPPET.md')                        (script:Get-FixtureCodexSnippetText)
+                script:Write-TextFile (Join-Path $src.Root 'snippets/claude-skills/ai-harness-review/SKILL.md') (script:Get-FixtureSkillText)
+                & git add . 2>&1 | Out-Null
+                & git commit -q -m 'payload v1' 2>&1 | Out-Null
+                $seedHead = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse','HEAD')).Stdout.Trim()
+            }
+            finally { Pop-Location }
+
+            $area = script:New-FixtureInstallArea -CaseName $CaseName
+            $homes = script:New-FixtureHomeRoots -CaseName $CaseName
+            # Materialize the install at seedHead via the canonical fixture entry (install action),
+            # so install.json / manifest / marker / current/ are all consistent at seedHead.
+            $proj = Join-Path $TestDrive ('proj-' + $CaseName)
+            if (Test-Path -LiteralPath $proj) { Remove-Item -LiteralPath $proj -Recurse -Force }
+            $null = New-Item -ItemType Directory -Path $proj -Force
+            $null = New-Item -ItemType Directory -Path (Join-Path $proj '.git') -Force
+            $fixtureEntry = Join-Path $script:RepoRoot 'tests/support/install-pipeline-fixture.ps1'
+            $install = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+                '-NoProfile','-ExecutionPolicy','Bypass','-File',$fixtureEntry,
+                '-Action','install','-InstallArea',$area,'-InstallMode','local-clone',
+                '-SourcePath',$src.Root,'-Branch','main','-Remote','origin',
+                '-ProjectRoot',$proj,'-RuntimeToolRoot',$proj
+            )
+            if ($install.ExitCode -ne 0) { throw ("fixture install failed: " + $install.Stdout + $install.Stderr) }
+
+            # Make activation surfaces byte-identical to the installed payload snippets so the
+            # apply reports a clean (no-op) activation rather than drift.
+            $curDir = Join-Path $area 'current'
+            $claudeText = Read-Utf8 -Path (Join-Path $curDir 'snippets/CLAUDE_SNIPPET.md')
+            $codexText  = Read-Utf8 -Path (Join-Path $curDir 'snippets/AGENTS_SNIPPET.md')
+            $skillText  = Read-Utf8 -Path (Join-Path $curDir 'snippets/claude-skills/ai-harness-review/SKILL.md')
+            $claudeInner = ((Get-ManagedBlockContent -Content $claudeText -Label 'src') | Where-Object { $_ -ne $script:BeginMarker -and $_ -ne $script:EndMarker }) -join "`n"
+            $codexInner  = ((Get-ManagedBlockContent -Content $codexText  -Label 'src') | Where-Object { $_ -ne $script:BeginMarker -and $_ -ne $script:EndMarker }) -join "`n"
+            script:Write-TextFile (Join-Path $homes.ClaudeHome 'CLAUDE.md') (script:Get-MarkedDestinationText -MarkedBlockBody $claudeInner)
+            script:Write-TextFile (Join-Path $homes.CodexHome  'AGENTS.md') (script:Get-MarkedDestinationText -MarkedBlockBody $codexInner)
+            script:Write-TextFile (Join-Path $homes.ClaudeHome 'skills/ai-harness-review/SKILL.md') $skillText
+
+            return [pscustomobject]@{ Source = $src; Area = $area; Homes = $homes; SeedHead = $seedHead }
+        }
+    }
+
+    It 'B2-T1: pure two-choice selector decision logic (no real keypress)' {
+        (script:Resolve-TwoChoiceKeySequence -Keys @('Enter'))           | Should -BeExactly 'yes'   # default highlight Yes + Enter
+        (script:Resolve-TwoChoiceKeySequence -Keys @('Down','Enter'))    | Should -BeExactly 'no'
+        (script:Resolve-TwoChoiceKeySequence -Keys @('Down','Up','Enter'))| Should -BeExactly 'yes'
+        (script:Resolve-TwoChoiceKeySequence -Keys @('Escape'))          | Should -BeExactly 'no'
+        (script:Resolve-TwoChoiceKeySequence -Keys @('Down'))            | Should -BeExactly 'no'    # no Enter → fail-safe No
+        (script:Resolve-TwoChoiceKeySequence -Keys @())                  | Should -BeExactly 'no'    # empty → fail-safe No
+    }
+
+    It 'B2-T2: update-source via child process is noninteractive → aborts with no mutation, no auto-yes' {
+        $fx = script:New-UpdatableFixture -CaseName 'b2t2'
+        # Advance the source HEAD so a payload delta exists (otherwise it would be noop).
+        $newHead = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t2'
+        $newHead | Should -Not -BeExactly $fx.SeedHead
+
+        $snapBefore = script:Get-PathTreeSnapshot -Root $fx.Area
+        # Child-process invocation has redirected stdin (noninteractive) → must NOT auto-approve.
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'
+            InstallArea = $fx.Area
+            ClaudeHome = $fx.Homes.ClaudeHome
+            CodexHome = $fx.Homes.CodexHome
+            SourcePath = $fx.Source.Root
+            SkipSmoke = $true
+        }
+        $r.ExitCode | Should -BeExactly 1
+        $r.Json.status | Should -BeExactly 'update_aborted_no_approval'
+        # No mutation occurred (3-axis identity unchanged).
+        $snapAfter = script:Get-PathTreeSnapshot -Root $fx.Area
+        script:Assert-PathTreeUnchanged -Before $snapBefore -After $snapAfter -Label 'InstallArea (noninteractive update-source)'
+    }
+
+    It 'B2-T3: update-source apply (approval implied) mutates payload, preserves installedHead, updates lastUpdatedHead, verify_pass→complete' {
+        $fx = script:New-UpdatableFixture -CaseName 'b2t3'
+        $mdBefore = Read-InstallPipelineMetadata -InstallArea $fx.Area
+        $installedHeadBefore = [string]$mdBefore.installedHead
+        $installedAtBefore   = [string]$mdBefore.installedAt
+        $newHead = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t3'
+        $newHead | Should -Not -BeExactly $fx.SeedHead
+
+        # Invoke the apply orchestration directly (approval already granted by the caller in
+        # production via the interactive selector; here the test stands in for that approval).
+        $res = script:Invoke-UpdateSourceApply -InstallArea $fx.Area -ClaudeHome $fx.Homes.ClaudeHome -CodexHome $fx.Homes.CodexHome -SourcePath $fx.Source.Root -SkipSmoke
+        $res.Status   | Should -BeExactly 'complete'
+        $res.ExitCode | Should -BeExactly 0
+
+        $mdAfter = Read-InstallPipelineMetadata -InstallArea $fx.Area
+        [string]$mdAfter.installedHead   | Should -BeExactly $installedHeadBefore  # preserved
+        [string]$mdAfter.installedAt     | Should -BeExactly $installedAtBefore    # preserved
+        [string]$mdAfter.lastUpdatedHead | Should -BeExactly $newHead              # advanced
+        # Canonical verify passes post-apply (cross-binding consistent).
+        (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue
+        # Activation surfaces were byte-identical → reported clean, not rewritten.
+        (@($res.ActivationSurfaces | Where-Object { -not $_.byteIdentical })).Count | Should -BeExactly 0
+    }
+
+    It 'B2-T4: update-source apply with activation drift → activation_pending (payload updated, not complete), no activation rewrite' {
+        $fx = script:New-UpdatableFixture -CaseName 'b2t4'
+        $newHead = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t4'
+        # Drift the skill mirror so activation is not byte-identical.
+        $skillDest = Join-Path $fx.Homes.ClaudeHome 'skills/ai-harness-review/SKILL.md'
+        $skillBefore = Get-FileSha256 -Path $skillDest
+        script:Write-TextFile $skillDest "---`nname: ai-harness-review`n---`n# DRIFTED`n"
+
+        $res = script:Invoke-UpdateSourceApply -InstallArea $fx.Area -ClaudeHome $fx.Homes.ClaudeHome -CodexHome $fx.Homes.CodexHome -SourcePath $fx.Source.Root -SkipSmoke
+        $res.Status   | Should -BeExactly 'activation_pending'
+        $res.ExitCode | Should -BeExactly 1
+        # Payload still advanced despite activation_pending.
+        [string](Read-InstallPipelineMetadata -InstallArea $fx.Area).lastUpdatedHead | Should -BeExactly $newHead
+        # The drifted activation surface was NOT rewritten by the apply (still drifted content).
+        (Get-FileSha256 -Path $skillDest) | Should -Not -BeExactly $skillBefore
+        $skillRow = $res.ActivationSurfaces | Where-Object { $_.Name -eq 'review-skill-mirror' }
+        $skillRow.ByteIdentical | Should -BeExactly $false
+    }
+
+    It 'B2-T5: update-source when already current → noop_already_current via the entrypoint (no approval prompt, no mutation)' {
+        $fx = script:New-UpdatableFixture -CaseName 'b2t5'
+        # No new source commit: source HEAD == installed lastUpdatedHead, activation clean.
+        $snapBefore = script:Get-PathTreeSnapshot -Root $fx.Area
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'
+            InstallArea = $fx.Area
+            ClaudeHome = $fx.Homes.ClaudeHome
+            CodexHome = $fx.Homes.CodexHome
+            SourcePath = $fx.Source.Root
+            SkipSmoke = $true
+        }
+        $r.ExitCode | Should -BeExactly 0
+        $r.Json.status | Should -BeExactly 'noop_already_current'
+        $snapAfter = script:Get-PathTreeSnapshot -Root $fx.Area
+        script:Assert-PathTreeUnchanged -Before $snapBefore -After $snapAfter -Label 'InstallArea (noop update-source)'
+    }
+
+    It 'B2-T6: operational smoke passes against the real repo payload (brief-init seeds template-identical BRIEF, isolated + cleaned up)' {
+        # The real repo root carries scripts/brief-init.ps1 + templates/brief/BRIEF.md, so it is a
+        # valid payload root for the smoke. Exercises Invoke-OperationalSmoke end-to-end.
+        $res = script:Invoke-OperationalSmoke -PayloadRoot $script:RepoRoot
+        $res.Smoke | Should -BeExactly 'pass'
+    }
+
+    It 'B2-T7: operational smoke skips (not fails) when payload lacks brief-init prerequisites' {
+        $fx = script:New-UpdatableFixture -CaseName 'b2t7'
+        # The fixture payload current/ has no scripts/brief-init.ps1 → smoke must skip, not fail.
+        $res = script:Invoke-OperationalSmoke -PayloadRoot (Join-Path $fx.Area 'current')
+        $res.Smoke | Should -BeExactly 'skip'
+    }
+
+    It 'B2-T8: -Branch differing from install.json.branch is a source-cut → failed, no mutation, no cache leftover' {
+        $fx = script:New-UpdatableFixture -CaseName 'b2t8'   # installed with branch=main
+        $null = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t8'  # payload delta exists
+        $snapBefore = script:Get-PathTreeSnapshot -Root $fx.Area
+        # Passing a branch that differs from the recorded tracking branch is a source-cut; the
+        # apply must refuse (failed) and perform no payload mutation.
+        $res = script:Invoke-UpdateSourceApply -InstallArea $fx.Area -ClaudeHome $fx.Homes.ClaudeHome -CodexHome $fx.Homes.CodexHome -SourcePath $fx.Source.Root -Branch 'release-x' -SkipSmoke
+        $res.Status   | Should -BeExactly 'failed'
+        $res.ExitCode | Should -BeExactly 1
+        (@($res.Reasons) -join "`n") | Should -Match '(?i)source-cut'
+        # No mutation occurred (3-axis identity unchanged), and no source-cache leftover.
+        $snapAfter = script:Get-PathTreeSnapshot -Root $fx.Area
+        script:Assert-PathTreeUnchanged -Before $snapBefore -After $snapAfter -Label 'InstallArea (source-cut branch mismatch)'
+        (Test-Path -LiteralPath (Join-Path $fx.Area 'source-cache')) | Should -BeFalse
+    }
+
+    It 'B2-T9: Format-StdoutJson serializes leftoverPaths + smoke for an update-source cleanup-failure result' {
+        # Unit-test the serialization fix directly: a cleanup-failure apply result must surface
+        # the structured leftoverPaths in the stdout JSON (the current evidence surface).
+        $fakeResult = [pscustomobject]@{
+            Status               = 'cleanup_failed_with_leftover'
+            ExitCode             = 1
+            InstallAreaPath      = 'C:\fake\area'
+            Reasons              = @('source-cache cleanup left leftover path: C:\fake\area\source-cache')
+            ActivationSurfaces   = @()
+            InstallMode          = 'git-url'
+            LastUpdatedHead      = ('a' * 40)
+            SourceResolvedHead   = ('a' * 40)
+            PayloadDeltaRequired = $true
+            LeftoverPaths        = @('C:\fake\area\source-cache')
+            Smoke                = 'skip'
+        }
+        $json = script:Format-StdoutJson -Mode 'update-source' -Result $fakeResult
+        $obj = $json | ConvertFrom-Json
+        $obj.status                 | Should -BeExactly 'cleanup_failed_with_leftover'
+        # ConvertTo-Json collapses a single-element array to a scalar (PS 5.1), so coerce with @()
+        # before indexing — the same convention the codebase uses for reasons / activationSurfaces.
+        @($obj.leftoverPaths).Count | Should -BeExactly 1
+        @($obj.leftoverPaths)[0]    | Should -BeExactly 'C:\fake\area\source-cache'
+        $obj.smoke                  | Should -BeExactly 'skip'
     }
 }
