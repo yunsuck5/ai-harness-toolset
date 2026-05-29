@@ -1,13 +1,23 @@
 ﻿[CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)] [string] $SnippetPath,
+    [string] $SnippetPath,
     [Parameter(Mandatory = $true)] [string] $TargetPath,
     [switch] $DryRun,
     # Dry-run only: print the full managed-block before/after dump (legacy behavior). Without it,
     # dry-run prints a COMPACT change summary (line counts + unchanged prefix/suffix + changed window
     # + first differing line), which keeps a one-line drift readable instead of dumping the whole
     # block twice. Has no effect outside -DryRun; does not change apply behavior.
-    [switch] $ShowFullDiff
+    [switch] $ShowFullDiff,
+    # -Remove: REMOVE the managed block (marker span) from the target instead of applying a snippet.
+    # Used by uninstall (IU-B-08 batch 3). This reuses THIS tool's hardened IO unchanged — BOM
+    # refusal, U+FFFD sentinel, the single `.amb-backup` create/rollback/cleanup lifecycle, and the
+    # post-write verify — so there is no separate or drifting removal IO path. In -Remove mode
+    # SnippetPath is ignored; the new content is computed by lib/managed-block.ps1 Remove-ManagedBlock
+    # (marker span excised, marker-outside content preserved byte-for-byte); the post-write verify
+    # becomes "ZERO marker pairs remain"; a target that already has 0 marker pairs is an idempotent
+    # no-op (no write, no backup); and the file is NEVER deleted (an emptied file is left as empty
+    # content). Marker fail-fast cases (2+/incomplete/ordering/malformed) fail before any write.
+    [switch] $Remove
 )
 
 Set-StrictMode -Version Latest
@@ -43,9 +53,11 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib/encoding.ps1')
 . (Join-Path $PSScriptRoot 'lib/managed-block.ps1')
 
-if (-not (Test-Path -LiteralPath $SnippetPath -PathType Leaf)) {
-    Write-Host ('apply-managed-block: FAIL snippet not found: {0}' -f $SnippetPath)
-    exit 1
+if (-not $Remove) {
+    if ([string]::IsNullOrEmpty($SnippetPath) -or -not (Test-Path -LiteralPath $SnippetPath -PathType Leaf)) {
+        Write-Host ('apply-managed-block: FAIL snippet not found: {0}' -f $SnippetPath)
+        exit 1
+    }
 }
 if (-not (Test-Path -LiteralPath $TargetPath -PathType Leaf)) {
     Write-Host ('apply-managed-block: FAIL target not found: {0}' -f $TargetPath)
@@ -63,19 +75,42 @@ if ($targetBytes.Length -ge 3 -and $targetBytes[0] -eq 0xEF -and $targetBytes[1]
 
 # Compute the full new content first. Any marker / structural failure throws here,
 # before the single write below, so a failed apply never leaves a partial write.
+$noopRemoval = $false
 try {
-    $snippet    = Read-Utf8 -Path $SnippetPath
-    $target     = Read-Utf8 -Path $TargetPath
+    $target = Read-Utf8 -Path $TargetPath
     # A-2b corruption sentinel gate: refuse already-corrupted input (U+FFFD) before
     # any write, so a prior lossy decode persisted on disk cannot be laundered into a
-    # freshly rewritten file. Runs before Set-ManagedBlock, inside this pre-write try.
+    # freshly rewritten file. Runs before content construction, inside this pre-write try.
     Assert-NoCorruptionSentinel -Content $target -Label 'target'
-    Assert-NoCorruptionSentinel -Content $snippet -Label 'snippet'
-    $newContent = Set-ManagedBlock -TargetContent $target -SnippetContent $snippet
+    if ($Remove) {
+        # Removal: marker span excised, marker-outside content preserved. 0 pairs -> no-op success;
+        # 2+/incomplete/ordering/malformed -> Remove-ManagedBlock throws (caught below, no write).
+        $removal = Remove-ManagedBlock -TargetContent $target
+        if (-not $removal.Removed) {
+            $noopRemoval = $true
+            $newContent  = $target
+        }
+        else {
+            $newContent = $removal.Content
+        }
+    }
+    else {
+        $snippet = Read-Utf8 -Path $SnippetPath
+        Assert-NoCorruptionSentinel -Content $snippet -Label 'snippet'
+        $newContent = Set-ManagedBlock -TargetContent $target -SnippetContent $snippet
+    }
 }
 catch {
     Write-Host ('apply-managed-block: FAIL {0}' -f $_.Exception.Message)
     exit 1
+}
+
+# -Remove on a target that has no managed block is an idempotent no-op: nothing to write, no backup,
+# file untouched (and never deleted).
+if ($Remove -and $noopRemoval) {
+    Write-Host ('apply-managed-block: target has no managed block; nothing to remove (no-op): {0}' -f $TargetPath)
+    Write-Host 'apply-managed-block: PASS'
+    exit 0
 }
 
 # A-2d dry-run / diff preview. By this point every pre-write gate has run (existence,
@@ -84,6 +119,15 @@ catch {
 # (default) or the whole managed-block before/after dump (-ShowFullDiff), and exits WITHOUT
 # writing the target or creating a backup — the backup/write section below is never reached.
 if ($DryRun) {
+    if ($Remove) {
+        # No-op removal already exited above, so here exactly one marker pair exists and would go.
+        $oldBlock = Get-ManagedBlockContent -Content $target -Label 'destination'
+        Write-Host 'apply-managed-block: DRY-RUN -Remove (no file written, no backup created)'
+        Write-Host ('apply-managed-block: target {0}' -f $TargetPath)
+        Write-Host ('apply-managed-block: managed block WOULD be removed ({0} line(s), BEGIN..END inclusive); marker-outside content preserved; file not deleted' -f $oldBlock.Count)
+        Write-Host 'apply-managed-block: DRY-RUN PASS (managed block WOULD be removed)'
+        exit 0
+    }
     $oldBlock = Get-ManagedBlockContent -Content $target  -Label 'destination'
     $newBlock = Get-ManagedBlockContent -Content $snippet -Label 'snippet'
 
@@ -169,27 +213,39 @@ if (Test-Path -LiteralPath $backupPath) {
 try {
     Write-Utf8NoBom -Path $TargetPath -Content $newContent
 
-    # Post-apply verification: the destination's managed block must now equal the
-    # snippet's managed block (line content, terminator-agnostic). A mismatch — or a
-    # failure reading the file back — means the write produced unexpected content, so
-    # raise an error the rollback handles instead of leaving the bad write in place.
-    $snippetBlock = Get-ManagedBlockContent -Content $snippet -Label 'snippet'
-    $writtenBlock = Get-ManagedBlockContent -Content (Read-Utf8 -Path $TargetPath) -Label 'destination'
-
-    $mismatch = $false
-    if ($snippetBlock.Count -ne $writtenBlock.Count) {
-        $mismatch = $true
-    }
-    else {
-        for ($i = 0; $i -lt $snippetBlock.Count; $i++) {
-            if ($snippetBlock[$i] -cne $writtenBlock[$i]) {
-                $mismatch = $true
-                break
-            }
+    # Post-write verification. A mismatch — or a failure reading the file back — means the write
+    # produced unexpected content, so raise an error the rollback handles instead of leaving the bad
+    # write in place.
+    if ($Remove) {
+        # Removal verify: ZERO marker pairs must remain (the marker lines themselves were excised,
+        # so this is NOT "block == snippet"; it is "no managed block left").
+        $writtenSegments = @(Split-ManagedBlockLines -Content (Read-Utf8 -Path $TargetPath))
+        $writtenScan = Find-ManagedBlockMarkers -Segments $writtenSegments
+        if (($writtenScan.BeginIndices.Count + $writtenScan.EndIndices.Count) -ne 0) {
+            throw 'post-removal verification: marker pair(s) still present after removal.'
         }
     }
-    if ($mismatch) {
-        throw 'post-apply verification: destination block does not equal snippet block.'
+    else {
+        # Apply verify: the destination's managed block must now equal the snippet's managed block
+        # (line content, terminator-agnostic).
+        $snippetBlock = Get-ManagedBlockContent -Content $snippet -Label 'snippet'
+        $writtenBlock = Get-ManagedBlockContent -Content (Read-Utf8 -Path $TargetPath) -Label 'destination'
+
+        $mismatch = $false
+        if ($snippetBlock.Count -ne $writtenBlock.Count) {
+            $mismatch = $true
+        }
+        else {
+            for ($i = 0; $i -lt $snippetBlock.Count; $i++) {
+                if ($snippetBlock[$i] -cne $writtenBlock[$i]) {
+                    $mismatch = $true
+                    break
+                }
+            }
+        }
+        if ($mismatch) {
+            throw 'post-apply verification: destination block does not equal snippet block.'
+        }
     }
 }
 catch {
@@ -214,7 +270,12 @@ catch {
 # apply into a failure (it would only leave a stale sidecar, reported as a tradeoff).
 Remove-Item -LiteralPath $backupPath -Force -ErrorAction SilentlyContinue
 
-Write-Host ('apply-managed-block: applied managed block to {0}' -f $TargetPath)
-Write-Host ('apply-managed-block: source snippet {0}' -f $SnippetPath)
+if ($Remove) {
+    Write-Host ('apply-managed-block: removed managed block from {0}' -f $TargetPath)
+}
+else {
+    Write-Host ('apply-managed-block: applied managed block to {0}' -f $TargetPath)
+    Write-Host ('apply-managed-block: source snippet {0}' -f $SnippetPath)
+}
 Write-Host 'apply-managed-block: PASS'
 exit 0

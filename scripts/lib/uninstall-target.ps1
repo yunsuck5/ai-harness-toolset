@@ -32,20 +32,57 @@ $script:UninstallKnownTransientRootEntries = @('source-cache')
 $script:UninstallReservedRootEntries       = @('log')
 $script:UninstallExpectedManagedBy         = 'claude-code'
 
+function Get-UninstallExpectedRootEntries {
+    # Single source of truth for the install-root top-level expected footprint allow-list. The
+    # apply entrypoint passes this to the (self-contained) temp finalizer so the finalizer's
+    # defensive unexpected-content re-check uses the SAME list — no re-hardcoding / drift.
+    # Return WITHOUT a unary-comma wrapper: callers consume this via @(...), and `,$array` would
+    # nest into a single-element array (the finalizer then saw one Object[] and flagged everything
+    # as unexpected). Emitting the elements lets @() collect the full list.
+    return $script:UninstallExpectedRootEntries
+}
+
 function script:Get-UninstallManagedBlockState {
-    # Read-only managed-block surface classification by marker-pair state. Mirrors the
-    # Remove-ManagedBlock branch ordering WITHOUT performing the removal:
-    #   0 pairs            -> absent   (file present, nothing to remove; file left untouched)
-    #   exactly 1 ordered  -> removable
-    #   2+ / incomplete / ordering / malformed (unbalanced fence) -> blocked
+    # Read-only managed-block surface classification. It mirrors the FULL set of pre-write gates that
+    # the actual removal (apply-managed-block.ps1 -Remove) enforces, so every statically-detectable
+    # unsafe state is caught HERE in preflight (and blocks the whole apply) instead of failing mid-
+    # sequence into a partial mutation:
+    #   - file absent                                  -> absent
+    #   - pre-existing <file>.amb-backup               -> blocked (apply-managed-block refuses it)
+    #   - UTF-8 BOM on the target                      -> blocked (apply-managed-block refuses it)
+    #   - U+FFFD corruption sentinel in the content    -> blocked (apply-managed-block refuses it)
+    #   - 0 marker pairs                               -> absent (nothing to remove; file untouched)
+    #   - exactly 1 ordered pair                       -> removable
+    #   - 2+ / incomplete / ordering / malformed fence -> blocked
     [CmdletBinding()]
     param([Parameter(Mandatory = $true)] [string] $Path)
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
         return [pscustomobject]@{ Status = 'absent'; Reason = 'instruction file absent (no managed block to remove)'; WouldRemove = $false; Blocked = $false }
     }
+    # Pre-write-gate parity with apply-managed-block.ps1 (these would each make the child -Remove fail,
+    # so they are blocked in preflight rather than allowed to produce a partial sequential mutation).
+    $ambBackup = $Path + '.amb-backup'
+    # Match apply-managed-block.ps1's refusal exactly: it refuses ANY existing path at this sidecar
+    # location (Test-Path without -PathType — a file OR a directory), so the preflight must too, or a
+    # `.amb-backup` directory would pass here and then fail the child apply mid-sequence.
+    if (Test-Path -LiteralPath $ambBackup) {
+        return [pscustomobject]@{ Status = 'blocked'; Reason = ('pre-existing .amb-backup at ' + $ambBackup + ' (a prior managed-block apply did not close cleanly) — resolve before uninstall'); WouldRemove = $false; Blocked = $true }
+    }
+    try {
+        $bytes = [System.IO.File]::ReadAllBytes($Path)
+        if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) {
+            return [pscustomobject]@{ Status = 'blocked'; Reason = 'target has a UTF-8 BOM (apply-managed-block -Remove requires UTF-8 without BOM)'; WouldRemove = $false; Blocked = $true }
+        }
+    }
+    catch {
+        return [pscustomobject]@{ Status = 'blocked'; Reason = ('read error (byte probe): ' + $_.Exception.Message); WouldRemove = $false; Blocked = $true }
+    }
     try {
         $text = Read-Utf8 -Path $Path
+        if (-not [string]::IsNullOrEmpty($text) -and $text.Contains([char]0xFFFD)) {
+            return [pscustomobject]@{ Status = 'blocked'; Reason = 'U+FFFD corruption sentinel present (apply-managed-block -Remove refuses already-corrupted input)'; WouldRemove = $false; Blocked = $true }
+        }
         $segments = @(Split-ManagedBlockLines -Content $text)
         $scan = Find-ManagedBlockMarkers -Segments $segments
         $nb = $scan.BeginIndices.Count
@@ -196,14 +233,21 @@ function Get-UninstallPlan {
             # the canonical SKILL.md artifact inside it. (Reported Path == the thing a future apply
             # removes, so the dry-run plan the apply batch consumes is unambiguous.)
             $skillDir = Split-Path -Parent $dstFull
+            # Footprint-zero requires the ai-harness-review skill DIRECTORY to be absent, so presence is
+            # keyed on the DIRECTORY existing — NOT on SKILL.md. A skills/ai-harness-review/ dir that
+            # exists without SKILL.md (e.g. a partially-removed mirror) is still removable; otherwise
+            # the dir would survive a "successful" uninstall and break footprint-zero.
             if (-not $pathOk) {
                 $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $dstFull; Status = 'blocked'; Reason = 'unexpected skill-mirror path shape (expected skills/ai-harness-review/SKILL.md); NOT proposed for removal'; WouldRemove = $false; Blocked = $true })
             }
-            elseif (Test-Path -LiteralPath $dstFull -PathType Leaf) {
-                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'removable'; Reason = ('ai-harness-review skill dir present (detected via {0}); the skill DIRECTORY would be removed' -f $dstFull); WouldRemove = $true; Blocked = $false })
+            elseif (Test-Path -LiteralPath $skillDir -PathType Container) {
+                $hasSkillMd = Test-Path -LiteralPath $dstFull -PathType Leaf
+                $reason = if ($hasSkillMd) { 'ai-harness-review skill dir present (with SKILL.md); the skill DIRECTORY would be removed' }
+                          else { 'ai-harness-review skill dir present (WITHOUT SKILL.md — partial mirror); the skill DIRECTORY would still be removed for footprint-zero' }
+                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'removable'; Reason = $reason; WouldRemove = $true; Blocked = $false })
             }
             else {
-                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'absent'; Reason = ('skill mirror absent (no {0})' -f $dstFull); WouldRemove = $false; Blocked = $false })
+                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'absent'; Reason = ('skill mirror directory absent ({0})' -f $skillDir); WouldRemove = $false; Blocked = $false })
             }
         }
     }

@@ -179,6 +179,38 @@ Describe 'Get-UninstallPlan — activation surfaces' {
         $plan2.OverallStatus | Should -Be 'uninstall_blocked'
     }
 
+    It 'managed-block surface with a pre-existing .amb-backup -> blocked (preflight parity)' {
+        $area = script:New-Case 'c-amb'; script:New-ExpectedInstallRoot -Area $area
+        $h = script:New-Homes 'c-amb'
+        $cm = Join-Path $h.ClaudeHome 'CLAUDE.md'
+        script:Write-MarkedFile $cm 1
+        script:Write-File ($cm + '.amb-backup') 'orig bytes'
+        $plan = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome
+        (script:Get-Target $plan 'claude-user-global-managed-block').Blocked | Should -BeTrue
+        $plan.OverallStatus | Should -Be 'uninstall_blocked'
+    }
+
+    It 'managed-block surface with a .amb-backup DIRECTORY -> blocked (parity with apply-managed-block)' {
+        $area = script:New-Case 'c-ambdir'; script:New-ExpectedInstallRoot -Area $area
+        $h = script:New-Homes 'c-ambdir'
+        $cm = Join-Path $h.ClaudeHome 'CLAUDE.md'
+        script:Write-MarkedFile $cm 1
+        $null = script:New-Dir ($cm + '.amb-backup')   # a DIRECTORY at the sidecar path, not a file
+        $plan = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome
+        (script:Get-Target $plan 'claude-user-global-managed-block').Blocked | Should -BeTrue
+        $plan.OverallStatus | Should -Be 'uninstall_blocked'
+    }
+
+    It 'managed-block surface with a UTF-8 BOM -> blocked (preflight parity)' {
+        $area = script:New-Case 'c-bom'; script:New-ExpectedInstallRoot -Area $area
+        $h = script:New-Homes 'c-bom'
+        $cm = Join-Path $h.ClaudeHome 'CLAUDE.md'
+        $nl = "`n"; $body = "# user$nl$script:Begin${nl}b$nl$script:End$nl"
+        [System.IO.File]::WriteAllText([System.IO.Path]::GetFullPath($cm), $body, (New-Object System.Text.UTF8Encoding($true)))
+        $plan = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome
+        (script:Get-Target $plan 'claude-user-global-managed-block').Blocked | Should -BeTrue
+    }
+
     It 'Codex effective surface = AGENTS.override.md when present (override precedence)' {
         $area = script:New-Case 'c-cdxeff'; script:New-ExpectedInstallRoot -Area $area
         $h = script:New-Homes 'c-cdxeff'
@@ -230,7 +262,16 @@ Describe 'Get-UninstallPlan — activation surfaces' {
         $t = script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome) 'review-skill-mirror'
         $t.Path | Should -Match 'ai-harness-review$'
         $t.Path | Should -Not -Match 'SKILL\.md$'
-        $t.Reason | Should -Match 'SKILL\.md'   # presence still detected via the canonical artifact
+    }
+
+    It 'skill dir present WITHOUT SKILL.md -> still removable (footprint-zero)' {
+        $area = script:New-Case 'c-skillnomd'; script:New-ExpectedInstallRoot -Area $area
+        $h = script:New-Homes 'c-skillnomd'
+        $null = script:New-Dir (Join-Path $h.ClaudeHome 'skills/ai-harness-review')   # dir, no SKILL.md
+        $t = script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome) 'review-skill-mirror'
+        $t.Status | Should -Be 'removable'
+        $t.WouldRemove | Should -BeTrue
+        $t.Path | Should -Match 'ai-harness-review$'
     }
 }
 
@@ -253,7 +294,11 @@ Describe 'Get-UninstallPlan — read-only invariant' {
 
 Describe 'uninstall-global.ps1 — dry-run entrypoint' {
 
-    It '-Apply fail-fasts (apply_not_implemented, exit 1) and mutates nothing' {
+    It '-Apply against a non-canonical install-area path is refused by the path guard (exit 1, no mutation)' {
+        # -Apply is implemented as of IU-B-08 batch 3, but the install-root path guard requires the
+        # canonical <...>\.claude\ai-harness-toolset shape. This TestDrive area is NOT that shape, so
+        # apply must block on the path guard and mutate nothing. (Full apply behavior with a canonical
+        # fixture path is covered in tests/uninstall-apply.Tests.ps1.)
         $area = script:New-Case 'e-apply'; script:New-ExpectedInstallRoot -Area $area
         $h = script:New-Homes 'e-apply'
         script:Write-MarkedFile (Join-Path $h.ClaudeHome 'CLAUDE.md') 1
@@ -263,7 +308,8 @@ Describe 'uninstall-global.ps1 — dry-run entrypoint' {
             '-InstallArea', $area, '-ClaudeHome', $h.ClaudeHome, '-CodexHome', $h.CodexHome, '-Apply'
         )
         $proc.ExitCode | Should -Be 1
-        ($proc.Stdout + $proc.Stderr) | Should -Match 'apply_not_implemented'
+        ($proc.Stdout) | Should -Match 'uninstallStatus=uninstall_blocked'
+        ($proc.Stdout) | Should -Match 'path guard'
         (script:Snapshot $area) | Should -Be $before
         (script:Snapshot $h.ClaudeHome) | Should -Be $beforeC
     }
