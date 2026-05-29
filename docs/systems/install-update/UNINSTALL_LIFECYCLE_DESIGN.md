@@ -1,13 +1,13 @@
-# install-update — uninstall / teardown lifecycle design
+# install-update — uninstall / teardown lifecycle (design + as-built)
 
-> **Design-only / not implemented.** This document specifies the *design* of the uninstall lifecycle. It is **not** an implementation, and nothing here authorizes execution.
+> **Status: implemented (IU-B-08 batches 1–3); this document is the governing design AND the as-built reference.** The code matches the design below; where wording is dated "design draft", it has been reconciled to the actual implementation.
 >
-> - **No `scripts/uninstall-global.ps1` exists.** The entrypoint named throughout is the documented design target, not a shipped script.
-> - **No `Remove-ManagedBlock` primitive exists.** Managed-block removal depends on a primitive that is not implemented (see §4).
-> - **No real uninstall / dry-run / apply has been run.** No global/user filesystem mutation, snapshot, or manifest has been produced from this design.
-> - Promotion to implementation requires the standard gate: a backlog entry (`BACKLOG.md` IU-B-08), a separate scoped `/goal`, and a Codex review gate. See §10.
+> - **`Remove-ManagedBlock` primitive — implemented** (batch 1, commit `2fe5328`) in `scripts/lib/managed-block.ps1`; the removal IO reuses `scripts/apply-managed-block.ps1 -Remove` (§4).
+> - **Read-only dry-run target resolver — implemented** (batch 2, commit `d43f784`): `scripts/lib/uninstall-target.ps1` (`Get-UninstallPlan`) + `scripts/uninstall-global.ps1` (default dry-run).
+> - **Destructive apply + temp finalizer — implemented** (batch 3, commit `fc1c6a7`): `scripts/uninstall-global.ps1 -Apply` + the self-contained `scripts/uninstall-finalizer.ps1`.
+> - **No real user/global uninstall has been run yet.** All behavior is exercised only in TestDrive / fixture sandboxes. Running `-Apply` against a real `%USERPROFILE%` install is a **separate, explicit approval boundary**: a **notebook-PC dogfood** of the real apply is planned and pending; **main-PC real apply is forbidden** until that dogfood + reinstall verification clears.
 >
-> **Provenance.** Distilled from the advisory parallel-investigation report (out-of-repo `polishing/install/20260529-uninstall-lifecycle-report.md`, review task `20260529-uninstall-lifecycle-design`). That report is an advisory artifact, not source-of-truth; only the policies and open decisions are carried here. Where this design and the report diverge, this document governs.
+> **Provenance.** Distilled from the advisory parallel-investigation report (out-of-repo `polishing/install/` uninstall reports, review task `20260529-uninstall-lifecycle-design`). That report is an advisory artifact, not source-of-truth; only the policies and decisions are carried here. Where this design and the report diverge, this document (reconciled to the implementation) governs.
 
 ## 1. Scope and relationship to install/update/activation
 
@@ -27,7 +27,7 @@ Uninstall succeeds **iff the global/user ai-harness-toolset footprint is reduced
 3. Claude managed-block surface `%USERPROFILE%\.claude\CLAUDE.md` — **zero** `AI_HARNESS_TOOLSET_GLOBAL` marker pairs (the file itself may remain, carrying the user's marker-outside content).
 4. Codex managed-block surface `%USERPROFILE%\.codex\AGENTS.md` (or `%CODEX_HOME%\AGENTS.md`; `AGENTS.override.md` precedence per `scripts/lib/activation-surface.ps1`) — **zero** marker pairs (file may remain).
 
-Footprint-zero for the Codex managed-block target is defined over the **effective** surface chosen by the shared resolver (the same one activation applies to), not over every Codex file. Whether a stale marker pair sitting in a *non-effective* Codex file (e.g. an `AGENTS.md` shadowed by an `AGENTS.override.md`) must also be cleared is left as an open decision (§11, O7); the default here targets only the effective surface so uninstall mirrors what activation actually wrote.
+Footprint-zero for the Codex managed-block target is defined over the **effective** surface chosen by the shared resolver (the same one activation applies to), not over every Codex file. A stale marker pair sitting in a *non-effective* Codex file (e.g. an `AGENTS.md` shadowed by an `AGENTS.override.md`) is **detect-warned, not removed** (resolved as O7, §11): the default targets only the effective surface so uninstall mirrors what activation actually wrote.
 
 "Footprint zero" is the *verified* end state, not merely "delete commands issued". Because the install-root deletion is delegated to a finalizer trampoline (§3), the footprint-zero verification for target (1) is the finalizer's responsibility; the main entrypoint verifies targets (2)–(4).
 
@@ -41,7 +41,7 @@ Footprint-zero for the Codex managed-block target is defined over the **effectiv
 
 The main entrypoint does **only**:
 
-1. **Preflight (all surfaces, no mutation).** Resolve all four targets via the shared resolver (`scripts/lib/activation-surface.ps1`) plus the install-root footprint enumeration (§5). Apply the preflight-all-then-act discipline (mirrors `activate-global.ps1`): if any fail-fast condition holds (unexpected install-root content, malformed/ambiguous marker, pre-existing `.amb-backup`), **remove nothing** and report `uninstall_blocked`.
+1. **Preflight (all surfaces, no mutation).** Resolve all targets via the read-only resolver `scripts/lib/uninstall-target.ps1` (`Get-UninstallPlan`, which uses the shared `scripts/lib/activation-surface.ps1` for the effective surfaces) plus the install-root footprint enumeration (§5). Apply the preflight-all-then-act discipline (mirrors `activate-global.ps1`): if any fail-fast condition holds (unexpected install-root content, malformed/ambiguous marker, pre-existing `.amb-backup`, managedBy mismatch, install-root path-guard failure), **remove nothing** and report `uninstall_blocked`.
 2. **Managed-block removal** of the two instruction-file surfaces (§4) — marker-span excision only, outside content preserved.
 3. **Skill mirror removal** — delete `%USERPROFILE%\.claude\skills\ai-harness-review\` only (§6).
 4. **Create and launch the temp finalizer**, passing it the resolved install-root path and the parent process id, then **exit**. The main entrypoint does **not** delete the install root itself.
@@ -67,14 +67,14 @@ The finalizer is a small self-contained script copied to a temp location (e.g. u
 
 The instruction-file surfaces (`CLAUDE.md`, effective `AGENTS.md`) carry user-owned content **outside** the `AI_HARNESS_TOOLSET_GLOBAL` marker pair. Removal therefore **excises only the marker-bounded span (BEGIN..END, marker lines inclusive)** and preserves everything else byte-for-byte. The file is **never deleted**, even if excision leaves it empty (deleting a user-owned file would be over-reach).
 
-**Required (not-yet-implemented) primitive.** Today `scripts/lib/managed-block.ps1` exposes `Set-ManagedBlock` (replace/insert) but **no `Remove-ManagedBlock`**. Removal must not be faked as "`Set-ManagedBlock` with an empty snippet" — that leaves an empty marker pair, violating footprint-zero. A new deterministic `Remove-ManagedBlock` primitive is required. Note the marker-count branch ordering: `Resolve-ManagedBlockSpan` itself fail-fasts on 0 pairs, but the 0-pair state must be an idempotent no-op (not a failure) for removal. So the primitive first counts markers via `Find-ManagedBlockMarkers` — 0 pairs → no-op return; 2+/incomplete/ordering-violation → fail-fast; exactly 1 → call `Resolve-ManagedBlockSpan` to get the span and excise it. It does not call the exact-1 resolver before establishing that exactly one pair exists.
+**`Remove-ManagedBlock` primitive (implemented, batch 1).** `scripts/lib/managed-block.ps1` provides `Remove-ManagedBlock` alongside `Set-ManagedBlock`. Removal is **not** faked as "`Set-ManagedBlock` with an empty snippet" (that would leave an empty marker pair, violating footprint-zero) — the marker lines themselves are excised. Marker-count branch ordering: `Resolve-ManagedBlockSpan` fail-fasts on 0 pairs, but the 0-pair state must be an idempotent no-op (not a failure) for removal, so the primitive first counts markers via `Find-ManagedBlockMarkers` — 0 pairs → no-op (`Removed = $false`, content unchanged); 2+/incomplete/ordering-violation → fail-fast (throw); exactly 1 → `Resolve-ManagedBlockSpan` → excise. It does not call the exact-1 resolver before establishing exactly one pair exists.
 
 **State machine** (per surface):
 
 | Marker state | Behavior |
 |---|---|
 | 0 pairs | **Idempotent no-op** (`absent`) — never adopted, or already removed. Not a failure. |
-| exactly 1 pair | Excise BEGIN..END inclusive + normalize adjacent blank lines; preserve all other bytes. File retained even if emptied. |
+| exactly 1 pair | Excise BEGIN..END inclusive; **all other bytes preserved verbatim** (the `before + after` splice keeps each surviving segment's original line terminator — no blank-line normalization, no EOL rewrite). File retained even if the excision empties it (empty-string content, never deleted). |
 | 2+ pairs / incomplete (one marker missing) / malformed / nested | **Fail-fast** — report, do not edit the file (same posture as `apply-managed-block.ps1`). At the orchestrator level this is a **preflight** fail-fast that blocks the *whole* apply (`uninstall_blocked`, §8/§9), not a per-surface "proceed with the others" condition. |
 
 **Safety mechanisms reused from apply** (`scripts/apply-managed-block.ps1` / `INSTALL.md` §10): UTF-8-no-BOM read/write, BOM-prefixed target refused, U+FFFD corruption-sentinel gate, a pre-write `.amb-backup` with rollback on any failure, and a post-write verify. The verify's *success criterion differs*: apply verifies "destination block == snippet block"; removal verifies "**zero marker pairs remain**".
@@ -113,23 +113,34 @@ Uninstall is a **global/user** teardown of the ai-harness footprint and explicit
 Mirrors `activate-global.ps1` and the inspect/apply split of the install flow:
 
 - **Dry-run (default, no `-Apply`).** Read-only. Enumerate every target and classify each as `present` / `absent` / `blocked` (malformed marker, unexpected install-root content, pre-existing `.amb-backup`). Show exactly what would be removed and excised. No write, no finalizer launch. Terminal status `uninstall_preview`.
-- **Apply (`-Apply`).** Preflight-all-then-act: if any surface is in a fail-fast state, remove nothing (`uninstall_blocked`). Otherwise perform managed-block excision + skill removal, then create/launch the finalizer and exit. Approval is **command-implied** (the explicit `-Apply` invocation), with an optional `-ConfirmInteractive` two-choice (Yes/No) selector for direct-terminal use (no third option, no timeout auto-yes). This is a global/user filesystem mutation and is bound by `INSTALL.md` §10 approval boundaries.
+- **Apply (`-Apply`).** Preflight-all-then-act: if any surface is in a fail-fast state, remove nothing (`uninstall_blocked`). Otherwise perform managed-block excision + skill removal, then create/launch the finalizer and exit. Approval is **command-implied** (the explicit `-Apply` invocation is the decision). This is a global/user filesystem mutation and is bound by `INSTALL.md` §10 approval boundaries; the install-root path guard (canonical `…\.claude\ai-harness-toolset`) is **hard-enforced** in apply preflight (evidence-only in dry-run). (No interactive `-ConfirmInteractive` selector is implemented; if a direct-terminal confirm is later wanted it is a separate additive change.)
 - **Verify (post-removal).** The main entrypoint verifies targets (2)–(4) (skill dir absent; zero marker pairs in both instruction files). The finalizer verifies target (1) (install root absent). Footprint-zero (§2) holds only when all four verify clean.
 
-### 8.1 Status vocabulary (design draft — pending `INSTALL.md` §13 alignment)
+### 8.1 Status vocabulary (as-built; standalone, decision O5)
 
-This is a draft vocabulary for the standalone uninstall entrypoint, analogous to `activate-global.ps1`'s `activationStatus`. Final naming and any `INSTALL.md` §13 integration are an open decision (§9, O6).
+Per decision O5 (§11), the uninstall vocabulary is **standalone** (analogous to `activate-global.ps1`'s `activationStatus`); integration into `INSTALL.md` §13 is deferred to a later stabilization. There are two emitters: the main entrypoint's stdout `uninstallStatus=`, and the finalizer's result-JSON `status` (the finalizer runs detached after the entrypoint exits, so its outcome is reported in `<FinalizerTempRoot>\ai-harness-uninstall-<runid>.result.json`, not on the entrypoint's stdout).
+
+**Main entrypoint (`scripts/uninstall-global.ps1`) `uninstallStatus`:**
+
+| Status | Exit | Meaning |
+|---|---|---|
+| `uninstall_preview` | 0 | Dry-run (default, no `-Apply`); all targets classified, nothing removed. |
+| `uninstall_blocked` | 1 | Apply preflight fail-fast — a blocked target (unexpected install-root content / malformed-ambiguous marker / pre-existing `.amb-backup` / managedBy mismatch / skill-path-shape) or an install-root path-guard failure; **nothing removed**. |
+| `uninstall_partial` | 1 | Post-preflight: a surface removal failed, or finalizer setup/launch failed, after some surface(s) were already removed; the install root is **not** deleted (left intact for a re-run). No cross-surface transaction. |
+| `uninstall_finalizer_launched` | 0 | Apply success: managed-block + skill surfaces removed + verified, install-root deletion **delegated** to the launched detached finalizer (terminal for the entrypoint; the finalizer's result file carries the deletion outcome). |
+| `uninstalled` | 0 | Apply success when the install root was already absent: surfaces removed, nothing to delegate. |
+
+**Finalizer (`scripts/uninstall-finalizer.ps1`) result-JSON `status`:**
 
 | Status | Meaning |
 |---|---|
-| `uninstall_preview` | Dry-run; all targets classified, nothing removed. |
-| `uninstall_finalizer_launched` | Apply: targets (2)–(4) removed + verified, install-root deletion delegated to the launched finalizer (terminal for the main entrypoint). |
-| `uninstalled` | Footprint-zero verified (finalizer-reported end state for target (1) plus the main entrypoint's (2)–(4)). |
-| `uninstall_blocked` | Preflight fail-fast (unexpected install-root content / malformed-ambiguous marker / pre-existing `.amb-backup`); nothing removed. |
-| `uninstall_partial` | Some surfaces removed, at least one not (e.g. a managed-block rollback after the skill dir was already removed); honest per-surface report, no cross-surface transaction. |
-| `uninstall_verify_failed` | A removal was performed but a post-removal absence/zero-pair verify failed. |
-| `uninstall_finalizer_cleanup_failed_with_leftover` | Finalizer completed the uninstall but could not remove its own temp copy; the exact temp path is reported. |
-| `failed` | General failure not covered above. |
+| `uninstalled` | Install root deleted + absence-verified; temp self-clean succeeded. |
+| `uninstalled_with_finalizer_leftover` | Install root deleted + verified, but the finalizer could not self-clean its own temp dir; the exact temp path is reported (`selfCleanLeftover`). Non-fatal. |
+| `finalizer_parent_wait_timeout` | Parent (entrypoint) still alive after the wait timeout; refused to delete. |
+| `finalizer_path_guard_failed` | Install-root path is not the canonical `…\.claude\ai-harness-toolset`; refused to delete. |
+| `finalizer_unexpected_content` | Unexpected top-level content appeared in the install root since preflight; refused to delete. |
+| `finalizer_delete_failed` | `Remove-Item` of the install root threw. |
+| `finalizer_delete_verify_failed` | Delete ran but the install root is still present (absence verify failed). |
 
 ## 9. Failure policy
 
@@ -145,29 +156,31 @@ Specific conditions:
 - **Pre-existing `.amb-backup`** — preflight tier: fail-fast / report-only, never auto-deleted (§4). Disposition is a separate user decision; the whole apply is blocked until resolved.
 - **Already-absent targets** — idempotent no-op success. Uninstall must be safely re-runnable.
 - **Post-preflight runtime failure** — per-surface partial (`uninstall_partial`) as above; honest per-surface report, no cross-surface transaction.
-- **Post-removal verify failure** — a removal completed but the absence / zero-pair verify did not confirm footprint-zero (`uninstall_verify_failed`).
-- **Finalizer self-cleanup failure** — non-fatal to the uninstall outcome; report the exact temp path (`uninstall_finalizer_cleanup_failed_with_leftover`).
+- **Post-removal verify failure** — a removal ran but absence was not confirmed: the finalizer reports `finalizer_delete_verify_failed` for the install root (and refuses-without-deleting variants `finalizer_path_guard_failed` / `finalizer_unexpected_content` / `finalizer_parent_wait_timeout` / `finalizer_delete_failed`); a surface-side verify failure rolls into the entrypoint's `uninstall_partial`.
+- **Finalizer self-cleanup failure** — non-fatal to the uninstall outcome; the finalizer reports `uninstalled_with_finalizer_leftover` with the exact temp path (`selfCleanLeftover`).
 
-## 10. Governance — §11(b) deterministic narrow entrypoint candidate
+## 10. Governance — §11(b) deterministic narrow entrypoint (implemented)
 
 `INSTALL.md` §11's self-imposed boundary invariant requires that introducing a new entrypoint be a deliberate, scoped redefinition of §11 (a deterministic narrow entrypoint must not grow into the §11(a) productization/uninstaller-framework class). Accordingly:
 
-- `INSTALL.md` §11(b) now lists **uninstall (`scripts/uninstall-global.ps1`)** as a deterministic narrow entrypoint **candidate**, design-doc'd here and **not yet implemented**. A large/interactive uninstaller framework, doctor/repair teardown, or any productized uninstaller remains §11(a) out-of-scope.
-- This document is the design step. Implementation still requires: `BACKLOG.md` IU-B-08 entry, a separate scoped `/goal`, and a Codex review gate (same promotion gate as other §11(b) entrypoints).
+- `INSTALL.md` §11(b) lists **uninstall (`scripts/uninstall-global.ps1`)** as a deterministic narrow entrypoint — now **implemented** (batches 1–3) as a dry-run + `-Apply` + finalizer entrypoint, kept narrow and single-purpose. A large/interactive uninstaller framework, doctor/repair teardown, or any productized uninstaller remains §11(a) out-of-scope and the boundary invariant still holds.
+- The promotion gate that authorized implementation was satisfied: the `BACKLOG.md` IU-B-08 entry, scoped `/goal`s per batch, and a Codex review gate on each batch. What remains is **not** further implementation but a real-environment **dogfood** (notebook-PC) of `-Apply` + reinstall verification before the lifecycle is considered fully closed (§ status banner).
 
-## 11. Open decisions (require user sign-off before implementation)
+## 11. Decisions (resolved; as-built)
 
-- **O1.** After managed-block excision leaves an instruction file empty — retain the file (this design's recommendation) vs delete it.
-- **O2.** `Remove-ManagedBlock` placement/name — a new function in `scripts/lib/managed-block.ps1` plus a wrapper, symmetric with `apply-managed-block.ps1`.
-- **O3.** Install-root removal — confirmed here as enumerate-expected + fail-fast (defensive) over a clean recursive delete; confirm the expected-footprint set (esp. the run-evidence tree shape).
-- **O4.** Finalizer mechanics — temp location, parent-exit wait strategy (poll interval / timeout), and detached-launch method on Windows PowerShell 5.1.
-- **O5.** Uninstall status vocabulary (§8.1) — final names and whether/how they integrate with `INSTALL.md` §13 vs staying an `activate-global`-style standalone vocabulary.
-- **O6.** Whether uninstall should also offer a project-scope teardown (project-root managed blocks / project-local skills) as a *separate* explicit mode — currently out of scope for global uninstall (§7).
-- **O7.** Whether footprint-zero must also clear a stale marker pair in a *non-effective* Codex file (an `AGENTS.md` shadowed by an `AGENTS.override.md`, or vice versa). Default (§2): target only the effective resolver surface; clearing non-effective stale blocks would need an explicit decision.
+These were the implementation-prep open decisions (review task `20260529-uninstall-impl-prep`); all are now resolved and reflected in the code, except O6 which remains a deliberate non-target.
+
+- **O1 — resolved (retain).** After managed-block excision empties an instruction file, the file is **retained** (empty content, never deleted). Implemented in `Remove-ManagedBlock` / `apply-managed-block.ps1 -Remove`.
+- **O2 — resolved.** `Remove-ManagedBlock` is a function in `scripts/lib/managed-block.ps1`; the IO-safety (`.amb-backup` / rollback / post-write verify) is **reused** via `apply-managed-block.ps1 -Remove` (no separate/drifting removal IO, no extra wrapper script).
+- **O3 — resolved (enumerate + fail-fast).** Install-root removal uses expected-footprint enumeration + unexpected-content fail-fast. Expected set: `current/`, `install.json`, `payload-manifest.json`, `payload-marker.json`, `README.md`, `source-cache/` (known-transient), `log/` (reserved run-evidence). Single-sourced via `Get-UninstallExpectedRootEntries` and passed to the finalizer.
+- **O4 — resolved (temp finalizer).** Implemented as `scripts/uninstall-finalizer.ps1`: `%TEMP%`/run-id dir (overridable via `-FinalizerTempRoot`), parent-PID poll + timeout, install-root path re-guard, expected-footprint re-check, delete + absence verify, best-effort self-clean with exact-temp-path report. Detached launch quotes its `-File`/`-InputPath` args (spaces-safe).
+- **O5 — resolved (standalone, defer §13).** Status vocabulary is standalone (§8.1); `INSTALL.md` §13 integration deferred to later stabilization.
+- **O6 — NOT adopted (deliberate non-target).** Uninstall does **not** offer a project-scope teardown (project-root managed blocks / project-local skills); global uninstall stays the scope (§7). A separate project-scope mode remains a future option only.
+- **O7 — resolved (effective surface only + detect-warn).** Footprint-zero targets only the **effective** Codex surface; a stale marker pair in a *non-effective* Codex file is **detect-warned**, not removed (§2). Implemented in the resolver.
 
 ## 12. Relationship to other surfaces
 
-- `INSTALL.md` — operative install/activation contract; §11(b) carries the uninstall narrow-entrypoint candidate, §9.1/§10 the two mutation/removal classes and managed-block/skill rules this design reuses.
-- `docs/systems/install-update/STATUS.md` — records this design doc under the remaining-lifecycle (uninstall) item.
-- `docs/systems/install-update/BACKLOG.md` — IU-B-08 is the implementation-candidate entry pointing here.
-- `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` — operating model; if/when uninstall is implemented, the model doc is updated then (not in this design batch).
+- `INSTALL.md` — operative install/activation contract; §11(b) carries the uninstall narrow entrypoint (implemented), §9.1/§10 the two mutation/removal classes and managed-block/skill rules this implementation reuses.
+- `docs/systems/install-update/STATUS.md` — records IU-B-08 batches 1–3 implemented, with the notebook-PC dogfood / reinstall verification as the remaining item.
+- `docs/systems/install-update/BACKLOG.md` — IU-B-08 implementation is closed out there; remaining work (dogfood, docs closeout, LTS readiness) is tracked separately.
+- `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` — operating model; a teardown/uninstall mention there is a candidate follow-up, not part of this doc-sync.

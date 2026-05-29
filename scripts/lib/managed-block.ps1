@@ -222,8 +222,8 @@ function Remove-ManagedBlock {
     # partial state, mirroring Set-ManagedBlock. The caller writes the returned Content
     # via Write-Utf8NoBom; the IO-safety scaffolding (BOM / U+FFFD gate / .amb-backup /
     # rollback / post-write verify) belongs to the apply wrapper, NOT this primitive
-    # (it must not be duplicated here). A standalone removal IO entrypoint
-    # (apply-managed-block.ps1 -Remove or a shared helper) is a separate later batch.
+    # (it must not be duplicated here). That removal IO is provided by the shared hardened
+    # entrypoint `apply-managed-block.ps1 -Remove` (IU-B-08 batch 3), which calls this primitive.
     #
     # Removal is deliberately NOT "Set-ManagedBlock with an empty snippet": that would
     # leave an empty marker pair behind. This deletes the marker lines too, so a

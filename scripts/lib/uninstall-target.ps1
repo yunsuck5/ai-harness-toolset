@@ -1,11 +1,14 @@
 ﻿Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Read-only uninstall target resolver (IU-B-08 batch 2).
+# Read-only uninstall target resolver (IU-B-08).
 #
-# Pure INSPECTION: it reads the filesystem to classify what a future destructive uninstall
-# WOULD touch, and writes NOTHING. No deletion, no -Apply, no .amb-backup, no instruction-file
-# mutation, no finalizer. The destructive apply / finalizer path is a separate later batch.
+# Pure INSPECTION: it reads the filesystem to classify what the uninstall WOULD touch, and writes
+# NOTHING (no deletion, no -Apply, no .amb-backup, no instruction-file mutation, no finalizer). This
+# resolver is SHARED by both paths in scripts/uninstall-global.ps1: the default read-only dry-run and
+# the destructive -Apply preflight. The destructive apply itself (managed-block removal via
+# scripts/apply-managed-block.ps1 -Remove, skill-dir removal) and the install-root deletion
+# (scripts/uninstall-finalizer.ps1) live in those scripts, not here.
 #
 # Dependencies are dot-sourced by the caller (scripts/uninstall-global.ps1 / the test harness):
 #   lib/encoding.ps1              (Read-Utf8)
