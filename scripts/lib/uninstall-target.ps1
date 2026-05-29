@@ -1,0 +1,232 @@
+﻿Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+# Read-only uninstall target resolver (IU-B-08 batch 2).
+#
+# Pure INSPECTION: it reads the filesystem to classify what a future destructive uninstall
+# WOULD touch, and writes NOTHING. No deletion, no -Apply, no .amb-backup, no instruction-file
+# mutation, no finalizer. The destructive apply / finalizer path is a separate later batch.
+#
+# Dependencies are dot-sourced by the caller (scripts/uninstall-global.ps1 / the test harness):
+#   lib/encoding.ps1              (Read-Utf8)
+#   lib/managed-block.ps1         (Split-ManagedBlockLines, Find-ManagedBlockMarkers, Resolve-ManagedBlockSpan)
+#   lib/activation-surface.ps1    (Get-ActivationSurfacePlan — shared resolver; the SAME effective
+#                                  Codex surface precedence that activation apply/verify uses)
+#   lib/install-pipeline-core.ps1 (Read-InstallPipelineMetadata)
+#
+# Target status vocabulary (read-only classification of a hypothetical future apply):
+#   absent     — nothing to remove (target not present / no managed block).
+#   removable  — a future apply WOULD remove this (WouldRemove = $true).
+#   blocked    — a future apply would REFUSE this target (unexpected content, malformed marker,
+#                managed-install not confirmed); WouldRemove = $false, Blocked = $true.
+#   warn       — detect-only signal (non-effective Codex stale marker); NOT a removal target.
+
+# Expected top-level footprint of the install ROOT: the canonical persistent outputs (sibling of
+# current/), plus the known-transient git-url work area (source-cache) and the reserved in-root
+# run-evidence tree (log/install-update/). Anything else at the top level is unexpected.
+$script:UninstallExpectedRootEntries       = @(
+    'current', 'install.json', 'payload-manifest.json', 'payload-marker.json',
+    'README.md', 'source-cache', 'log'
+)
+$script:UninstallKnownTransientRootEntries = @('source-cache')
+$script:UninstallReservedRootEntries       = @('log')
+$script:UninstallExpectedManagedBy         = 'claude-code'
+
+function script:Get-UninstallManagedBlockState {
+    # Read-only managed-block surface classification by marker-pair state. Mirrors the
+    # Remove-ManagedBlock branch ordering WITHOUT performing the removal:
+    #   0 pairs            -> absent   (file present, nothing to remove; file left untouched)
+    #   exactly 1 ordered  -> removable
+    #   2+ / incomplete / ordering / malformed (unbalanced fence) -> blocked
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] [string] $Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        return [pscustomobject]@{ Status = 'absent'; Reason = 'instruction file absent (no managed block to remove)'; WouldRemove = $false; Blocked = $false }
+    }
+    try {
+        $text = Read-Utf8 -Path $Path
+        $segments = @(Split-ManagedBlockLines -Content $text)
+        $scan = Find-ManagedBlockMarkers -Segments $segments
+        $nb = $scan.BeginIndices.Count
+        $ne = $scan.EndIndices.Count
+        if ($nb -eq 0 -and $ne -eq 0) {
+            return [pscustomobject]@{ Status = 'absent'; Reason = '0 marker pairs (file present, nothing to remove; file would be left untouched)'; WouldRemove = $false; Blocked = $false }
+        }
+        try {
+            [void] (Resolve-ManagedBlockSpan -Segments $segments -Label 'destination')
+            return [pscustomobject]@{ Status = 'removable'; Reason = 'exactly 1 marker pair (marker span would be excised; marker-outside content preserved)'; WouldRemove = $true; Blocked = $false }
+        }
+        catch {
+            return [pscustomobject]@{ Status = 'blocked'; Reason = ('marker pair not exactly 1 / ordering / malformed: ' + $_.Exception.Message); WouldRemove = $false; Blocked = $true }
+        }
+    }
+    catch {
+        return [pscustomobject]@{ Status = 'blocked'; Reason = ('read / structure error: ' + $_.Exception.Message); WouldRemove = $false; Blocked = $true }
+    }
+}
+
+function script:Test-UninstallMarkerPresence {
+    # Read-only: $true if the file exists and contains >= 1 BEGIN or END marker line (fenced-aware
+    # count). Used ONLY for the non-effective Codex detect-warn — never to promote a removal target.
+    [CmdletBinding()]
+    param([Parameter(Mandatory = $true)] [string] $Path)
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    try {
+        $segments = @(Split-ManagedBlockLines -Content (Read-Utf8 -Path $Path))
+        $scan = Find-ManagedBlockMarkers -Segments $segments
+        return (($scan.BeginIndices.Count + $scan.EndIndices.Count) -gt 0)
+    }
+    catch {
+        # An unbalanced fence / structural anomaly still means there is marker-relevant content
+        # worth warning about (detect-warn is conservative).
+        return $true
+    }
+}
+
+function Get-UninstallPlan {
+    # Resolve the read-only uninstall plan: install-root footprint enumeration + managed-block
+    # surfaces + skill mirror + non-effective Codex detect-warn. Returns a structured plan; writes
+    # nothing. ClaudeHome / CodexHome are overridable so tests never touch the real %USERPROFILE%.
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)] [string] $InstallArea,
+        [Parameter(Mandatory = $true)] [string] $ClaudeHome,
+        [Parameter(Mandatory = $true)] [string] $CodexHome
+    )
+
+    $targets = New-Object System.Collections.Generic.List[psobject]
+    $installAreaFull = [System.IO.Path]::GetFullPath($InstallArea)
+
+    # ---- install root footprint (read-only) -------------------------------------------------
+    $rootPresent = Test-Path -LiteralPath $installAreaFull -PathType Container
+
+    # Destructive-op path-guard EVIDENCE (recorded, not a dry-run hard block): the future apply
+    # requires the install root to be <...>\.claude\ai-harness-toolset. Tests use TestDrive paths,
+    # so this is evidence only here; the destructive batch enforces it.
+    $rootLeaf       = Split-Path -Leaf $installAreaFull
+    $rootParentLeaf = Split-Path -Leaf (Split-Path -Parent $installAreaFull)
+    $expectedLocation = ($rootLeaf -ieq 'ai-harness-toolset' -and $rootParentLeaf -ieq '.claude')
+
+    $managedBy   = $null
+    $managedByOk = $false
+
+    if (-not $rootPresent) {
+        $targets.Add([pscustomobject]@{ Name = 'install-root'; Kind = 'install-root'; Path = $installAreaFull; Status = 'absent'; Reason = 'install root directory absent (nothing to remove)'; WouldRemove = $false; Blocked = $false })
+    }
+    else {
+        $mdReason = $null
+        try {
+            $md = Read-InstallPipelineMetadata -InstallArea $installAreaFull
+            if ($null -eq $md) {
+                $mdReason = 'install.json absent (cannot confirm managed install)'
+            }
+            else {
+                $names = @($md.PSObject.Properties.Name)
+                if ($names -ccontains 'managedBy') { $managedBy = [string]$md.managedBy }
+                if ($managedBy -eq $script:UninstallExpectedManagedBy) {
+                    $managedByOk = $true
+                }
+                else {
+                    $mdReason = ("managedBy != '{0}' (got '{1}')" -f $script:UninstallExpectedManagedBy, $managedBy)
+                }
+            }
+        }
+        catch {
+            $mdReason = ('install.json read error: ' + $_.Exception.Message)
+        }
+
+        $entries = @(Get-ChildItem -LiteralPath $installAreaFull -Force)
+        $hasUnexpected = $false
+        foreach ($e in $entries) {
+            $isExpected  = ($script:UninstallExpectedRootEntries       -icontains $e.Name)
+            $isTransient = ($script:UninstallKnownTransientRootEntries -icontains $e.Name)
+            $isReserved  = ($script:UninstallReservedRootEntries       -icontains $e.Name)
+            if ($isExpected) {
+                $baseReason = if ($isTransient) { 'expected footprint (known transient git-url work area)' }
+                              elseif ($isReserved) { 'expected footprint (reserved in-root run-evidence tree)' }
+                              else { 'expected footprint (canonical install output)' }
+                # Per-target Status is kept consistent with WouldRemove: an entry is only 'removable'
+                # when the managed install is confirmed (managedByOk). When it is not, the whole root
+                # is refused (the install-root target carries the managedBy reason), so each expected
+                # entry is 'blocked' (WouldRemove=$false) rather than a contradictory removable/false.
+                if ($managedByOk) {
+                    $targets.Add([pscustomobject]@{ Name = $e.Name; Kind = 'install-root-entry'; Path = $e.FullName; Status = 'removable'; Reason = ($baseReason + '; would be removed with the install root'); WouldRemove = $true; Blocked = $false; KnownTransient = $isTransient })
+                }
+                else {
+                    $targets.Add([pscustomobject]@{ Name = $e.Name; Kind = 'install-root-entry'; Path = $e.FullName; Status = 'blocked'; Reason = ($baseReason + '; but the managed install is NOT confirmed (see the install-root target) — would NOT be removed'); WouldRemove = $false; Blocked = $true; KnownTransient = $isTransient })
+                }
+            }
+            else {
+                $hasUnexpected = $true
+                $targets.Add([pscustomobject]@{ Name = $e.Name; Kind = 'install-root-entry'; Path = $e.FullName; Status = 'blocked'; Reason = 'unexpected top-level content (NOT in the expected footprint; would NOT be removed — resolve manually)'; WouldRemove = $false; Blocked = $true; KnownTransient = $false })
+            }
+        }
+
+        if (-not $managedByOk) {
+            $targets.Add([pscustomobject]@{ Name = 'install-root'; Kind = 'install-root'; Path = $installAreaFull; Status = 'blocked'; Reason = ('managed install not confirmed — ' + $mdReason + '; install root NOT proposed for removal'); WouldRemove = $false; Blocked = $true })
+        }
+        elseif ($hasUnexpected) {
+            $targets.Add([pscustomobject]@{ Name = 'install-root'; Kind = 'install-root'; Path = $installAreaFull; Status = 'blocked'; Reason = 'unexpected top-level content present (see blocked entries); install root NOT proposed for removal'; WouldRemove = $false; Blocked = $true })
+        }
+        else {
+            $targets.Add([pscustomobject]@{ Name = 'install-root'; Kind = 'install-root'; Path = $installAreaFull; Status = 'removable'; Reason = "managed install confirmed (managedBy='claude-code'); footprint matches the expected set"; WouldRemove = $true; Blocked = $false })
+        }
+    }
+
+    # ---- activation surfaces (managed-block) + skill mirror (read-only) ----------------------
+    # PayloadRoot is only used by the shared resolver to compute SOURCE paths; uninstall reads only
+    # the DESTINATION + class, so the PayloadRoot value is irrelevant here (install root passed).
+    $surfaces = Get-ActivationSurfacePlan -PayloadRoot $installAreaFull -ClaudeHome $ClaudeHome -CodexHome $CodexHome
+    foreach ($s in $surfaces) {
+        if ($s.Class -eq 'managed-block') {
+            $st = script:Get-UninstallManagedBlockState -Path $s.Destination
+            $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'managed-block'; Path = ([System.IO.Path]::GetFullPath($s.Destination)); Status = $st.Status; Reason = $st.Reason; WouldRemove = $st.WouldRemove; Blocked = $st.Blocked })
+        }
+        elseif ($s.Class -eq 'canonical-overwrite') {
+            # review skill mirror: existence + expected-path guard only (read-only).
+            $dstFull = [System.IO.Path]::GetFullPath($s.Destination)
+            $sleaf  = Split-Path -Leaf $dstFull
+            $sparent = Split-Path -Leaf (Split-Path -Parent $dstFull)
+            $sgrand  = Split-Path -Leaf (Split-Path -Parent (Split-Path -Parent $dstFull))
+            $pathOk = ($sleaf -ieq 'SKILL.md' -and $sparent -ieq 'ai-harness-review' -and $sgrand -ieq 'skills')
+            # The removal TARGET is the ai-harness-review skill DIRECTORY (the existing skill-removal
+            # rule deletes the <name>/ dir), so Path reports that directory; presence is DETECTED via
+            # the canonical SKILL.md artifact inside it. (Reported Path == the thing a future apply
+            # removes, so the dry-run plan the apply batch consumes is unambiguous.)
+            $skillDir = Split-Path -Parent $dstFull
+            if (-not $pathOk) {
+                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $dstFull; Status = 'blocked'; Reason = 'unexpected skill-mirror path shape (expected skills/ai-harness-review/SKILL.md); NOT proposed for removal'; WouldRemove = $false; Blocked = $true })
+            }
+            elseif (Test-Path -LiteralPath $dstFull -PathType Leaf) {
+                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'removable'; Reason = ('ai-harness-review skill dir present (detected via {0}); the skill DIRECTORY would be removed' -f $dstFull); WouldRemove = $true; Blocked = $false })
+            }
+            else {
+                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'absent'; Reason = ('skill mirror absent (no {0})' -f $dstFull); WouldRemove = $false; Blocked = $false })
+            }
+        }
+    }
+
+    # ---- non-effective Codex stale-marker detect-warn (read-only) ----------------------------
+    $codexAgents   = [System.IO.Path]::GetFullPath((Join-Path $CodexHome 'AGENTS.md'))
+    $codexOverride = [System.IO.Path]::GetFullPath((Join-Path $CodexHome 'AGENTS.override.md'))
+    $effectiveCodex    = if (Test-Path -LiteralPath $codexOverride -PathType Leaf) { $codexOverride } else { $codexAgents }
+    $nonEffectiveCodex = if ($effectiveCodex -eq $codexOverride) { $codexAgents } else { $codexOverride }
+    if (script:Test-UninstallMarkerPresence -Path $nonEffectiveCodex) {
+        $targets.Add([pscustomobject]@{ Name = 'codex-non-effective-stale-marker'; Kind = 'codex-non-effective'; Path = $nonEffectiveCodex; Status = 'warn'; Reason = 'stale managed-block marker in a NON-effective Codex file; detect-warn only (NOT removed, NOT promoted to a removal target)'; WouldRemove = $false; Blocked = $false })
+    }
+
+    $blockedCount = @($targets | Where-Object { $_.Blocked }).Count
+    $overall = if ($blockedCount -gt 0) { 'uninstall_blocked' } else { 'uninstall_preview' }
+
+    return [pscustomobject]@{
+        InstallAreaPath    = $installAreaFull
+        InstallRootPresent = $rootPresent
+        ManagedBy          = $managedBy
+        ManagedByOk        = $managedByOk
+        ExpectedLocation   = $expectedLocation
+        Targets            = $targets.ToArray()
+        OverallStatus      = $overall
+    }
+}
