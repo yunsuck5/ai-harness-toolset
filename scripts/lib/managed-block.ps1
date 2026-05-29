@@ -214,3 +214,75 @@ function Set-ManagedBlock {
 
     return ($before + $block + $after)
 }
+
+function Remove-ManagedBlock {
+    # Pure function: return the destination content with its single managed block
+    # (BEGIN..END marker span, INCLUSIVE of the marker lines) excised, preserving all
+    # content OUTSIDE the marker pair byte-for-byte. Performs NO file IO and leaves NO
+    # partial state, mirroring Set-ManagedBlock. The caller writes the returned Content
+    # via Write-Utf8NoBom; the IO-safety scaffolding (BOM / U+FFFD gate / .amb-backup /
+    # rollback / post-write verify) belongs to the apply wrapper, NOT this primitive
+    # (it must not be duplicated here). A standalone removal IO entrypoint
+    # (apply-managed-block.ps1 -Remove or a shared helper) is a separate later batch.
+    #
+    # Removal is deliberately NOT "Set-ManagedBlock with an empty snippet": that would
+    # leave an empty marker pair behind. This deletes the marker lines too, so a
+    # successful removal leaves ZERO marker pairs.
+    #
+    # Marker-count branch ordering (mirrors the uninstall design state machine in the
+    # install-update UNINSTALL_LIFECYCLE_DESIGN.md design doc, §4):
+    #   - 0 markers (no BEGIN and no END)        -> idempotent no-op SUCCESS
+    #                                               (Removed = $false; Content unchanged).
+    #   - exactly 1 BEGIN + 1 END, in order      -> excise BEGIN..END inclusive
+    #                                               (Removed = $true).
+    #   - 2+ pairs / incomplete (count mismatch) / END-before-BEGIN ordering violation /
+    #     structurally malformed (unbalanced fence) -> FAIL-FAST (throw); no content
+    #     produced, so a caller that writes only the returned Content never mutates on a
+    #     fail-fast.
+    #
+    # The file is NEVER deleted by this primitive: when the managed block is the whole
+    # file, the returned Content is the empty string '' (the caller writes an empty
+    # file; it does not remove it).
+    #
+    # Returns: [pscustomobject] @{ Removed = [bool]; Content = [string] }
+    param(
+        [string] $TargetContent
+    )
+
+    $segments = @(Split-ManagedBlockLines -Content $TargetContent)
+
+    # Count markers first. Find-ManagedBlockMarkers also fail-fasts (throws) on an
+    # unbalanced fenced code block (structurally malformed for marker detection).
+    $scan = Find-ManagedBlockMarkers -Segments $segments
+    $nb = $scan.BeginIndices.Count
+    $ne = $scan.EndIndices.Count
+
+    # 0 markers: idempotent no-op success. Nothing to remove; return content unchanged
+    # (Resolve-ManagedBlockSpan would throw on the 0-pair case, which is why the count
+    # branch precedes the resolver -- the absence of a block is success, not failure).
+    if ($nb -eq 0 -and $ne -eq 0) {
+        return [pscustomobject]@{ Removed = $false; Content = $TargetContent }
+    }
+
+    # Any non-zero marker count routes through Resolve-ManagedBlockSpan, which throws on
+    # 2+ markers, an incomplete pair (BEGIN/END count mismatch), or an END-before-BEGIN
+    # ordering violation. Only an exactly-one-ordered pair returns a span.
+    $span = Resolve-ManagedBlockSpan -Segments $segments -Label 'destination'
+    $b = $span.BeginIndex
+    $e = $span.EndIndex
+
+    # Excise BEGIN..END inclusive. Outside-block segments keep their original terminators
+    # verbatim, so 'before + after' is a byte-for-byte-preserving splice of everything
+    # outside the marker pair (the same splice contract Set-ManagedBlock uses for the
+    # outside region).
+    $before = ''
+    if ($b -gt 0) {
+        $before = -join $segments[0..($b - 1)]
+    }
+    $after = ''
+    if ($e -lt ($segments.Count - 1)) {
+        $after = -join $segments[($e + 1)..($segments.Count - 1)]
+    }
+
+    return [pscustomobject]@{ Removed = $true; Content = ($before + $after) }
+}
