@@ -7,6 +7,8 @@ BeforeAll {
     $script:Script     = Join-Path $script:RepoRoot 'scripts/activate-global.ps1'
     $script:ClaudeSnip = Join-Path $script:RepoRoot 'snippets/CLAUDE_SNIPPET.md'
     $script:AgentsSnip = Join-Path $script:RepoRoot 'snippets/AGENTS_SNIPPET.md'
+    $script:SkillSrc   = Join-Path $script:RepoRoot 'snippets/claude-skills/ai-harness-review/SKILL.md'
+    $script:SkillRel   = 'skills/ai-harness-review/SKILL.md'
 
     $script:Begin = '<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->'
     $script:End   = '<!-- END AI_HARNESS_TOOLSET_GLOBAL -->'
@@ -50,7 +52,8 @@ BeforeAll {
             [string] $ClaudeHome,
             [string] $CodexHome,
             [switch] $Apply,
-            [switch] $ShowFullDiff
+            [switch] $ShowFullDiff,
+            [switch] $ConfirmInteractive
         )
         $procArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script:Script)
         if ($Scope)      { $procArgs += @('-Scope', $Scope) }
@@ -58,6 +61,7 @@ BeforeAll {
         if ($CodexHome)  { $procArgs += @('-CodexHome', $CodexHome) }
         if ($Apply)      { $procArgs += '-Apply' }
         if ($ShowFullDiff) { $procArgs += '-ShowFullDiff' }
+        if ($ConfirmInteractive) { $procArgs += '-ConfirmInteractive' }
         $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
         $exitCode = $proc.ExitCode
         $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
@@ -292,5 +296,174 @@ Describe 'activate-global does not touch real %USERPROFILE%' {
         else {
             (Test-Path -LiteralPath $realClaude) | Should -BeFalse
         }
+    }
+}
+
+Describe 'activate-global 3-surface coverage (Phase 4a)' {
+    It 'AC-AG-3SURFACE-DRYRUN: Scope All dry-run lists all three verified surfaces (incl. the skill mirror)' {
+        $dir = script:New-CaseDir -CaseName '3surface'
+        $ch  = Join-Path $dir '.claude'
+        $cx  = Join-Path $dir '.codex'
+        script:Write-MarkedTarget -Path (Join-Path $ch 'CLAUDE.md')
+        script:Write-MarkedTarget -Path (Join-Path $cx 'AGENTS.md')
+
+        $result = script:Invoke-Activate -Scope 'All' -ClaudeHome $ch -CodexHome $cx
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'surfaces=3'
+        $result.Output | Should -Match 'claude-user-global-managed-block'
+        $result.Output | Should -Match 'codex-user-global-managed-block'
+        $result.Output | Should -Match 'review-skill-mirror'
+        # The skill destination does not exist in the temp home, so its preview action is create.
+        $result.Output | Should -Match 'review-skill-mirror.*action=would-create'
+        $result.Output | Should -Match 'activationStatus=preview'
+        $result.Output | Should -Match 'activate-global: PASS'
+    }
+}
+
+Describe 'activate-global skill mirror canonical-overwrite (Phase 4a)' {
+    It 'AC-AG-SKILL-CREATE: -Scope Skill -Apply creates the destination byte-identical to the canonical source, no sidecar' {
+        $dir = script:New-CaseDir -CaseName 'skill-create'
+        $ch  = Join-Path $dir '.claude'
+        $dst = Join-Path $ch $script:SkillRel
+
+        (Test-Path -LiteralPath $dst) | Should -BeFalse
+        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'review-skill-mirror.*action=create'
+        $result.Output | Should -Match 'activationStatus=applied'
+        $result.Output | Should -Match 'activate-global: PASS'
+
+        (Test-Path -LiteralPath $dst -PathType Leaf) | Should -BeTrue
+        [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
+        # Canonical-overwrite class creates NO backup/sidecar of any kind.
+        @(Get-ChildItem -Path $dir -Recurse -Filter '*.amb-backup' -ErrorAction SilentlyContinue).Count | Should -Be 0
+        @(Get-ChildItem -Path $dir -Recurse -Filter '*.bak' -ErrorAction SilentlyContinue).Count | Should -Be 0
+        # Only SKILL.md exists in the skill destination directory (no sidecar artifacts).
+        @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
+    }
+
+    It 'AC-AG-SKILL-OVERWRITE: -Scope Skill -Apply overwrites a drifted destination to byte-identity, no sidecar, no rollback artifact' {
+        $dir = script:New-CaseDir -CaseName 'skill-overwrite'
+        $ch  = Join-Path $dir '.claude'
+        $dst = Join-Path $ch $script:SkillRel
+        script:Write-Utf8NoBomFile -Path $dst -Content "---`nname: ai-harness-review`n---`n# DRIFTED user copy`n"
+
+        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'review-skill-mirror.*action=overwrite'
+        $result.Output | Should -Match 'activationStatus=applied'
+
+        [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
+        @(Get-ChildItem -Path $dir -Recurse -Filter '*.amb-backup' -ErrorAction SilentlyContinue).Count | Should -Be 0
+        @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
+    }
+
+    It 'AC-AG-SKILL-UNCHANGED: -Scope Skill -Apply on an already byte-identical destination reports unchanged and writes no sidecar' {
+        $dir = script:New-CaseDir -CaseName 'skill-unchanged'
+        $ch  = Join-Path $dir '.claude'
+        $dst = Join-Path $ch $script:SkillRel
+        $parent = Split-Path -Parent $dst
+        $null = New-Item -ItemType Directory -Path $parent -Force
+        [System.IO.File]::WriteAllBytes($dst, (script:Read-Bytes -Path $script:SkillSrc))
+
+        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'review-skill-mirror.*action=unchanged'
+        $result.Output | Should -Match 'activationStatus=applied'
+        [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
+        @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
+    }
+
+    It 'AC-AG-SKILL-APPLY-FAIL: a destination that cannot be written fails post-write as activation_applied_verify_failed (no rollback artifact)' {
+        $dir = script:New-CaseDir -CaseName 'skill-applyfail'
+        $ch  = Join-Path $dir '.claude'
+        $dst = Join-Path $ch $script:SkillRel
+        # Make the destination path itself a DIRECTORY so the whole-file write throws at apply time
+        # (preflight create-preview passes; the apply-phase write fails deterministically).
+        $null = New-Item -ItemType Directory -Path $dst -Force
+
+        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'activationStatus=activation_applied_verify_failed'
+        $result.Output | Should -Match 'review-skill-mirror.*(write error|FAIL)'
+        $result.Output | Should -Match 'activate-global: FAIL'
+        # No backup/sidecar created for the canonical-overwrite class even on failure.
+        @(Get-ChildItem -Path $dir -Recurse -Filter '*.amb-backup' -ErrorAction SilentlyContinue).Count | Should -Be 0
+    }
+}
+
+Describe 'activate-global Codex AGENTS.override.md precedence (Phase 4a)' {
+    It 'AC-AG-OVERRIDE-PRECEDENCE: apply targets AGENTS.override.md when present and leaves AGENTS.md untouched' {
+        $dir = script:New-CaseDir -CaseName 'override'
+        $cx  = Join-Path $dir '.codex'
+        $agents   = Join-Path $cx 'AGENTS.md'
+        $override = Join-Path $cx 'AGENTS.override.md'
+        script:Write-MarkedTarget -Path $agents   -BlockBody 'AGENTS body'
+        script:Write-MarkedTarget -Path $override -BlockBody 'OVERRIDE body'
+        $agentsBefore = script:Read-Bytes -Path $agents
+
+        $result = script:Invoke-Activate -Scope 'Codex' -CodexHome $cx -Apply
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        # The plan + apply bind to the override file (matching install-update verify precedence).
+        $result.Output | Should -Match ([regex]::Escape($override))
+        $ovText = [System.IO.File]::ReadAllText($override, (New-Object System.Text.UTF8Encoding($false)))
+        $ovText | Should -Match 'ai-harness-toolset instructions for AGENTS.md-compatible agents'
+        $ovText | Should -Not -Match 'OVERRIDE body'
+        # AGENTS.md must be byte-unchanged (apply did not touch the non-effective destination).
+        [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $agents), [byte[]]$agentsBefore) | Should -BeTrue
+    }
+}
+
+Describe 'activate-global approval is two-state only, never multi-choice (Phase 4a)' {
+    It 'AC-AG-NO-MULTICHOICE: a default -Apply (command-implied) prints no menu and no interactive prompt' {
+        $dir = script:New-CaseDir -CaseName 'nomenu'
+        $ch  = Join-Path $dir '.claude'
+        $cx  = Join-Path $dir '.codex'
+        script:Write-MarkedTarget -Path (Join-Path $ch 'CLAUDE.md')
+        script:Write-MarkedTarget -Path (Join-Path $cx 'AGENTS.md')
+
+        $result = script:Invoke-Activate -Scope 'All' -ClaudeHome $ch -CodexHome $cx -Apply
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'Payload only'
+        $result.Output | Should -Not -Match 'Chat about'
+        $result.Output | Should -Not -Match 'Type something'
+        # No interactive selector is rendered on the default command-implied apply path.
+        $result.Output | Should -Not -Match 'Up/Down to move'
+    }
+
+    It 'AC-AG-CONFIRM-NO-TERMINAL: -ConfirmInteractive without an interactive terminal aborts (two-state), writes nothing' {
+        $dir = script:New-CaseDir -CaseName 'confirm-noterm'
+        $ch  = Join-Path $dir '.claude'
+        $ct  = Join-Path $ch 'CLAUDE.md'
+        script:Write-MarkedTarget -Path $ct
+        $before = script:Read-Bytes -Path $ct
+
+        $result = script:Invoke-Activate -Scope 'Claude' -ClaudeHome $ch -Apply -ConfirmInteractive
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'no interactive terminal'
+        $result.Output | Should -Match 'activationStatus=activation_aborted_no_approval'
+        $result.Output | Should -Not -Match 'Payload only'
+        # Aborted before any write — target byte-unchanged, no backup.
+        [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $ct), [byte[]]$before) | Should -BeTrue
+        @(Get-ChildItem -Path $dir -Recurse -Filter '*.amb-backup' -ErrorAction SilentlyContinue).Count | Should -Be 0
+    }
+}
+
+Describe 'activate-global managed-block class stays marker-bounded (Phase 4a)' {
+    It 'AC-AG-MANAGED-PRESERVE: a managed-block apply preserves user content outside the marker pair' {
+        $dir = script:New-CaseDir -CaseName 'managed-preserve'
+        $ch  = Join-Path $dir '.claude'
+        $ct  = Join-Path $ch 'CLAUDE.md'
+        script:Write-MarkedTarget -Path $ct -BlockBody 'OLD body'
+
+        $result = script:Invoke-Activate -Scope 'Claude' -ClaudeHome $ch -Apply
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $cText = [System.IO.File]::ReadAllText($ct, (New-Object System.Text.UTF8Encoding($false)))
+        $cText | Should -Match 'user content'
+        $cText | Should -Match 'tail'
+        $cText | Should -Match 'ai-harness-toolset instructions for CLAUDE.md-compatible agents'
+        $cText | Should -Not -Match 'OLD body'
+        # The managed-block class is the only one using .amb-backup, and a clean apply leaves none.
+        @(Get-ChildItem -Path $dir -Recurse -Filter '*.amb-backup' -ErrorAction SilentlyContinue).Count | Should -Be 0
     }
 }

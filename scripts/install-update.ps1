@@ -78,6 +78,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib/managed-block.ps1')
 . (Join-Path $PSScriptRoot 'lib/install-pipeline-core.ps1')
 . (Join-Path $PSScriptRoot 'lib/native-process.ps1')
+. (Join-Path $PSScriptRoot 'lib/activation-surface.ps1')
 
 # Resolve activation surface home defaults (overridable so tests can point at
 # TestDrive without touching the real user-global instruction roots).
@@ -129,44 +130,13 @@ function script:Get-ActivationSurfacePaths {
         [Parameter(Mandatory = $true)] [string] $CodexHome
     )
 
+    # Resolve via the shared activation-surface resolver (scripts/lib/activation-surface.ps1)
+    # so VERIFY (here) and APPLY (scripts/activate-global.ps1) bind to the SAME source ->
+    # destination map and the SAME Codex AGENTS.override.md precedence — no apply-vs-verify
+    # drift. The install area's current/ is the payload root for verification.
     $currentDir = Get-InstallPipelineCurrentDir -InstallArea $InstallArea
-    $sourceClaudeSnippet = Join-Path $currentDir 'snippets/CLAUDE_SNIPPET.md'
-    $sourceCodexSnippet  = Join-Path $currentDir 'snippets/AGENTS_SNIPPET.md'
-    $sourceSkillFile     = Join-Path $currentDir 'snippets/claude-skills/ai-harness-review/SKILL.md'
-
-    $destClaudeMd  = Join-Path $ClaudeHome 'CLAUDE.md'
-    $destSkillFile = Join-Path $ClaudeHome 'skills/ai-harness-review/SKILL.md'
-
-    # Codex effective destination: AGENTS.override.md takes precedence over AGENTS.md
-    # when present (INSTALL.md §10 valid-destination rule + AGENTS snippet adoption
-    # destination). Verifying only AGENTS.md would let a stale/malformed override file
-    # pass as clean, so the activation surface binds to whichever is effective.
-    $codexAgentsMd  = Join-Path $CodexHome 'AGENTS.md'
-    $codexOverride  = Join-Path $CodexHome 'AGENTS.override.md'
-    $destCodexMd    = if (Test-Path -LiteralPath $codexOverride -PathType Leaf) { $codexOverride } else { $codexAgentsMd }
-
-    return [pscustomobject]@{
-        Surfaces = @(
-            [pscustomobject]@{
-                Name        = 'claude-user-global-managed-block'
-                Destination = $destClaudeMd
-                Source      = $sourceClaudeSnippet
-                CompareMode = 'managed-block'
-            },
-            [pscustomobject]@{
-                Name        = 'codex-user-global-managed-block'
-                Destination = $destCodexMd
-                Source      = $sourceCodexSnippet
-                CompareMode = 'managed-block'
-            },
-            [pscustomobject]@{
-                Name        = 'review-skill-mirror'
-                Destination = $destSkillFile
-                Source      = $sourceSkillFile
-                CompareMode = 'whole-file'
-            }
-        )
-    }
+    $surfaces = Get-ActivationSurfacePlan -PayloadRoot $currentDir -ClaudeHome $ClaudeHome -CodexHome $CodexHome
+    return [pscustomobject]@{ Surfaces = $surfaces }
 }
 
 function script:Test-ActivationSurface {
@@ -911,7 +881,7 @@ function script:Write-HumanReport {
             $lines += 'install-update: payload=ok'
             $lines += 'install-update: activation=pending'
             $lines += 'install-update: result=INCOMPLETE (payload OK; activation follow-up required — NOT a payload failure, NOT verify_failed)'
-            $lines += 'install-update: next step — activation apply MODIFIES your global/user instruction files and creates .amb-backup; run it only after your explicit approval:'
+            $lines += 'install-update: next step — activation apply MODIFIES your global/user instruction files (managed-block surfaces get a .amb-backup rollback backup; the review skill mirror is a whole-file overwrite with no backup); run it only after your explicit approval:'
             $lines += ('install-update:   dry-run preview : powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" -Scope All' -f $activateScript)
             $lines += ('install-update:   apply           : powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" -Scope All -Apply' -f $activateScript)
         }
