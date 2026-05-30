@@ -5,7 +5,7 @@
 > - **`Remove-ManagedBlock` primitive — implemented** (batch 1, commit `2fe5328`) in `scripts/lib/managed-block.ps1`; the removal IO reuses `scripts/apply-managed-block.ps1 -Remove` (§4).
 > - **Read-only dry-run target resolver — implemented** (batch 2, commit `d43f784`): `scripts/lib/uninstall-target.ps1` (`Get-UninstallPlan`) + `scripts/uninstall-global.ps1` (default dry-run).
 > - **Destructive apply + temp finalizer — implemented** (batch 3, commit `fc1c6a7`): `scripts/uninstall-global.ps1 -Apply` + the self-contained `scripts/uninstall-finalizer.ps1`.
-> - **No real user/global uninstall has been run yet.** All behavior is exercised only in TestDrive / fixture sandboxes. Running `-Apply` against a real `%USERPROFILE%` install is a **separate, explicit approval boundary**: a **notebook-PC dogfood** of the real apply is planned and pending; **main-PC real apply is forbidden** until that dogfood + reinstall verification clears.
+> - **Isolated non-primary machine real `-Apply` dogfood — CLEARED** (§13). The real apply + footprint-zero verification + clean reinstall were exercised against a real `%USERPROFILE%` install on an **isolated non-primary machine** only; the **primary work machine was not mutated** and a real **primary-machine `-Apply`** remains a **separate, explicit approval boundary that has not been performed**. Before the dogfood, all behavior was exercised only in TestDrive / fixture sandboxes.
 >
 > **Provenance.** Distilled from the advisory parallel-investigation report (out-of-repo `polishing/install/` uninstall reports, review task `20260529-uninstall-lifecycle-design`). That report is an advisory artifact, not source-of-truth; only the policies and decisions are carried here. Where this design and the report diverge, this document (reconciled to the implementation) governs.
 
@@ -164,7 +164,7 @@ Specific conditions:
 `INSTALL.md` §11's self-imposed boundary invariant requires that introducing a new entrypoint be a deliberate, scoped redefinition of §11 (a deterministic narrow entrypoint must not grow into the §11(a) productization/uninstaller-framework class). Accordingly:
 
 - `INSTALL.md` §11(b) lists **uninstall (`scripts/uninstall-global.ps1`)** as a deterministic narrow entrypoint — now **implemented** (batches 1–3) as a dry-run + `-Apply` + finalizer entrypoint, kept narrow and single-purpose. A large/interactive uninstaller framework, doctor/repair teardown, or any productized uninstaller remains §11(a) out-of-scope and the boundary invariant still holds.
-- The promotion gate that authorized implementation was satisfied: the `BACKLOG.md` IU-B-08 entry, scoped `/goal`s per batch, and a Codex review gate on each batch. What remains is **not** further implementation but a real-environment **dogfood** (notebook-PC) of `-Apply` + reinstall verification before the lifecycle is considered fully closed (§ status banner).
+- The promotion gate that authorized implementation was satisfied: the `BACKLOG.md` IU-B-08 entry, scoped `/goal`s per batch, and a Codex review gate on each batch. The real-environment **dogfood** (isolated non-primary machine) of `-Apply` + reinstall verification is now **cleared** (§13); the entrypoint stays narrow and single-purpose. What remains is not implementation but **LTS readiness** (judged after the open Phase 4b / backlog items).
 
 ## 11. Decisions (resolved; as-built)
 
@@ -181,6 +181,41 @@ These were the implementation-prep open decisions (review task `20260529-uninsta
 ## 12. Relationship to other surfaces
 
 - `INSTALL.md` — operative install/activation contract; §11(b) carries the uninstall narrow entrypoint (implemented), §9.1/§10 the two mutation/removal classes and managed-block/skill rules this implementation reuses.
-- `docs/systems/install-update/STATUS.md` — records IU-B-08 batches 1–3 implemented, with the notebook-PC dogfood / reinstall verification as the remaining item.
-- `docs/systems/install-update/BACKLOG.md` — IU-B-08 implementation is closed out there; remaining work (dogfood, docs closeout, LTS readiness) is tracked separately.
+- `docs/systems/install-update/STATUS.md` — records IU-B-08 batches 1–3 implemented and the isolated-machine dogfood cleared; remaining item is LTS readiness only.
+- `docs/systems/install-update/BACKLOG.md` — IU-B-08 implementation is closed out there; the dogfood + docs closeout are done, leaving LTS readiness as the tracked remainder.
 - `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` — operating model; a teardown/uninstall mention there is a candidate follow-up, not part of this doc-sync.
+
+## 13. Isolated non-primary machine `-Apply` dogfood (as-run; cleared)
+
+The first real `-Apply` of `scripts/uninstall-global.ps1` against a real `%USERPROFILE%` install was exercised end-to-end on an **isolated non-primary machine** only. The **primary work machine was not mutated**; a real **primary-machine `-Apply`** remains a **separate, explicit approval boundary that was not performed**. The dogfood machine was first global-updated to current main HEAD `4b4e9dc`. The run is recorded here as the as-run dogfood evidence; it is not a re-runnable spec and no behavior changed in this doc-sync.
+
+### 13.1 As-run result
+
+| Step | Result |
+|---|---|
+| Dogfood-machine global update | latest source, HEAD `4b4e9dc` |
+| Uninstall **dry-run** (default, no `-Apply`) | `uninstall_preview`; `blocked=0`, `warn=0`, `wouldRemove=9` |
+| Uninstall **`-Apply`** | success, exit 0 |
+| Finalizer result-JSON | `status=uninstalled`, `installRootDeleted=true`, no self-clean leftover |
+
+**Footprint-zero verification (§2) — all clean:**
+
+- `%USERPROFILE%\.claude\ai-harness-toolset\` — absent (target 1).
+- `%USERPROFILE%\.claude\skills\ai-harness-review\` — absent (target 2).
+- `%USERPROFILE%\.claude\CLAUDE.md` — **0** marker pairs (target 3); file retained.
+- `%USERPROFILE%\.codex\AGENTS.md` — **0** marker pairs (target 4); file retained.
+- No `.amb-backup` leftover beside either instruction file (the apply closed cleanly — a leftover would have signalled an apply that did not close, per §4 / `INSTALL.md` §10).
+
+**Clean reinstall (post-uninstall) — verified:** a latest-source bootstrap clone at HEAD `4b4e9dc` reinstalled the payload (`verify_pass` + cross-binding OK) and the skill mirror re-activated successfully; the final `install-update.ps1 -Mode verify` returned `verify_pass`.
+
+Temp / evidence / bootstrap-clone paths from the dogfood were **preserved and not auto-deleted**; their removal is a separate operator decision under explicit approval.
+
+### 13.2 Discovered boundary — post-uninstall reinstall is a first-time managed-block INSERTION
+
+Uninstall **excises the marker pairs completely** (footprint-zero, §2 / §4: 0 marker pairs remain in `CLAUDE.md` / `AGENTS.md`). The activation tooling, however, is built for the steady-state **replacement** case: `scripts/activate-global.ps1` / `scripts/apply-managed-block.ps1` (apply mode) compute the new content via `Set-ManagedBlock` → `Resolve-ManagedBlockSpan`, which **fail-fasts on a 0-pair target** ("expected exactly 1"). The apply-mode tooling therefore **only replaces an existing single marker pair**; it does **not** perform the first-time insertion.
+
+Consequently, a clean reinstall **after a full uninstall** re-enters the **0-pair → first-time managed-block insertion** case — the `INSTALL.md` §10 "Managed-block apply 규칙" branch *"matching marker pair 0개 → 삽입 지점을 propose … snippet 전체 (marker 포함) 삽입"*. This first-time insertion is a **separate explicit user-approved boundary**, distinct from a steady-state 1-pair replacement, and is not automated by the apply tooling.
+
+On the dogfood machine this boundary was crossed deliberately: the first-time insertion was **explicitly user-approved (isolated-machine first-time insertion)** and applied from the source snippets `current\snippets\CLAUDE_SNIPPET.md` (Claude) / `current\snippets\AGENTS_SNIPPET.md` (Codex), yielding exactly **1** marker pair in each of `CLAUDE.md` / `AGENTS.md`. The final `install-update.ps1 -Mode verify` = `verify_pass` confirmed the reinstalled steady state.
+
+This is a documentation finding only; no script behavior was changed. Folding the 0-pair first-time insertion into the activation tooling (vs. keeping it an operator-performed explicit step) would be a separate scoped decision, not part of this closeout.
