@@ -1764,3 +1764,86 @@ Describe 'install-update — IU-B-10 uninstall package-discovery docs hardening'
         }
     }
 }
+
+Describe 'install-update — IU-B-12 install bootstrap clone cleanup enforcement' {
+
+    BeforeAll {
+        $script:IUB12InstallMd   = Get-Content -LiteralPath $script:InstallMd -Raw -Encoding UTF8
+        # §6.1 is an H3 span; the new fresh-install bootstrap-clone cleanup rule (H5) lives inside it.
+        $script:IUB12Section61   = script:Get-InstallMdSection -Content $script:IUB12InstallMd -HeadingRegex '^#{3}\s+6\.1\s'
+        $script:IUB12RootReadme  = Join-Path $script:RepoRoot 'templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
+        $script:IUB12ClaudeSnip  = Join-Path $script:RepoRoot 'snippets/CLAUDE_SNIPPET.md'
+        $script:IUB12CodexSnip   = Join-Path $script:RepoRoot 'snippets/AGENTS_SNIPPET.md'
+    }
+
+    It 'IU-B-12-T1: INSTALL.md §6.1 carries a fresh-install operator bootstrap clone cleanup rule (parallel to §7.1)' {
+        $script:IUB12Section61 | Should -Not -BeNullOrEmpty
+        $s = $script:IUB12Section61
+        $s | Should -Match '(?i)Operator bootstrap clone cleanup'   # the rule heading
+        $s | Should -Match '(?i)fresh install'                       # scoped to the fresh-install path
+        $s | Should -Match 'install-global\.ps1'
+        $s | Should -Match 'bootstrap'
+    }
+
+    It 'IU-B-12-T2: §6.1 success-path rule = auto-delete without asking ("정리할까요?"/"삭제할까요?" on success is a contract violation)' {
+        $s = $script:IUB12Section61
+        $s | Should -Match '자동 삭제'
+        $s | Should -Match '묻지 않는다'
+        $s | Should -Match '(?i)success path'
+        $s | Should -Match '(정리할까요|삭제할까요)'
+        $s | Should -Match '(?i)contract.*위반|위반'
+        $s | Should -Match 'verify_pass'
+    }
+
+    It 'IU-B-12-T3: §6.1 enumerates the three exception cases + success-with-cleanup-leftover classification' {
+        $s = $script:IUB12Section61
+        $s | Should -Match 'investigation-needed'
+        $s | Should -Match 'evidence-preserve-needed'
+        $s | Should -Match '(?i)cleanup 실패|cleanup failure'
+        $s | Should -Match '(?i)success with cleanup leftover'
+        $s | Should -Match '(?i)full lifecycle closeout'
+        $s | Should -Match '(?i)leftover path|leftover'
+    }
+
+    It 'IU-B-12-T4: §6.1 distinguishes the script-internal run-scoped work area from the operator bootstrap clone, and stays an un-mechanized operator-workflow rule' {
+        $s = $script:IUB12Section61
+        $s | Should -Match '(?i)run-scoped'                  # script-internal work area
+        $s | Should -Match '(?i)operator workflow'           # the operator-side cleanup class
+        $s | Should -Match '(?i)mechanize'                   # explicitly NOT mechanized
+        $s | Should -Match '§3\.2'                           # bootstrap clone is not source identity
+    }
+
+    It 'IU-B-12-T5: §3.2 and §2A phase 5 each carry a section-unique cross-reference to the fresh-install bootstrap clone cleanup rule (no-ask on success)' {
+        $md = $script:IUB12InstallMd
+        # §3.2 — section-unique phrase (operator bootstrap/acquisition clone auto-removed WITHOUT asking on success).
+        $md | Should -Match '성공 경로에서 사용자에게 묻지 않고 자동 수행'
+        # §2A phase 5 — section-unique phrase (operator bootstrap/source clone ALSO auto-deleted on success,
+        # distinct from the script's run-scoped work area). This specifically guards the §2A cross-reference
+        # rather than letting the §6.1 heading satisfy a whole-file rule-name match.
+        $md | Should -Match '성공 경로에서는 묻지 않고 자동 삭제한다'
+        # Both §3.2 and §2A cross-reference the §6.1 rule by its exact name.
+        $md | Should -Match 'Operator bootstrap clone cleanup 규칙 \(fresh install\)'
+    }
+
+    It 'IU-B-12-T6: the installed root README "Bootstrap clone cleanup" note is generalized to cover install (not just update)' {
+        $readme = Get-Content -LiteralPath $script:IUB12RootReadme -Raw -Encoding UTF8
+        $readme | Should -Match 'Bootstrap clone cleanup'
+        $readme | Should -Match '(?i)install or update'           # generalized scope
+        $readme | Should -Match 'install-global\.ps1'             # the fresh-install bootstrap entrypoint
+        $readme | Should -Match 'installStatus=installed'
+        $readme | Should -Match '(?i)delete it\?'                 # no re-prompt on success
+        $readme | Should -Match '(?i)success with cleanup leftover'
+        # hygiene: the README body carries no Tier A/B deployable-reference violation.
+        foreach ($lit in $script:TierA) { $readme | Should -Not -Match ([regex]::Escape($lit)) }
+        foreach ($rx in $script:TierB)  { $readme | Should -Not -Match $rx }
+    }
+
+    It 'IU-B-12-T7: snippets carry NO operator bootstrap clone cleanup procedure (it lives only in INSTALL.md / the root README)' {
+        foreach ($p in @($script:IUB12ClaudeSnip, $script:IUB12CodexSnip)) {
+            Test-Path -LiteralPath $p -PathType Leaf | Should -BeTrue
+            $body = Get-Content -LiteralPath $p -Raw -Encoding UTF8
+            $body | Should -Not -Match '(?i)bootstrap clone'
+            $body | Should -Not -Match '(?i)install-global'
+        }
+    }
+}
