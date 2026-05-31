@@ -1305,8 +1305,10 @@ Describe 'install-update — Phase 3 source identity / acquisition ergonomics do
         $script:S71_3 | Should -Match '사용하지 않'
     }
 
-    It 'P3-T3 (polish): §7.1 says an installed update-source does not change the cloned-latest-script rule' {
-        $script:S71_3 | Should -Match 'installed copy 에 update-source 가 있어도'
+    It 'P3-T3 (polish): §7.1 says an installed update entrypoint does not change the cloned-latest-script rule' {
+        # IU-B-09.1: the Note now reads "update entrypoint" (covers both update-global.ps1 and the
+        # underlying install-update.ps1 update-source) rather than only "update-source".
+        $script:S71_3 | Should -Match 'installed copy 에 update entrypoint 가 있어도'
         $script:S71_3 | Should -Match 'latest source clone'
         $script:S71_3 | Should -Match 'operative contract'
     }
@@ -1379,7 +1381,8 @@ Describe 'install-update — Phase 3.5 managed installed-root README' {
         foreach ($lit in $script:TierA) { $body | Should -Not -Match ([regex]::Escape($lit)) }
         foreach ($rx in $script:TierB)  { $body | Should -Not -Match $rx }
         $body | Should -Match 'global install area'
-        $body | Should -Match 'install-update\.ps1'
+        $body | Should -Match 'install-update\.ps1' # retained as the underlying / compat implementation path
+        $body | Should -Match 'update-global\.ps1'  # IU-B-09.1: operator-facing primary update entrypoint
         $body | Should -Match 'inspect'
         $body | Should -Match 'update-source'
         $body | Should -Match 'verify'

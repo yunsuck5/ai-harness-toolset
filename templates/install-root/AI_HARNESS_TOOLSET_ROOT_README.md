@@ -6,15 +6,19 @@ This file is an **operator landing page**, not the full operative contract. The 
 
 ## Updating this install ("update to the latest version")
 
-Normal update flow is three steps: **inspect → update-source → verify**.
+The operator-facing update entrypoint is **`scripts/update-global.ps1`** (existing-install update). The lifecycle entrypoints are named so you pick by name: fresh install = `scripts/install-global.ps1`, **update an existing install = `scripts/update-global.ps1`**, uninstall = `scripts/uninstall-global.ps1`. Normal update flow is **(optional) inspect → update-global → (optional) verify**.
 
 1. **Clone the latest source** and read its `INSTALL.md` — that cloned `INSTALL.md` is the operative contract for the update.
-2. Run the **cloned latest source's** `scripts/install-update.ps1` (not this installed copy) — even if this installed copy already has an `update-source` mode, the latest source's script + `INSTALL.md` are the update source-of-truth, because this installed payload may still be at an older version during bootstrap:
-   - `scripts/install-update.ps1 -Mode inspect      -InstallArea <this directory>`
-   - `scripts/install-update.ps1 -Mode update-source -InstallArea <this directory>`
-   - `scripts/install-update.ps1 -Mode verify        -InstallArea <this directory>`
-3. For an existing install, pass `-InstallArea <this directory>` and usually **omit `-RepoUrl`** — the script derives the source from `install.json`. Passing a differently-spelled URL (for example a `.git`-suffix or trailing-slash difference) can trip the source-cut guard; omitting it is the safe default.
+2. Run the **cloned latest source's** `scripts/update-global.ps1` (not this installed copy). Use the cloned latest even if this installed copy already has it — and note a legacy installed payload may **predate** `update-global.ps1` entirely — because the latest source's script + `INSTALL.md` are the update source-of-truth while this installed payload may still be at an older version during bootstrap:
+   - `scripts/update-global.ps1 -InstallArea <this directory>`
+   - `update-global.ps1` is a thin wrapper: it fail-fasts (and points you to fresh install via `install-global.ps1`) if this is not a valid existing install, otherwise it delegates to the underlying `install-update.ps1 -Mode update-source` and returns its outcome.
+3. The read-only checks are run with `install-update.ps1` directly (these are not wrapped by `update-global.ps1`):
+   - preflight: `scripts/install-update.ps1 -Mode inspect -InstallArea <this directory>`
+   - confirm:  `scripts/install-update.ps1 -Mode verify  -InstallArea <this directory>`
+4. For an existing install, pass `-InstallArea <this directory>` and usually **omit `-RepoUrl`** — the source is derived from `install.json`. Passing a differently-spelled URL (for example a `.git`-suffix or trailing-slash difference) can trip the source-cut guard; omitting it is the safe default.
    - `-InstallArea` is **this install-root directory** (the one holding `current/` + `install.json` + `payload-manifest.json` + `payload-marker.json`), **not** `current/`. Passing `current/` is reported as `inspect_mode_unknown` with a "did you mean its parent" hint.
+
+**Underlying / compat path.** `scripts/install-update.ps1 -Mode update-source` is the canonical update **implementation** that `update-global.ps1` wraps. You can call it directly as the compat path (`-Mode inspect` / `-Mode update-source` / `-Mode verify`) — it is unchanged — but `update-global.ps1` is the recommended operator-facing name.
 
 ## What update-source does (and does not) do
 
