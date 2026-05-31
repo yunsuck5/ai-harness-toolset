@@ -17,7 +17,7 @@ This directory is populated by the migration batches. Subfolders are created onl
 - `legacy-mvp/` — pre/early-MVP migration-era material.
 - `superseded/` — designs and framings that a later decision replaced.
 - `audits/` — completed read-only audit records.
-- `old-roadmaps/` — historical roadmap / cursor narrative that has been decomposed into current entrypoints.
+- `old-roadmaps/` — historical roadmap / cursor narrative that has been decomposed into current entrypoints (incl. `POST_MVP_COMPLETED_NARRATIVE.md` and `INSTALL_UPDATE_LIFECYCLE_NARRATIVE.md`, the detailed install/update lifecycle phase/dogfood/incident/closeout narrative backing the `docs/systems/install-update/STATUS.md` ledger).
 - `backlog/` — the original mixed backlog item bodies (`operations.md`, `review.md`) moved out of `docs/backlog/`; open work now lives self-contained in `docs/systems/*/BACKLOG.md` and closed items in the per-system `STATUS.md` ledgers, so these are historical provenance only.
 
 An empty subfolder is not created in advance — its absence means nothing has been archived under it yet.

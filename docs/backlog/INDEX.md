@@ -23,6 +23,7 @@ This folder is **not**: implementation / scheduling / release·publish·merge ap
 ### Closed → per-system STATUS completed-ledger (full detail in `docs/archive/backlog/`)
 
 - `docs/systems/install-update/STATUS.md`: PowerShell smoke invocation quoting hardening (IU-OPS-01, `c183c6b`); Aggregate digest reproducibility (IU-11, `1273afe`); Managed block marker detection (IU-OPS-02); Global instruction file path semantics (IU-OPS-03); Channel 3 smoke validation closeout (IU-OPS-04); Activation managed-block apply tooling hardening (IU-OPS-05).
+- `docs/systems/install-update/STATUS.md` (lifecycle closeouts; one-line **tombstones** in `docs/systems/install-update/BACKLOG.md`, detailed narrative `docs/archive/old-roadmaps/INSTALL_UPDATE_LIFECYCLE_NARRATIVE.md`): IU-B-08 (uninstall/teardown lifecycle); IU-B-09 (fresh-install entrypoint split + first-time managed-block insertion); IU-B-10 (uninstall package-discovery docs hardening); IU-B-12 (install bootstrap-clone cleanup enforcement); IU-B-07 **[RETIRED]** (one-shot natural-language update completion). Lifecycle closeouts IU-14 (subsystem LTS readiness) and IU-15 (main PC lifecycle retest) are ledger rows there.
 - `docs/systems/brief/STATUS.md`: Brief / Chatlog location reconciliation.
 
 ### Historical / removed-legacy (historical reason only, never operator paths)
