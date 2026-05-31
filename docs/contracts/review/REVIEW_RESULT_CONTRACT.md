@@ -238,7 +238,7 @@ AI 는 verdict 의 의미 정의를 바꾸지 않는다. `yes` / `no` / `yes wit
 
 ## 5a. Operator stance and discipline
 
-§5 가 operator-role AI (Claude Code) 의 책임 7 items 를 정의한다. 본 §5a 는 review process 안에서 AI 가 지켜야 할 operator stance 와 discipline 을 5 개 rule 로 codify 한다. 본 §5a 는 §5 의 7 items 를 변경하지 않으며 §6 verdict vocabulary 또는 §6a verdict → next-action mapping 의 의미를 재정의하지 않는다 — 또한 commit / push / publish / merge / release / deployment 의 자동 승인 semantics 를 도입하지 않는다. 본 5 rule 은 review 의 discovery / reporting / scope discipline 의 invariant 이며, mirror surfaces (`snippets/claude-skills/ai-harness-review/SKILL.md` step 2 / 4 / 5 / 7, Tier D managed-block snippets 의 최소 guard) 의 wording 이 본 §5a 와 충돌하면 본 §5a 가 우선한다.
+§5 가 operator-role AI (Claude Code) 의 책임 7 items 를 정의한다. 본 §5a 는 review process 안에서 AI 가 지켜야 할 operator stance 와 discipline 을 6 개 rule 로 codify 한다. 본 §5a 는 §5 의 7 items 를 변경하지 않으며 §6 verdict vocabulary 또는 §6a verdict → next-action mapping 의 의미를 재정의하지 않는다 — 또한 commit / push / publish / merge / release / deployment 의 자동 승인 semantics 를 도입하지 않는다. 본 rule 들은 review 의 discovery / reporting / scope discipline 의 invariant 이며, mirror surfaces (`snippets/claude-skills/ai-harness-review/SKILL.md` step 2 / 4 / 5 / 7, Tier D managed-block snippets 의 최소 guard) 의 wording 이 본 §5a 와 충돌하면 본 §5a 가 우선한다.
 
 ### 5a.1 Target file accuracy verification
 
@@ -275,6 +275,17 @@ AI 는 다음 4 boundary 를 구분하여 mutation / referencing 한다:
 - **User / global filesystem** — `%USERPROFILE%\.claude\` / `%USERPROFILE%\.codex\` 등 user-global file, `%USERPROFILE%\.claude\ai-harness-toolset\current\` channel 3 install payload, user-global `CLAUDE.md` / `AGENTS.md` (managed block 포함). source mutation batch 안에서 mutation 하지 않으며 각각 별도 explicit user approval boundary 다.
 
 source mutation batch 안에서 위 4 boundary 중 source repo file 외의 영역에 mutation 이 필요해 보이면 §5a.3 stop/report 가 발동한다.
+
+### 5a.6 Reference-sweep completeness
+
+이름 / 위치 / 식별자 집합 / 구조를 바꾸는 변경 (파일 rename · 이동, 식별자 집합 / range 변경, 폴더 역할 재정의, 용어 교체 등) 은 review 호출 전에 그 대상에 대한 reference 를 다음 네 class 로 나눠 모두 sweep 한다 — 한 class 만 고치고 나머지를 놓치면 stale reference 가 남아 corrective loop 로 이어진다. (5a.1 의 target-file accuracy 가 "어떤 파일을 review 에 올릴지" 라면, 본 rule 은 "그 변경의 reference 가 어디에 흩어져 있는지" 의 완전성이다.)
+
+- **filename / path reference** — 옮기거나 지운 파일의 경로를 가리키는 직접 인용 (`docs/...md`, 코드 / 문서 안 path 문자열).
+- **bare token / ID** — enumerated 식별자나 range (예: `RV-01..RV-0N`, `IU-NN`), 식별자 약어, marker token.
+- **folder-as-bucket wording** — "그 폴더 안", "이 디렉터리는 …" 처럼 위치를 bucket 으로 가리키는 산문.
+- **semantic phrasing** — 같은 사실을 식별자 없이 의미로만 가리키는 표현 (예: "현재 다음 단계", "그 mirror 파일", 다른 문서의 독립 status 주장).
+
+앞의 세 class (filename / bare-token / folder-bucket) 는 grep / 검색으로 기계적으로 확인하고, semantic phrasing class 는 grep 으로 잡히지 않으므로 의미 기준으로 함께 점검한다. 본 sweep 은 single-home-plus-pointers 원칙 (`docs/policies/DOCS_OPERATING_MODEL.md` §1) 의 운영 측면이다 — duplication 이 staleness 의 엔진이므로, 가능한 경우 reference 를 inline enumeration 대신 single home 으로의 pointer 로 단일화하는 것이 우선이다.
 
 ## 6. Verdict vocabulary
 
