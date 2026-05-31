@@ -81,3 +81,13 @@ How to read each entry:
 - **Implementation:** n/a (backlog / deferred are records of not-yet-started work; the implementation basis for closed items is the commit pointers in `docs/decisions/POST_MVP_PLAN.md` §10 Completed plus current `scripts/**` / `tests/**`).
 - **Historical:** removed-legacy / closeout items inside the two backlog files.
 - **Do not use:** reading closeout / completed items in the backlog folder as open work.
+
+## Q9. how a docs change / closeout flows through the docs tree
+
+For "how should a docs change or a feature/system closeout propagate top-down through the docs tree, and what is the closeout reconciliation gate?"
+
+- **Primary:** `docs/policies/DOCS_OPERATING_MODEL.md` (docs change/closeout flow; per-system `STATUS.md` shape/altitude contract; `BACKLOG.md` closed-row tombstone rule; `NEXT_ACTIONS.md` selected-action-only rule; two-level closeout reconciliation gate).
+- **Secondary:** `docs/README.md` (folder placement / structure authority); this file (per-question authority routing).
+- **Implementation:** n/a (an operating-model / process document; no code implementation).
+- **Historical:** n/a.
+- **Do not use:** `docs/policies/DOCS_OPERATING_MODEL.md` as a placement authority (placement → `docs/README.md`) or as commit / push approval (a review verdict approves neither).
