@@ -769,3 +769,175 @@ Describe 'apply-managed-block A-2d dry-run / diff' {
         (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
     }
 }
+
+Describe 'apply-managed-block -Insert (first-time insertion IO, IU-B-09)' {
+
+    BeforeAll {
+        function script:Invoke-Insert {
+            param([string] $SnippetPath, [string] $TargetPath, [switch] $DryRun)
+            $procArgs = @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                '-File', $script:ApplyScript,
+                '-Insert', '-SnippetPath', $SnippetPath, '-TargetPath', $TargetPath
+            )
+            if ($DryRun) { $procArgs += '-DryRun' }
+            $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+            $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
+            return [pscustomobject]@{ ExitCode = $proc.ExitCode; Output = $text }
+        }
+    }
+
+    It 'AC-AMB-INSERT-1: absent target -> CREATES the file with exactly one marker pair (no BOM, no backup)' {
+        $dir = script:New-CaseDir -CaseName 'insert-create'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'AGENTS.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+
+        (Test-Path -LiteralPath $target) | Should -BeFalse
+        $result = script:Invoke-Insert -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -Match 'created .* with managed block'
+        (Test-Path -LiteralPath $target -PathType Leaf) | Should -BeTrue
+
+        $written = script:Read-Utf8NoBomFile -Path $target
+        ([regex]::Matches($written, '(?m)^' + [regex]::Escape($script:Begin) + '$')).Count | Should -Be 1
+        ([regex]::Matches($written, '(?m)^' + [regex]::Escape($script:End)   + '$')).Count | Should -Be 1
+        $bytes = script:Read-Bytes -Path $target
+        (($bytes.Length -ge 3) -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) | Should -BeFalse
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-INSERT-2: existing 0-pair target -> APPENDS, preserving existing content; no backup left' {
+        $dir = script:New-CaseDir -CaseName 'insert-append'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $existing = "# My CLAUDE.md`n`nuser content line`n"
+        script:Write-Utf8NoBomFile -Path $target -Content $existing
+
+        $result = script:Invoke-Insert -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -Match 'inserted managed block'
+
+        $written = script:Read-Utf8NoBomFile -Path $target
+        $written.StartsWith($existing) | Should -BeTrue
+        ([regex]::Matches($written, '(?m)^' + [regex]::Escape($script:Begin) + '$')).Count | Should -Be 1
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-INSERT-3: target already has 1 marker pair -> FAIL-FAST, no mutation, no backup' {
+        $dir = script:New-CaseDir -CaseName 'insert-1pair'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $existing = "head`n$script:Begin`nold body`n$script:End`ntail`n"
+        script:Write-Utf8NoBomFile -Path $target -Content $existing
+
+        $result = script:Invoke-Insert -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'already contains a managed block'
+        (script:Read-Utf8NoBomFile -Path $target) | Should -Be $existing
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-INSERT-4: malformed marker state (incomplete pair) -> FAIL-FAST before write' {
+        $dir = script:New-CaseDir -CaseName 'insert-malformed'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $existing = "head`n$script:Begin`nbody but no end`n"
+        script:Write-Utf8NoBomFile -Path $target -Content $existing
+
+        $result = script:Invoke-Insert -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        (script:Read-Utf8NoBomFile -Path $target) | Should -Be $existing
+        (Test-Path -LiteralPath ($target + '.amb-backup')) | Should -BeFalse
+    }
+
+    It 'AC-AMB-INSERT-5: pre-existing .amb-backup on a 0-pair target -> FAIL-FAST, refuses to clobber it' {
+        $dir = script:New-CaseDir -CaseName 'insert-backup-exists'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $existing = "user content`n"
+        script:Write-Utf8NoBomFile -Path $target -Content $existing
+        script:Write-Utf8NoBomFile -Path ($target + '.amb-backup') -Content 'prior backup bytes'
+
+        $result = script:Invoke-Insert -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'prior backup already exists'
+        (script:Read-Utf8NoBomFile -Path $target) | Should -Be $existing
+        (script:Read-Utf8NoBomFile -Path ($target + '.amb-backup')) | Should -Be 'prior backup bytes'
+    }
+
+    It 'AC-AMB-INSERT-6: BOM-prefixed existing target -> FAIL-FAST (encoding not laundered)' {
+        $dir = script:New-CaseDir -CaseName 'insert-bom'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        script:Write-Utf8BomFile -Path $target -Content "user content`n"
+
+        $result = script:Invoke-Insert -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'UTF-8 BOM'
+    }
+
+    It 'AC-AMB-INSERT-7: U+FFFD in the existing target -> FAIL-FAST (corruption sentinel)' {
+        $dir = script:New-CaseDir -CaseName 'insert-fffd'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        script:Write-Utf8NoBomFile -Path $target -Content ("user " + [char]0xFFFD + " content`n")
+
+        $result = script:Invoke-Insert -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'U\+FFFD'
+    }
+
+    It 'AC-AMB-INSERT-8: -DryRun on absent target writes nothing and creates no file' {
+        $dir = script:New-CaseDir -CaseName 'insert-dryrun'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'AGENTS.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+
+        $result = script:Invoke-Insert -SnippetPath $snippet -TargetPath $target -DryRun
+        $result.ExitCode | Should -Be 0
+        $result.Output | Should -Match 'DRY-RUN PASS \(managed block WOULD be inserted\)'
+        (Test-Path -LiteralPath $target) | Should -BeFalse
+    }
+
+    It 'AC-AMB-INSERT-10: a DIRECTORY at the target path -> FAIL-FAST for -Insert, directory NOT deleted' {
+        $dir = script:New-CaseDir -CaseName 'insert-dir-target'
+        $snippet = Join-Path $dir 'snippet.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        # A directory exists where the managed-block target file would be (e.g. a stray AGENTS.md dir).
+        $target = Join-Path $dir 'AGENTS.md'
+        $null = New-Item -ItemType Directory -Path $target -Force
+        # Put a sentinel file inside so we can prove the directory + its content survive.
+        script:Write-Utf8NoBomFile -Path (Join-Path $target 'keep.txt') -Content 'do not clobber'
+
+        $result = script:Invoke-Insert -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Not -Be 0
+        $result.Output | Should -Match 'exists but is not a file'
+        # The directory and its content must be untouched (no clobber).
+        (Test-Path -LiteralPath $target -PathType Container) | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $target 'keep.txt') -PathType Leaf) | Should -BeTrue
+    }
+
+    It 'AC-AMB-INSERT-9: -Insert and -Remove together -> FAIL-FAST (mutually exclusive)' {
+        $dir = script:New-CaseDir -CaseName 'insert-remove-conflict'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        script:Write-Utf8NoBomFile -Path $target -Content "x`n"
+
+        $procArgs = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', $script:ApplyScript,
+            '-Insert', '-Remove', '-SnippetPath', $snippet, '-TargetPath', $target
+        )
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+        $proc.ExitCode | Should -Not -Be 0
+        (($proc.Stdout + $proc.Stderr)) | Should -Match 'mutually exclusive'
+    }
+}

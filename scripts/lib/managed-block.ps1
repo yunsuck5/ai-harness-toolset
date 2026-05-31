@@ -286,3 +286,85 @@ function Remove-ManagedBlock {
 
     return [pscustomobject]@{ Removed = $true; Content = ($before + $after) }
 }
+
+function Add-ManagedBlock {
+    # Pure function: FIRST-TIME insertion of a managed block into a destination that does NOT already
+    # carry one. Mirrors Set-ManagedBlock / Remove-ManagedBlock — performs NO file IO and leaves NO
+    # partial state. All marker validation happens before any content is produced, so a caller that
+    # writes only the returned Content never produces a partial write. The IO-safety scaffolding
+    # (BOM / U+FFFD gate / .amb-backup / rollback / post-write verify / absent-target create) belongs
+    # to the apply wrapper (scripts/apply-managed-block.ps1 -Insert), NOT this primitive.
+    #
+    # Insertion is deliberately NOT "Set-ManagedBlock with a fresh snippet": Set-ManagedBlock REPLACES
+    # an existing single marker pair and fail-fasts on 0 pairs. Add-ManagedBlock is the complementary
+    # first-time path — it acts ONLY when the destination carries ZERO marker pairs, and REFUSES a
+    # destination that already has one (that is steady-state replacement territory owned by
+    # Set-ManagedBlock / apply-managed-block.ps1). Keeping the two paths disjoint is what preserves the
+    # apply tool's replace-only semantics: this primitive never silently turns a present block into a
+    # second one.
+    #
+    # Marker-count branch ordering (mirrors Remove-ManagedBlock's count-first discipline):
+    #   - target ABSENT (TargetExists=$false)        -> CREATE: Content = the snippet block alone
+    #                                                   (Created=$true). Caller writes a new file.
+    #   - target present, 0 marker pairs             -> APPEND the snippet block AFTER the existing
+    #                                                   content, preserving it byte-for-byte
+    #                                                   (Created=$false).
+    #   - target present, exactly 1 marker pair      -> FAIL-FAST (throw): not a first-time insert;
+    #                                                   the caller must use the replace path.
+    #   - 2+ pairs / incomplete (count mismatch) /
+    #     structurally malformed (unbalanced fence)  -> FAIL-FAST (throw); no content produced, so a
+    #                                                   caller that writes only the returned Content
+    #                                                   never mutates on a fail-fast.
+    #
+    # Outside-block content is preserved byte-for-byte on the append path: the existing text is never
+    # rewritten; at most a single trailing terminator is added when the file did not already end with
+    # one (which does not alter any existing line), followed by one blank-line separator and the block.
+    #
+    # Returns: [pscustomobject] @{ Created = [bool]; Content = [string] }
+    param(
+        [string] $TargetContent,
+        [string] $SnippetContent,
+        [bool] $TargetExists = $true
+    )
+
+    # Validate + extract the snippet block (snippet must contain exactly one pair).
+    $snippetBlockLines = Get-ManagedBlockContent -Content $SnippetContent -Label 'snippet'
+
+    # Absent target: CREATE a new file carrying ONLY the snippet block. New files use LF with a single
+    # trailing newline (the activation-file convention is UTF-8 no-BOM; .md content is LF). The
+    # apply wrapper's post-write verify is terminator-agnostic, so this EOL choice never breaks verify.
+    if (-not $TargetExists) {
+        $content = ($snippetBlockLines -join "`n") + "`n"
+        return [pscustomobject]@{ Created = $true; Content = $content }
+    }
+
+    # Present target: count markers first. Find-ManagedBlockMarkers also throws on an unbalanced
+    # fenced code block (structurally malformed for marker detection).
+    $segments = @(Split-ManagedBlockLines -Content $TargetContent)
+    $scan = Find-ManagedBlockMarkers -Segments $segments
+    $nb = $scan.BeginIndices.Count
+    $ne = $scan.EndIndices.Count
+
+    if ($nb -ne 0 -or $ne -ne 0) {
+        if ($nb -eq 1 -and $ne -eq 1) {
+            throw 'managed-block: destination already contains a managed block (1 marker pair); first-time insertion refuses to act. Use the replace path (scripts/apply-managed-block.ps1 / Set-ManagedBlock) for steady-state update.'
+        }
+        throw ("managed-block: destination has an ambiguous/incomplete marker state ({0} BEGIN, {1} END); first-time insertion refuses to act (expected exactly 0)." -f $nb, $ne)
+    }
+
+    # 0 marker pairs: append the block AFTER the existing content. Destination newline convention:
+    # CRLF wins if any CRLF is present, else LF.
+    if ($TargetContent -match '\r\n') { $eol = "`r`n" } else { $eol = "`n" }
+    $block = ($snippetBlockLines -join $eol) + $eol
+
+    if ([string]::IsNullOrEmpty($TargetContent)) {
+        # Empty existing file -> just the block (no separator needed).
+        return [pscustomobject]@{ Created = $false; Content = $block }
+    }
+
+    # Preserve the existing content verbatim; ensure it ends with a newline (added only if absent),
+    # then one blank-line separator, then the block.
+    $prefix = $TargetContent
+    if ($prefix -notmatch '(\r\n|\n|\r)$') { $prefix += $eol }
+    return [pscustomobject]@{ Created = $false; Content = ($prefix + $eol + $block) }
+}

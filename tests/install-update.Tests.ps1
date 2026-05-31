@@ -1023,14 +1023,14 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
     It 'B2-T6: operational smoke passes against the real repo payload (brief-init seeds template-identical BRIEF, isolated + cleaned up)' {
         # The real repo root carries scripts/brief-init.ps1 + templates/brief/BRIEF.md, so it is a
         # valid payload root for the smoke. Exercises Invoke-OperationalSmoke end-to-end.
-        $res = script:Invoke-OperationalSmoke -PayloadRoot $script:RepoRoot
+        $res = Invoke-OperationalSmoke -PayloadRoot $script:RepoRoot
         $res.Smoke | Should -BeExactly 'pass'
     }
 
     It 'B2-T7: operational smoke skips (not fails) when payload lacks brief-init prerequisites' {
         $fx = script:New-UpdatableFixture -CaseName 'b2t7'
         # The fixture payload current/ has no scripts/brief-init.ps1 → smoke must skip, not fail.
-        $res = script:Invoke-OperationalSmoke -PayloadRoot (Join-Path $fx.Area 'current')
+        $res = Invoke-OperationalSmoke -PayloadRoot (Join-Path $fx.Area 'current')
         $res.Smoke | Should -BeExactly 'skip'
     }
 
@@ -1206,7 +1206,7 @@ exit 0
 '@
         script:Write-TextFile (Join-Path $payload 'scripts/brief-init.ps1') $stub
 
-        $res = script:Invoke-OperationalSmoke -PayloadRoot $payload
+        $res = Invoke-OperationalSmoke -PayloadRoot $payload
         try {
             $res.Smoke         | Should -BeExactly 'fail'
             $res.WorkspacePath | Should -Not -BeNullOrEmpty

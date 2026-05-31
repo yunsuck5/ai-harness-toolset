@@ -154,3 +154,91 @@ Describe 'Remove-ManagedBlock' {
         }
     }
 }
+
+Describe 'Add-ManagedBlock (first-time insertion primitive, IU-B-09)' {
+
+    BeforeAll {
+        $nl = "`n"
+        # A minimal snippet carrying exactly one marker pair, plus an inline-code prose mention on a
+        # mixed line (NOT a whole-line marker, so it is not counted) to mirror the real snippets.
+        $script:Snippet = "$script:Begin${nl}# payload heading${nl}body line with a ``$script:Begin`` inline mention${nl}more body${nl}$script:End${nl}"
+        $script:SnippetBlockLines = @(Get-ManagedBlockContent -Content $script:Snippet -Label 'snippet')
+    }
+
+    Context 'absent target -> CREATE' {
+        It 'returns Created=$true and content carrying exactly one marker pair equal to the snippet block' {
+            $r = Add-ManagedBlock -TargetContent '' -SnippetContent $script:Snippet -TargetExists $false
+            $r.Created | Should -BeTrue
+            $counts = script:Get-MarkerCounts -Content $r.Content
+            $counts.Begin | Should -Be 1
+            $counts.End   | Should -Be 1
+            @(Get-ManagedBlockContent -Content $r.Content -Label 'created') | Should -Be $script:SnippetBlockLines
+        }
+    }
+
+    Context 'present target with 0 marker pairs -> APPEND preserving existing content' {
+        It 'preserves the existing content verbatim and appends the block (one marker pair total)' {
+            $existing = "# My CLAUDE.md${nl}${nl}user content${nl}"
+            $r = Add-ManagedBlock -TargetContent $existing -SnippetContent $script:Snippet -TargetExists $true
+            $r.Created | Should -BeFalse
+            # Existing bytes appear verbatim at the start.
+            $r.Content.StartsWith($existing) | Should -BeTrue
+            $counts = script:Get-MarkerCounts -Content $r.Content
+            $counts.Begin | Should -Be 1
+            $counts.End   | Should -Be 1
+            @(Get-ManagedBlockContent -Content $r.Content -Label 'appended') | Should -Be $script:SnippetBlockLines
+        }
+
+        It 'adds a trailing newline before appending when the existing content has none' {
+            $existing = "no trailing newline"
+            $r = Add-ManagedBlock -TargetContent $existing -SnippetContent $script:Snippet -TargetExists $true
+            $r.Created | Should -BeFalse
+            $r.Content.StartsWith("no trailing newline${nl}") | Should -BeTrue
+            ($r.Content -split "`r?`n")[0] | Should -Be 'no trailing newline'
+        }
+
+        It 'uses CRLF for the appended block when the existing content is CRLF' {
+            $crlf = "`r`n"
+            $existing = "head${crlf}body${crlf}"
+            $r = Add-ManagedBlock -TargetContent $existing -SnippetContent $script:Snippet -TargetExists $true
+            # The appended block region must carry CRLF terminators (destination convention wins).
+            $r.Content | Should -Match "$([regex]::Escape($script:Begin))`r`n"
+        }
+
+        It 'treats an empty existing file as just the block (no leading separator)' {
+            $r = Add-ManagedBlock -TargetContent '' -SnippetContent $script:Snippet -TargetExists $true
+            $r.Created | Should -BeFalse
+            @(Get-ManagedBlockContent -Content $r.Content -Label 'block') | Should -Be $script:SnippetBlockLines
+        }
+    }
+
+    Context 'present target that already has a managed block -> FAIL-FAST (replace territory)' {
+        It 'refuses a target with exactly 1 marker pair' {
+            $existing = "head${nl}$script:Begin${nl}old body${nl}$script:End${nl}tail${nl}"
+            { Add-ManagedBlock -TargetContent $existing -SnippetContent $script:Snippet -TargetExists $true } |
+                Should -Throw -ExpectedMessage '*already contains a managed block*'
+        }
+    }
+
+    Context 'malformed / ambiguous marker state -> FAIL-FAST (no content)' {
+        It '2+ marker pairs -> fail-fast' {
+            $existing = "$script:Begin${nl}a${nl}$script:End${nl}$script:Begin${nl}b${nl}$script:End${nl}"
+            { Add-ManagedBlock -TargetContent $existing -SnippetContent $script:Snippet -TargetExists $true } | Should -Throw
+        }
+
+        It 'incomplete pair (BEGIN only) -> fail-fast' {
+            $existing = "head${nl}$script:Begin${nl}body${nl}"
+            { Add-ManagedBlock -TargetContent $existing -SnippetContent $script:Snippet -TargetExists $true } | Should -Throw
+        }
+
+        It 'structurally malformed (unbalanced fence) -> fail-fast' {
+            $fence = '```'
+            $existing = "before${nl}${fence}${nl}$script:Begin${nl}body${nl}"
+            { Add-ManagedBlock -TargetContent $existing -SnippetContent $script:Snippet -TargetExists $true } | Should -Throw
+        }
+
+        It 'a snippet without a valid single marker pair -> fail-fast' {
+            { Add-ManagedBlock -TargetContent '' -SnippetContent 'no markers here' -TargetExists $false } | Should -Throw
+        }
+    }
+}

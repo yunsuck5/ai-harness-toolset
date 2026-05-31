@@ -79,6 +79,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib/install-pipeline-core.ps1')
 . (Join-Path $PSScriptRoot 'lib/native-process.ps1')
 . (Join-Path $PSScriptRoot 'lib/activation-surface.ps1')
+. (Join-Path $PSScriptRoot 'lib/operational-smoke.ps1')
 
 # Resolve activation surface home defaults (overridable so tests can point at
 # TestDrive without touching the real user-global instruction roots).
@@ -997,68 +998,12 @@ function script:Get-MutationApproval {
 # brief-init against a throwaway workspace and asserts the seeded BRIEF.md is
 # byte-identical (SHA-256) to the payload template, with runtime artifacts
 # isolated to the workspace log/ and the workspace cleaned up afterward.
+#
+# The implementation is shared with the fresh-install path (scripts/install-global.ps1) and lives in
+# scripts/lib/operational-smoke.ps1 (Invoke-OperationalSmoke), dot-sourced above. It is dot-sourced
+# into this script's scope, so the `Invoke-OperationalSmoke` call site below resolves it.
+# Behavior is unchanged from the prior in-file definition (IU-B-09 extraction).
 # ---------------------------------------------------------------------------
-
-function script:Invoke-OperationalSmoke {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory = $true)] [string] $PayloadRoot
-    )
-
-    $briefInit   = Join-Path $PayloadRoot 'scripts/brief-init.ps1'
-    $templateRel = 'templates/brief/BRIEF.md'
-    $template    = Join-Path $PayloadRoot $templateRel
-
-    if (-not (Test-Path -LiteralPath $briefInit -PathType Leaf) -or -not (Test-Path -LiteralPath $template -PathType Leaf)) {
-        return [pscustomobject]@{ Smoke = 'skip'; Reason = ('smoke prerequisites missing under payload (' + $briefInit + ' / ' + $templateRel + ')'); WorkspacePath = $null }
-    }
-
-    $workspace = Join-Path ([System.IO.Path]::GetTempPath()) ('iu-smoke-' + [Guid]::NewGuid().ToString('N'))
-    # On smoke FAILURE the throwaway workspace is PRESERVED for debugging and its path is reported
-    # (in the result WorkspacePath + in the failure Reason, which the caller folds into reasons[]),
-    # mirroring the cleanup_failed_with_leftover "report, don't silently delete" contract (I14).
-    # It is removed only on pass. The path is surfaced so a failing smoke can be inspected.
-    $preserveForDebug = $false
-    try {
-        $null = New-Item -ItemType Directory -Path $workspace -Force
-        # brief-init resolves ToolRoot from the payload and seeds <ProjectRoot>/log/brief/BRIEF.md.
-        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
-            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $briefInit,
-            '-ToolRoot', $PayloadRoot, '-ProjectRoot', $workspace
-        )
-        if ($proc.ExitCode -ne 0) {
-            $preserveForDebug = $true
-            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('brief-init exit ' + $proc.ExitCode + ' (workspace preserved: ' + $workspace + '): ' + (($proc.Stdout + ' ' + $proc.Stderr).Trim())); WorkspacePath = $workspace }
-        }
-        $seeded = Join-Path $workspace 'log/brief/BRIEF.md'
-        if (-not (Test-Path -LiteralPath $seeded -PathType Leaf)) {
-            $preserveForDebug = $true
-            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('seeded BRIEF.md not found at ' + $seeded + ' (workspace preserved: ' + $workspace + ')'); WorkspacePath = $workspace }
-        }
-        $seededSha   = Get-FileSha256 -Path $seeded
-        $templateSha = Get-FileSha256 -Path $template
-        if ($seededSha -ne $templateSha) {
-            $preserveForDebug = $true
-            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('seeded BRIEF.md sha256 differs from payload template (' + $seededSha + ' vs ' + $templateSha + ') (workspace preserved: ' + $workspace + ')'); WorkspacePath = $workspace }
-        }
-        # Isolation: the only runtime artifact must be under <workspace>/log/.
-        $outsideLog = @(Get-ChildItem -LiteralPath $workspace -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne 'log' })
-        if ($outsideLog.Count -gt 0) {
-            $preserveForDebug = $true
-            return [pscustomobject]@{ Smoke = 'fail'; Reason = ('smoke produced artifacts outside log/: ' + (($outsideLog | ForEach-Object { $_.Name }) -join ', ') + ' (workspace preserved: ' + $workspace + ')'); WorkspacePath = $workspace }
-        }
-        return [pscustomobject]@{ Smoke = 'pass'; Reason = $null; WorkspacePath = $null }
-    }
-    catch {
-        $preserveForDebug = $true
-        return [pscustomobject]@{ Smoke = 'fail'; Reason = ('smoke exception: ' + $_.Exception.Message + ' (workspace preserved: ' + $workspace + ')'); WorkspacePath = $workspace }
-    }
-    finally {
-        if (-not $preserveForDebug -and (Test-Path -LiteralPath $workspace)) {
-            Remove-Item -LiteralPath $workspace -Recurse -Force -ErrorAction SilentlyContinue
-        }
-    }
-}
 
 # ---------------------------------------------------------------------------
 # update-source apply orchestration (MUTATION). Reached only via Invoke-Main's update-source
@@ -1229,7 +1174,7 @@ function script:Invoke-UpdateSourceApply {
     #    workspace and asserts BRIEF == template by SHA-256, isolated + cleaned up.
     $smoke = 'skip'
     if (-not $SkipSmoke) {
-        $smokeResult = script:Invoke-OperationalSmoke -PayloadRoot (Get-InstallPipelineCurrentDir -InstallArea $installAreaResolved)
+        $smokeResult = Invoke-OperationalSmoke -PayloadRoot (Get-InstallPipelineCurrentDir -InstallArea $installAreaResolved)
         $smoke = $smokeResult.Smoke
         if ($smoke -eq 'fail') { $reasons.Add('smoke: ' + $smokeResult.Reason) }
         elseif ($smoke -eq 'skip' -and -not [string]::IsNullOrEmpty($smokeResult.Reason)) { $reasons.Add('smoke skipped: ' + $smokeResult.Reason) }
