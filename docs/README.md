@@ -27,7 +27,7 @@ The primary placement criterion is **how a document is read**, not how many topi
 
 | Folder | Scope (one purpose) | Access pattern |
 |---|---|---|
-| `docs/current/` | current state + question→authority routing + next-action queue | read first / when orienting |
+| `docs/current/` | `SOURCE_OF_TRUTH.md` only — question→authority routing; project-current state / next action answered on demand (`docs/policies/DOCS_OPERATING_MODEL.md` §6), not mirrored in any committed file | read first / when orienting |
 | `docs/policies/` | task-scoped AI/operator execution policies (PowerShell, CLI/runtime assumptions, reviewer config, review effort) | when a task touches that policy's domain |
 | `docs/contracts/` | artifact/protocol contracts (`review/`, `brief/`, `chatlog/`, `evidence/`, `global-invocation/`) | when producing/validating that artifact |
 | `docs/systems/` | per-subsystem STATUS / BACKLOG / DEFERRED + the install/update operating model; routes to contracts/policies, does not replace them | when checking a subsystem's state |
@@ -48,7 +48,7 @@ Start from `docs/current/SOURCE_OF_TRUTH.md` for "which document is authoritativ
 
 ## 8. How humans should navigate docs
 
-Start from `docs/user_guide/` for operating and evaluating the tool, and `README.md` (repo root) for the high-level overview. `docs/current/PROJECT_STATE.md` is the compact current summary.
+Start from `docs/user_guide/` for operating and evaluating the tool, and `README.md` (repo root) for the high-level overview. For "what is done / what remains / what to do next," ask the agent for an on-demand status briefing (`docs/policies/DOCS_OPERATING_MODEL.md` §6) or read per-system `docs/systems/*/STATUS.md` directly; there is no committed project-current summary file.
 
 ## 9. What not to do
 
@@ -58,7 +58,7 @@ Do not place AI/operator execution policy under `user_guide/`. Do not place arti
 
 - `docs/README.md` (this file): the docs **structure/placement** policy (which folder a doc belongs in).
 - `docs/current/SOURCE_OF_TRUTH.md`: per-question **authority routing** (which document answers which question, and the priority order on conflict).
-- `docs/policies/DOCS_OPERATING_MODEL.md`: the docs **change/closeout flow** — how an edit propagates top-down into `docs/current/` and per-system docs, the per-system `STATUS.md` shape/altitude contract, the `BACKLOG.md` closed-row tombstone rule, the `NEXT_ACTIONS.md` selected-action-only rule, and the two-level closeout reconciliation gate. Read it when changing docs or closing out work.
+- `docs/policies/DOCS_OPERATING_MODEL.md`: the docs **change/closeout flow** — how an edit propagates top-down into `docs/current/` and per-system docs, the per-system `STATUS.md` shape/altitude contract, the `BACKLOG.md` closed-row tombstone rule, the on-demand status-briefing model (the committed project-current mirror files `NEXT_ACTIONS.md` / `PROJECT_STATE.md` were removed), and the two-level closeout reconciliation gate. Read it when changing docs or closing out work.
 
 These three are complementary single-home authorities: on overlap, placement defers to this file, question-routing to `SOURCE_OF_TRUTH.md`, and change/closeout process to `DOCS_OPERATING_MODEL.md`.
 

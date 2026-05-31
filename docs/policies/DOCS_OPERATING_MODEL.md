@@ -6,7 +6,7 @@ It is a **task-scoped execution policy** (read it when your task changes docs or
 
 - `docs/README.md` — **placement / structure** authority (which folder a doc belongs in, by access pattern). This file does not re-decide placement.
 - `docs/current/SOURCE_OF_TRUTH.md` — **per-question authority routing** (which document answers which question). This file does not re-route questions.
-- **This file** — the **change/closeout flow** authority (how an edit moves down the tree; the shape contract for STATUS/BACKLOG/NEXT_ACTIONS; the closeout reconciliation gate).
+- **This file** — the **change/closeout flow** authority (how an edit moves down the tree; the shape contract for STATUS/BACKLOG; the on-demand status-briefing model that replaces committed project-current mirror files; the closeout reconciliation gate).
 
 When this file disagrees with `docs/README.md` on *placement*, `docs/README.md` wins. When it disagrees with a `docs/contracts/**` contract on an *artifact's shape*, that contract wins. This file is authoritative only for the docs change/closeout *process*.
 
@@ -18,7 +18,7 @@ Docs authority flows **top-down**. A docs change is decided from the top-level s
 
 1. **Structure first.** Before adding or moving content, confirm the placement against `docs/README.md` §5–§6 (access-pattern layers). New always-on rules do not go in `docs/`; they go in `snippets/**` / the managed block.
 2. **Authority next.** Confirm which layer *owns* the fact you are changing (the "single home" — see §3). Every fact has exactly one authoritative home; all other mentions are pointers to it, never copies.
-3. **Down into current + per-system.** Propagate the change into the layers whose role (§3) is affected — top-level `docs/current/` for project orientation, and the relevant `docs/systems/<system>/` files for subsystem state.
+3. **Down into current + per-system.** Propagate the change into the layers whose role (§3) is affected — `docs/current/` for question→authority routing (`SOURCE_OF_TRUTH.md`), and the relevant `docs/systems/<system>/` files for subsystem state. Project-current *state* is no longer mirrored in a committed file; it is answered on demand (§6).
 4. **Closeout gate last.** When the change closes out work, run the two-level closeout reconciliation (§7) before declaring the docs closeout complete.
 
 The governing principle is **single-home-plus-pointers**: duplication is the engine of staleness, because a duplicated fact requires an N-place sweep on every change and any missed place silently goes stale. Prefer one authoritative statement plus pointers over repeated prose.
@@ -37,14 +37,14 @@ Placement scope for each folder is defined in `docs/README.md` §5; the table be
 
 | Layer | Operating role in the flow | Must not become |
 |---|---|---|
-| `docs/current/` | **Project orientation, top altitude, pointer-first.** What a new reader should believe about the project *now*: highest-altitude state, the single active action, and question→authority routing. Updated on the **upward** half of every closeout (§7). | A second status ledger, a roadmap, a closeout diary, or an incident log. |
+| `docs/current/` | **`SOURCE_OF_TRUTH.md` only — question→authority routing.** It routes each question to its authoritative home. Project-current *state* and the "what's next" action are NOT mirrored here (the former committed mirror files are removed) — they are answered on demand (§6) and persisted for transitions in the canonical Brief. | A second status ledger, a roadmap, a closeout diary, an incident log, or a committed active-action / project-state mirror. |
 | `docs/systems/*/STATUS.md` | **Current operational posture of one subsystem + compact completed ledger + accepted residual risks + pointers.** The authoritative "what is true inside this subsystem now." | An incident-narrative store, a dogfood-transcript store, a phase-by-phase build diary, a full closeout report, an implementation plan, or a design contract (those are pointed to, not inlined). |
 | `docs/systems/*/BACKLOG.md` | **Open-work entrypoint:** triage-level rows for not-yet-started work (ID + candidate + direction note). | A second status/archive surface (see the tombstone rule, §5). |
 | `docs/systems/*/DEFERRED.md` | **Consciously-postponed work, each with a reopen condition.** An item without a reopen condition is not deferred (it is backlog, archive, or delete-candidate). | A duplicate of BACKLOG (deferred ≠ not-yet-started) or a closed-item store. |
 | `docs/roadmap/` | **Milestone routing only** (`INDEX.md`, `CURRENT_MILESTONES.md`): the numbered remaining-order *view*, routing to its authority. | A holder of decision/design/planning bodies, or a redefinition of the order (authority = `docs/decisions/POST_MVP_PLAN.md` §11). |
 | `docs/backlog/` | **Backlog routing/classification index only** (`INDEX.md`): where open candidates are classified to per-system BACKLOG. | A holder of item bodies. |
 | `docs/archive/` | **Historical / superseded material and detailed closeout narrative.** The home for the long-form narrative that STATUS must *not* inline. Never current authority. | Current implementation/operation/install/review guidance. |
-| `docs/decisions/` | **Active decision records** (what was decided and why, still carrying authority). | A current-status surface (status → `docs/systems/**` + `docs/current/`). |
+| `docs/decisions/` | **Active decision records** (what was decided and why, still carrying authority). | A current-status surface (status → `docs/systems/**`). |
 
 ---
 
@@ -87,11 +87,20 @@ The tombstone exists so a reader scanning BACKLOG sees only open work plus short
 
 ---
 
-## 6. `NEXT_ACTIONS.md` — explicitly selected active action only
+## 6. Project-current state — the on-demand status-briefing model
 
-`docs/current/NEXT_ACTIONS.md` holds **only the explicitly selected active action** — the single thing being worked now (and, at most, the one next step after it once selected). It does not restate candidate work, the roadmap order, or pending decisions; those live in `docs/roadmap/CURRENT_MILESTONES.md`, the per-system `BACKLOG.md` / `DEFERRED.md`, and `docs/decisions/POST_MVP_PLAN.md` §11.
+There is **no committed project-current mirror file** — there is no committed active queue and no committed project-current summary. "What is done / what remains / what should I do next" is answered **on demand** by the agent, not maintained as a committed summary that goes stale between closeouts.
 
-When nothing is selected, `NEXT_ACTIONS.md` says exactly that — "nothing is auto-selected; the next action is a pending user decision" — and routes to `CURRENT_MILESTONES.md` and the relevant BACKLOG/DEFERRED, rather than enumerating candidates. Keeping it to the selected action is the whole point: it must not blur "the current next single action," and restated candidate/roadmap content is what makes it stale.
+**Removed surfaces:**
+- The former `docs/current/NEXT_ACTIONS.md` (committed active queue) and `docs/current/PROJECT_STATE.md` (committed project-current summary) **have been removed from the repo** — they are deleted, not kept as stubs or path-preserving placeholders. The currently selected action lives in the working conversation and, across sessions, in the canonical Brief (`<ProjectRoot>/log/brief/BRIEF.md`) and handoff `next_action`. A committed "active now" / project-state file mirrors a conversational decision and the live system surfaces, and goes stale the moment they move on, so it is not maintained and not recreated.
+- `docs/current/` now holds **`SOURCE_OF_TRUTH.md` only** — question→authority routing. It is not a project-current state or next-action surface.
+
+**The on-demand status-briefing model.** When a user asks "what's done / what remains / what should I do next," the agent:
+1. **Reads the authoritative surfaces** — per-system `docs/systems/*/STATUS.md` completed-ledgers + current-state/LTS sections (done), `docs/systems/*/BACKLOG.md` (open, via `docs/backlog/INDEX.md`), `docs/systems/*/DEFERRED.md` (postponed + reopen conditions), and `docs/roadmap/CURRENT_MILESTONES.md` ↔ `docs/decisions/POST_MVP_PLAN.md` §11 (numbered remaining order); plus the canonical Brief as **runtime restore evidence** when present.
+2. **Synthesizes a conversational briefing** at the altitude asked for (whole-project or one subsystem).
+3. **The user selects the next task conversationally.** No project-current mirror is written; the selection persists in the conversation and, for transitions, in the Brief (+ handoff `next_action`).
+
+The single home of "what remains" is therefore the per-system STATUS/BACKLOG/DEFERRED + roadmap/decisions surfaces; the single home of "the currently selected action" is the conversation + Brief. Neither is a committed `docs/current/` summary.
 
 ---
 
@@ -100,10 +109,8 @@ When nothing is selected, `NEXT_ACTIONS.md` says exactly that — "nothing is au
 A feature/system closeout is **not "done" in the docs** until **both** levels below pass. Both are mandatory; the listing order is the verification order (orient from the top first), not a priority ranking — the system-local edits are usually written first, then verified upward.
 
 ### Level 1 — project-current / upward impact check (top-down)
-Check, and reconcile if affected, the top-level orientation surfaces a new reader hits first:
-- `docs/current/PROJECT_STATE.md` — does the highest-altitude project state still read true after this closeout?
-- `docs/current/NEXT_ACTIONS.md` — is the selected active action / pending-decision line still accurate (§6)?
-- `docs/current/SOURCE_OF_TRUTH.md` — did any question's authoritative home change?
+Check, and reconcile if affected, the top-level orientation surfaces a new reader hits first. Because project-current state is answered on demand (§6) rather than mirrored, this level is small — the committed project-current mirror files have been removed, so there is no project-current summary or active-queue file to re-sync. Check only these, and only when their authority / routing / order actually changes:
+- `docs/current/SOURCE_OF_TRUTH.md` — did any question's authoritative home change (including how "current progress / next action" routes)?
 - `docs/roadmap/CURRENT_MILESTONES.md` — did a numbered-milestone status change?
 - `docs/decisions/POST_MVP_PLAN.md` — only if the numbered-order authority itself changed.
 
@@ -127,7 +134,7 @@ Silently skipping a listed doc is a gate failure: a doc that was never mentioned
 
 ## 8. What this document does NOT do
 
-- It does **not** itself perform any docs sweep. Defining the rule (this batch) is separate from applying it. The existing `docs/current/` stale-content reconciliation, retroactive STATUS trimming, and retroactive BACKLOG tombstoning are **separate scoped batches** under this contract.
+- It defines the docs change/closeout *process*; applying that process to any specific surface is its own scoped batch. The project-current mirror removal (the former `NEXT_ACTIONS.md` and `PROJECT_STATE.md` deleted, §6) has been performed; still-deferred applications under this contract are **retroactive STATUS narrative trimming** and **retroactive BACKLOG closed-row tombstoning** (§4, §5) — each a separate scoped batch, not done merely because this contract names the rule.
 - It does **not** restructure folders, move/archive existing narrative, or collapse the roadmap/backlog routing layers — those are out of this contract's scope and need their own scoped decisions governed by `docs/README.md`.
 - It does **not** approve any commit / push / publish / merge / release, or any global/user filesystem mutation. It governs repo docs process only.
 - A Codex review verdict (`yes` / `no` / `yes with risk`) on a docs change does not auto-approve commit/push; that remains an explicit user decision.
@@ -140,6 +147,6 @@ Any source/doc change governed by this model goes through the normal Codex revie
 
 - Docs **placement/structure** authority: `docs/README.md`.
 - Docs **per-question authority routing**: `docs/current/SOURCE_OF_TRUTH.md`.
-- Docs **change/closeout flow + STATUS/BACKLOG/NEXT_ACTIONS shape**: this file.
+- Docs **change/closeout flow + STATUS/BACKLOG shape + the on-demand status-briefing model**: this file.
 
 These three are complementary single-home authorities; on overlap, placement defers to `docs/README.md`, question-routing to `SOURCE_OF_TRUTH.md`, and process to this file.

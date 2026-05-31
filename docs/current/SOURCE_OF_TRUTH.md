@@ -10,7 +10,7 @@ How to read each entry:
 - **Historical** — where the past framing lives; useful only for historical context.
 - **Do not use** — framing or identifiers that look current but are superseded / removed-legacy; do not treat as current guidance.
 
-> **Archive authority.** Material under `docs/archive/` is historical or superseded. Do not use it as current implementation, operation, install, or review guidance unless a task explicitly asks for historical context. Current source-of-truth lives under `docs/current/` and the per-system status documents (`docs/systems/<system>/STATUS.md`).
+> **Archive authority.** Material under `docs/archive/` is historical or superseded. Do not use it as current implementation, operation, install, or review guidance unless a task explicitly asks for historical context. Current source-of-truth lives in the active (non-archive) docs — routed per question by this file (`docs/current/SOURCE_OF_TRUTH.md`); per-system current status lives in `docs/systems/<system>/STATUS.md`.
 >
 > **The docs taxonomy / source-of-truth reset and the access-pattern restructure have been applied.** The Primary/Secondary pointers below point at the final access-pattern locations: artifact/protocol contracts under `docs/contracts/<area>/`, task-scoped policies under `docs/policies/`, project docs under `docs/project/`, active decisions under `docs/decisions/`, the human guide under `docs/user_guide/`, per-system status under `docs/systems/**`, and historical material under `docs/archive/**`. `docs/roadmap/` now holds milestone routing only (`INDEX.md`, `CURRENT_MILESTONES.md`); the operating-layer decision moved to `docs/decisions/GLOBAL_ADOPTION_DECISION.md` and the Step 3 implementation-planning guide to `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md`.
 >
@@ -50,13 +50,15 @@ How to read each entry:
 - **Historical:** `docs/contracts/brief/BRIEF_CONTRACT.md` Historical lineage (1st·2nd), and the superseded brief wording inside `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` / `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` / `docs/archive/audits/TOOLROOT_PROJECTROOT_AUDIT.md` / `docs/decisions/GLOBAL_ADOPTION_DECISION.md`.
 - **Do not use:** root `<ProjectRoot>/brief/` (rejected), any user-home operator-local runtime root (rejected), `log/chatlog/current/resume.md` / `summary.md` as a restore source (deprecation candidate).
 
-## Q5. current milestone / next action
+## Q5. current progress / remaining work / next action
 
-- **Primary:** `docs/current/NEXT_ACTIONS.md` (active queue), then `docs/current/PROJECT_STATE.md` (top-level current summary).
-- **Secondary:** `docs/roadmap/CURRENT_MILESTONES.md` (steps 1–6 routed with status), `docs/systems/install-update/STATUS.md` / `DEFERRED.md`; `docs/decisions/POST_MVP_PLAN.md` §11 (authority for the numbered order) + §10 (status summary).
+Answered **on demand**, not from a committed project-current mirror (see `docs/policies/DOCS_OPERATING_MODEL.md` §6, the on-demand status-briefing model). The agent inspects the authoritative surfaces below and reports; the user selects the next task conversationally.
+
+- **Primary:** the per-system surfaces — `docs/systems/*/STATUS.md` completed-ledgers + current-state/LTS sections (what is done), `docs/systems/*/BACKLOG.md` (open work, via `docs/backlog/INDEX.md`), `docs/systems/*/DEFERRED.md` (postponed + reopen conditions) — together with `docs/roadmap/CURRENT_MILESTONES.md` ↔ `docs/decisions/POST_MVP_PLAN.md` §11 (numbered remaining order). The briefing model itself is `docs/policies/DOCS_OPERATING_MODEL.md` §6.
+- **Secondary:** the canonical Brief `<ProjectRoot>/log/brief/BRIEF.md` — **runtime restore evidence only when present** (the currently selected action / session-transition anchor); not a committed source-of-truth and not always present.
 - **Implementation:** n/a (milestone / plan documents have no code implementation).
-- **Historical:** `docs/decisions/POST_MVP_PLAN.md` §10 Completed closeout narrative.
-- **Do not use:** reading `docs/decisions/POST_MVP_PLAN.md` completed items as active instructions, or its deferred items as open backlog.
+- **Historical:** `docs/decisions/POST_MVP_PLAN.md` §10 / `docs/archive/old-roadmaps/POST_MVP_COMPLETED_NARRATIVE.md` (completed closeout narrative).
+- **Do not use:** a committed active-queue or project-current summary file — there is none. The former `docs/current/NEXT_ACTIONS.md` and `docs/current/PROJECT_STATE.md` project-current mirrors have been **removed**; do not look for or recreate them. Use the on-demand status-briefing model instead (`docs/policies/DOCS_OPERATING_MODEL.md` §6). Also do not read `docs/decisions/POST_MVP_PLAN.md` completed items as active instructions, or its deferred items as open backlog.
 
 ## Q6. historical MVP decisions
 
@@ -86,7 +88,7 @@ How to read each entry:
 
 For "how should a docs change or a feature/system closeout propagate top-down through the docs tree, and what is the closeout reconciliation gate?"
 
-- **Primary:** `docs/policies/DOCS_OPERATING_MODEL.md` (docs change/closeout flow; per-system `STATUS.md` shape/altitude contract; `BACKLOG.md` closed-row tombstone rule; `NEXT_ACTIONS.md` selected-action-only rule; two-level closeout reconciliation gate).
+- **Primary:** `docs/policies/DOCS_OPERATING_MODEL.md` (docs change/closeout flow; per-system `STATUS.md` shape/altitude contract; `BACKLOG.md` closed-row tombstone rule; the on-demand status-briefing model that replaces committed project-current mirrors; two-level closeout reconciliation gate).
 - **Secondary:** `docs/README.md` (folder placement / structure authority); this file (per-question authority routing).
 - **Implementation:** n/a (an operating-model / process document; no code implementation).
 - **Historical:** n/a.

@@ -6,7 +6,7 @@ Files under `docs/archive/` are **historical or superseded** material. They reco
 
 **Current source-of-truth lives elsewhere:**
 
-- `docs/current/` — `PROJECT_STATE.md` (top-level current summary), `SOURCE_OF_TRUTH.md` (question → authoritative document), `NEXT_ACTIONS.md` (active queue).
+- `docs/current/` — `SOURCE_OF_TRUTH.md` only (question → authoritative document). There is no committed project-current summary or active-queue file (the former `PROJECT_STATE.md` / `NEXT_ACTIONS.md` mirrors were removed); current progress / next action is answered on demand — `docs/policies/DOCS_OPERATING_MODEL.md` §6.
 - `docs/systems/<system>/STATUS.md` — per-system current status (added by the roadmap/backlog routing batches of the docs taxonomy reset).
 - The active contracts in `docs/` (e.g. `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`, `docs/contracts/brief/BRIEF_CONTRACT.md`, `docs/contracts/chatlog/CHATLOG_CONTRACT.md`, `docs/contracts/evidence/EVIDENCE_CONTRACT.md`) and `INSTALL.md` for install/update execution.
 

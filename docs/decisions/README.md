@@ -5,9 +5,9 @@ This folder holds **active decision records** — read when checking "what was d
 | File | Scope |
 |---|---|
 | `DECISIONS.md` | active policy decisions + MVP-closeout pointer (bootstrap/historical decisions are extracted to `docs/archive/legacy-mvp/BOOTSTRAP_DECISIONS.md`) |
-| `POST_MVP_PLAN.md` | post-MVP decision record (§1–§9) and the authority for the numbered remaining order (§11); current status/next-action live in `docs/current/**`, `docs/systems/**`, and `docs/roadmap/CURRENT_MILESTONES.md`, which route to §11 |
+| `POST_MVP_PLAN.md` | post-MVP decision record (§1–§9) and the authority for the numbered remaining order (§11); current status lives in `docs/systems/**` and the numbered-order view `docs/roadmap/CURRENT_MILESTONES.md`, and "what's next" is answered on demand (`docs/policies/DOCS_OPERATING_MODEL.md` §6), which route to §11 |
 | `GLOBAL_ADOPTION_DECISION.md` | operating-layer transition decision + managed-block marker policy (§6); install/update current status routes from `docs/systems/install-update/STATUS.md` |
 
 ## What does not belong here
 
-Current status (→ `docs/systems/**`, `docs/current/`), contracts (→ `docs/contracts/`), execution policy (→ `docs/policies/`), and superseded/historical decisions (→ `docs/archive/`).
+Current status (→ `docs/systems/**`; question→authority routing → `docs/current/SOURCE_OF_TRUTH.md`), contracts (→ `docs/contracts/`), execution policy (→ `docs/policies/`), and superseded/historical decisions (→ `docs/archive/`).

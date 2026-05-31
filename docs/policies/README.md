@@ -12,7 +12,7 @@ Read a policy when your task touches its domain — each is **conditional**, not
 | `CLI_ENVIRONMENT_ASSUMPTIONS.md` | reasoning about CLI/runtime dependencies (PowerShell, Codex, Git tiers) |
 | `REVIEWER_CONFIG_POLICY.md` | configuring or running the reviewer (config location, precedence, defaults, enforcement status) |
 | `REVIEW_EFFORT_GUIDE.md` | deciding review effort/cost for a Codex review |
-| `DOCS_OPERATING_MODEL.md` | changing docs or closing out work — how a change flows top-down, the STATUS/BACKLOG/NEXT_ACTIONS shape, and the two-level closeout reconciliation gate |
+| `DOCS_OPERATING_MODEL.md` | changing docs or closing out work — how a change flows top-down, the STATUS/BACKLOG shape, the on-demand status-briefing model (committed project-current mirror files removed), and the two-level closeout reconciliation gate |
 
 ## What does not belong here
 

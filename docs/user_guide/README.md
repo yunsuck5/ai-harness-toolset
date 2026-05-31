@@ -9,4 +9,4 @@ This folder holds **human-facing operation, evaluation, and adoption guides** �
 
 ## Access pattern and boundary
 
-Read these when **a human operates or evaluates the tool**. A `user_guide/` document is **not** a policy or contract authority: AI/operator execution policy lives in `docs/policies/`, artifact/protocol contracts in `docs/contracts/**`, the current next-action queue in `docs/current/`, and active decisions in `docs/decisions/`. Where this guide summarizes those, it points to them rather than redefining them.
+Read these when **a human operates or evaluates the tool**. A `user_guide/` document is **not** a policy or contract authority: AI/operator execution policy lives in `docs/policies/`, artifact/protocol contracts in `docs/contracts/**`, question→authority routing in `docs/current/SOURCE_OF_TRUTH.md` (current progress / next action is answered on demand — `docs/policies/DOCS_OPERATING_MODEL.md` §6), and active decisions in `docs/decisions/`. Where this guide summarizes those, it points to them rather than redefining them.

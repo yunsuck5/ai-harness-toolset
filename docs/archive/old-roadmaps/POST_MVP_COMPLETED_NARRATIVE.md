@@ -1,6 +1,6 @@
 # POST-MVP Completed — detailed closeout narrative (archived)
 
-> Historical / superseded-location material. This is the full commit-bound closeout narrative that was previously inline in `docs/decisions/POST_MVP_PLAN.md` §10 "Completed (source repo side)". It is preserved here verbatim for historical context. **Do not use it as current status** — current status lives in `docs/systems/install-update/STATUS.md`, `docs/systems/review/STATUS.md`, `docs/systems/brief/STATUS.md` (compact completed-ledgers), and the current summary in `docs/current/PROJECT_STATE.md`. See `docs/archive/README.md` for the archive authority restriction.
+> Historical / superseded-location material. This is the full commit-bound closeout narrative that was previously inline in `docs/decisions/POST_MVP_PLAN.md` §10 "Completed (source repo side)". It is preserved here verbatim for historical context. **Do not use it as current status** — current status lives in `docs/systems/install-update/STATUS.md`, `docs/systems/review/STATUS.md`, `docs/systems/brief/STATUS.md` (compact completed-ledgers); "what is done / what remains" is answered on demand (`docs/policies/DOCS_OPERATING_MODEL.md` §6). See `docs/archive/README.md` for the archive authority restriction.
 
 ## Completed (source repo side) — verbatim narrative
 

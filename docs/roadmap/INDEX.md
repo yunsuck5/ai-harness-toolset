@@ -8,7 +8,7 @@ This INDEX's existence does not by itself approve any implementation, source/doc
 
 - install/update/global-adoption current state → `docs/systems/install-update/STATUS.md` + `DEFERRED.md`
 - review → `docs/systems/review/STATUS.md`; brief → `docs/systems/brief/STATUS.md` + `DEFERRED.md`
-- overall entrypoints → `docs/current/SOURCE_OF_TRUTH.md` (question→authority), `docs/current/PROJECT_STATE.md` (summary), `docs/current/NEXT_ACTIONS.md` (active queue)
+- overall entrypoint → `docs/current/SOURCE_OF_TRUTH.md` (question→authority); current progress / remaining work / next action is answered on demand (`docs/policies/DOCS_OPERATING_MODEL.md` §6), not from a committed mirror (the former `docs/current/PROJECT_STATE.md` / `NEXT_ACTIONS.md` mirrors were removed)
 - post-MVP numbered remaining order routing view → `docs/roadmap/CURRENT_MILESTONES.md` (authority = `docs/decisions/POST_MVP_PLAN.md` §11)
 
 ## 2. Relocated docs (formerly in `docs/roadmap/`)
@@ -40,5 +40,5 @@ Any source/doc change under `docs/roadmap/` goes through the normal Codex review
 
 ## 6. Source-of-truth relationship
 
-- The docs placement/structure authority is `docs/README.md`; current authority lives under `docs/current/**` and the per-system `docs/systems/<system>/STATUS.md`.
+- The docs placement/structure authority is `docs/README.md`; question→authority routing lives in `docs/current/SOURCE_OF_TRUTH.md`, and current status lives in the per-system `docs/systems/<system>/STATUS.md`.
 - This INDEX is a routing note for `docs/roadmap/` only; it does not override any relocated doc's contract/decision.

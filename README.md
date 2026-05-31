@@ -140,7 +140,7 @@ The marker text `AI_HARNESS_TOOLSET_GLOBAL` is the canonical form for both snipp
 
 ## Documentation map
 
-**Start here for current state.** `docs/current/SOURCE_OF_TRUTH.md` routes any question to the document that answers it (with priority on conflict); `docs/current/PROJECT_STATE.md` is the top-level current summary; `docs/current/NEXT_ACTIONS.md` is the active queue. Per-system status lives under `docs/systems/<system>/STATUS.md` (+ `BACKLOG.md` / `DEFERRED.md`). Historical / superseded material lives under `docs/archive/` (not current guidance — see `docs/archive/README.md`).
+**Start here for current state.** `docs/current/SOURCE_OF_TRUTH.md` routes any question to the document that answers it (with priority on conflict). "What is done / what remains / what to do next" is answered **on demand** — ask the local agent for a status briefing, or read per-system status directly (the on-demand status-briefing model is `docs/policies/DOCS_OPERATING_MODEL.md` §6). Per-system status lives under `docs/systems/<system>/STATUS.md` (+ `BACKLOG.md` / `DEFERRED.md`); the numbered remaining order is `docs/roadmap/CURRENT_MILESTONES.md`. (There is no committed project-current summary or active-queue file — the former `docs/current/PROJECT_STATE.md` / `NEXT_ACTIONS.md` mirrors were removed.) Historical / superseded material lives under `docs/archive/` (not current guidance — see `docs/archive/README.md`).
 
 The active operational docs below are organized by **access pattern** under `docs/` scope folders — the docs placement authority is `docs/README.md`. Artifact/protocol contracts live under `docs/contracts/<area>/`, task-scoped execution policies under `docs/policies/`, project identity under `docs/project/`, active decisions under `docs/decisions/`, and the human guide under `docs/user_guide/`; `docs/` root holds only `README.md`. The per-system `STATUS.md` docs route to these as authority rather than replacing them (see `docs/current/SOURCE_OF_TRUTH.md`). The earlier flat-root "Policy A" layer is superseded by this access-pattern structure.
 
@@ -166,9 +166,7 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 
 | Path | Role | One-line role |
 |---|---|---|
-| `docs/current/SOURCE_OF_TRUTH.md` | active operational | Question → authoritative document (Primary / Secondary / Implementation / Historical / Do-not-use). |
-| `docs/current/PROJECT_STATE.md` | active operational | Top-level current summary + compact completed-milestone ledger. |
-| `docs/current/NEXT_ACTIONS.md` | active operational | Active queue only. |
+| `docs/current/SOURCE_OF_TRUTH.md` | active operational | Question → authoritative document (Primary / Secondary / Implementation / Historical / Do-not-use). The only file under `docs/current/`. |
 | `docs/systems/install-update/STATUS.md` (+ `DEFERRED.md`, `BACKLOG.md`) | active operational | install/update/global-adoption status, deferred, and open backlog. |
 | `docs/systems/review/STATUS.md` (+ `BACKLOG.md`) | active operational | review subsystem status and open backlog. |
 | `docs/systems/brief/STATUS.md` (+ `DEFERRED.md`) | active operational | Brief primitive status and BF Level 3 deferred. |
