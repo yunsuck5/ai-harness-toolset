@@ -54,10 +54,13 @@ Start from `docs/user_guide/` for operating and evaluating the tool, and `README
 
 Do not place AI/operator execution policy under `user_guide/`. Do not place artifact contracts under `policies/`. Do not put task-scoped or conditional policy into always-on priming. Do not leave any markdown at `docs/` root except this file. Do not preserve a location merely because it was recently committed or heavily referenced.
 
-## 10. Relationship to `docs/current/SOURCE_OF_TRUTH.md`
+## 10. Relationship to `docs/current/SOURCE_OF_TRUTH.md` and the operating model
 
-- `docs/README.md` (this file): the docs **structure/placement** policy.
+- `docs/README.md` (this file): the docs **structure/placement** policy (which folder a doc belongs in).
 - `docs/current/SOURCE_OF_TRUTH.md`: per-question **authority routing** (which document answers which question, and the priority order on conflict).
+- `docs/policies/DOCS_OPERATING_MODEL.md`: the docs **change/closeout flow** — how an edit propagates top-down into `docs/current/` and per-system docs, the per-system `STATUS.md` shape/altitude contract, the `BACKLOG.md` closed-row tombstone rule, the `NEXT_ACTIONS.md` selected-action-only rule, and the two-level closeout reconciliation gate. Read it when changing docs or closing out work.
+
+These three are complementary single-home authorities: on overlap, placement defers to this file, question-routing to `SOURCE_OF_TRUTH.md`, and change/closeout process to `DOCS_OPERATING_MODEL.md`.
 
 ## 11. Reference update rule when moving docs
 
