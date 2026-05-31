@@ -1700,3 +1700,67 @@ Describe 'install-update — Phase 3.7 cleanup / backup UX micro-polish docs' {
         }
     }
 }
+
+Describe 'install-update — IU-B-10 uninstall package-discovery docs hardening' {
+
+    BeforeAll {
+        $script:IUB10RootReadme = Join-Path $script:RepoRoot 'templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md'
+        $script:IUB10ClaudeSnip = Join-Path $script:RepoRoot 'snippets/CLAUDE_SNIPPET.md'
+        $script:IUB10CodexSnip  = Join-Path $script:RepoRoot 'snippets/AGENTS_SNIPPET.md'
+    }
+
+    It 'IU-B-10-T1: the installed root README makes the official uninstaller discoverable inside the package hierarchy (current\scripts), with dry-run -> -Apply' {
+        $readme = Get-Content -LiteralPath $script:IUB10RootReadme -Raw -Encoding UTF8
+        # An "Uninstalling this install" landing-page section exists.
+        $readme | Should -Match '(?i)Uninstalling this install'
+        # The official uninstaller name + that it lives UNDER current\scripts (not the install-root top level).
+        $readme | Should -Match 'uninstall-global\.ps1'
+        $readme | Should -Match 'current\\scripts'
+        # dry-run (default) then -Apply, mirroring the activation flow.
+        $readme | Should -Match '(?i)dry-run'
+        $readme | Should -Match '-Apply'
+        # Footprint-zero language (official uninstaller flow, not a manual delete).
+        $readme | Should -Match '(?i)footprint'
+        $readme | Should -Match '(?i)official uninstaller'
+    }
+
+    It 'IU-B-10-T2: the root README names the Codex surface target set (default + CODEX_HOME + override precedence)' {
+        $readme = Get-Content -LiteralPath $script:IUB10RootReadme -Raw -Encoding UTF8
+        $readme | Should -Match '\.codex\\AGENTS\.md'      # default Codex surface
+        $readme | Should -Match 'CODEX_HOME'               # %CODEX_HOME%\AGENTS.md when set
+        $readme | Should -Match 'AGENTS\.override\.md'     # override precedence
+    }
+
+    It 'IU-B-10-T3: the root README explains block-only AGENTS.md 0-byte is correct (not corruption) and manual cleanup is a fallback, not a dogfood' {
+        $readme = Get-Content -LiteralPath $script:IUB10RootReadme -Raw -Encoding UTF8
+        $readme | Should -Match '0 bytes'
+        $readme | Should -Match '(?i)block-only'
+        $readme | Should -Match '(?i)not corruption'
+        $readme | Should -Match '(?i)fallback'
+        $readme | Should -Match '(?i)not.*(an )?official uninstall|not.*dogfood'
+    }
+
+    It 'IU-B-10-T4: the root README uninstall section is hygiene-clean (no Tier A/B deployable-reference violations)' {
+        $readme = Get-Content -LiteralPath $script:IUB10RootReadme -Raw -Encoding UTF8
+        foreach ($lit in $script:TierA) { $readme | Should -Not -Match ([regex]::Escape($lit)) }
+        foreach ($rx in $script:TierB)  { $readme | Should -Not -Match $rx }
+    }
+
+    It 'IU-B-10-T5: INSTALL.md §7.3 records that the README landing page carries uninstall discovery (parallel to update)' {
+        $md = Get-Content -LiteralPath $script:InstallMd -Raw -Encoding UTF8
+        $md | Should -Match 'uninstall-global\.ps1'
+        $md | Should -Match 'current\\scripts'
+        $md | Should -Match 'IU-B-10'
+        $md | Should -Match 'CODEX_HOME'
+        $md | Should -Match '(?i)package hierarchy discovery'
+    }
+
+    It 'IU-B-10-T6: snippets carry NO operator uninstall procedure (the discovery guidance lives only in the root README / INSTALL.md)' {
+        foreach ($p in @($script:IUB10ClaudeSnip, $script:IUB10CodexSnip)) {
+            Test-Path -LiteralPath $p -PathType Leaf | Should -BeTrue
+            $body = Get-Content -LiteralPath $p -Raw -Encoding UTF8
+            $body | Should -Not -Match '(?i)uninstall-global'
+            $body | Should -Not -Match '(?i)Uninstalling this install'
+        }
+    }
+}

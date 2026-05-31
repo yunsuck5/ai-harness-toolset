@@ -40,6 +40,32 @@ After explicit approval, apply activation with `current/scripts/activate-global.
 
 `-Apply` runs only after an all-surface preflight passes (otherwise it writes nothing). The dry-run previews all three surfaces — managed blocks as a **compact change summary** (add `-ShowFullDiff` for the full before/after), the skill mirror as source/destination hash + `create | overwrite | unchanged` action + an overwrite notice. Activation is always a **separate explicit step**; `update-source` never applies it and prints these exact commands for you when it reports `activation_pending`.
 
+## Uninstalling this install ("uninstall ai-harness-toolset")
+
+Uninstall is an **official uninstaller flow**, not a manual delete or hand-rewrite. The toolset ships a deterministic uninstaller **inside this same installed package** — find it the way you find the install/update entrypoints: look **inside the package hierarchy**, not just at this install-root top level. The official uninstaller is:
+
+- **`current\scripts\uninstall-global.ps1`** — it lives **under `current\scripts\`** inside this install root, next to `install-global.ps1` / `update-global.ps1` / `activate-global.ps1`. It is **not** at this install-root top level (which holds `README.md` + `current/` + the three sibling `*.json` files, and may also hold a transient `source-cache/` and/or a `log/` run-evidence tree), so discovering it means descending into `current\scripts\` — exactly as you would find the install/update scripts. Do not conclude "there is no uninstaller" from the top level alone.
+
+Run it **dry-run first, then apply** (mirrors the activation flow — default is read-only, no `-Apply`):
+
+- dry-run preview (default): `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\uninstall-global.ps1"`
+- apply: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\uninstall-global.ps1" -Apply`
+
+With no path arguments it targets the default global install (`%USERPROFILE%\.claude\ai-harness-toolset`). `-Apply` reduces the **global ai-harness footprint to zero** and verifies it: this install root (`current/` + the three sibling files + this `README.md`), the review skill mirror `…\.claude\skills\ai-harness-review\`, and the **managed block** in both instruction files. The two instruction files are **never deleted** — only the marker-bounded `AI_HARNESS_TOOLSET_GLOBAL` span is excised, and your content outside the markers is preserved byte-for-byte.
+
+**Both managed-block surfaces are targeted — including Codex.** The official uninstaller excises the marker span from:
+
+- the Claude managed block in `%USERPROFILE%\.claude\CLAUDE.md`, and
+- the **Codex** managed block at `%USERPROFILE%\.codex\AGENTS.md` by default, or `%CODEX_HOME%\AGENTS.md` when the `CODEX_HOME` environment variable is set (an `AGENTS.override.md` in that scope takes precedence when present).
+
+Forgetting the Codex surface is the most common manual-cleanup mistake — the official uninstaller targets it for you, so prefer it over a hand delete.
+
+**A block-only `AGENTS.md` may become 0 bytes — that is the correct outcome, not corruption.** If a Codex `AGENTS.md` (or `AGENTS.override.md`) held *only* the managed block, excising the marker span leaves an empty, 0-byte file. The uninstaller never deletes the user-owned instruction file, so a 0-byte result is the **expected** footprint-zero end state for a block-only file — not damage to recover from.
+
+**Manual cleanup is a fallback, not the flow — and not a dogfood.** Only fall back to hand-deleting the install root or hand-rewriting the managed blocks when the official uninstaller is genuinely unavailable (e.g. a legacy payload that predates `uninstall-global.ps1`) or has failed; for a legacy payload, the in-contract route is to clone the latest source and run its `scripts/uninstall-global.ps1 -InstallArea <this directory>` rather than deleting by hand. A manual partial cleanup is **not** an official uninstall and must **not** be recorded as an uninstall dogfood — manual cleanup easily misses the Codex `%USERPROFILE%\.codex\AGENTS.md` managed block, leaving a stale marker span that then needs a separate corrective removal.
+
+For the full uninstall contract (footprint-zero criterion, the temp-finalizer trampoline, the explicit non-targets, the dry-run/apply/verify split, and the failure tiers), use the **latest source clone's `INSTALL.md`** (§11 (b)).
+
 ## Notes
 
 - This `README.md` is a **managed install artifact** — a canonical output of a normal install and of any payload-rewriting `update-source`, materialized deterministically from the in-payload template. `verify` checks that it exists and is byte-identical to that template.

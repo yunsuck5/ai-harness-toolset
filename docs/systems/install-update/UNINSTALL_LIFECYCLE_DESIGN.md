@@ -221,3 +221,37 @@ On the dogfood machine this boundary was crossed deliberately: the first-time in
 At the time of the IU-B-08 closeout this was a documentation finding only; no script behavior was changed, and folding the 0-pair first-time insertion into deterministic tooling (vs. keeping it an operator-performed manual splice) was flagged as a separate scoped decision.
 
 > **Update (IU-B-09 — boundary CLOSED).** That separate scoped decision was taken and implemented as **IU-B-09**. First-time insertion is no longer a manual operator splice: `scripts/lib/managed-block.ps1` adds the pure `Add-ManagedBlock` primitive and `scripts/apply-managed-block.ps1` adds an `-Insert` mode (absent target → create a 1-pair file; 0-pair target → append the snippet block preserving marker-outside content byte-for-byte; 1-pair → fail-fast back to the replace path; malformed / pre-existing `.amb-backup` / BOM / U+FFFD → fail-fast), reusing this tool's hardened IO. The fresh-install entrypoint `scripts/install-global.ps1` drives this insertion during its activation bootstrap, so a clean reinstall after a full uninstall (the 0-pair case above) is now closed by deterministic tooling — **still under explicit install approval**, just no longer hand-spliced. The steady-state replacement tooling (`activate-global.ps1` / `apply-managed-block.ps1` default mode) is unchanged: `-Insert` and the default (replace) mode are mutually exclusive, each fail-fasting in the other's domain, preserving replace-only semantics. See `INSTALL.md` §6.1 / §10 / §11 (b) and `STATUS.md` (IU-B-09 bullet).
+
+## 14. Main-PC manual partial uninstall incident — package-discovery hardening (IU-B-10)
+
+This section records a **primary-work-machine uninstall incident** and its docs hardening. It is **not** an official uninstall dogfood; it is the opposite — a manual partial uninstall that bypassed the official uninstaller. It is recorded so the root cause is classified honestly and the fix is bound to it.
+
+### 14.1 What happened (as-reported)
+
+On the **primary work machine**, after a successful global update to the latest payload, the operator was asked to uninstall (`ai-harness-toolset 언인스톨해줘`). The official `scripts/uninstall-global.ps1` was **not discovered or run**. Instead:
+
+- The operator inspected only the **install-root top level** (`%USERPROFILE%\.claude\ai-harness-toolset\current\`) and **did not descend into `current\scripts\`**, where the official uninstaller actually lives.
+- The operator **did not read** the installed root `README.md` / `INSTALL.md`, so the official uninstaller flow (dry-run → `-Apply`, footprint-zero, the two managed-block surfaces) was never surfaced.
+- The teardown was performed as a **manual cleanup** (hand deletion / rewrite), which **missed the Codex `%USERPROFILE%\.codex\AGENTS.md` managed block** — a stale marker span was left behind.
+- A subsequent **corrective cleanup** removed the leftover `AGENTS.md` marker span.
+
+The end state was eventually footprint-zero, but **only after a corrective pass**, and the path taken was a manual partial uninstall, not the official uninstaller.
+
+### 14.2 Root-cause classification
+
+The root cause is a **installed-package-hierarchy discovery failure**, **not**:
+
+- **not** a snippets / global-instruction deficiency — the role-neutral `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` payload is not the place for an operator uninstall procedure (it carries none, by design), so adding uninstall prose there would have been the wrong fix and is explicitly **not** done;
+- **not** a code-behavior bug — `scripts/uninstall-global.ps1` + `scripts/uninstall-finalizer.ps1` already implement footprint-zero across both managed-block surfaces (including the Codex effective surface) and the §13 isolated-machine dogfood cleared; the official uninstaller, had it been run, would have removed the Codex block too.
+
+The actual gap: just as install/update succeed because the operator follows the installed root `README.md` / package docs into `current\scripts\`, **uninstall had no equally discoverable landing-page pointer** — so the official uninstaller in `current\scripts\` was not found from the install-root top level.
+
+### 14.3 Fix — docs/template/test hardening (no code behavior change)
+
+IU-B-10 closes the gap with discovery hardening only (the uninstall code is unchanged):
+
+- The **installed root README template** (`templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md`) gains an **"Uninstalling this install"** section that, symmetric to the update landing-page guidance, makes the official uninstaller discoverable from the same package hierarchy: it names `current\scripts\uninstall-global.ps1` (and that it lives **under `current\scripts\`**, not at the install-root top level), the dry-run(default) → `-Apply` flow, the footprint-zero scope, the **Codex surface target set** (default `%USERPROFILE%\.codex\AGENTS.md`, `%CODEX_HOME%\AGENTS.md` when `CODEX_HOME` is set, `AGENTS.override.md` precedence), the **block-only `AGENTS.md` → 0-byte is the correct footprint-zero outcome (not corruption)** note, and the **manual-cleanup-is-a-fallback-not-a-dogfood** rule (with the legacy-payload in-contract route = clone latest source and run its `uninstall-global.ps1 -InstallArea <this dir>`).
+- `INSTALL.md` §7.3 is extended to state that the README landing page carries this uninstall discovery guidance (parallel to update), so the contract and the materialized artifact stay in sync.
+- Tests lock the README/contract wording and assert the snippets remain uninstall-procedure-free.
+
+This is a **maintenance-scoped** change under the install/update lifecycle subsystem's LTS posture (`STATUS.md` LTS closeout: changes require a scoped `/goal` + Codex review gate). It asserts **no** new dogfood and performs **no** real install/update/uninstall.
