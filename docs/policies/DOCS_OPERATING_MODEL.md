@@ -64,10 +64,12 @@ A `STATUS.md` answers exactly one question: **"What is this subsystem's current 
 **Does NOT belong in STATUS.md (point to it instead):**
 - Open backlog item bodies (→ BACKLOG.md).
 - Deferred item bodies already in DEFERRED.md.
-- Long incident / root-cause narratives (→ `docs/archive/` or the repo-sibling `polishing/` record).
-- Full closeout reports, dogfood / retest transcripts (→ `docs/archive/` or `polishing/`).
+- Long incident / root-cause narratives (→ `docs/archive/`).
+- Full closeout reports, dogfood / retest transcripts (→ `docs/archive/`).
 - Implementation plans, design contracts (→ their authority doc).
 - Multi-paragraph reconciliation essays (record the supersession as a one-line ledger/pointer change, not an essay).
+
+**`polishing/` is not a durable sink.** The externalization target above is the git-tracked `docs/archive/` tree only. The repo-sibling `polishing/` tree is pre-commit local scratch (gitignored, disposable); narrative may be *drafted* there, but a committed doc must never point to `polishing/` — or any other gitignored / local path — as a durable record location. Anything that must persist is promoted into `docs/archive/`.
 
 **Altitude ceiling:** if a current-state bullet has grown into multiple paragraphs of history, that is a signal the narrative must move behind a pointer and the bullet must shrink to current posture. This contract defines the target shape for **new and revised** STATUS content; it does **not** by itself authorize a retroactive rewrite of any existing STATUS doc — that is a separate scoped batch.
 
@@ -77,8 +79,8 @@ A `STATUS.md` answers exactly one question: **"What is this subsystem's current 
 
 `BACKLOG.md` is the open-work entrypoint. When a backlog row closes:
 
-- The row's **authoritative closed record moves to the subsystem `STATUS.md` completed ledger** (compact row) and, if it has long narrative, to `docs/archive/` / `polishing/`.
-- In `BACKLOG.md` the row is **reduced to a one-line tombstone** for ID continuity: `**[CLOSED]** <ID> — <one-line outcome>; see STATUS ledger <ID> (+ archive/polishing pointer if any).` A tombstone carries no closeout/incident narrative.
+- The row's **authoritative closed record moves to the subsystem `STATUS.md` completed ledger** (compact row) and, if it has long narrative, to `docs/archive/`.
+- In `BACKLOG.md` the row is **reduced to a one-line tombstone** for ID continuity: `**[CLOSED]** <ID> — <one-line outcome>; see STATUS ledger <ID> (+ archive pointer if any).` A tombstone carries no closeout/incident narrative.
 - A `**[RETIRED]**` row (closed by a not-doing decision) follows the same one-line tombstone form with a pointer to where the retirement rationale lives.
 
 The tombstone exists so a reader scanning BACKLOG sees only open work plus short markers that an ID was used and closed — never full closed bodies that turn BACKLOG into a second status/archive surface.
