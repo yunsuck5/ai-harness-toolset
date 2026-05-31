@@ -10,7 +10,7 @@
 
 - 운영 계층 결정: `docs/decisions/GLOBAL_ADOPTION_DECISION.md`
 - post-MVP 결정 기록: `docs/decisions/POST_MVP_PLAN.md`
-- path handling audit: `docs/archive/audits/TOOLROOT_PROJECTROOT_AUDIT.md`
+- path handling audit: preserved in git history (its decisions are carried in this contract)
 - Claude skill global 절차: `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md`
 - global install / update 운영 모델: `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`
 - subsystem scope: `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`
@@ -18,13 +18,13 @@
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
-> **Review-cycle wording supersede note (3rd reconciliation, 문서 전체 적용).** 본 design doc 의 §2 inputs, §5 channel chain example, §6 implementation split, §8 D7 untracked-detection branch, §10 verification scenarios 의 wording 은 `scripts/review-cycle.ps1` 와 그 sidecar artifact (`meta.json`, `result.json`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` parameter contracts) 을 기준으로 작성된 design 시점의 record 다. 그 design 위에 이뤄진 implementation 은 canonical task/pass topology 채택 (POST_MVP_PLAN.md §10 Completed `c81fe45`) 으로 갱신되었으며, 현행 normal operator path 는 두 단계 entry (`scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>]` → `scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>`) 와 canonical record `<ProjectRoot>/log/review/<review-task-id>/pass-NN/{input.md, result.md}` 두 파일이다. `scripts/review-cycle.ps1`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` 은 normal operator path 가 아니며 `docs/archive/backlog/review.md` "Removed legacy review artifacts" 의 historical reason 으로 보존된다. D1–D9 결정 자체 (channel chain 정의, mode-neutral snippet body, SKILL.md script root resolution, verifier toolRoot binding, untracked exclusion, self-target enforcement, ProjectRoot CWD advisory 등) 는 본 supersede 와 무관하게 그대로 유효하다 — wording 안의 review-cycle / sidecar artifact 참조만 현행 contract 기준으로 읽는다.
+> **Review-cycle wording supersede note (3rd reconciliation, 문서 전체 적용).** 본 design doc 의 §2 inputs, §5 channel chain example, §6 implementation split, §8 D7 untracked-detection branch, §10 verification scenarios 의 wording 은 `scripts/review-cycle.ps1` 와 그 sidecar artifact (`meta.json`, `result.json`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` parameter contracts) 을 기준으로 작성된 design 시점의 record 다. 그 design 위에 이뤄진 implementation 은 canonical task/pass topology 채택 (POST_MVP_PLAN.md §10 Completed `c81fe45`) 으로 갱신되었으며, 현행 normal operator path 는 두 단계 entry (`scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>]` → `scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>`) 와 canonical record `<ProjectRoot>/log/review/<review-task-id>/pass-NN/{input.md, result.md}` 두 파일이다. `scripts/review-cycle.ps1`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` 은 normal operator path 가 아니며 git history 의 historical reason 으로 보존된다. D1–D9 결정 자체 (channel chain 정의, mode-neutral snippet body, SKILL.md script root resolution, verifier toolRoot binding, untracked exclusion, self-target enforcement, ProjectRoot CWD advisory 등) 는 본 supersede 와 무관하게 그대로 유효하다 — wording 안의 review-cycle / sidecar artifact 참조만 현행 contract 기준으로 읽는다.
 
 ---
 
 ## 1. Purpose
 
-`docs/archive/audits/TOOLROOT_PROJECTROOT_AUDIT.md` §8 은 D1–D9 의 결정 없이는 shared / global mode 의 invocation contract 가 확정되지 않는다고 기록했다. 본 문서는 그 D1–D9 에 대한 design 단계의 제안 결정을 기록하고, 그 결정 위에 invocation contract 의 shape 를 정의한다.
+earlier ToolRoot/ProjectRoot path-handling audit work (preserved in git history) §8 은 D1–D9 의 결정 없이는 shared / global mode 의 invocation contract 가 확정되지 않는다고 기록했다. 본 문서는 그 D1–D9 에 대한 design 단계의 제안 결정을 기록하고, 그 결정 위에 invocation contract 의 shape 를 정의한다.
 
 본 design 의 책임은 다음으로 한정된다.
 
@@ -49,9 +49,9 @@
 
 본 design 은 다음을 input 으로 사용한다.
 
-- `docs/archive/audits/TOOLROOT_PROJECTROOT_AUDIT.md` §6 의 gap G1–G10.
-- 같은 audit §7 의 blocker B1–B5.
-- 같은 audit §8 의 required decisions D1–D9.
+- the earlier path-handling audit (preserved in git history) §6 의 gap G1–G10.
+- 그 earlier audit (git history) §7 의 blocker B1–B5.
+- 그 earlier audit (git history) §8 의 required decisions D1–D9.
 - `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §1 의 layer decision, §4 의 adoption direction, §6 의 marker policy, §7 의 explicit-trigger discipline, §8 의 ToolRoot / ProjectRoot conceptual split, §10 의 non-goals.
 - `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md` §4–§7 의 Claude skill global / update / removal 절차.
 - `scripts/lib/path.ps1` 의 현재 path 모델 (read-only inspection).
@@ -73,7 +73,7 @@
 - `TemplateRoot` — `<ToolRoot>/templates`.
 - `ScriptRoot` — `<ToolRoot>/scripts`.
 
-세 layout 의 framing 은 audit §2 와 동일하다.
+세 layout 의 framing 은 그 earlier audit (git history) §2 와 동일하다.
 
 - **Project-local copy mode** — `ToolRoot == <ProjectRoot>/.ai-harness`. legacy / transitional.
 - **Shared / global mode** — `ToolRoot` 가 ProjectRoot 와 독립적인 경로. preferred direction. as-built 의 default 연결 방식은 D1 channel 3 (global stable install) 이다.
@@ -521,7 +521,7 @@ design 단계에서 결정을 내렸지만, implementation / 운영 단계에서
 ## 10. Source-of-truth 관계
 
 - 본 문서는 shared / global mode invocation contract 의 design 기록이다.
-- D1–D9 의 결정은 본 문서 안에서 명문화되며, `docs/archive/audits/TOOLROOT_PROJECTROOT_AUDIT.md` §8 의 같은 질문을 닫는다.
+- D1–D9 의 결정은 본 문서 안에서 명문화되며, the earlier path-handling audit (preserved in git history) §8 의 같은 질문을 닫는다.
 - 본 design 이 §1 의 source-of-truth 문서들과 상충하면 위 문서들이 우선한다.
 - 본 design 은 review verdict (`yes` / `no` / `yes with risk`) 를 commit / push / publish / merge / release / adoption 의 자동 승인으로 해석하지 않는다는 contract 를 그대로 유지한다.
 - §6 의 implementation split 각 step 은 별도 scoped 승인을 필요로 한다. 본 문서가 step 의 implementation 을 자동 승인하지 않는다.

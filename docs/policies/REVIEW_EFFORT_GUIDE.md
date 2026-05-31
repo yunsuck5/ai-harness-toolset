@@ -136,7 +136,7 @@ current canonical review topology 에서 review 대상 파일은 각 pass 의 `i
 - docs-only 변경은 무관한 script / template 을 포함하지 않는다. 반대로 script behavior 변경은 그 contract docs 만 적절히 포함하고, 무관한 docs 를 추가하지 않는다.
 - `log/` 아래 runtime artifact (`log/review/<review-task-id>/pass-NN/...`, `log/chatlog/...`, `log/evidence/...`, `log/brief/...`) 는 target 으로 지정하지 않는다. 이는 generated read-only record 이며 source-of-truth 가 아니다.
 
-target 목록은 `input.md` 의 informational `## Target files` section 한 곳에만 둔다. 별도 list 파일이나 sidecar artifact (예: 외부 staging `*.list`) 는 본 contract 의 일부가 아니다 — 그 형태의 legacy artifact 는 `docs/archive/backlog/review.md` / `docs/archive/backlog/operations.md` 에 historical reason 으로만 보존된다.
+target 목록은 `input.md` 의 informational `## Target files` section 한 곳에만 둔다. 별도 list 파일이나 sidecar artifact (예: 외부 staging `*.list`) 는 본 contract 의 일부가 아니다 — 그 형태의 legacy artifact 는 git history 에 historical reason 으로만 보존된다.
 
 ---
 

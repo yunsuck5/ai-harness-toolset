@@ -339,7 +339,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/log-init.ps1
 
 ## 10. review artifact 역할
 
-canonical review artifact 는 `log/review/<review-task-id>/pass-NN/` 의 두 파일 — `input.md` (Claude Code 작성) 와 `result.md` (Codex 작성) — 뿐이며, 다른 sidecar 는 contract 의 일부가 아니다. 두 파일의 작성자 / required heading / shape 등 **전체 계약은 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 가 source-of-truth** 다 — 본 절은 그 계약을 중복 정의하지 않고 그곳으로 routing 한다. removed-legacy artifact shape 의 historical reference 는 `docs/archive/backlog/review.md` / `docs/archive/backlog/operations.md` 에 격리되어 있으며 operator path 가 아니다.
+canonical review artifact 는 `log/review/<review-task-id>/pass-NN/` 의 두 파일 — `input.md` (Claude Code 작성) 와 `result.md` (Codex 작성) — 뿐이며, 다른 sidecar 는 contract 의 일부가 아니다. 두 파일의 작성자 / required heading / shape 등 **전체 계약은 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 가 source-of-truth** 다 — 본 절은 그 계약을 중복 정의하지 않고 그곳으로 routing 한다. removed-legacy artifact shape 의 historical reference 는 git history 에 보존되어 있으며 operator path 가 아니다.
 
 ---
 

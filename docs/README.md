@@ -36,7 +36,6 @@ The primary placement criterion is **how a document is read**, not how many topi
 | `docs/user_guide/` | human-facing operation / evaluation / adoption guides | when a human learns or evaluates the tool |
 | `docs/roadmap/` | roadmap/milestone routing only (INDEX, current milestones) | when checking remaining order |
 | `docs/backlog/` | backlog index/routing only | when looking up open work |
-| `docs/archive/` | historical/superseded material (`audits/`, `backlog/`, `legacy-mvp/`, `old-roadmaps/`); never current authority | only for historical context |
 
 ## 6. Where new documents belong
 
@@ -44,7 +43,7 @@ Ask, in order: (1) Is this *always-on for every task*? If yes, it belongs in the
 
 ## 7. How AI/operator should navigate docs
 
-Start from `docs/current/SOURCE_OF_TRUTH.md` for "which document is authoritative for this question." Open only the scope folder your task needs. Do not treat a `user_guide/` document as a policy/contract authority; do not treat `archive/` as current authority.
+Start from `docs/current/SOURCE_OF_TRUTH.md` for "which document is authoritative for this question." Open only the scope folder your task needs. Do not treat a `user_guide/` document as a policy/contract authority.
 
 ## 8. How humans should navigate docs
 
@@ -66,6 +65,6 @@ These three are complementary single-home authorities: on overlap, placement def
 
 Moving or splitting a document requires updating every inbound reference (in `docs/**`, `README.md`, and — path-only/comment-only — protected files when they reference the moved path). A document's section anchors referenced elsewhere must be preserved or explicitly remapped.
 
-## 12. Archive authority rule
+## 12. Historical preservation
 
-Material under `docs/archive/` is historical or superseded. Do not use it as current implementation, operation, install, or review guidance unless a task explicitly asks for historical context. When archive disagrees with current source-of-truth, current source-of-truth wins.
+Superseded / historical material is preserved in **git history**, not maintained as current docs (there is no separate archive docs tree). Current docs stay compact and self-contained; when a past decision is still operationally relevant, the active doc states it directly rather than pointing at retained narrative.

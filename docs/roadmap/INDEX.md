@@ -24,7 +24,6 @@ The former root-level roadmap docs now live in their access-pattern scope folder
 | shared/global invocation contract (D1–D9) | `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` |
 | review effort/cost guide | `docs/policies/REVIEW_EFFORT_GUIDE.md` |
 | skill global adopt/update/remove procedure | `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md` |
-| completed read-only audits | `docs/archive/audits/TOOLROOT_PROJECTROOT_AUDIT.md`, `docs/archive/audits/CLEAN_TARGET_SMOKE_CRITERIA.md` |
 
 ## 3. Remaining roadmap doc
 

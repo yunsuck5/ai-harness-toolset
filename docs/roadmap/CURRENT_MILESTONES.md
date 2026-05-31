@@ -13,4 +13,4 @@ The post-MVP **remaining-order** milestones, carried 1:1 from `docs/decisions/PO
 | 5 | `ai-harness-toolset` self-adoption (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9) | done — closed (resolved HEAD `8293878d`, apply 2026-05-25) | STATUS completed-ledger IU-13 |
 | 6 | Post-MVP closeout decision | deferred | DEFERRED IU-D-05 |
 
-Operations backlog track (`docs/archive/backlog/operations.md`) runs parallel to this numbered order; items 2·3 there support step 2 / step 5.
+Operations backlog track (open items consolidated in `docs/systems/install-update/BACKLOG.md`) runs parallel to this numbered order; its items support step 2 / step 5.

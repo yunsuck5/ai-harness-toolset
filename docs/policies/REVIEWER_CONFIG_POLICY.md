@@ -49,7 +49,7 @@ Current as-built status of each key (in terms of the canonical operator-facing f
 | `timeoutSeconds` | **Metadata-only / unenforced** — see below. |
 | `outputFormat`, `resultFile` | Dead config — read by no script. |
 
-> The canonical operator-facing artifact set is exactly `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` + `result.md` (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). Current scripts emit this canonical layout directly; sidecar files outside that pair (for example `meta.json`, `target-files.list`, `result.json`) are not produced on the operator path and are not part of the contract. Historical references to those removed-legacy artifacts live only in `docs/archive/backlog/review.md` "Removed legacy review artifacts" and are not operator paths.
+> The canonical operator-facing artifact set is exactly `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` + `result.md` (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). Current scripts emit this canonical layout directly; sidecar files outside that pair (for example `meta.json`, `target-files.list`, `result.json`) are not produced on the operator path and are not part of the contract. Historical references to those removed-legacy artifacts are preserved in git history and are not operator paths.
 
 ### `timeoutSeconds` status
 
@@ -61,7 +61,7 @@ Current as-built status of each key (in terms of the canonical operator-facing f
 - the Claude Code harness tool timeout — that is a separate harness-level value that governs the shell tool call and can trigger harness auto-background conversion;
 - a background-conversion control — it has no effect on whether a run is foregrounded or backgrounded.
 
-Whether to enforce, demote to explicit metadata-only, or remove `timeoutSeconds` is a separate future decision tracked in `docs/archive/backlog/operations.md`. This document does not decide it.
+Whether to enforce, demote to explicit metadata-only, or remove `timeoutSeconds` is a separate future decision tracked as review backlog candidate RV-B-02 (`docs/systems/review/BACKLOG.md`). This document does not decide it.
 
 ## Output location
 

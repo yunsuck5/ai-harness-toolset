@@ -1,6 +1,6 @@
 # Decisions
 
-This is the **active** decision record. Bootstrap-era / historical decisions have been moved to `docs/archive/legacy-mvp/BOOTSTRAP_DECISIONS.md` (historical context only — not current guidance). For question→authority routing see `docs/current/SOURCE_OF_TRUTH.md`.
+This is the **active** decision record. Bootstrap-era / historical decisions were extracted out of this file and are preserved in git history (historical context only — not current guidance). For question→authority routing see `docs/current/SOURCE_OF_TRUTH.md`.
 
 ## Active policy decisions
 
@@ -13,7 +13,7 @@ This is the **active** decision record. Bootstrap-era / historical decisions hav
 - context-pressure trigger / pre-compact capture is a future optional candidate, not MVP implementation
 - dependency boundary is canonical in `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md`
 - review result record contract is canonical in `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`
-- The canonical user-facing review entry is the two-step `scripts/review-prepare.ps1` + `scripts/review-run.ps1` flow (the legacy single-shot `review-cycle.ps1` driver has been removed from the operator path; see `docs/archive/backlog/review.md` "Removed legacy review artifacts" and `docs/decisions/POST_MVP_PLAN.md` §10 Completed `c81fe45` for the historical reason)
+- The canonical user-facing review entry is the two-step `scripts/review-prepare.ps1` + `scripts/review-run.ps1` flow (the legacy single-shot `review-cycle.ps1` driver has been removed from the operator path; see `docs/decisions/POST_MVP_PLAN.md` §10 Completed `c81fe45` and git history for the historical reason)
 - `review-run.ps1` uses strict `## Verdict` parsing; failed parse preserves the failed `pass-NN/` on disk as evidence
 - each pass directory `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` is write-once: a pre-existing pass is rejected; recovery is allocating a fresh `pass-NN` under the same `<review-task-id>`
 - `review-verify -RequireResult` validates completed-record binding against the canonical `input.md` + `result.md` pair

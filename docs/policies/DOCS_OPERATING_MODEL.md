@@ -43,7 +43,6 @@ Placement scope for each folder is defined in `docs/README.md` §5; the table be
 | `docs/systems/*/DEFERRED.md` | **Consciously-postponed work, each with a reopen condition.** An item without a reopen condition is not deferred (it is backlog, archive, or delete-candidate). | A duplicate of BACKLOG (deferred ≠ not-yet-started) or a closed-item store. |
 | `docs/roadmap/` | **Milestone routing only** (`INDEX.md`, `CURRENT_MILESTONES.md`): the numbered remaining-order *view*, routing to its authority. | A holder of decision/design/planning bodies, or a redefinition of the order (authority = `docs/decisions/POST_MVP_PLAN.md` §11). |
 | `docs/backlog/` | **Backlog routing/classification index only** (`INDEX.md`): where open candidates are classified to per-system BACKLOG. | A holder of item bodies. |
-| `docs/archive/` | **Historical / superseded material and detailed closeout narrative.** The home for the long-form narrative that STATUS must *not* inline. Never current authority. | Current implementation/operation/install/review guidance. |
 | `docs/decisions/` | **Active decision records** (what was decided and why, still carrying authority). | A current-status surface (status → `docs/systems/**`). |
 
 ---
@@ -59,17 +58,17 @@ A `STATUS.md` answers exactly one question: **"What is this subsystem's current 
 - Accepted residual risks carried into maintenance, each with a reopen pointer.
 - Explicit non-claims where a closeout could be over-read.
 - Maintenance posture.
-- Pointers to BACKLOG / DEFERRED / archive / design.
+- Pointers to BACKLOG / DEFERRED / design.
 
 **Does NOT belong in STATUS.md (point to it instead):**
 - Open backlog item bodies (→ BACKLOG.md).
 - Deferred item bodies already in DEFERRED.md.
-- Long incident / root-cause narratives (→ `docs/archive/`).
-- Full closeout reports, dogfood / retest transcripts (→ `docs/archive/`).
+- Long incident / root-cause narratives (not maintained as current docs — git history is the preservation mechanism).
+- Full closeout reports, dogfood / retest transcripts (not maintained as current docs — git history is the preservation mechanism).
 - Implementation plans, design contracts (→ their authority doc).
 - Multi-paragraph reconciliation essays (record the supersession as a one-line ledger/pointer change, not an essay).
 
-**`polishing/` is not a durable sink.** The externalization target above is the git-tracked `docs/archive/` tree only. The repo-sibling `polishing/` tree is pre-commit local scratch (gitignored, disposable); narrative may be *drafted* there, but a committed doc must never point to `polishing/` — or any other gitignored / local path — as a durable record location. Anything that must persist is promoted into `docs/archive/`.
+**No durable sink for externalized detail — git history is the preservation mechanism.** Current docs stay compact and source-managed; historical detail (long narratives, closeout reports, transcripts) is **not** maintained as current docs. If a past decision is still operationally relevant, the active doc states the decision **directly** — derived from current implemented behavior and current git-tracked source-managed docs — rather than pointing at externalized narrative. A committed doc must never use a durable pointer to a gitignored / local / scratch / runtime path (`log/**`, `polishing/**`, `repo_snapshot/**`, repo-sibling artifacts, runtime evidence, user/global files); durable pointers resolve only to git-tracked files or git commit/history.
 
 **Altitude ceiling:** if a current-state bullet has grown into multiple paragraphs of history, that is a signal the narrative must move behind a pointer and the bullet must shrink to current posture. This contract defines the target shape for **new and revised** STATUS content; it does **not** by itself authorize a retroactive rewrite of any existing STATUS doc — that is a separate scoped batch.
 
@@ -79,8 +78,8 @@ A `STATUS.md` answers exactly one question: **"What is this subsystem's current 
 
 `BACKLOG.md` is the open-work entrypoint. When a backlog row closes:
 
-- The row's **authoritative closed record moves to the subsystem `STATUS.md` completed ledger** (compact row) and, if it has long narrative, to `docs/archive/`.
-- In `BACKLOG.md` the row is **reduced to a one-line tombstone** for ID continuity: `**[CLOSED]** <ID> — <one-line outcome>; see STATUS ledger <ID> (+ archive pointer if any).` A tombstone carries no closeout/incident narrative.
+- The row's **authoritative closed record moves to the subsystem `STATUS.md` completed ledger** (compact row); any long narrative is not migrated into current docs — git history preserves it.
+- In `BACKLOG.md` the row is **reduced to a one-line tombstone** for ID continuity: `**[CLOSED]** <ID> — <one-line outcome>; see STATUS ledger <ID>.` A tombstone carries no closeout/incident narrative.
 - A `**[RETIRED]**` row (closed by a not-doing decision) follows the same one-line tombstone form with a pointer to where the retirement rationale lives.
 
 The tombstone exists so a reader scanning BACKLOG sees only open work plus short markers that an ID was used and closed — never full closed bodies that turn BACKLOG into a second status/archive surface.

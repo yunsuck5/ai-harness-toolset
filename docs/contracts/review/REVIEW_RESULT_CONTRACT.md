@@ -426,4 +426,4 @@ failed / incomplete pass (예: Codex 실패 또는 verdict parsing 실패로 `re
 - evidence file 의 freshness / hash / mtime binding, source-state staleness 의 자동 검증.
 - deterministic validation runner, automatic validation execution, JSON schema for evidence. 본 contract 는 evidence path referencing convention (§3a, Markdown-only) 만을 담는다.
 
-removed legacy artifact design 의 historical reason 은 `docs/archive/backlog/review.md` 및 `docs/archive/backlog/operations.md` 에 격리되어 있다. 그 항목은 operator path 가 아니며 normal workflow 의 일부도 아니다.
+removed legacy artifact design 의 historical reason 은 git history 에 보존되어 있다. 그 항목은 operator path 가 아니며 normal workflow 의 일부도 아니다.
