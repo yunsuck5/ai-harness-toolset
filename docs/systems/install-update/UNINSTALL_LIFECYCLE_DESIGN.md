@@ -164,7 +164,7 @@ Specific conditions:
 `INSTALL.md` §11's self-imposed boundary invariant requires that introducing a new entrypoint be a deliberate, scoped redefinition of §11 (a deterministic narrow entrypoint must not grow into the §11(a) productization/uninstaller-framework class). Accordingly:
 
 - `INSTALL.md` §11(b) lists **uninstall (`scripts/uninstall-global.ps1`)** as a deterministic narrow entrypoint — now **implemented** (batches 1–3) as a dry-run + `-Apply` + finalizer entrypoint, kept narrow and single-purpose. A large/interactive uninstaller framework, doctor/repair teardown, or any productized uninstaller remains §11(a) out-of-scope and the boundary invariant still holds.
-- The promotion gate that authorized implementation was satisfied: the `BACKLOG.md` IU-B-08 entry, scoped `/goal`s per batch, and a Codex review gate on each batch. The real-environment **dogfood** (isolated non-primary machine) of `-Apply` + reinstall verification is now **cleared** (§13); the entrypoint stays narrow and single-purpose. What remains is not implementation but **LTS readiness** (judged after the open Phase 4b / backlog items).
+- The promotion gate that authorized implementation was satisfied: the `BACKLOG.md` IU-B-08 entry, scoped `/goal`s per batch, and a Codex review gate on each batch. The real-environment **dogfood** (isolated non-primary machine) of `-Apply` + reinstall verification is now **cleared** (§13); the entrypoint stays narrow and single-purpose. The install/update lifecycle subsystem **LTS readiness is now CLOSED** (`STATUS.md` "install/update lifecycle — LTS readiness (subsystem closeout)"); the Phase 4b one-shot candidate is **RETIRED** (`BACKLOG.md` IU-B-07 [RETIRED]). Nothing remains for this uninstall entrypoint.
 
 ## 11. Decisions (resolved; as-built)
 
@@ -181,8 +181,8 @@ These were the implementation-prep open decisions (review task `20260529-uninsta
 ## 12. Relationship to other surfaces
 
 - `INSTALL.md` — operative install/activation contract; §11(b) carries the uninstall narrow entrypoint (implemented), §9.1/§10 the two mutation/removal classes and managed-block/skill rules this implementation reuses.
-- `docs/systems/install-update/STATUS.md` — records IU-B-08 batches 1–3 implemented and the isolated-machine dogfood cleared; remaining item is LTS readiness only.
-- `docs/systems/install-update/BACKLOG.md` — IU-B-08 implementation is closed out there; the dogfood + docs closeout are done, leaving LTS readiness as the tracked remainder.
+- `docs/systems/install-update/STATUS.md` — records IU-B-08 batches 1–3 implemented and the isolated-machine dogfood cleared; the install/update lifecycle subsystem LTS readiness is now CLOSED (see the LTS closeout section there).
+- `docs/systems/install-update/BACKLOG.md` — IU-B-08 implementation is closed out there; the dogfood + docs closeout are done, and the install/update lifecycle subsystem LTS readiness is CLOSED (IU-B-08 (c)); no IU-B-08 remainder.
 - `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` — operating model; a teardown/uninstall mention there is a candidate follow-up, not part of this doc-sync.
 
 ## 13. Isolated non-primary machine `-Apply` dogfood (as-run; cleared)

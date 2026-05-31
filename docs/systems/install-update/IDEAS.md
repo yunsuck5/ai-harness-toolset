@@ -11,14 +11,16 @@
 
 ## Relationship to other surfaces
 
-- `docs/systems/install-update/BACKLOG.md` (IU-B-* row) — implementation candidate 의 entry point. Phase 4b candidate (One-shot natural-language update completion / safe activation auto-apply) 의 triage-level row 는 BACKLOG.md 에 있으며, 그 row 가 본 IDEAS.md 의 항목 1 을 참조한다. 본 IDEAS.md 항목의 promotion-to-implementation 은 (1) reopen criteria 충족 + (2) BACKLOG row 의 explicit entry + (3) user 의 별도 scoped `/goal` + (4) Codex review gate 의 4 단계 모두 충족 시에만 가능.
+- `docs/systems/install-update/BACKLOG.md` (IU-B-* row) — entry point. The Phase 4b row (One-shot natural-language update completion / safe activation auto-apply) is `BACKLOG.md` IU-B-07, now **[RETIRED]** (removed from the post-MVP work list; not an active/open candidate), and it references 본 IDEAS.md 항목 1 (likewise retired). 본 IDEAS.md 항목의 재개(reopen-to-implementation)는 (1) 별도 explicit reopen 결정 + (2) BACKLOG row 의 explicit re-entry + (3) user 의 별도 scoped `/goal` + (4) Codex review gate 의 4 단계 모두 충족 시에만 가능 — retirement 는 이 reopen 경로를 막지 않지만, 자동 재개도 아니다.
 - `docs/systems/install-update/STATUS.md` — install-update subsystem 의 current status. Phase 4a (activation apply orchestration) 의 완료 + main PC / notebook PC global dogfood 완료 + original Phase 4 one-shot goal 미완료가 STATUS.md current state 에 기록되어 있다. 본 IDEAS.md 항목 1 은 그 "미완료로 남은 original objective" 의 idea-only 기록이다.
-- `INSTALL.md` — install/update/activation 의 operative contract. 본 IDEAS.md 는 INSTALL.md 의 현행 동작을 변경하지 않으며, INSTALL.md 가 codify 한 현행 동작 (update-source = payload mutation + activation byte-identity verify-only; activation apply = 별도 `scripts/activate-global.ps1` step + explicit approval) 을 전제로 한 future candidate 만 기록한다.
+- `INSTALL.md` — install/update/activation 의 operative contract. 본 IDEAS.md 는 INSTALL.md 의 현행 동작을 변경하지 않으며, INSTALL.md 가 codify 한 현행 동작 (update-source = payload mutation + activation byte-identity verify-only; activation apply = 별도 `scripts/activate-global.ps1` step + explicit approval) 을 전제로 한 idea-only 항목을 기록한다 — 현재 유일한 항목 1 은 **retired** 다 (active future candidate 아님).
 - `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` — operating model/design. 본 idea 가 구현으로 promote 될 경우 model 문서의 갱신이 동반되어야 하나, 본 IDEAS.md 안에서 그 변경은 없다.
 
 ## Idea-only items
 
 ### 1. One-shot natural-language update completion / safe activation auto-apply
+
+> **RETIRED — removed from post-MVP scope (2026-05-31); not planned, not handled in the LTS version.** This item is no longer a future candidate. It is **excluded from the install/update lifecycle LTS scope** and is recorded here as historical idea-only context only. The text below is preserved as historical rationale — it is **not** a plan and makes **no** new claim that activation auto-apply is feasible or safe. The **current intended behavior is retained**: update runs via `update-global.ps1` → `install-update.ps1 -Mode update-source`, activation apply is a **separate explicit approval step**, and a natural-language update does **not** auto-perform any global/user activation mutation. **Reopening requires a separate explicit reopen decision** (new scoped `/goal` + Codex review gate + explicit user decision). See `BACKLOG.md` IU-B-07 (marked [RETIRED]).
 
 **Original intended behavior.** Phase 4 의 원래 핵심 목표는, 단일 자연어 업데이트 지시 한 번으로 — 추가 yes/no 승인 입력 없이 — payload 업데이트부터 safe activation apply 까지 완결되는 흐름이었다:
 
@@ -54,9 +56,9 @@ Phase 4a 가 한 것은 activation apply 의 **substrate / coverage alignment** 
 **Status.**
 
 - **Not current behavior.** 위 one-shot 완결은 현재 동작이 아니다.
-- **Not completed.** original Phase 4 one-shot objective 는 완료되지 않았다.
-- **Future candidate / Phase 4b.** 폐기된 것이 아니라 future candidate 로 남긴다 — BACKLOG.md 의 Phase 4b row 가 entry point.
-- **Requires separate scoped decision before implementation.** 구현 전 별도 scoped 결정 (별도 `/goal` + Codex review gate) 이 선행되어야 한다. activation 은 global / user instruction-file mutation 을 동반하므로 auto-apply 는 별도 explicit boundary 의 승인 모델 설계가 필요하다.
+- **Not completed.** original Phase 4 one-shot objective 는 완료되지 않았다 (구현된 적 없음; "Phase 4b complete" 가 아니다).
+- **RETIRED / not planned (2026-05-31).** 더 이상 future candidate 가 아니다 — install/update lifecycle LTS 이후 **post-MVP 작업 목록에서 제외(retire)** 되었고 LTS version 에서는 다루지 않는다. `BACKLOG.md` IU-B-07 가 [RETIRED] 로 표기된 entry point 다 (active/open candidate 아님).
+- **Reopen requires a separate explicit reopen decision.** 다시 다루려면 별도 explicit reopen 결정 (새 scoped `/goal` + Codex review gate + 사용자 명시 결정) 이 선행되어야 한다. activation 은 global / user instruction-file mutation 을 동반하므로 — 그리고 현행 설계가 activation apply 를 의도적으로 별도 explicit step 으로 두므로 — auto-apply 는 본 retirement 로 닫혔으며, 재개 시 별도 explicit boundary 의 승인 모델 설계가 다시 필요하다.
 
 **Safe-condition outline (구현 시 충족되어야 할 안전 조건 윤곽; 설계 확정 아님).** auto-apply 가 안전하다고 판단되려면 적어도 다음이 모두 성립해야 한다:
 
