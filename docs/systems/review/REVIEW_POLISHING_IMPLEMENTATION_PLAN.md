@@ -123,7 +123,7 @@ plan/spec 이 다뤄야 할 항목(검증 대상):
 **실제 사용 가능한 경로(HEAD `1107566`)**:
 1. caller(=AI 에이전트)가 `scripts/review-prepare.ps1 -ReviewTaskId <id> -Pass <pass-NN> -Stage <stage> -Purpose <line>` 로 pass 디렉터리 할당 + `input.md` seed.
 2. caller 가 `input.md` 를 관점별로 작성(local correctness packet / system coherence packet) — required H2 + Known concerns + validation evidence 규율 포함.
-3. `scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` 가 `review-input-verify` 후 Codex CLI 를 **1회** 호출(`--sandbox read-only`, `--ask-for-approval never`, `--model gpt-5.5`(config), `web_search=disabled`)하고 `result.md` 생성 + verdict shape 검증.
+3. `scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` 가 `review-input-verify` 후 Codex CLI 를 **1회** 호출(`--sandbox read-only`, `--ask-for-approval never`, `--model <configured reviewer model>`(`config/reviewer.json` `model` source-of-truth; concrete version 은 이 doc 에 박지 않음), `web_search=disabled`)하고 `result.md` 생성 + verdict shape 검증.
 4. `scripts/review-verify.ps1 ... -RequireResult` 로 canonical artifact + 4개 disclosure H2 검증.
 5. 두 관점을 분리하려면 위를 **두 focused invocation** 으로 수행한다(관점별 독립 task-id 또는 동일 task-id 의 별도 pass — 관점 축이 artifact pass-NN 축과 혼동되지 않도록 caller 가 packaging 을 disclosure).
 

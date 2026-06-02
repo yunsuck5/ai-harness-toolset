@@ -213,7 +213,7 @@ script 가 하지 않는 일:
   - pass directory 가 이미 존재하면 write-once 위반으로 거부한다.
 - `scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>`
   - 같은 pass directory 의 `input.md` 를 `scripts/review-input-verify.ps1` 로 검증한 뒤 Codex CLI 를 정확히 1 회 실행해 같은 pass directory 의 `result.md` 를 작성한다.
-  - reviewer model 은 `-Model` 명시 → `config/reviewer.json` 의 `model` → built-in default 순으로 해소된다. canonical record 안에는 model / hash / source HEAD 같은 sidecar 가 저장되지 않는다.
+  - reviewer model 은 `-Model` 명시 → `config/reviewer.json` 의 `model` → **fail-fast** 순으로 해소된다 (built-in model default/fallback 없음: 특정 model version 은 external lifecycle 에 종속되므로 코드/문서에 하드코딩하지 않고, model 이 없거나 비면 Codex 호출 전에 실패한다; `fallbackModel` 은 자동 사용되지 않는다). canonical record 안에는 model / hash / source HEAD 같은 sidecar 가 저장되지 않는다.
   - `result.md` 의 `## Verdict` shape 를 검증한 뒤 PASS / FAIL 을 반환한다.
 - `scripts/review-verify.ps1 -ReviewTaskId <id> -Pass <pass-NN> [-RequireResult]`
   - default mode: `input.md` 존재 + shape 만 검증.

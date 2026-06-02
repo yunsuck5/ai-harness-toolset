@@ -15,13 +15,13 @@ The adjacent schema `config/reviewer.schema.json` documents this file's keys reg
 ## Precedence
 
 ```
-explicit CLI parameter > config/reviewer.json > built-in safe default
+model:           explicit -Model  > config/reviewer.json `model`           > FAIL-FAST (no built-in model default/fallback)
+reasoningEffort: explicit -Effort > config/reviewer.json `reasoningEffort` > policy safe-default `xhigh`
 ```
 
 ## Defaults
 
-- Default model: `gpt-5.5`
-- Fallback model: `gpt-5.4`
+- Reviewer model: **no built-in default or fallback.** The model is the config source-of-truth (`config/reviewer.json` `model`, or an explicit `-Model`); if it is absent or empty, `review-run.ps1` and `review-safety-negtest.ps1` **fail fast** before invoking Codex. A concrete model version (a specific released model identifier) is tied to an external lifecycle, so it is never hardcoded as a default/fallback — that would silently mask a missing source-of-truth. `fallbackModel` is not auto-used.
 - Default reasoning effort: `xhigh` — the safe default adopted in `docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md` (default = latest model + xhigh) and wired into `review-run.ps1` as of Batch B (`docs/systems/review/REVIEW_POLISHING_BATCH_A_SPEC.md`). The resolved effort is passed to the Codex CLI as `-c model_reasoning_effort=<value>`. (This supersedes the earlier `medium` default for the review subsystem's own self-review.)
 - Only clearly-simple `local correctness review` packets downgrade below the safe default, via an explicit `-Effort` (operator judgment). `system coherence review`-heavy, contract-sensitive, boundary-sensitive, and ambiguous work stays at high/xhigh. effort ⟂ coverage: a lower effort never substitutes for narrower coverage, missing evidence, or a weaker packet.
 - Allowed effort values (current reviewer tool, Codex CLI): `none`, `minimal`, `low`, `medium`, `high`, `xhigh`. An out-of-set value fails fast in `review-run.ps1` (no silent fallback).
@@ -30,7 +30,7 @@ explicit CLI parameter > config/reviewer.json > built-in safe default
 ## Constraints
 
 - Reviewer model and effort must remain config-driven.
-- Script-level hardcoding of model / effort / timeout / sandbox is forbidden except as a final fallback.
+- The reviewer **model** must never be hardcoded in a script as a default/fallback — it comes only from config (or an explicit `-Model`), and a missing/empty model fails fast (no silent fallback). The reviewer **effort** has a single policy safe-default (`xhigh`) that is an allowed built-in default; `timeoutSeconds` / `sandbox` are handled per their rows below.
 
 The bullets above state the intended policy direction. The section below records the current as-built enforcement status, which does not yet match that intent for every key.
 
@@ -42,9 +42,9 @@ Current as-built status of each key (in terms of the canonical operator-facing f
 
 | key | status |
 |---|---|
-| `model` | **Enforced** — passed to the Codex CLI as `--model`. |
+| `model` | **Enforced + required** — passed to the Codex CLI as `--model`. Precedence: explicit `-Model` > `config/reviewer.json` `model` > **fail-fast** (no built-in model default/fallback; an absent/empty model fails fast before Codex is invoked, in both `review-run.ps1` and `review-safety-negtest.ps1`). |
 | `provider` | Metadata-only — informational; not passed to the Codex invocation. |
-| `fallbackModel` | Metadata-only — kept for config-schema compatibility; the single-shot run does not use it. |
+| `fallbackModel` | **Dead / legacy — removal candidate.** Not present in the current `config/reviewer.schema.json` (`additionalProperties: false`), read by no script, and **never auto-used as a model fallback** (model resolution fails fast instead). Retained here only as a historical note. |
 | `reasoningEffort` | **Enforced** — read by review-run.ps1 and passed to the Codex CLI as `-c model_reasoning_effort=<value>` (Batch B; previously metadata-only). Precedence: explicit `-Effort` CLI parameter > this value > built-in safe default `xhigh`. Allowed values `none`/`minimal`/`low`/`medium`/`high`/`xhigh`; an out-of-set value fails fast (no silent fallback). The applied effort is captured as a run-fact from the Codex stderr header and reported by review-run as `applied-effort:` (`not-observed` when the header is absent). |
 | `sandbox` | Metadata-only — informational; the reviewer-safe invocation hardcodes `--sandbox read-only` (plus `--ask-for-approval never` and `--ignore-user-config`). See "Reviewer-safe invocation" below (Batch C). |
 | `timeoutSeconds` | **Metadata-only / unenforced** — see below. |
@@ -72,7 +72,7 @@ Reviewer output lives under `<ProjectRoot>/log/review/<review-task-id>/pass-NN/`
 
 - `-Reviewer codex` is the only supported reviewer.
 - The canonical review entry is the two-step `scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>]` → AI authors the pass `input.md` at `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` → `scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` flow. Codex CLI is invoked exactly once per `review-run.ps1` call.
-- `fallbackModel` is kept for config-schema compatibility; the single-shot run does not use it.
+- `fallbackModel` is dead/legacy (not in the current schema, read by no script, never auto-used as a model fallback); reviewer model resolution fails fast on a missing/empty config `model` rather than falling back.
 - reviewer verdict is not approval for commit / push / publish / merge / release / deployment.
 
 Canonical artifact set and verdict semantics are defined in `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.

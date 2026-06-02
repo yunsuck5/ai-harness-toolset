@@ -2,12 +2,12 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/yunsuck5/ai-harness-toolset/config/reviewer.schema.json",
   "title": "ai-harness-toolset reviewer config",
-  "description": "Schema and key reference for config/reviewer.json. The reviewer config file itself must stay pure JSON with no comments; this adjacent schema carries the per-key documentation. Only currently implemented runtime keys are described. Precedence for keys that resolve a setting: explicit CLI parameter > config/reviewer.json value > built-in script fallback default. All keys are optional — review-run.ps1 falls back to its built-in default when a key is absent.",
+  "description": "Schema and key reference for config/reviewer.json. The reviewer config file itself must stay pure JSON with no comments; this adjacent schema carries the per-key documentation. Only currently implemented runtime keys are described. Per-key resolution: 'model' is REQUIRED and has NO built-in fallback — review-run.ps1 and review-safety-negtest.ps1 fail-fast if it is absent or empty (a concrete model version is tied to an external lifecycle and must come from this source-of-truth; precedence: explicit -Model CLI parameter > this value > fail-fast). 'reasoningEffort' is optional and resolves explicit -Effort CLI parameter > this value > policy safe-default 'xhigh'.",
   "type": "object",
   "properties": {
     "model": {
       "type": "string",
-      "description": "Reviewer model. Read by review-run.ps1 and passed to the Codex CLI as --model when invoking the reviewer. Precedence: explicit -Model CLI parameter > this value > built-in default."
+      "description": "Reviewer model. REQUIRED. Read by review-run.ps1 (and review-safety-negtest.ps1) and passed to the Codex CLI as --model. Precedence: explicit -Model CLI parameter > this value > fail-fast. There is NO built-in model default/fallback: a concrete model version is tied to an external lifecycle, so an absent/empty model fails fast rather than being masked by a hardcoded version. fallbackModel is not auto-used."
     },
     "reasoningEffort": {
       "type": "string",
@@ -15,5 +15,6 @@
       "description": "Per-invocation reviewer reasoning effort. Read by review-run.ps1 and passed to the Codex CLI as -c model_reasoning_effort=<value> when invoking the reviewer (enforced as of Batch B of the review-system polishing implementation plan; previously metadata-only). Precedence: explicit -Effort CLI parameter > this value > built-in safe default 'xhigh'. The safe default is 'xhigh' per the adopted decision record (docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md); only clearly-simple local-correctness packets downgrade via an explicit -Effort. An out-of-enum value fails fast in review-run (no silent fallback). This config-driven enforcement does not by itself establish U9 operational, which also requires the Batch C reviewer-safety verification."
     }
   },
+  "required": ["model"],
   "additionalProperties": false
 }

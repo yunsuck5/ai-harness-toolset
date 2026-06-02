@@ -11,7 +11,7 @@
 
 ## 0. 조사 환경 (provenance)
 
-- Codex CLI `0.132.0`, Windows 11, repo HEAD `1fdcefd`, reviewer model `gpt-5.5`(config/reviewer.json).
+- Codex CLI `0.132.0`, Windows 11, repo HEAD `1fdcefd`, reviewer model = the configured reviewer model (`config/reviewer.json` `model`). (A concrete model version is not pinned in this durable doc; it lives only as the `config/reviewer.json` source-of-truth value.)
 - 조사 방식: `codex --help` / `codex exec --help` (read-only), `~/.codex/config.toml` read-only 점검, read-only sandbox 하의 minimal Codex probe 3건.
 - 모든 probe 산출물은 **runtime supporting material**: `log/evidence/batchA/validation-evidence.md`(번들) + `log/evidence/batchA-gate1/*`, `log/evidence/batchA-gate2/*`(per-case stdout/stderr/exit). source-of-truth 아님.
 - **관찰된 global config(permissive, 실재)**: `~/.codex/config.toml` 에 `model_reasoning_effort = "xhigh"`, `sandbox_mode = "danger-full-access"`, `approval_policy = "never"`, `[windows] sandbox = "elevated"`. 즉 decision record 가 경고한 permissive global config 가 이 머신에 실제로 존재 — precedence 를 가상이 아닌 실제 baseline 에 대해 시험했다.

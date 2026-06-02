@@ -216,7 +216,11 @@ function Get-ReviewerModel {
         }
     }
 
-    return 'gpt-5.5'
+    # No built-in model fallback. A concrete model version (a specific released model identifier) is
+    # tied to an external lifecycle, so hardcoding one as a default/fallback would silently mask a
+    # missing source-of-truth. The model must come from config/reviewer.json 'model' (or an explicit
+    # -Model); returning empty makes the caller fail-fast. fallbackModel is NOT auto-used.
+    return ''
 }
 
 function Get-AllowedReasoningEfforts {
@@ -312,7 +316,7 @@ if (Test-Path -LiteralPath $resultMdPath -PathType Leaf) {
 
 $model = Get-ReviewerModel -ExplicitModel $Model -ToolPath $tool
 if ([string]::IsNullOrEmpty($model)) {
-    Write-Host 'review-run: FAIL reviewer model could not be resolved (config/reviewer.json missing model field and no -Model override).'
+    Write-Host 'review-run: FAIL reviewer model could not be resolved. Set "model" in config/reviewer.json (or pass -Model). There is no built-in model fallback: a concrete model version is tied to an external lifecycle and must come from the config source-of-truth.'
     exit 1
 }
 

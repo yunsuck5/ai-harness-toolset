@@ -43,6 +43,19 @@ BeforeAll {
         return ([System.IO.Path]::GetFullPath($caseRoot))
     }
 
+    function script:New-ModellessToolRoot {
+        # A temp ToolRoot whose config/reviewer.json has NO model, to exercise the model fail-fast.
+        # review-run resolves the model before touching any other ToolRoot file, so the dir only
+        # needs config/reviewer.json.
+        param([string] $CaseName)
+        $tr = Join-Path $TestDrive ('pester-modelless-toolroot-' + $CaseName)
+        $cfgDir = Join-Path $tr 'config'
+        $null = New-Item -ItemType Directory -Path $cfgDir -Force
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText((Join-Path $cfgDir 'reviewer.json'), "{`n  `"reasoningEffort`": `"xhigh`"`n}`n", $enc)
+        return ([System.IO.Path]::GetFullPath($tr))
+    }
+
     function script:Write-CodexStub {
         param(
             [string] $StubName,
@@ -237,8 +250,10 @@ BeforeAll {
             [string] $StubPath,
             [string] $Reviewer = 'codex',
             [string] $Model,
-            [string] $Effort
+            [string] $Effort,
+            [string] $ToolRoot
         )
+        if ([string]::IsNullOrEmpty($ToolRoot)) { $ToolRoot = $script:RepoRoot }
         $procArgs = @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
             '-File', $script:RunScript,
@@ -246,7 +261,7 @@ BeforeAll {
             '-Pass', $Pass,
             '-Reviewer', $Reviewer,
             '-ProjectRoot', $ProjectRoot,
-            '-ToolRoot', $script:RepoRoot
+            '-ToolRoot', $ToolRoot
         )
         if (-not [string]::IsNullOrEmpty($Model)) {
             $procArgs += @('-Model', $Model)
@@ -674,5 +689,48 @@ Describe 'review-run canonical pass directory' {
         $enc = New-Object System.Text.UTF8Encoding($false)
         $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
         $argv | Should -Match '--ignore-user-config'
+    }
+
+    It 'AC-RR19: missing config model fails fast before Codex (no built-in model fallback)' {
+        # Model fallback removal: with a config that has no "model", review-run must fail fast and
+        # not invoke Codex (no hardcoded version masks the missing source-of-truth).
+        $project = script:New-RunCase -CaseName 'rr19'
+        $taskId  = 'rr19-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $modelless = script:New-ModellessToolRoot -CaseName 'rr19'
+        $stub = script:Write-CodexStub -StubName 'rr19-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -ToolRoot $modelless
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'reviewer model could not be resolved'
+
+        # Codex was not invoked: no result.md.
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+    }
+
+    It 'AC-RR20: explicit -Model overrides the config model (precedence: explicit > config)' {
+        # explicit -Model > config model > fail-fast. An explicit -Model must win and be the value
+        # passed to Codex; the configured model (whatever it currently is) must NOT be passed. The
+        # config model is read dynamically so this test is not coupled to a concrete model version.
+        $project = script:New-RunCase -CaseName 'rr20'
+        $taskId  = 'rr20-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr20-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Model 'explicit-test-model-x'
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
+        $argv | Should -Match 'explicit-test-model-x'
+        $cfgModel = (([System.IO.File]::ReadAllText((Join-Path $script:RepoRoot 'config/reviewer.json'), $enc)) | ConvertFrom-Json).model
+        $argv | Should -Not -Match ([regex]::Escape([string]$cfgModel))
     }
 }

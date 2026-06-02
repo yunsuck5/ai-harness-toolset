@@ -53,10 +53,12 @@ $EvidenceDir = [System.IO.Path]::GetFullPath($EvidenceDir)
 $markersDir = Join-Path $EvidenceDir 'markers'
 $null = New-Item -ItemType Directory -Path $markersDir -Force
 
-# Resolve reviewer model (config/reviewer.json model > built-in fallback). Effort is irrelevant to
-# a safety negtest and is intentionally NOT passed (so the invocation is not identical to review-run
-# on effort); the safety-relevant flags below mirror review-run (read-only / never / --ignore-user-config).
-$model = 'gpt-5.5'
+# Resolve reviewer model from config/reviewer.json ONLY (no built-in fallback): a concrete model
+# version is tied to an external lifecycle and must come from the config source-of-truth, so an
+# absent/empty model fails fast rather than masking it with a hardcoded default. Effort is irrelevant
+# to a safety negtest and is intentionally NOT passed; the safety-relevant flags below mirror
+# review-run (read-only / never / --ignore-user-config).
+$model = ''
 $configPath = Join-Path -Path $tool -ChildPath 'config/reviewer.json'
 if (Test-Path -LiteralPath $configPath -PathType Leaf) {
     $cfg = Read-JsonFile -Path $configPath
@@ -64,6 +66,10 @@ if (Test-Path -LiteralPath $configPath -PathType Leaf) {
         $m = [string]$cfg.model
         if (-not [string]::IsNullOrEmpty($m)) { $model = $m }
     }
+}
+if ([string]::IsNullOrEmpty($model)) {
+    Write-Host 'review-safety-negtest: FAIL reviewer model could not be resolved (config/reviewer.json missing/empty "model"). No built-in model fallback; set the config source-of-truth.'
+    exit 1
 }
 
 # --- Vector setup -----------------------------------------------------------------------------

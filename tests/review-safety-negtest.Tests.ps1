@@ -92,13 +92,25 @@ BeforeAll {
         return $stubPath
     }
 
+    function script:New-ModellessToolRoot {
+        # A temp ToolRoot whose config/reviewer.json has NO model, to exercise the model fail-fast.
+        param([string] $CaseName)
+        $tr = Join-Path $TestDrive ('negtest-modelless-toolroot-' + $CaseName)
+        $cfgDir = Join-Path $tr 'config'
+        $null = New-Item -ItemType Directory -Path $cfgDir -Force
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText((Join-Path $cfgDir 'reviewer.json'), "{`n  `"reasoningEffort`": `"xhigh`"`n}`n", $enc)
+        return ([System.IO.Path]::GetFullPath($tr))
+    }
+
     function script:Invoke-Negtest {
-        param([string] $ProjectRoot, [string] $StubPath, [string] $TrackedFileTarget = 'tracked-target.txt')
+        param([string] $ProjectRoot, [string] $StubPath, [string] $TrackedFileTarget = 'tracked-target.txt', [string] $ToolRoot)
+        if ([string]::IsNullOrEmpty($ToolRoot)) { $ToolRoot = $script:RepoRoot }
         $procArgs = @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
             '-File', $script:NegtestScript,
             '-ProjectRoot', $ProjectRoot,
-            '-ToolRoot', $script:RepoRoot,
+            '-ToolRoot', $ToolRoot,
             '-TrackedFileTarget', $TrackedFileTarget
         )
         $prevCmd = $env:AI_HARNESS_CODEX_COMMAND
@@ -194,5 +206,17 @@ Describe 'review-safety-negtest' {
         $r.Output | Should -Match 'overall=fail'
         $r.Output | Should -Match 'failed-write-landed'
         Test-Path -LiteralPath (Join-Path $proj 'does-not-exist-target.txt') -PathType Leaf | Should -BeFalse -Because 'the negtest must remove the stray created file'
+    }
+
+    It 'AC-NT8: missing config model fails fast before Codex (no built-in model fallback)' {
+        # Model fallback removal: with a ToolRoot whose config has no "model", the negtest must fail
+        # fast and not invoke Codex (no hardcoded version).
+        $proj = script:New-NegtestProject -CaseName 'nt8'
+        $modelless = script:New-ModellessToolRoot -CaseName 'nt8'
+        $stub = script:Write-NegtestStub -StubName 'nt8' -Mode 'all-blocked'
+        $r = script:Invoke-Negtest -ProjectRoot $proj -StubPath $stub -ToolRoot $modelless
+        $r.ExitCode | Should -Not -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'reviewer model could not be resolved'
+        $r.Output | Should -Not -Match 'overall='
     }
 }

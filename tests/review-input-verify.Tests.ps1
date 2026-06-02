@@ -38,7 +38,7 @@ BeforeAll {
         $body += '- Purpose: pester'
         $body += '- Reviewer: codex'
         $body += '- Source HEAD: '
-        $body += '- Reviewer model: gpt-5.5'
+        $body += '- Reviewer model: test-model-x'
         $body += '- Reasoning effort: medium'
         $body += ''
         $body += '## Context'

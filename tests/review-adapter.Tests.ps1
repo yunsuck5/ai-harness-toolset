@@ -439,7 +439,7 @@ Describe 'scripts/review-run.sh thin Bash adapter' {
             '-ReviewTaskId', 'run-1',
             '-Pass', 'pass-02',
             '-Reviewer', 'codex',
-            '-Model', 'gpt-5.5'
+            '-Model', 'test-model-x'
         ) -EnvMap @{ STUB_ARGS_DUMP = $dumpPath; STUB_EXIT_CODE = '3' }
 
         $result.ExitCode | Should -Be 3
@@ -447,7 +447,7 @@ Describe 'scripts/review-run.sh thin Bash adapter' {
         $dump['ReviewTaskId'] | Should -Be 'run-1'
         $dump['Pass']         | Should -Be 'pass-02'
         $dump['Reviewer']     | Should -Be 'codex'
-        $dump['Model']        | Should -Be 'gpt-5.5'
+        $dump['Model']        | Should -Be 'test-model-x'
     }
 }
 
