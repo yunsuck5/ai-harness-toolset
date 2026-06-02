@@ -733,4 +733,87 @@ Describe 'review-run canonical pass directory' {
         $cfgModel = (([System.IO.File]::ReadAllText((Join-Path $script:RepoRoot 'config/reviewer.json'), $enc)) | ConvertFrom-Json).model
         $argv | Should -Not -Match ([regex]::Escape([string]$cfgModel))
     }
+
+    It 'AC-RR21: config-resolved model emits model: <value> and model-source: config (Batch D2)' {
+        # Batch D2 run-fact expansion: with no -Model, review-run resolves config/reviewer.json
+        # and emits both the resolved model value and model-source: config. The model value is
+        # read dynamically from config (no concrete version hardcoded in this test or the runner).
+        $project = script:New-RunCase -CaseName 'rr21'
+        $taskId  = 'rr21-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr21-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^model-source: config$'
+        $r.Output | Should -Not -Match '(?m)^model-source: explicit$'
+
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $cfgModel = (([System.IO.File]::ReadAllText((Join-Path $script:RepoRoot 'config/reviewer.json'), $enc)) | ConvertFrom-Json).model
+        $r.Output | Should -Match ('(?m)^model: ' + [regex]::Escape([string]$cfgModel) + '$')
+    }
+
+    It 'AC-RR22: explicit -Model emits model-source: explicit and the explicit model value (Batch D2)' {
+        $project = script:New-RunCase -CaseName 'rr22'
+        $taskId  = 'rr22-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr22-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Model 'explicit-test-model-x'
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^model: explicit-test-model-x$'
+        $r.Output | Should -Match '(?m)^model-source: explicit$'
+        $r.Output | Should -Not -Match '(?m)^model-source: config$'
+    }
+
+    It 'AC-RR23: reviewer-safe-posture run-fact lists the structural safety flags only (Batch D2)' {
+        # The posture run-fact reflects the structural flags actually passed in this invocation;
+        # it is the posture flags only, never a blanket safety guarantee (the tested-vectors-only
+        # caveat lives in the docs/report layer). All four flags appear on the single posture line.
+        $project = script:New-RunCase -CaseName 'rr23'
+        $taskId  = 'rr23-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr23-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        # Exact-line: the posture run-fact is the four structural flags in this fixed order
+        # and nothing else (no blanket-guarantee text appended).
+        $r.Output | Should -Match '(?m)^reviewer-safe-posture: --ask-for-approval never --sandbox read-only --ignore-user-config web_search=disabled$'
+    }
+
+    It 'AC-RR24: engine identity run-facts (tool-root / project-root / tool-root-source) are emitted (Batch D2)' {
+        # The engine ToolRoot/ProjectRoot/tool-root-source the runner actually resolved, for
+        # operator debugging. -ToolRoot is passed explicitly by the harness, so tool-root-source
+        # is 'explicit'. Paths are debugging run-facts, not source-of-truth claims.
+        $project = script:New-RunCase -CaseName 'rr24'
+        $taskId  = 'rr24-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr24-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^tool-root-source: explicit$'
+        # Exact-line: assert the engine-identity run-facts carry the actually-resolved path
+        # VALUES (not just the labels), anchored so a suffixed value (e.g. <project>\log)
+        # cannot match. project-root is the resolved ProjectRoot and tool-root is the
+        # resolved (explicit) ToolRoot the harness passed; Get-ProjectRoot / Get-ToolRoot
+        # return GetFullPath of those inputs, so the expected values are the GetFullPath forms.
+        $expectedProject = [System.IO.Path]::GetFullPath($project)
+        $expectedTool    = [System.IO.Path]::GetFullPath($script:RepoRoot)
+        $r.Output | Should -Match ('(?m)^project-root: ' + [regex]::Escape($expectedProject) + '$')
+        $r.Output | Should -Match ('(?m)^tool-root: ' + [regex]::Escape($expectedTool) + '$')
+    }
 }

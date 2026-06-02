@@ -96,6 +96,30 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         '-'
     )
 
+    # Reviewer-safe posture run-fact (Batch D2): the STRUCTURAL safety flags actually
+    # present in $codexArgs for THIS invocation, surfaced for operator debugging. Derived
+    # from $codexArgs (not a free-floating literal) so it cannot drift from what is really
+    # sent to the reviewer CLI. This is the posture flags only — it is NOT a blanket safety
+    # guarantee; reviewer-safe precedence is verified for tested write vectors only
+    # (scripts/review-safety-negtest.ps1), and that tested-vectors-only caveat is kept in the
+    # final report / docs layer (docs/policies/REVIEWER_CONFIG_POLICY.md), never asserted here.
+    $postureParts = @()
+    $approvalIdx = [array]::IndexOf($codexArgs, '--ask-for-approval')
+    if ($approvalIdx -ge 0 -and $approvalIdx + 1 -lt $codexArgs.Count) {
+        $postureParts += ('--ask-for-approval {0}' -f $codexArgs[$approvalIdx + 1])
+    }
+    $sandboxIdx = [array]::IndexOf($codexArgs, '--sandbox')
+    if ($sandboxIdx -ge 0 -and $sandboxIdx + 1 -lt $codexArgs.Count) {
+        $postureParts += ('--sandbox {0}' -f $codexArgs[$sandboxIdx + 1])
+    }
+    if ($codexArgs -contains '--ignore-user-config') {
+        $postureParts += '--ignore-user-config'
+    }
+    if ($codexArgs -contains 'web_search=disabled') {
+        $postureParts += 'web_search=disabled'
+    }
+    $reviewerSafePosture = ($postureParts -join ' ')
+
     $stderrTemp = [System.IO.Path]::GetTempFileName()
     $appliedEffort = ''
     $prevPref = $ErrorActionPreference
@@ -161,7 +185,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         Remove-Item -LiteralPath $stderrTemp -Force -ErrorAction SilentlyContinue
     }
 
-    return [pscustomobject]@{ ExitCode = $code; AppliedEffort = $appliedEffort }
+    return [pscustomobject]@{ ExitCode = $code; AppliedEffort = $appliedEffort; ReviewerSafePosture = $reviewerSafePosture }
 }
 
 function Get-VerdictFromResultMd {
@@ -201,8 +225,12 @@ function Get-ReviewerModel {
         [string] $ToolPath
     )
 
+    # Returns the resolved model AND the actual resolver branch as Source (never an
+    # inferred string): 'explicit' for -Model, 'config' for config/reviewer.json, and ''
+    # (empty model) for the fail-fast case. Mirrors Get-ReviewerEffort's shape so the
+    # model-source run-fact is symmetric with effort-source.
     if (-not [string]::IsNullOrEmpty($ExplicitModel)) {
-        return $ExplicitModel
+        return [pscustomobject]@{ Model = $ExplicitModel; Source = 'explicit' }
     }
 
     $configPath = Join-Path -Path $ToolPath -ChildPath 'config/reviewer.json'
@@ -211,7 +239,7 @@ function Get-ReviewerModel {
         if ($null -ne $cfg -and $null -ne $cfg.PSObject.Properties['model']) {
             $m = [string]$cfg.model
             if (-not [string]::IsNullOrEmpty($m)) {
-                return $m
+                return [pscustomobject]@{ Model = $m; Source = 'config' }
             }
         }
     }
@@ -219,8 +247,8 @@ function Get-ReviewerModel {
     # No built-in model fallback. A concrete model version (a specific released model identifier) is
     # tied to an external lifecycle, so hardcoding one as a default/fallback would silently mask a
     # missing source-of-truth. The model must come from config/reviewer.json 'model' (or an explicit
-    # -Model); returning empty makes the caller fail-fast. fallbackModel is NOT auto-used.
-    return ''
+    # -Model); returning an empty Model makes the caller fail-fast. fallbackModel is NOT auto-used.
+    return [pscustomobject]@{ Model = ''; Source = '' }
 }
 
 function Get-AllowedReasoningEfforts {
@@ -314,7 +342,9 @@ if (Test-Path -LiteralPath $resultMdPath -PathType Leaf) {
     exit 1
 }
 
-$model = Get-ReviewerModel -ExplicitModel $Model -ToolPath $tool
+$modelResolved = Get-ReviewerModel -ExplicitModel $Model -ToolPath $tool
+$model = $modelResolved.Model
+$modelSource = $modelResolved.Source
 if ([string]::IsNullOrEmpty($model)) {
     Write-Host 'review-run: FAIL reviewer model could not be resolved. Set "model" in config/reviewer.json (or pass -Model). There is no built-in model fallback: a concrete model version is tied to an external lifecycle and must come from the config source-of-truth.'
     exit 1
@@ -372,6 +402,8 @@ Write-Host ('review-run: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
 Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('verdict: {0}' -f $verdict)
+Write-Host ('model: {0}' -f $model)
+Write-Host ('model-source: {0}' -f $modelSource)
 Write-Host ('requested-effort: {0}' -f $effort)
 Write-Host ('effort-source: {0}' -f $effortSource)
 if ([string]::IsNullOrEmpty($codexResult.AppliedEffort)) {
@@ -385,6 +417,10 @@ elseif ($codexResult.AppliedEffort -ne $effort) {
 else {
     Write-Host ('applied-effort: {0}' -f $codexResult.AppliedEffort)
 }
+Write-Host ('reviewer-safe-posture: {0}' -f $codexResult.ReviewerSafePosture)
+Write-Host ('tool-root: {0}' -f $tool)
+Write-Host ('project-root: {0}' -f $project)
+Write-Host ('tool-root-source: {0}' -f $toolRootSource)
 Write-Host ('pass-dir: {0}' -f $relPass)
 Write-Host ('result: {0}' -f $relResult)
 exit 0

@@ -90,6 +90,16 @@ The reviewer invocation must not depend on a permissive global reviewer-tool con
 
 **Verification status (honest):** reviewer-safe precedence/enforcement is **verified for the tested write vectors only** (source-tree create, tracked-file modify, existing-file modify) under the environment's actual permissive global config, via `scripts/review-safety-negtest.ps1` — corroborated by both the model's report and an independent filesystem check. It is **not a blanket guarantee**: untested vectors (arbitrary binary exec, network egress, alternative write APIs), other platforms, and other reviewer-tool versions remain limitations. If a tested vector's write ever lands, the negtest reports `fail` / not-verified (no silent pass). reviewer-tool-specific: re-derive if the reviewer tool changes.
 
+## Run-fact reporting (review-run stdout)
+
+On a successful run, `review-run.ps1` emits single-invocation run-facts to stdout for operator debugging (Batch B + Batch D2). These are H1 run-facts — facts deterministically observable from one invocation. They are **not** the operator's final human report: perspective coverage, invocation / artifact-pass / corrective-loop counts, and the commit/push recommendation are H2 fields the runner does not emit.
+
+- `verdict:` — the parsed `## Verdict` value.
+- `model:` / `model-source:` — the resolved reviewer model (the runtime-resolved value, never a concrete version hardcoded in docs/scripts) and the actual resolver branch (`explicit` for `-Model`, `config` for `config/reviewer.json`). A missing/empty model fails fast before this line (no built-in fallback).
+- `requested-effort:` / `effort-source:` / `applied-effort:` — the Batch B effort run-facts (`applied-effort: not-observed` when the Codex stderr header is absent).
+- `reviewer-safe-posture:` — the structural safety flags actually passed on this invocation (`--ask-for-approval never --sandbox read-only --ignore-user-config web_search=disabled`). This line is the **posture flags only, not a blanket safety guarantee** — the tested-vectors-only "Verification status" caveat above still governs; the stdout line makes no guarantee claim.
+- `tool-root:` / `project-root:` / `tool-root-source:` — the engine ToolRoot, the ProjectRoot, and the ToolRoot resolution source (`explicit` / `implicit`) the runner actually resolved. These are operator-debugging run-facts, not source-of-truth claims.
+
 ## Diagnostic Codex invocation reference
 
 For diagnosing Codex CLI invocation compatibility, the equivalent command shape (matching what `scripts/review-run.ps1` runs internally against the canonical pass directory) is:
