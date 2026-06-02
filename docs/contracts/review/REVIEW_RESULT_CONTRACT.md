@@ -390,6 +390,55 @@ result.md 가 shape gate (`review-verify -RequireResult`) 를 통과하더라도
 
 mirror surface 의 wording 이 본 §6a 와 충돌하면 본 §6a 가 우선한다.
 
+## 6b. Operator final report schema
+
+§6a 가 operator-role AI (Claude Code) 가 result.md 를 읽은 뒤 수행할 next-action mapping 을 codify 한다면, 본 §6b 는 operator 가 그 review task 를 닫으며 **사용자에게 내는 human-facing closeout report** 의 field schema 를 codify 한다. 본 schema 의 policy origin 은 `docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md` §"Final report schema decision" (10-field schema) 이며, 본 §6b 는 그 schema 의 **operative reporting home** 다 — decision record 는 정책의 origin 기록으로 남고, 운영 시 operator 가 참조하는 자리는 본 section 이다. 본 §6b 는 decision record 의 채택된 schema 를 재논의하거나 변경하지 않는다 (operative authority-home move 이지 decision reopening 이 아니다).
+
+본 schema 의 boundary (관심사 혼동 방지):
+
+- 본 schema 는 **human operator 의 closeout report** 규약이다 — operator-role AI 가 review task 종료 시 사용자에게 제출하는 보고의 field set 이며 자연어 보고다.
+- 본 schema 는 **on-disk `result.md` 의 parser contract 가 아니다.** result.md 의 shape (`## Verdict` + 4 required disclosure H2) 는 §3 가 정의하며 본 §6b 와 별개 layer 다. 본 §6b 의 field 는 result.md 의 heading 이 아니다.
+- 본 schema 는 **`scripts/review-verify.ps1` 가 enforce 하는 parser gate 가 아니다.** 본 §6b 의 어떤 field 도 deterministic gate 로 강제되지 않는다 — 본 §6b 의 도입은 §4 의 script 책임이나 §3 의 parser surface (`review-verify.ps1 -RequireResult` 의 4-H2 disclosure gate, `review-input-verify.ps1` 의 5-H2 gate) 를 확대하지 않는다 (user-decision 1: 새 semantic / completeness gate 없음; §10 non-goals).
+- 본 schema 는 H2 (final human report) home 이며 H1 (runner stdout run-fact) / H3 (docs-only wording) 와 다른 layer 다 (`docs/systems/review/REVIEW_POLISHING_BATCH_D_SPEC.md` §2 세 home 분류). 같은 datum 이 H1 run-fact 와 H2 report field 양쪽에 나타날 수 있으나, H1 은 runner 의 단일-pass 관측이고 H2 는 operator 의 집계 / 판단이다.
+
+### 6b.1 Field schema (10 field)
+
+operator 의 final report 는 다음 field 를 분리해 보고한다. 특히 **field 3 / 4 / 5 (invocation count / artifact pass count / corrective loop count) 는 서로 다른 축** 이며 한 숫자로 conflate 하지 않는다 (decision record invariant 9). `pass-02 yes` 식 단일 표기 (coverage · attempt · corrective loop 를 한 토큰으로 뭉개는 것) 는 금지된다.
+
+| # | field | 내용 |
+|---|---|---|
+| 1 | perspective coverage | `dual-perspective coverage` / `coverage-limited review` (+ 생략·축소 관점·rationale) / `no-reviewable-change report` |
+| 2 | invocation packaging | `single-invocation dual-perspective packet` / `two focused invocations` / 기타 disclosed packaging shape |
+| 3 | invocation count | reviewer 실제 호출 횟수. **품질 보증 아님**; field 4 (artifact pass count) · field 5 (corrective loop count) 와 다른 축 |
+| 4 | artifact pass count | `artifact pass-NN` attempt 수. 해당 workflow 가 `artifact pass-NN` 을 만들지 않으면 `N/A — no artifact pass-NN` (발명 금지) |
+| 5 | corrective loop count | `corrective review loop` (corrected-state re-review) 반복 횟수. field 3 (invocation count) · field 4 (artifact pass count) 와 다른 축 — 한 corrective loop 가 새 artifact pass 와 일치할 수도 아닐 수도 있고, 한 reviewer invocation 이 corrective loop 없이 한 artifact pass 를 낼 수도 있다 |
+| 6 | re-review status | `not needed` / `needed` / `completed` / `stale due to mutation` / `not applicable` |
+| 7 | verdict / risk handling | `yes` / `no` / `yes with risk` 소비 방식; `yes with risk` = risk acceptance 또는 re-review path 필요 (§6 / §6a). verdict 별 next-action 은 §6a mapping 적용 |
+| 8 | validation evidence | 사용한 validation evidence (§3a) + 한계 |
+| 9 | final git status | 최종 worktree 상태 + changed files |
+| 10 | commit/push recommendation | next-action recommendation 일 뿐 **approval 아님** — verdict 는 commit / push / publish / merge / release / deployment / upload / adoption 을 자동 승인하지 않는다 (§6) |
+
+보조 field (optional): invocation path · run id · corrections applied · remaining risks · **reviewer guard status** (아래 §6b.2).
+
+### 6b.2 Reviewer guard status (optional field — 관측 가능성 분리)
+
+reviewer guard status 는 review 가 어떤 guard / engine 아래에서 수행됐는지를 **과장 없이** 보고하는 optional field 다. 각 항목은 현재 그 값이 어디서 관측되는지 (출처) 를 함께 명시한다 — operator 는 관측되지 않은 값을 관측된 run-fact 처럼 보고하지 않는다.
+
+- **reviewer execution guard** — `read-only` (구조적 guard) 또는 `mutation-capable + disclosed` (구조적 guard 부재를 disclosure). decision record §"Reviewer read-only / no-silent-fix invariants".
+- **effort** — `requested-effort` / `effort-source` / `applied-effort`. **현재 `scripts/review-run.ps1` 가 이 3종을 run-fact 로 emit 한다** (Batch B) — present 하면 그 run-fact 에서 보고한다 (report from run-fact when present). `applied-effort` 는 Codex stderr 헤더에서 캡처되므로 외부 프로세스 실행일 때만 관측된다 (in-process stub 은 `not-observed`).
+- **model / model-source** — runner 가 model 을 resolve 해 reviewer CLI 에 전달하나 **현재 model / model-source 를 run-fact 로 emit 하지 않는다** (runner run-fact wiring 은 Batch D2). 그 전에는 configured / known 값으로 보고하되 관측된 run-fact 로 단언하지 않으며, wiring 후 report from run-fact when present 로 전환한다. **concrete model version 을 본 doc / report 에 literal 로 박지 않는다** — `config/reviewer.json` 가 source-of-truth 이며 report 는 runtime resolve 값을 인용한다.
+- **reviewer-safe posture** — `--sandbox read-only` / `--ask-for-approval never` / `--ignore-user-config`. **tested vectors (create / modify-tracked / modify-existing) 에 한해 verified 이며 blanket guarantee 아님** (`docs/policies/REVIEWER_CONFIG_POLICY.md`; untested vector · 다른 platform · 다른 reviewer-tool version 은 한계). runner 가 현재 이 posture 를 run-fact 로 emit 하지 않으므로 (Batch D2 후 available when emitted) 그 전에는 known posture 를 tested-vectors-only caveat 와 함께 보고하되 runner-observed run-fact 로 단언하지 않는다.
+- **review engine identity** — engine ToolRoot / ProjectRoot / tool-root-source. review-subsystem self-modification 의 closeout 에서는 §5a.7 대로 engine 이 global stable ToolRoot (또는 pre-change independent checkout) 여야 하며, operator 는 자신이 호출한 engine 위치를 자기 invocation 지식에서 보고한다 (runner 의 engine run-fact emit 은 Batch D2 후 available when emitted).
+
+> 관측 가능성 원칙: effort 3종 = 현재 runner run-fact (report from run-fact when present); engine identity = operator 의 invocation 지식 (특히 §5a.7 self-modification 에서 보고 의무); model / model-source · reviewer-safe posture 의 runner run-fact = Batch D2 wiring 후 available when emitted — 그 전에는 known / configured 값으로 보고하되 관측된 run-fact 로 과장하지 않는다. U10 + reviewer-safety 의 verified scope (tested vectors) 를 넘어 U9 operational 또는 reviewer-safe invocation 을 주장하지 않는다 (decision record §"U9/U10·safety reporting").
+
+### 6b.3 Mirror surfaces
+
+- `snippets/claude-skills/ai-harness-review/SKILL.md` step 7 (report) — 본 schema 의 operator-facing mirror. step 7 의 보고 field 가 본 §6b.1 / §6b.2 와 정합한다.
+- `docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md` §"Final report schema decision" — policy origin (본 §6b 가 그 operative home).
+
+mirror surface 의 wording 이 본 §6b 와 충돌하면 본 §6b 가 우선한다.
+
 ## 7. Re-review on staleness
 
 같은 `pass-NN/` 안의 `input.md` 또는 `result.md` 가 작성된 뒤, 그 review 가 묶인 source / docs / template / snippet 중 어떤 것이라도 수정되면 그 pass 의 record 는 stale 이다. 사용자가 stale pass 의 verdict 를 후속 결정의 근거로 사용하지 않는다.
