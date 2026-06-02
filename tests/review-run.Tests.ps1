@@ -46,7 +46,8 @@ BeforeAll {
     function script:Write-CodexStub {
         param(
             [string] $StubName,
-            [string] $Mode = 'verdict-yes'
+            [string] $Mode = 'verdict-yes',
+            [bool] $EmitEffortHeader = $true
         )
         $stubDir = Join-Path $TestDrive 'pester-review-run-stubs'
         if (-not (Test-Path -LiteralPath $stubDir -PathType Container)) {
@@ -76,13 +77,15 @@ BeforeAll {
         $body += '$hasWebSearchDisabled = $false'
         $body += '$hasReadOnly = $false'
         $body += '$hasApprovalNever = $false'
+        $body += '$hasEffort = $false'
+        $body += '$effortValue = '''''
         $body += 'for ($i = 0; $i -lt $argv.Count; $i++) {'
         $body += '    $a = [string]$argv[$i]'
         $body += '    if ($a -ceq ''exec'') { $hasExec = $true }'
         $body += '    elseif ($a -ceq ''-'') { if ($i -eq $argv.Count - 1) { $hasStdinMarker = $true } }'
         $body += '    elseif ($a -ceq ''--ask-for-approval'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''never'') { $hasApprovalNever = $true } }'
         $body += '    elseif ($a -ceq ''--sandbox'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''read-only'') { $hasReadOnly = $true } }'
-        $body += '    elseif ($a -ceq ''-c'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''web_search=disabled'') { $hasWebSearchDisabled = $true } }'
+        $body += '    elseif ($a -ceq ''-c'') { if ($i + 1 -lt $argv.Count) { $cv = [string]$argv[$i+1]; if ($cv -ceq ''web_search=disabled'') { $hasWebSearchDisabled = $true } elseif ($cv -clike ''model_reasoning_effort=*'') { $hasEffort = $true; $effortValue = $cv.Substring(''model_reasoning_effort=''.Length) } } }'
         $body += '    elseif ($a -ceq ''--model'') { if ($i + 1 -lt $argv.Count) { $model = [string]$argv[$i+1] } }'
         $body += '    elseif ($a -ceq ''--output-last-message'') { if ($i + 1 -lt $argv.Count) { $out = [string]$argv[$i+1] } }'
         $body += '}'
@@ -93,7 +96,14 @@ BeforeAll {
         $body += 'if (-not $hasWebSearchDisabled) { Write-Host ''codex-stub: FAIL -c web_search=disabled missing''; exit 95 }'
         $body += 'if ([string]::IsNullOrEmpty($out)) { Write-Host ''codex-stub: FAIL --output-last-message missing''; exit 96 }'
         $body += 'if (-not $hasStdinMarker) { Write-Host ''codex-stub: FAIL stdin marker - missing''; exit 97 }'
+        $body += 'if (-not $hasEffort) { Write-Host ''codex-stub: FAIL -c model_reasoning_effort= missing''; exit 98 }'
         $body += '[System.IO.File]::WriteAllText(($out + ''.argv.txt''), ($argv -join "`n"), $enc)'
+        # Mimic the real Codex exec header line on stderr so review-run.ps1 can capture
+        # the applied reasoning-effort run-fact (the real CLI prints it to stderr).
+        # EmitEffortHeader $false exercises review-run's not-observed honesty path.
+        if ($EmitEffortHeader) {
+            $body += '[Console]::Error.WriteLine(''reasoning effort: '' + $effortValue)'
+        }
         # Capture the stdin payload review-run.ps1 pipes to Codex so tests can assert the
         # deterministic reviewer-mode preamble is injected ahead of the input.md content.
         $body += '$stdinText = [Console]::In.ReadToEnd()'
@@ -223,7 +233,8 @@ BeforeAll {
             [string] $Pass,
             [string] $StubPath,
             [string] $Reviewer = 'codex',
-            [string] $Model
+            [string] $Model,
+            [string] $Effort
         )
         $procArgs = @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
@@ -236,6 +247,9 @@ BeforeAll {
         )
         if (-not [string]::IsNullOrEmpty($Model)) {
             $procArgs += @('-Model', $Model)
+        }
+        if (-not [string]::IsNullOrEmpty($Effort)) {
+            $procArgs += @('-Effort', $Effort)
         }
 
         $previousEnv = $env:AI_HARNESS_CODEX_COMMAND
@@ -536,5 +550,106 @@ Describe 'review-run canonical pass directory' {
 
         $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
         Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-RR13: default reasoning effort resolves to config (xhigh) and is passed as -c model_reasoning_effort=xhigh' {
+        # Batch B: per-invocation effort override wiring. With no -Effort, review-run
+        # resolves config/reviewer.json reasoningEffort (xhigh) and passes it to Codex.
+        $project = script:New-RunCase -CaseName 'rr13'
+        $taskId  = 'rr13-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr13-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'requested-effort: xhigh'
+        $r.Output | Should -Match 'effort-source: config'
+        $r.Output | Should -Match 'applied-effort: xhigh'
+
+        # The effort override is actually present in the argv passed to Codex.
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $argvCapture = $resultMd + '.argv.txt'
+        Test-Path -LiteralPath $argvCapture -PathType Leaf | Should -BeTrue
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $argv = [System.IO.File]::ReadAllText($argvCapture, $enc)
+        $argv | Should -Match 'model_reasoning_effort=xhigh'
+    }
+
+    It 'AC-RR14: explicit -Effort medium overrides config and is the distinct downgrade path' {
+        $project = script:New-RunCase -CaseName 'rr14'
+        $taskId  = 'rr14-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr14-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Effort 'medium'
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'requested-effort: medium'
+        $r.Output | Should -Match 'effort-source: explicit'
+        $r.Output | Should -Match 'applied-effort: medium'
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
+        $argv | Should -Match 'model_reasoning_effort=medium'
+        $argv | Should -Not -Match 'model_reasoning_effort=xhigh'
+    }
+
+    It 'AC-RR15: invalid -Effort fails fast before Codex is invoked (no silent fallback)' {
+        $project = script:New-RunCase -CaseName 'rr15'
+        $taskId  = 'rr15-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr15-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Effort 'bogus_value'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'invalid reasoning effort'
+
+        # Fail-fast is before Codex: no result.md is produced.
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+    }
+
+    It 'AC-RR16: applied-effort is reported not-observed when the reviewer emits no effort header (no silent success)' {
+        # Honesty path: if the applied-effort run-fact cannot be observed in the Codex
+        # stderr header, review-run reports not-observed rather than echoing the request.
+        $project = script:New-RunCase -CaseName 'rr16'
+        $taskId  = 'rr16-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr16-yes' -Mode 'verdict-yes' -EmitEffortHeader $false
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'requested-effort: xhigh'
+        $r.Output | Should -Match 'applied-effort: not-observed'
+    }
+
+    It 'AC-RR17: wrong-case -Effort (e.g. XHIGH) fails fast before Codex (case-sensitive membership)' {
+        # The allowed effort set is exact lowercase; PowerShell -notcontains would let a
+        # wrong-case value reach Codex. review-run uses -cnotcontains so wrong case fails
+        # fast at the runner with no Codex invocation.
+        $project = script:New-RunCase -CaseName 'rr17'
+        $taskId  = 'rr17-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr17-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Effort 'XHIGH'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'invalid reasoning effort'
+
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 }

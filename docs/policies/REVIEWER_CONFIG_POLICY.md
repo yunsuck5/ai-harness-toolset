@@ -22,9 +22,10 @@ explicit CLI parameter > config/reviewer.json > built-in safe default
 
 - Default model: `gpt-5.5`
 - Fallback model: `gpt-5.4`
-- Default reasoning effort: `medium`
-- High effort is recommended for high-risk architecture, migration, release, or security-sensitive review.
-- `xhigh` is not a default because it is model-dependent.
+- Default reasoning effort: `xhigh` — the safe default adopted in `docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md` (default = latest model + xhigh) and wired into `review-run.ps1` as of Batch B (`docs/systems/review/REVIEW_POLISHING_BATCH_A_SPEC.md`). The resolved effort is passed to the Codex CLI as `-c model_reasoning_effort=<value>`. (This supersedes the earlier `medium` default for the review subsystem's own self-review.)
+- Only clearly-simple `local correctness review` packets downgrade below the safe default, via an explicit `-Effort` (operator judgment). `system coherence review`-heavy, contract-sensitive, boundary-sensitive, and ambiguous work stays at high/xhigh. effort ⟂ coverage: a lower effort never substitutes for narrower coverage, missing evidence, or a weaker packet.
+- Allowed effort values (current reviewer tool, Codex CLI): `none`, `minimal`, `low`, `medium`, `high`, `xhigh`. An out-of-set value fails fast in `review-run.ps1` (no silent fallback).
+- This config-driven default does not by itself establish `U9 operational`; that also requires the Batch C reviewer-safety verification (`docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md` §U10 hard gate, which scopes reviewer-safety into the combined first hard gate).
 
 ## Constraints
 
@@ -44,7 +45,7 @@ Current as-built status of each key (in terms of the canonical operator-facing f
 | `model` | **Enforced** — passed to the Codex CLI as `--model`. |
 | `provider` | Metadata-only — informational; not passed to the Codex invocation. |
 | `fallbackModel` | Metadata-only — kept for config-schema compatibility; the single-shot run does not use it. |
-| `reasoningEffort` | Metadata-only — config-schema compatibility; not surfaced into the canonical AI-authored `input.md` and not a Codex CLI flag. |
+| `reasoningEffort` | **Enforced** — read by review-run.ps1 and passed to the Codex CLI as `-c model_reasoning_effort=<value>` (Batch B; previously metadata-only). Precedence: explicit `-Effort` CLI parameter > this value > built-in safe default `xhigh`. Allowed values `none`/`minimal`/`low`/`medium`/`high`/`xhigh`; an out-of-set value fails fast (no silent fallback). The applied effort is captured as a run-fact from the Codex stderr header and reported by review-run as `applied-effort:` (`not-observed` when the header is absent). |
 | `sandbox` | Metadata-only — informational; the Codex invocation hardcodes `--sandbox read-only`. |
 | `timeoutSeconds` | **Metadata-only / unenforced** — see below. |
 | `outputFormat`, `resultFile` | Dead config — read by no script. |
@@ -84,7 +85,7 @@ For diagnosing Codex CLI invocation compatibility, the equivalent command shape 
 # Paths below use the canonical <review-task-id>/pass-NN/ layout per
 # docs/contracts/review/REVIEW_RESULT_CONTRACT.md.
 Get-Content -Raw -LiteralPath "log/review/<review-task-id>/pass-NN/input.md" |
-  codex --ask-for-approval never exec --sandbox read-only --model <model> -c web_search=disabled --output-last-message "log/review/<review-task-id>/pass-NN/result.md" -
+  codex --ask-for-approval never exec --sandbox read-only --model <model> -c web_search=disabled -c model_reasoning_effort=<effort> --output-last-message "log/review/<review-task-id>/pass-NN/result.md" -
 ```
 
 The normal path for a completed review record is the two-step `review-prepare.ps1` + `review-run.ps1` flow. The canonical contract is `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.

@@ -6,6 +6,7 @@ param(
 
     [string] $Reviewer = 'codex',
     [string] $Model,
+    [string] $Effort,
     [string] $ProjectRoot,
     [string] $ToolRoot
 )
@@ -31,6 +32,7 @@ function Invoke-CodexExec {
     param(
         [string] $InputPath,
         [string] $Model,
+        [string] $Effort,
         [string] $ResultMdPath
     )
 
@@ -76,41 +78,77 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         '--sandbox', 'read-only',
         '--model', $Model,
         '-c', 'web_search=disabled',
+        '-c', ('model_reasoning_effort={0}' -f $Effort),
         '--output-last-message', $ResultMdPath,
         '-'
     )
 
-    # Stub-args-file protocol is Pester-only opt-in; selecting it by .ps1 suffix would misclassify the npm Windows codex.ps1 shim, which is a real CLI and must take the stdin-pipe branch.
-    if ($env:AI_HARNESS_CODEX_ARGS_FILE_STUB -eq '1') {
-        $argsTempPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), ('codex-stub-argv-' + [guid]::NewGuid().ToString('N') + '.json'))
-        $argsObj = [ordered]@{ argv = $codexArgs }
-        $argsJson = ($argsObj | ConvertTo-Json -Depth 8) -replace "`r`n", "`n"
-        $stubEnc = New-Object System.Text.UTF8Encoding($false)
-        [System.IO.File]::WriteAllText($argsTempPath, $argsJson, $stubEnc)
+    $stderrTemp = [System.IO.Path]::GetTempFileName()
+    $appliedEffort = ''
+    $prevPref = $ErrorActionPreference
+    # Native stderr must be captured to a file (not merged) so the Codex exec
+    # header line "reasoning effort: <value>" can be read back as the applied-effort
+    # run-fact. Under file-level $ErrorActionPreference = 'Stop', capturing native
+    # stderr promotes the first stderr line to a terminating NativeCommandError
+    # before $LASTEXITCODE can be read (docs/policies/POWERSHELL_POLICY.md), so the
+    # capture is wrapped in EAP=Continue save/restore.
+    $ErrorActionPreference = 'Continue'
+    try {
+        # Stub-args-file protocol is Pester-only opt-in; selecting it by .ps1 suffix would misclassify the npm Windows codex.ps1 shim, which is a real CLI and must take the stdin-pipe branch.
+        if ($env:AI_HARNESS_CODEX_ARGS_FILE_STUB -eq '1') {
+            $argsTempPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), ('codex-stub-argv-' + [guid]::NewGuid().ToString('N') + '.json'))
+            $argsObj = [ordered]@{ argv = $codexArgs }
+            $argsJson = ($argsObj | ConvertTo-Json -Depth 8) -replace "`r`n", "`n"
+            $stubEnc = New-Object System.Text.UTF8Encoding($false)
+            [System.IO.File]::WriteAllText($argsTempPath, $argsJson, $stubEnc)
 
-        try {
-            $stubArgs = @(
-                '-NoProfile', '-ExecutionPolicy', 'Bypass',
-                '-File', $codexCmd,
-                '-CodexArgsFile', $argsTempPath
-            )
-            # Pipe the same reviewer-mode payload the real CLI receives, so the stub can
-            # assert the reviewer-mode preamble is present on stdin (regression coverage).
-            $null = $payload | & powershell.exe @stubArgs
-            $code = $LASTEXITCODE
-        }
-        finally {
-            if (Test-Path -LiteralPath $argsTempPath) {
-                Remove-Item -LiteralPath $argsTempPath -Force -ErrorAction SilentlyContinue
+            try {
+                $stubArgs = @(
+                    '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                    '-File', $codexCmd,
+                    '-CodexArgsFile', $argsTempPath
+                )
+                # Pipe the same reviewer-mode payload the real CLI receives, so the stub can
+                # assert the reviewer-mode preamble is present on stdin (regression coverage).
+                $null = $payload | & powershell.exe @stubArgs 2> $stderrTemp
+                $code = $LASTEXITCODE
+            }
+            finally {
+                if (Test-Path -LiteralPath $argsTempPath) {
+                    Remove-Item -LiteralPath $argsTempPath -Force -ErrorAction SilentlyContinue
+                }
             }
         }
+        else {
+            $null = $payload | & $codexCmd @codexArgs 2> $stderrTemp
+            $code = $LASTEXITCODE
+        }
     }
-    else {
-        $null = $payload | & $codexCmd @codexArgs
-        $code = $LASTEXITCODE
+    finally {
+        $ErrorActionPreference = $prevPref
     }
 
-    return [pscustomobject]@{ ExitCode = $code }
+    # Read the captured native stderr back and extract the applied reasoning-effort
+    # run-fact. PowerShell wraps native stderr lines as NativeCommandError records
+    # ("<exe> : <line>") when redirected with 2>, so the match is intentionally not
+    # line-anchored and is restricted to the known effort value set; this finds the
+    # Codex exec header "reasoning effort: <value>" whether or not it carries the
+    # PowerShell error-record prefix. Absence is surfaced by the caller as an
+    # unobserved run-fact, never as a silent success. On a non-zero exit the captured
+    # stderr is echoed for diagnosis; on success it is not, to keep run output clean.
+    if (Test-Path -LiteralPath $stderrTemp) {
+        $errEnc = New-Object System.Text.UTF8Encoding($false)
+        $errText = [System.IO.File]::ReadAllText($stderrTemp, $errEnc)
+        if ($errText -match 'reasoning effort:\s*(none|minimal|low|medium|high|xhigh)\b') {
+            $appliedEffort = $matches[1]
+        }
+        if ($code -ne 0 -and -not [string]::IsNullOrEmpty($errText)) {
+            [Console]::Error.Write($errText)
+        }
+        Remove-Item -LiteralPath $stderrTemp -Force -ErrorAction SilentlyContinue
+    }
+
+    return [pscustomobject]@{ ExitCode = $code; AppliedEffort = $appliedEffort }
 }
 
 function Get-VerdictFromResultMd {
@@ -166,6 +204,46 @@ function Get-ReviewerModel {
     }
 
     return 'gpt-5.5'
+}
+
+function Get-AllowedReasoningEfforts {
+    # Allowed model_reasoning_effort values accepted by the current reviewer tool
+    # (Codex CLI), enumerated by Batch A investigation (the CLI rejects out-of-set
+    # values at config-load with a non-zero exit). review-run validates against this
+    # set so an invalid effort fails fast here with a clear message rather than only
+    # surfacing as a downstream Codex error. reviewer-tool-specific: re-derive if the
+    # reviewer tool changes.
+    return @('none', 'minimal', 'low', 'medium', 'high', 'xhigh')
+}
+
+function Get-ReviewerEffort {
+    param(
+        [string] $ExplicitEffort,
+        [string] $ToolPath
+    )
+
+    # Precedence (docs/policies/REVIEWER_CONFIG_POLICY.md):
+    # explicit CLI -Effort > config/reviewer.json reasoningEffort > built-in safe default.
+    if (-not [string]::IsNullOrEmpty($ExplicitEffort)) {
+        return [pscustomobject]@{ Effort = $ExplicitEffort; Source = 'explicit' }
+    }
+
+    $configPath = Join-Path -Path $ToolPath -ChildPath 'config/reviewer.json'
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        $cfg = Read-JsonFile -Path $configPath
+        if ($null -ne $cfg -and $null -ne $cfg.PSObject.Properties['reasoningEffort']) {
+            $e = [string]$cfg.reasoningEffort
+            if (-not [string]::IsNullOrEmpty($e)) {
+                return [pscustomobject]@{ Effort = $e; Source = 'config' }
+            }
+        }
+    }
+
+    # Built-in safe default per the adopted decision record
+    # (docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md): default = latest
+    # model + xhigh; only clearly-simple local-correctness packets downgrade via an
+    # explicit -Effort. This is the safe-default, not an operational U9 claim.
+    return [pscustomobject]@{ Effort = 'xhigh'; Source = 'default' }
 }
 
 if ($Reviewer -ne 'codex') {
@@ -225,6 +303,19 @@ if ([string]::IsNullOrEmpty($model)) {
     exit 1
 }
 
+$effortResolved = Get-ReviewerEffort -ExplicitEffort $Effort -ToolPath $tool
+$effort = $effortResolved.Effort
+$effortSource = $effortResolved.Source
+$allowedEfforts = Get-AllowedReasoningEfforts
+# Case-SENSITIVE membership: the reviewer tool's allowed values are exact lowercase
+# (Batch A). PowerShell -notcontains is case-insensitive, so a wrong-case value such as
+# 'XHIGH' would slip past and reach Codex (which then rejects it downstream) instead of
+# failing fast here before any Codex invocation. -cnotcontains enforces the fail-fast.
+if ($allowedEfforts -cnotcontains $effort) {
+    Write-Host ('review-run: FAIL invalid reasoning effort ''{0}'' (source: {1}). Allowed values (case-sensitive): {2}. No silent fallback; correct -Effort or config/reviewer.json reasoningEffort.' -f $effort, $effortSource, ($allowedEfforts -join ', '))
+    exit 1
+}
+
 $toolRootSource = Get-ToolRootSource -ToolRoot $ToolRoot
 $verifyInputScript = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-input-verify.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
 
@@ -240,7 +331,7 @@ if ($verifyInputExit -ne 0) {
     exit 1
 }
 
-$codexResult = Invoke-CodexExec -InputPath $inputPath -Model $model -ResultMdPath $resultMdPath
+$codexResult = Invoke-CodexExec -InputPath $inputPath -Model $model -Effort $effort -ResultMdPath $resultMdPath
 if ($codexResult.ExitCode -ne 0) {
     Write-Host ('review-run: FAIL Codex CLI exit {0}' -f $codexResult.ExitCode)
     exit 1
@@ -264,6 +355,19 @@ Write-Host ('review-run: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
 Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('verdict: {0}' -f $verdict)
+Write-Host ('requested-effort: {0}' -f $effort)
+Write-Host ('effort-source: {0}' -f $effortSource)
+if ([string]::IsNullOrEmpty($codexResult.AppliedEffort)) {
+    # Run-fact not observed in the Codex stderr header. Reported as such, not as a
+    # silent success: do not infer that the requested effort was applied.
+    Write-Host 'applied-effort: not-observed'
+}
+elseif ($codexResult.AppliedEffort -ne $effort) {
+    Write-Host ('applied-effort: {0} (WARNING: differs from requested {1})' -f $codexResult.AppliedEffort, $effort)
+}
+else {
+    Write-Host ('applied-effort: {0}' -f $codexResult.AppliedEffort)
+}
 Write-Host ('pass-dir: {0}' -f $relPass)
 Write-Host ('result: {0}' -f $relResult)
 exit 0

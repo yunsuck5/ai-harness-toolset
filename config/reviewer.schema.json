@@ -8,6 +8,11 @@
     "model": {
       "type": "string",
       "description": "Reviewer model. Read by review-run.ps1 and passed to the Codex CLI as --model when invoking the reviewer. Precedence: explicit -Model CLI parameter > this value > built-in default."
+    },
+    "reasoningEffort": {
+      "type": "string",
+      "enum": ["none", "minimal", "low", "medium", "high", "xhigh"],
+      "description": "Per-invocation reviewer reasoning effort. Read by review-run.ps1 and passed to the Codex CLI as -c model_reasoning_effort=<value> when invoking the reviewer (enforced as of Batch B of the review-system polishing implementation plan; previously metadata-only). Precedence: explicit -Effort CLI parameter > this value > built-in safe default 'xhigh'. The safe default is 'xhigh' per the adopted decision record (docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md); only clearly-simple local-correctness packets downgrade via an explicit -Effort. An out-of-enum value fails fast in review-run (no silent fallback). This config-driven enforcement does not by itself establish U9 operational, which also requires the Batch C reviewer-safety verification."
     }
   },
   "additionalProperties": false
