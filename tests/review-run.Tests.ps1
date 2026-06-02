@@ -79,12 +79,14 @@ BeforeAll {
         $body += '$hasApprovalNever = $false'
         $body += '$hasEffort = $false'
         $body += '$effortValue = '''''
+        $body += '$hasIgnoreUserConfig = $false'
         $body += 'for ($i = 0; $i -lt $argv.Count; $i++) {'
         $body += '    $a = [string]$argv[$i]'
         $body += '    if ($a -ceq ''exec'') { $hasExec = $true }'
         $body += '    elseif ($a -ceq ''-'') { if ($i -eq $argv.Count - 1) { $hasStdinMarker = $true } }'
         $body += '    elseif ($a -ceq ''--ask-for-approval'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''never'') { $hasApprovalNever = $true } }'
         $body += '    elseif ($a -ceq ''--sandbox'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''read-only'') { $hasReadOnly = $true } }'
+        $body += '    elseif ($a -ceq ''--ignore-user-config'') { $hasIgnoreUserConfig = $true }'
         $body += '    elseif ($a -ceq ''-c'') { if ($i + 1 -lt $argv.Count) { $cv = [string]$argv[$i+1]; if ($cv -ceq ''web_search=disabled'') { $hasWebSearchDisabled = $true } elseif ($cv -clike ''model_reasoning_effort=*'') { $hasEffort = $true; $effortValue = $cv.Substring(''model_reasoning_effort=''.Length) } } }'
         $body += '    elseif ($a -ceq ''--model'') { if ($i + 1 -lt $argv.Count) { $model = [string]$argv[$i+1] } }'
         $body += '    elseif ($a -ceq ''--output-last-message'') { if ($i + 1 -lt $argv.Count) { $out = [string]$argv[$i+1] } }'
@@ -97,6 +99,7 @@ BeforeAll {
         $body += 'if ([string]::IsNullOrEmpty($out)) { Write-Host ''codex-stub: FAIL --output-last-message missing''; exit 96 }'
         $body += 'if (-not $hasStdinMarker) { Write-Host ''codex-stub: FAIL stdin marker - missing''; exit 97 }'
         $body += 'if (-not $hasEffort) { Write-Host ''codex-stub: FAIL -c model_reasoning_effort= missing''; exit 98 }'
+        $body += 'if (-not $hasIgnoreUserConfig) { Write-Host ''codex-stub: FAIL --ignore-user-config missing''; exit 99 }'
         $body += '[System.IO.File]::WriteAllText(($out + ''.argv.txt''), ($argv -join "`n"), $enc)'
         # Mimic the real Codex exec header line on stderr so review-run.ps1 can capture
         # the applied reasoning-effort run-fact (the real CLI prints it to stderr).
@@ -651,5 +654,25 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match 'invalid reasoning effort'
 
         Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+    }
+
+    It 'AC-RR18: reviewer-safe hardening — --ignore-user-config is passed to Codex (Batch C)' {
+        # Batch C: review-run must pass --ignore-user-config so the reviewer-safe posture does not
+        # depend on flag-precedence over a permissive global config (the config is not loaded).
+        $project = script:New-RunCase -CaseName 'rr18'
+        $taskId  = 'rr18-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr18-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
+        $argv | Should -Match '--ignore-user-config'
     }
 }

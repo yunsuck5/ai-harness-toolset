@@ -46,7 +46,7 @@ Current as-built status of each key (in terms of the canonical operator-facing f
 | `provider` | Metadata-only — informational; not passed to the Codex invocation. |
 | `fallbackModel` | Metadata-only — kept for config-schema compatibility; the single-shot run does not use it. |
 | `reasoningEffort` | **Enforced** — read by review-run.ps1 and passed to the Codex CLI as `-c model_reasoning_effort=<value>` (Batch B; previously metadata-only). Precedence: explicit `-Effort` CLI parameter > this value > built-in safe default `xhigh`. Allowed values `none`/`minimal`/`low`/`medium`/`high`/`xhigh`; an out-of-set value fails fast (no silent fallback). The applied effort is captured as a run-fact from the Codex stderr header and reported by review-run as `applied-effort:` (`not-observed` when the header is absent). |
-| `sandbox` | Metadata-only — informational; the Codex invocation hardcodes `--sandbox read-only`. |
+| `sandbox` | Metadata-only — informational; the reviewer-safe invocation hardcodes `--sandbox read-only` (plus `--ask-for-approval never` and `--ignore-user-config`). See "Reviewer-safe invocation" below (Batch C). |
 | `timeoutSeconds` | **Metadata-only / unenforced** — see below. |
 | `outputFormat`, `resultFile` | Dead config — read by no script. |
 
@@ -77,6 +77,19 @@ Reviewer output lives under `<ProjectRoot>/log/review/<review-task-id>/pass-NN/`
 
 Canonical artifact set and verdict semantics are defined in `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.
 
+## Reviewer-safe invocation
+
+The reviewer invocation must not depend on a permissive global reviewer-tool config for its safety. `review-run.ps1` enforces a reviewer-safe posture explicitly on every Codex invocation (Batch C of the review-system polishing implementation plan):
+
+- `--ask-for-approval never` — no interactive approval / un-sandboxed escalation.
+- `exec --sandbox read-only` — the model cannot write the source tree / review target.
+- `--ignore-user-config` — the reviewer tool's `$CODEX_HOME/config.toml` is **not loaded**, so operator-convenience permissive settings there (e.g. `sandbox_mode = danger-full-access`, `approval_policy = never`) cannot weaken the explicit flags above. Auth still uses `$CODEX_HOME`. This makes the reviewer-safe posture **structural** (the permissive config is absent) rather than dependent on flag-precedence over a loaded permissive config.
+- result artifact: written via the runner-controlled `--output-last-message` channel, **not** by a model-initiated source-tree write.
+
+**Trade-off of `--ignore-user-config` (disclosed):** it drops *all* of `config.toml` except auth. Everything `review-run.ps1` needs — model, reasoning effort, web_search, sandbox, approval — is passed explicitly, so dropping `config.toml` does not change review behavior. The residual risk is portability: a user whose `config.toml` sets a custom model provider / base URL (not passed by review-run) would have it dropped, and the review would use the default provider for `--model`. MCP servers / plugins / notify hooks in `config.toml` are operator-interactive conveniences not needed by a non-interactive read-only `codex exec` review.
+
+**Verification status (honest):** reviewer-safe precedence/enforcement is **verified for the tested write vectors only** (source-tree create, tracked-file modify, existing-file modify) under the environment's actual permissive global config, via `scripts/review-safety-negtest.ps1` — corroborated by both the model's report and an independent filesystem check. It is **not a blanket guarantee**: untested vectors (arbitrary binary exec, network egress, alternative write APIs), other platforms, and other reviewer-tool versions remain limitations. If a tested vector's write ever lands, the negtest reports `fail` / not-verified (no silent pass). reviewer-tool-specific: re-derive if the reviewer tool changes.
+
 ## Diagnostic Codex invocation reference
 
 For diagnosing Codex CLI invocation compatibility, the equivalent command shape (matching what `scripts/review-run.ps1` runs internally against the canonical pass directory) is:
@@ -85,7 +98,7 @@ For diagnosing Codex CLI invocation compatibility, the equivalent command shape 
 # Paths below use the canonical <review-task-id>/pass-NN/ layout per
 # docs/contracts/review/REVIEW_RESULT_CONTRACT.md.
 Get-Content -Raw -LiteralPath "log/review/<review-task-id>/pass-NN/input.md" |
-  codex --ask-for-approval never exec --sandbox read-only --model <model> -c web_search=disabled -c model_reasoning_effort=<effort> --output-last-message "log/review/<review-task-id>/pass-NN/result.md" -
+  codex --ask-for-approval never exec --sandbox read-only --ignore-user-config --model <model> -c web_search=disabled -c model_reasoning_effort=<effort> --output-last-message "log/review/<review-task-id>/pass-NN/result.md" -
 ```
 
 The normal path for a completed review record is the two-step `review-prepare.ps1` + `review-run.ps1` flow. The canonical contract is `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.

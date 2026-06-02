@@ -76,6 +76,19 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         '--ask-for-approval', 'never',
         'exec',
         '--sandbox', 'read-only',
+        # Reviewer-safe invocation hardening (Batch C). --ignore-user-config makes the
+        # reviewer-safe posture STRUCTURAL rather than dependent on flag-precedence over a
+        # permissive global config: the reviewer tool's $CODEX_HOME/config.toml (which may carry
+        # operator-convenience permissive settings such as sandbox_mode=danger-full-access /
+        # approval_policy=never) is NOT loaded at all, so it cannot weaken the explicit
+        # --sandbox read-only / --ask-for-approval never below. Auth still uses $CODEX_HOME.
+        # Everything review-run depends on (model, reasoning effort, web_search, sandbox,
+        # approval) is passed explicitly here, so dropping config.toml does not change behavior;
+        # the disclosed trade-off is that a user config carrying a custom model provider /
+        # base_url would also be dropped (docs/policies/REVIEWER_CONFIG_POLICY.md). reviewer-safe
+        # precedence is verified for tested write vectors only (scripts/review-safety-negtest.ps1),
+        # not a blanket guarantee. reviewer-tool-specific: re-derive if the reviewer tool changes.
+        '--ignore-user-config',
         '--model', $Model,
         '-c', 'web_search=disabled',
         '-c', ('model_reasoning_effort={0}' -f $Effort),
