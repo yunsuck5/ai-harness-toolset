@@ -199,7 +199,7 @@ Always include the operator final report fields below, kept visually distinct. T
 9. **Final git status** — the final worktree state and changed files.
 10. **Commit/push recommendation** — a next-action recommendation only; the verdict does not approve commit, push, publish, merge, release, deployment, upload, or adoption.
 
-Optional — **reviewer guard status**, reporting each item with its observable source, without overstating:
+**Reviewer guard status** — surface the H1 run-facts `review-run.ps1` printed in step 5 into this H2 report field, reporting each item with its observable source, without overstating. This is **recommended whenever the runner emitted these run-facts** (the normal case); it is optional for a trivial non-self-modification review, and **expected for a review-subsystem self-modification closeout** (engine identity + reviewer-safe posture + applied-effort), pairing with the review-engine independence rule (step 1). It is operator reporting discipline, not a `review-verify.ps1` gate. Carrying the H1 run-fact into the H2 report does not make the report a copy of the runner's stdout — it is the operator's report:
 
 - **reviewer execution guard** — `read-only` or `mutation-capable + disclosed`.
 - **effort** — `requested-effort` / `effort-source` / `applied-effort`, from the `review-run.ps1` run-fact lines when present (Batch B emits these today; `applied-effort` is `not-observed` when the reviewer ran in-process).
