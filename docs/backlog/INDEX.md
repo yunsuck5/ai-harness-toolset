@@ -17,13 +17,14 @@ This folder is **not**: implementation / scheduling / release·publish·merge ap
 
 ### Open candidates → per-system BACKLOG (self-contained)
 
-- review: RV-B-01 (Review 2-pass/profile), RV-B-02 (`timeoutSeconds` enforcement debt), RV-B-03 (review result wrapper/fence hygiene), RV-B-04 (no-exec/no-write reviewer contract), RV-B-05 (Review input governance), RV-B-06 (reviewer runtime provenance in the result artifact) → `docs/systems/review/BACKLOG.md` (source-of-truth for the current open candidate set).
+- review: RV-B-01 (Review 2-pass/profile), RV-B-02 (`timeoutSeconds` enforcement debt), RV-B-03 (review result wrapper/fence hygiene), RV-B-04 (no-exec/no-write reviewer contract), RV-B-05 (Review input governance) → `docs/systems/review/BACKLOG.md` (source-of-truth for the current open candidate set).
 - install-update: IU-B-01 (smoke evidence preservation), IU-B-02 (project-local vs global ToolRoot docs debt), IU-B-03 (path normalization hardening), IU-B-04 (install validation report evidence hygiene), IU-B-05 (snapshot auxiliary evidence wording), IU-B-06 (long-lived docs commit-hash hygiene) → `docs/systems/install-update/BACKLOG.md`.
 
 ### Closed → per-system STATUS completed-ledger (full historical detail in git history)
 
 - `docs/systems/install-update/STATUS.md`: PowerShell smoke invocation quoting hardening (IU-OPS-01, `c183c6b`); Aggregate digest reproducibility (IU-11, `1273afe`); Managed block marker detection (IU-OPS-02); Global instruction file path semantics (IU-OPS-03); Channel 3 smoke validation closeout (IU-OPS-04); Activation managed-block apply tooling hardening (IU-OPS-05).
 - `docs/systems/install-update/STATUS.md` (lifecycle closeouts; one-line **tombstones** in `docs/systems/install-update/BACKLOG.md`; full historical narrative in git history): IU-B-08 (uninstall/teardown lifecycle); IU-B-09 (fresh-install entrypoint split + first-time managed-block insertion); IU-B-10 (uninstall package-discovery docs hardening); IU-B-12 (install bootstrap-clone cleanup enforcement); IU-B-07 **[RETIRED]** (one-shot natural-language update completion). Lifecycle closeouts IU-14 (subsystem LTS readiness) and IU-15 (main PC lifecycle retest) are ledger rows there.
+- `docs/systems/review/STATUS.md` (one-line **tombstone** in `docs/systems/review/BACKLOG.md`; full P1–P4 narrative in git history): RV-B-06 (reviewer runtime provenance in the result artifact — P1 spec `77691c2` / P2 `fdde410` / P3 `fbd295e` / P4 `cfac1ed`).
 - `docs/systems/brief/STATUS.md`: Brief / Chatlog location reconciliation.
 
 ### Historical / removed-legacy (historical reason only, never operator paths)
