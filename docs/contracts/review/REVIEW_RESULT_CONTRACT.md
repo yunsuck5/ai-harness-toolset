@@ -12,7 +12,7 @@
     result.md
 ```
 
-`input.md` 는 operator-role AI (Claude Code) 가 작성한다. `result.md` 는 Codex reviewer 가 작성한다. script 는 위 두 파일에 대한 deterministic gate 만 담당하고, 의미 판단은 하지 않는다.
+`input.md` 는 operator-role AI (Claude Code) 가 작성한다. `result.md` 는 **dual-authored** 다 — verdict/disclosure body 는 active reviewer adapter (현재 MVP adapter = codex) 가 작성하고, 그 뒤에 `scripts/review-run.ps1` 가 machine-emitted `## Reviewer run provenance` 블록을 append 한다 (§3). script 는 두 파일에 대한 deterministic gate 를 담당하고 의미 판단은 하지 않으며, 추가로 그 runner-appended provenance 블록을 emit 한다 — 이 블록은 canonical result.md 안의 machine run-fact 이지 sidecar 파일도 의미 판단도 아니다 (§3 / §4).
 
 본 contract 는 source-of-truth 이며, `templates/review-input.md` · `templates/review-result.md` · `snippets/claude-skills/ai-harness-review/SKILL.md` · `docs/user_guide/OPERATOR_GUIDE_KR.md` · `README.md` 는 이 contract 를 mirror 한다. 본문이 충돌하면 본 contract 가 우선한다.
 
@@ -55,11 +55,16 @@ active review-input placeholder 는 `{{AI_TO_FILL_*}}` namespace (regex `\{\{AI_
 
 `input.md` 의 shape 기준은 `templates/review-input.md` 다.
 
-## 3. `result.md` — Codex-authored review result
+## 3. `result.md` — reviewer-adapter-authored body + runner-appended provenance (dual-authored)
 
-`result.md` 는 Codex CLI 가 `--output-last-message log/review/<review-task-id>/pass-NN/result.md` 로 한 번 작성한다. operator-role AI 또는 운영자가 손으로 작성하지 않는다.
+`result.md` 의 verdict/disclosure **body** 는 active reviewer adapter (현재 MVP adapter = codex) 가 `--output-last-message log/review/<review-task-id>/pass-NN/result.md` 로 작성한다. operator-role AI 또는 운영자가 손으로 작성하지 않는다. runner 는 그 body 를 보존한 채 끝에 provenance 블록을 append 한다 (아래 dual-authorship).
 
-required shape:
+**result.md authorship 은 dual-authored 다** (RV-B-06 P3):
+
+1. **reviewer-adapter-authored verdict/disclosure body** — active reviewer adapter 가 작성하는 `## Verdict` + 4 required disclosure H2 (+ 선택 section). reviewer 의 semantic judgment 이며 아래 required shape 의 적용 대상이다.
+2. **runner-appended runtime provenance block (optional, machine-emitted)** — `scripts/review-run.ps1` 가 verdict shape 가 usable 함을 확인한 뒤 result.md 끝에 append 하는 `## Reviewer run provenance` 블록. 이 블록은 **machine run-fact 이지 reviewer 의 verdict/judgment 가 아니며**, reviewer / operator 가 손으로 작성하지 않는다. 값의 source 는 runtime / config / active reviewer adapter / reviewer self-report 이고 **`input.md` 의 caller declaration 이 아니다**. 블록의 heading 과 key:value 본문은 아래 parser-gated heading (`## Verdict` + 4 disclosure H2) 과 충돌하지 않으므로 `scripts/review-verify.ps1 -RequireResult` 의 count 를 바꾸지 않는다 — 본 블록은 **새 parser gate 를 도입하지 않으며 verify 는 본 블록을 gate 하지 않는다 (informational)**. provenance 블록은 canonical 2-file contract 안의 result.md 본문 일부이지 **별도 sidecar 파일이 아니다** (§1 / §4 / §10). 적용 adapter 가 바뀌어도 동일 schema 로 유효하며 concrete vendor/tool/version 을 durable default 로 박지 않는다 (미관측 version 은 `not-observed`). reviewer 산출 실패 시 provenance 는 append 되지 않는다 (없는 run 에 대해 provenance 를 발명하지 않는다); 유효한 verdict 후 append 실패는 verdict 를 무효화하지 않되 loud 하게 보고된다. operator surfacing (final report 로의 인용) 은 본 §3 의 범위가 아니다 (P4; §6b 참조).
+
+required shape (위 1번 reviewer-adapter-authored body 에 적용):
 
 - 정확히 1 개의 top-level `## Verdict` heading 이 있다.
 - `## Verdict` heading 다음의 첫 비어있지 않은 줄 (앞뒤 whitespace trim 후) 이 lowercase 정확히 다음 셋 중 하나다:
@@ -200,7 +205,7 @@ script 가 하지 않는 일:
 - result 본문의 finding / risk 항목 자동 parsing 또는 후속 단계 트리거.
 - verdict 를 읽어 commit / push / publish / merge / release 자동 승인.
 - review request 본문을 여러 staging file 로 분산하는 staging step.
-- AI 가 자연어로 작성할 수 있는 본문을 JSON / hash / provenance 파일로 추가 분산.
+- AI 가 자연어로 작성할 수 있는 본문을 JSON / hash / provenance **파일** 로 추가 분산. (이는 별도 sidecar **파일** 로의 분산 금지다. `scripts/review-run.ps1` 가 result.md *안* 에 append 하는 machine run-fact `## Reviewer run provenance` 블록 (§3 dual-authorship) 은 canonical result.md 파일 내부의 runtime 기록이지 sidecar 파일이 아니므로 본 금지에 해당하지 않으며, 의미 판단도 아니다.)
 
 ### 4a. Script entry points (canonical)
 

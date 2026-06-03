@@ -1,10 +1,12 @@
 # Review Result
 
-이 파일은 `log/review/<review-task-id>/pass-NN/result.md` 의 형식 기준이다. Codex CLI 가 `--output-last-message` 로 같은 pass directory 에 결과를 작성한다. operator-role AI (Claude Code) 가 `result.md` 본문을 읽고 finding / risk / required change 의 의미를 판단한다.
+이 파일은 `log/review/<review-task-id>/pass-NN/result.md` 의 형식 기준이다. active reviewer adapter (현재 MVP adapter = codex) 가 `--output-last-message` 로 같은 pass directory 에 result.md 의 verdict/disclosure **body** 를 작성하고, `scripts/review-run.ps1` 가 그 뒤에 `## Reviewer run provenance` 블록을 append 한다 (result.md 는 dual-authored — 아래 note 참조). operator-role AI (Claude Code) 가 `result.md` 본문을 읽고 finding / risk / required change 의 의미를 판단한다.
 
 `<review-task-id>` 는 하나의 Claude Code `/goal` 작업 또는 하나의 review gate 단위이며 Claude Code chat / session id 가 아니다. `pass-NN` 는 같은 review task 의 corrective loop 안에서의 각 Codex review attempt 다.
 
 결과는 본 한 파일로 닫힌다. 다른 sidecar 파일은 canonical contract 의 일부가 아니다.
+
+> **Runner-appended provenance block (reviewer 가 작성하지 않음).** review 성공 시 `scripts/review-run.ps1` 가 result.md 끝에 `## Reviewer run provenance` 블록을 **자동 append** 한다 — runtime-observed run facts (reviewer adapter kind/version, model, effort, reviewer-safe posture, engine identity) 의 machine 기록이다. 이 블록은 **runner 가 emit** 하며 reviewer 또는 operator 가 손으로 작성하지 않는다. reviewer 는 본 template 의 `## Verdict` + disclosure section 본문만 작성하고 provenance 블록은 건드리지 않는다. 본 블록은 informational 이며 `scripts/review-verify.ps1 -RequireResult` 의 gate 대상이 아니다 (`## Verdict` + 4 disclosure H2 의 count 와 무관). 상세는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3 (result.md dual-authorship).
 
 `## Verdict` heading 직후 첫 비어있지 않은 줄은 lowercase 정확히 다음 셋 중 하나여야 한다 — `yes`, `no`, `yes with risk`. 다른 토큰, qualifier, inline 형태 (`Verdict: yes`, `Final verdict: yes`), prose 안 verdict 는 모두 거부된다. 따라서 본 template 의 `## Verdict` 본문은 그 contract 를 따르는 형태로 비워 두며, reviewer 는 이 첫 비어있지 않은 줄을 실제 verdict 값으로 교체하기만 한다. 본 contract 안내는 `## Verdict` heading 밖 (위 본문 또는 `## Notes`) 에 둔다.
 

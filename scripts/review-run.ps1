@@ -321,6 +321,67 @@ function Get-ReviewerEffort {
     return [pscustomobject]@{ Effort = 'xhigh'; Source = 'default' }
 }
 
+function Add-ReviewerProvenanceBlock {
+    # P3: persist runtime-observed reviewer provenance INSIDE the canonical result.md, as a
+    # clearly demarcated, runner-appended block. This makes result.md self-describing for "what
+    # run produced this verdict" WITHOUT a sidecar file (contract §1/§10) and WITHOUT any
+    # input.md caller declaration. The block is MACHINE-EMITTED by the runner — it is NOT
+    # authored by the reviewer adapter and NOT a reviewer verdict/judgment (contract §3
+    # dual-authorship). All values are runtime / config / active-adapter / self-report
+    # observations resolved earlier in this run; no concrete vendor/tool/model/version is
+    # hardcoded (the observed value is written as-is, and an unobserved value is recorded
+    # literally as not-observed). The block heading and its key:value body never collide with
+    # the parser-gated headings (`## Verdict` + the four disclosure H2s), so the appended block
+    # cannot change what review-verify.ps1 counts; it adds no parser gate of its own.
+    param(
+        [string] $ResultMdPath,
+        [string] $Reviewer,
+        [string] $ReviewerVersion,
+        [string] $Model,
+        [string] $ModelSource,
+        [string] $RequestedEffort,
+        [string] $EffortSource,
+        [string] $AppliedEffort,
+        [string] $ReviewerSafePosture,
+        [string] $ToolRoot,
+        [string] $ProjectRoot,
+        [string] $ToolRootSource
+    )
+
+    $verVal = if ([string]::IsNullOrEmpty($ReviewerVersion)) { 'not-observed' } else { $ReviewerVersion }
+    $appliedVal = if ([string]::IsNullOrEmpty($AppliedEffort)) { 'not-observed' } else { $AppliedEffort }
+
+    $note = '_Machine-emitted by `review-run.ps1` (runner-appended). Runtime-observed run facts identifying this review run -- NOT authored by the reviewer adapter and NOT a reviewer verdict/judgment. Source: runtime / config / active reviewer adapter / reviewer self-report (never `input.md` caller declaration). Informational only; `review-verify.ps1` does not gate on it._'
+
+    $body = @()
+    $body += '## Reviewer run provenance'
+    $body += ''
+    $body += $note
+    $body += ''
+    $body += '```text'
+    $body += ('reviewer: {0}' -f $Reviewer)
+    $body += ('reviewer-version: {0}' -f $verVal)
+    $body += ('model: {0}' -f $Model)
+    $body += ('model-source: {0}' -f $ModelSource)
+    $body += ('requested-effort: {0}' -f $RequestedEffort)
+    $body += ('effort-source: {0}' -f $EffortSource)
+    $body += ('applied-effort: {0}' -f $appliedVal)
+    $body += ('reviewer-safe-posture: {0}' -f $ReviewerSafePosture)
+    $body += ('tool-root: {0}' -f $ToolRoot)
+    $body += ('project-root: {0}' -f $ProjectRoot)
+    $body += ('tool-root-source: {0}' -f $ToolRootSource)
+    $body += '```'
+    $blockText = ($body -join "`n") + "`n"
+
+    # Preserve the reviewer-authored content byte-for-byte; only APPEND. The boundary is one
+    # blank line + a thematic break (---) so the runner block is visually separated from the
+    # reviewer body. Existing trailing-newline state is honored so no content is altered.
+    $enc = New-Object System.Text.UTF8Encoding($false)
+    $existing = [System.IO.File]::ReadAllText($ResultMdPath, $enc)
+    $boundary = if ($existing.EndsWith("`n")) { "`n---`n`n" } else { "`n`n---`n`n" }
+    [System.IO.File]::WriteAllText($ResultMdPath, ($existing + $boundary + $blockText), $enc)
+}
+
 if ($Reviewer -ne 'codex') {
     Write-Host ('review-run: FAIL only -Reviewer codex is supported in MVP; got {0}' -f $Reviewer)
     exit 1
@@ -428,6 +489,26 @@ if ([string]::IsNullOrEmpty($verdict)) {
 $relPass = (Resolve-ProjectRelativePath -Path $passDir -ProjectRoot $project) -replace '\\', '/'
 $relResult = (Resolve-ProjectRelativePath -Path $resultMdPath -ProjectRoot $project) -replace '\\', '/'
 
+# Persist runtime-observed reviewer provenance into result.md (P3). Only reached after the
+# reviewer body was produced AND its verdict shape is usable, so provenance is never fabricated
+# for a failed/absent review result. Provenance is a SUPPLEMENTARY record: per the spec's
+# append-failure design, a persistence failure here must NOT invalidate an otherwise valid
+# verdict, but it is reported loudly (provenance-persisted: FAILED ...) — never a silent success.
+$provenancePersisted = $true
+$provenanceError = ''
+try {
+    Add-ReviewerProvenanceBlock -ResultMdPath $resultMdPath `
+        -Reviewer $Reviewer -ReviewerVersion $codexResult.ReviewerVersion `
+        -Model $model -ModelSource $modelSource `
+        -RequestedEffort $effort -EffortSource $effortSource -AppliedEffort $codexResult.AppliedEffort `
+        -ReviewerSafePosture $codexResult.ReviewerSafePosture `
+        -ToolRoot $tool -ProjectRoot $project -ToolRootSource $toolRootSource
+}
+catch {
+    $provenancePersisted = $false
+    $provenanceError = $_.Exception.Message
+}
+
 Write-Host ('review-run: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
 Write-Host ('pass: {0}' -f $Pass)
@@ -464,4 +545,13 @@ Write-Host ('project-root: {0}' -f $project)
 Write-Host ('tool-root-source: {0}' -f $toolRootSource)
 Write-Host ('pass-dir: {0}' -f $relPass)
 Write-Host ('result: {0}' -f $relResult)
+# P3 provenance-persistence status (additive H1 run-fact; the P2/Batch D2 lines above are
+# unchanged). On success the runtime provenance block is now inside result.md; on failure the
+# verdict still stands but the persistence miss is surfaced, not swallowed.
+if ($provenancePersisted) {
+    Write-Host ('provenance-persisted: {0}' -f $relResult)
+}
+else {
+    Write-Host ('provenance-persisted: FAILED -- {0}' -f $provenanceError)
+}
 exit 0

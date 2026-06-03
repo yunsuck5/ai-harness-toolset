@@ -139,6 +139,14 @@ BeforeAll {
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
                 $body += 'exit 0'
             }
+            'verdict-yes-full' {
+                # A complete reviewer body: verdict + the four required disclosure H2s. Used by
+                # the P3 tests so that, after review-run appends its provenance block, the result
+                # still satisfies review-verify -RequireResult (verdict shape + four H2s).
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n`r`n## Blocking findings`r`n`r`nnone`r`n`r`n## Non-blocking concerns`r`n`r`nnone`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 0'
+            }
             'verdict-no' {
                 $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nno`r`n"'
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
@@ -295,6 +303,31 @@ BeforeAll {
         $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
         return [pscustomobject]@{
             ExitCode = $exitCode
+            Output   = $text
+        }
+    }
+
+    function script:Invoke-ReviewVerify {
+        param(
+            [string] $ProjectRoot,
+            [string] $ReviewTaskId,
+            [string] $Pass,
+            [string] $ToolRoot
+        )
+        if ([string]::IsNullOrEmpty($ToolRoot)) { $ToolRoot = $script:RepoRoot }
+        $procArgs = @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass',
+            '-File', $script:VerifyScript,
+            '-ReviewTaskId', $ReviewTaskId,
+            '-Pass', $Pass,
+            '-ProjectRoot', $ProjectRoot,
+            '-ToolRoot', $ToolRoot,
+            '-RequireResult'
+        )
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
+        $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
+        return [pscustomobject]@{
+            ExitCode = $proc.ExitCode
             Output   = $text
         }
     }
@@ -867,5 +900,88 @@ Describe 'review-run canonical pass directory' {
         $r.ExitCode | Should -Be 0 -Because $r.Output
         $r.Output | Should -Match '(?m)^reviewer: codex$'
         $r.Output | Should -Match '(?m)^reviewer-version: not-observed$'
+    }
+
+    It 'AC-RR27: P3 — result.md gets a runner-appended provenance block and still passes review-verify -RequireResult' {
+        # P3: review-run persists runtime provenance INSIDE result.md as a runner-appended block.
+        # The reviewer body is a full result (verdict + four disclosure H2s); after the block is
+        # appended, review-verify -RequireResult must still pass (the block adds no parser-gated
+        # heading and does not duplicate ## Verdict). Provenance values are exact-line asserted
+        # against controlled stub values (reviewer-version 9.9.9-stub is non-real).
+        $project = script:New-RunCase -CaseName 'rr27'
+        $taskId  = 'rr27-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr27-full' -Mode 'verdict-yes-full'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        # Stdout reports the persistence (additive H1 run-fact; P2 lines unchanged).
+        $r.Output | Should -Match '(?m)^provenance-persisted: '
+        $r.Output | Should -Not -Match '(?m)^provenance-persisted: FAILED'
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $content = [System.IO.File]::ReadAllText($resultMd, $enc)
+
+        # The runner block is present and demarcated.
+        $content | Should -Match '(?m)^## Reviewer run provenance$'
+        $content | Should -Match 'Machine-emitted by'
+        # Exact-line provenance values (controlled stub values; no real external version asserted).
+        $content | Should -Match '(?m)^reviewer: codex$'
+        $content | Should -Match '(?m)^reviewer-version: 9\.9\.9-stub$'
+        $content | Should -Match '(?m)^model-source: config$'
+        $content | Should -Match '(?m)^requested-effort: xhigh$'
+        $content | Should -Match '(?m)^effort-source: config$'
+        $content | Should -Match '(?m)^applied-effort: xhigh$'
+        $content | Should -Match '(?m)^reviewer-safe-posture: --ask-for-approval never --sandbox read-only --ignore-user-config web_search=disabled$'
+        $content | Should -Match '(?m)^tool-root-source: explicit$'
+        # The model value is read dynamically from config (no concrete version hardcoded in this test).
+        $cfgModel = (([System.IO.File]::ReadAllText((Join-Path $script:RepoRoot 'config/reviewer.json'), $enc)) | ConvertFrom-Json).model
+        $content | Should -Match ('(?m)^model: ' + [regex]::Escape([string]$cfgModel) + '$')
+
+        # The reviewer-authored body is preserved: exactly one ## Verdict, all four disclosure
+        # H2s. Count the same way review-verify does (line split + TrimEnd -ceq) so the assertion
+        # is EOL-agnostic (the reviewer body may be CRLF while the appended block is LF).
+        $lines = $content -split "`r?`n"
+        (@($lines | Where-Object { $_.TrimEnd() -ceq '## Verdict' })).Count | Should -Be 1
+        (@($lines | Where-Object { $_.TrimEnd() -ceq '## Blocking findings' })).Count | Should -Be 1
+        (@($lines | Where-Object { $_.TrimEnd() -ceq '## Non-blocking concerns' })).Count | Should -Be 1
+        (@($lines | Where-Object { $_.TrimEnd() -ceq '## Review limitations' })).Count | Should -Be 1
+        (@($lines | Where-Object { $_.TrimEnd() -ceq '## Assumptions relied on' })).Count | Should -Be 1
+        # The appended runner block must not have introduced a second ## Verdict.
+        (@($lines | Where-Object { $_.TrimEnd() -ceq '## Reviewer run provenance' })).Count | Should -Be 1
+
+        # The block does NOT break the canonical-artifact gate.
+        $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $v.ExitCode | Should -Be 0 -Because $v.Output
+        $v.Output | Should -Match 'result\.md verdict shape valid \(verdict=yes\)'
+        $v.Output | Should -Match 'disclosure sections present'
+    }
+
+    It 'AC-RR28: P3 — not-observed version is persisted in the provenance block (no silent success)' {
+        # Honesty path persisted: with no version banner, the block records reviewer-version:
+        # not-observed (not a fabricated or hardcoded value), and review-verify still passes.
+        $project = script:New-RunCase -CaseName 'rr28'
+        $taskId  = 'rr28-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr28-full' -Mode 'verdict-yes-full' -EmitVersionHeader $false
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $content = [System.IO.File]::ReadAllText($resultMd, $enc)
+        $content | Should -Match '(?m)^## Reviewer run provenance$'
+        $content | Should -Match '(?m)^reviewer-version: not-observed$'
+
+        $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $v.ExitCode | Should -Be 0 -Because $v.Output
     }
 }
