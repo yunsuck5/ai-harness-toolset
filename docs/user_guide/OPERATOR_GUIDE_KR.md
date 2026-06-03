@@ -15,7 +15,7 @@
 이 repo 의 MVP 는 다음을 만족하는 상태를 가리킨다.
 
 - toolset 의 lifecycle script 가 `<ToolRoot>` (현행 default: channel 3 global stable install) 에서 실행되면서, runtime artifact 는 `<ProjectRoot>` 의 `log/` 아래에만 생성된다.
-- 한 번의 review pass 는 두 단계 entry script 호출로 닫힌다: `review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>]` 가 canonical pass directory 를 발급하고 `input.md` 를 seed → AI 가 `input.md` 본문을 직접 작성 → `review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` 가 `review-input-verify.ps1` 로 heading shape 를 검증한 뒤 Codex CLI 를 1 회 실행해 같은 pass directory 에 `result.md` 를 작성한다.
+- 한 번의 review pass 는 두 단계 entry script 호출로 닫힌다: `review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>]` 가 canonical pass directory 를 발급하고 `input.md` 를 seed → AI 가 `input.md` 본문을 직접 작성 → `review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` 가 `review-input-verify.ps1` 로 heading shape 를 검증한 뒤 active reviewer adapter (현재 codex CLI) 를 1 회 실행해 같은 pass directory 에 `result.md` 의 verdict/disclosure body 를 작성하고, 그 뒤에 runner 가 `## Reviewer run provenance` 블록을 append 한다 (result.md 는 dual-authored; `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3).
 - 결과 record 는 `<project-root>/log/review/<review-task-id>/pass-NN/` 의 canonical pair (`input.md`, `result.md`) 두 파일로 닫힌다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). `<review-task-id>` 는 하나의 `/goal` 작업 또는 하나의 review gate 단위이며 Claude Code chat / session id 가 아니다. `pass-NN` 는 같은 task 의 corrective loop 안에서의 각 Codex review attempt 다.
 - 자동 commit / push / release 는 하지 않는다. verdict 는 사용자 판단 input 일 뿐 자동 게이트가 아니다.
 
@@ -74,7 +74,7 @@ runtime artifact 는 항상 `<project-root>/log/` 아래에만 생성된다.
     └── <review-task-id>/
         ├── pass-01/
         │   ├── input.md   # AI-authored from templates/review-input.md
-        │   └── result.md  # Codex-authored
+        │   └── result.md  # dual-authored: reviewer-adapter body + runner-appended provenance block
         └── pass-02/       # only if the corrective loop adds another attempt
             ├── input.md
             └── result.md
@@ -339,7 +339,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts/log-init.ps1
 
 ## 10. review artifact 역할
 
-canonical review artifact 는 `log/review/<review-task-id>/pass-NN/` 의 두 파일 — `input.md` (Claude Code 작성) 와 `result.md` (Codex 작성) — 뿐이며, 다른 sidecar 는 contract 의 일부가 아니다. 두 파일의 작성자 / required heading / shape 등 **전체 계약은 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 가 source-of-truth** 다 — 본 절은 그 계약을 중복 정의하지 않고 그곳으로 routing 한다. removed-legacy artifact shape 의 historical reference 는 git history 에 보존되어 있으며 operator path 가 아니다.
+canonical review artifact 는 `log/review/<review-task-id>/pass-NN/` 의 두 파일 — `input.md` (Claude Code 작성) 와 `result.md` (dual-authored: reviewer-adapter verdict/disclosure body + runner-appended `## Reviewer run provenance` block) — 뿐이며, 다른 sidecar 는 contract 의 일부가 아니다. 두 파일의 작성자 / required heading / shape 등 **전체 계약은 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 가 source-of-truth** 다 — 본 절은 그 계약을 중복 정의하지 않고 그곳으로 routing 한다. removed-legacy artifact shape 의 historical reference 는 git history 에 보존되어 있으며 operator path 가 아니다.
 
 ---
 
@@ -511,6 +511,8 @@ legacy project-local copy mode (channel 5) 를 평가하는 경우에만 본 부
 - `scripts/brief-check.ps1` 의 PASS / FAIL (BRIEF shape 검증, reviewer 판단이 아님).
 
 verdict 의 source-of-truth 는 같은 review task 의 final pass directory `log/review/<review-task-id>/pass-NN/result.md` 의 `## Verdict` 다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). 같은 `result.md` 안의 4 required disclosure H2 (`## Blocking findings` / `## Non-blocking concerns` / `## Review limitations` / `## Assumptions relied on`) 본문은 verdict 의 합리적 후속 판단 (commit / push / risk acceptance / corrective pass) 의 input 으로 함께 읽는다.
+
+`result.md` 에 `## Reviewer run provenance` 블록이 있으면 (runner 가 append 한 경우) operator 는 그 값 (reviewer adapter kind / reviewer version 또는 `not-observed` / model / model-source / requested · effort-source · applied-effort / reviewer-safe posture / engine identity) 을 final report 의 reviewer guard status 로 surface 한다. 이 블록은 **runner-appended machine run-fact 이지 reviewer 의 judgment 가 아니며**, informational 이고 `review-verify.ps1` 의 gate 대상이 아니다 (result.md 의 dual-authorship — reviewer-adapter verdict/disclosure body + runner-appended provenance block; `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3). reviewer-safe posture 는 tested-vectors-only caveat 를 유지하고, concrete reviewer version 을 durable 값으로 박지 않으며 (runtime 관측값 인용), verdict 는 commit / push 의 자동 승인이 아니다.
 
 ### 별도 scoped 승인 항목
 

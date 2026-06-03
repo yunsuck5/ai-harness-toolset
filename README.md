@@ -69,7 +69,7 @@ The canonical review artifact layout is one pass directory per Codex attempt, gr
 <ProjectRoot>/log/review/<review-task-id>/
   pass-01/
     input.md   AI-authored from templates/review-input.md
-    result.md  Codex-authored
+    result.md  reviewer-adapter body + runner-appended provenance block (dual-authored)
   pass-02/    (only if the corrective loop adds another attempt)
     input.md
     result.md
@@ -81,7 +81,7 @@ The canonical review artifact layout is one pass directory per Codex attempt, gr
 
 `input.md` is authored by Claude Code (the operator-role AI). It contains the target files, context, required inspection paths, review questions, constraints, and the final verdict instruction, in five required H2 sections (`## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`, `## Final verdict`) plus recommended informational sections (`## Stage`, `## Purpose`, `## Target files`). The user does not type CLI arguments; the natural-language entrypoint is `docs/user_guide/OPERATOR_GUIDE_KR.md` §7, and the skill that orchestrates the run is `snippets/claude-skills/ai-harness-review/SKILL.md`.
 
-`result.md` is authored by Codex CLI (`--output-last-message`). It must contain exactly one top-level `## Verdict` heading whose first non-empty body line is one of `yes`, `no`, `yes with risk` (lowercase, no qualifier, no inline form), plus four required disclosure H2s — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` — each exactly once, with `none` as the body when a section has no substance. Additional sections (`## Findings`, `## Risks`, `## Counter-argument`, `## Notes`) are free-form. `## Counter-argument` is optional and strongly-recommended (non-parser) — the reviewer's dedicated position for the strongest case AGAINST a `yes` / `yes with risk` verdict; convention source: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3c.
+`result.md` is **dual-authored**: the verdict/disclosure body is authored by the active reviewer adapter (current MVP adapter: codex, via `--output-last-message`), and `scripts/review-run.ps1` then appends a runner-authored `## Reviewer run provenance` block (a machine run-fact, not reviewer judgment; `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3). The reviewer-authored body must contain exactly one top-level `## Verdict` heading whose first non-empty body line is one of `yes`, `no`, `yes with risk` (lowercase, no qualifier, no inline form), plus four required disclosure H2s — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` — each exactly once, with `none` as the body when a section has no substance. Additional sections (`## Findings`, `## Risks`, `## Counter-argument`, `## Notes`) are free-form. `## Counter-argument` is optional and strongly-recommended (non-parser) — the reviewer's dedicated position for the strongest case AGAINST a `yes` / `yes with risk` verdict; convention source: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3c.
 
 The toolset script that drives a pass performs only deterministic gates: pass-directory containment under `<ProjectRoot>/log/review/`, the five required headings in `input.md`, exactly one Codex execution, the existence of `result.md`, the `## Verdict` allowed-value check, and the four required disclosure H2s each present exactly once in `result.md` (the disclosure check is the `-RequireResult` mode of `scripts/review-verify.ps1`). It does not interpret findings, decide correction scope, or trigger commit / push / publish / merge / release.
 
@@ -157,7 +157,7 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 | `docs/user_guide/OPERATOR_GUIDE_KR.md` | active operational | Current Korean operator guide for shared/global operation, CLI usage, legacy mode appendix, and acceptance checklist. |
 | `docs/policies/POWERSHELL_POLICY.md` | active operational | Encoding, line-ending, file IO, and collection return rules. |
 | `docs/policies/REVIEWER_CONFIG_POLICY.md` | active operational | Reviewer config location, precedence, defaults, and MVP reviewer boundary. |
-| `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` | active operational | Canonical review artifact contract — `log/review/<review-task-id>/pass-NN/input.md` (AI-authored) + `result.md` (Codex-authored) only; deterministic gates and verdict vocabulary. |
+| `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` | active operational | Canonical review artifact contract — `log/review/<review-task-id>/pass-NN/input.md` (AI-authored) + `result.md` (dual-authored: reviewer-adapter verdict/disclosure body + runner-appended `## Reviewer run provenance` block) only; deterministic gates and verdict vocabulary. |
 | `docs/project/TOOLING_POSITION.md` | active reference | Position statements for adjacent tools. |
 
 ### Current state, systems, and roadmap
