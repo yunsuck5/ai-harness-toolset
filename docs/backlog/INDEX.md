@@ -17,7 +17,7 @@ This folder is **not**: implementation / scheduling / release·publish·merge ap
 
 ### Open candidates → per-system BACKLOG (self-contained)
 
-- review: RV-B-01 (Review 2-pass/profile), RV-B-02 (`timeoutSeconds` enforcement debt), RV-B-03 (review result wrapper/fence hygiene), RV-B-04 (no-exec/no-write reviewer contract), RV-B-05 (Review input governance) → `docs/systems/review/BACKLOG.md` (source-of-truth for the current open candidate set).
+- review: RV-B-01 (Review 2-pass/profile), RV-B-02 (`timeoutSeconds` enforcement debt), RV-B-03 (review result wrapper/fence hygiene), RV-B-04 (no-exec/no-write reviewer contract), RV-B-05 (Review input governance), RV-B-06 (reviewer runtime provenance in the result artifact) → `docs/systems/review/BACKLOG.md` (source-of-truth for the current open candidate set).
 - install-update: IU-B-01 (smoke evidence preservation), IU-B-02 (project-local vs global ToolRoot docs debt), IU-B-03 (path normalization hardening), IU-B-04 (install validation report evidence hygiene), IU-B-05 (snapshot auxiliary evidence wording), IU-B-06 (long-lived docs commit-hash hygiene) → `docs/systems/install-update/BACKLOG.md`.
 
 ### Closed → per-system STATUS completed-ledger (full historical detail in git history)
