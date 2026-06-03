@@ -1,10 +1,12 @@
 # 리뷰 시스템 — result 아티팩트 reviewer runtime provenance 기록 (planning/design spec, 2026-06-03)
 
+> **Implementation status (P2 implemented; P3/P4 open) — 2026-06-03.** 본 문서의 본문(§0–§14)은 **P1 설계시점(design-time) 기록**으로 유지된다 — 설계 근거·옵션·조사 결과의 출처다. 그 이후 **P2 가 구현되었다**: `scripts/review-run.ps1` 이 active reviewer adapter 의 **kind** 와 **version** 을 runtime 에서 관측해 두 개의 H1 stdout run-fact `reviewer:` / `reviewer-version:` 를 (기존 Batch D2 run-fact 에 **additive** 로) emit 한다. adapter version 은 **P2 전에는 미관측**이었고, **P2 이후 active adapter 의 run banner 에서 관측되어 H1 stdout 으로 emit** 되며, 관측 불가 시 `not-observed`(no silent success)다. 관측은 adapter-isolated reader(`Get-CodexAdapterVersion`) 뒤에 격리되고 concrete version 을 durable 하게 박지 않는다 — **vendor/adapter/version neutrality 원칙은 그대로 binding**(아래 §Document character 참조). **P3(result.md provenance persist)·P4(operator surfacing)는 여전히 미구현**이다 — `result.md` 에 provenance 를 persist 하지 않으며, **result.md dual-authorship 과 contract amend 는 여전히 미래 P3 사안**(§5/§7/§11 OQ2)이고, contract/template/skill/parser 변경·activation 도 없다. 따라서 본문이 P2 를 "권고/미래" 로, version 을 "미관측" 으로, 또는 "P2–P4 전부 미구현" 으로 기술하는 부분은 **P2 전 설계시점 baseline** 으로 읽는다(§1.2·§8·§12·§13·§14 에 P2-이후 표기를 병기). 현재 구현 상태의 single-home 은 `docs/systems/review/STATUS.md`·`docs/systems/review/BACKLOG.md`(둘 다 RV-B-06)이며 본 banner 가 그것과 정합한다. 구현/리뷰 출처: P2 코드 `scripts/review-run.ps1` + `tests/review-run.Tests.ps1`(AC-RR25/26), review task `review-result-provenance-p2-2026-06-03`(pass-01 코드 yes; pass-02 코드+docs yes, blocking none).
+
 ## Document character
 
 본 문서는 review subsystem 의 **새 deferred scoped track** — review **result 아티팩트(result.md)** 만 보고도 *"어떤 reviewer adapter 종류 / reviewer version / model / effort 로 실제 실행됐는가"* 를 판단할 수 있게 하는 **reviewer runtime provenance 기록 기능**의 planning/design spec 이다. 이 기능은 Batch D 의 run-fact emission / final-report surfacing 위에 얹히지만 **Batch D 의 일부가 아니며 Batch D 를 재오픈하지 않는다** (Batch D mainline 은 `docs/systems/review/STATUS.md` line 39 "Batch D mainline complete" 로 닫혀 있고 spec §4 가 "no D4" 를 명시).
 
-- **성격**: 본 문서 = 조사(현 구현 read-only inspection) + design spec. **source/script/test/config/contract/template/verifier/skill 변경을 동반하지 않는다.** 구현(별도 scoped `/goal` + review gate + 사용자 commit/push 승인)이 본 spec 을 입력으로 삼는다.
+- **성격**: 본 문서 = 조사(현 구현 read-only inspection) + design spec. **이 design 문서 자체는 source/script/test/config/contract/template/verifier/skill 변경을 동반하지 않는다** — 구현은 별도 scoped `/goal` + review gate + 사용자 commit/push 승인을 거치는 별도 batch 이며 본 spec 을 입력으로 삼는다. *(그 중 **P2 는 이미 구현됐다** — 상단 Implementation status; P3/P4 는 미구현.)*
 - **이것이 아닌 것**: implementation 아님 / operational claim 아님 / 승인 문서 아님. 본 문서의 어떤 조사 결과도 source 변경을 수행하거나 승인하지 않는다. "필요해 보임" 은 구현 확정이 아니라 spec 후보다.
 - **정직성 분리**: 아래 모든 사실은 **현재 관측/emit 함 / 현재 관측/emit 하지 않음 / inferred(미확정)** 로 분리 표기한다. "현재 runner 가 stdout 으로 emit 하는 run-fact" 와 "현재 어디에도 persist 되지 않는 사실" 과 "현재 아예 관측조차 되지 않는 사실" 은 서로 다른 층이다 — 섞지 않는다.
 - **source of truth**: 본 spec 의 상위 권위는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`(artifact 계약, §3 result.md authorship / §4 script responsibility / §6b final report schema / §10 non-goals), `docs/systems/review/REVIEW_POLISHING_BATCH_D_SPEC.md`(세 home 분류 §2, run-fact 현황 §1), `docs/policies/REVIEWER_CONFIG_POLICY.md`(reviewer-safe / model resolution), `docs/policies/DOCS_OPERATING_MODEL.md`(docs 변경/배치). 충돌 시 contract 가 이긴다.
@@ -37,8 +39,8 @@ canonical review record 는 `input.md`(operator-authored) + `result.md`(reviewer
 
 - **PV-V1 (run-fact 는 stdout 휘발)**: `scripts/review-run.ps1` success-path 는 model / model-source / requested-effort / effort-source / applied-effort / reviewer-safe-posture / tool-root / project-root / tool-root-source 를 **`Write-Host` 로 stdout 에만 emit** 한다(라인 401–425, Batch D2). 이 값들은 **canonical artifact 어디에도 persist 되지 않는다** — console 출력이라 세션 종료/스크롤아웃과 함께 사라지며, `log/review/<id>/pass-NN/` 의 두 파일을 사후에 열어도 보이지 않는다.
 - **PV-V2 (result.md 는 reviewer-adapter 가 작성)**: `result.md` 는 active reviewer adapter 가 자기 result-output mechanism(현재 codex adapter 의 경우 `--output-last-message $ResultMdPath`)으로 한 번 쓴다(라인 95). runner 는 verdict 파싱을 위해 read-back 만 하고(`Get-VerdictFromResultMd`, 라인 392) **result.md 에 절대 쓰지 않는다.** 즉 result.md 본문에는 reviewer 가 자기 verdict 와 disclosure 만 적고, 실행 provenance 는 전혀 없다.
-- **PV-NV1 (reviewer kind 미surface)**: `-Reviewer` 파라미터는 현재 `codex` 만 허용하고 그 외는 fail 한다(라인 7, 294) — 즉 active adapter kind 는 runner 가 알지만 **run-fact 라인으로 emit 되지 않고**(`reviewer:` 라인 없음) artifact 에도 없다.
-- **PV-NV2 (reviewer version 아예 미관측)**: runner 는 **active adapter 의 version 을 어디서도 관측하지 않는다.** adapter 의 version-reporting mechanism 을 호출하는 코드가 없고(현재 codex adapter 의 경우 `codex --version` 류 호출 부재), 실행 wrapper 의 stderr 캡처는 오직 `reasoning effort:\s*(...)` 만 추출한다(라인 179). 동기 사건의 가장 중요한 datum 인 reviewer version 이 현재 구조에 전혀 들어오지 않는다 — 이것이 **신규 관측이 필요한 유일한 datum** 이다.
+- **PV-NV1 (reviewer kind 미surface — *P2 전 baseline*)**: `-Reviewer` 파라미터는 현재 `codex` 만 허용하고 그 외는 fail 한다(라인 7, 294) — 즉 active adapter kind 는 runner 가 알지만 **run-fact 라인으로 emit 되지 않고**(`reviewer:` 라인 없음) artifact 에도 없다. *(**P2 이후 해소**: active adapter kind 를 `reviewer:` H1 run-fact 로 emit — 상단 Implementation status.)*
+- **PV-NV2 (reviewer version 아예 미관측 — *P2 전 baseline*)**: runner 는 **active adapter 의 version 을 어디서도 관측하지 않는다.** adapter 의 version-reporting mechanism 을 호출하는 코드가 없고(현재 codex adapter 의 경우 `codex --version` 류 호출 부재), 실행 wrapper 의 stderr 캡처는 오직 `reasoning effort:\s*(...)` 만 추출한다(라인 179). 동기 사건의 가장 중요한 datum 인 reviewer version 이 이 구조에 전혀 들어오지 않는다 — 이것이 **신규 관측이 필요한 유일한 datum** 이다. *(**P2 이후 해소(stdout 한정)**: active adapter 의 run banner 에서 version 을 관측해 `reviewer-version:` H1 run-fact 로 emit; 미관측 시 `not-observed`. result.md persist 는 여전히 P3 — 상단 Implementation status.)*
 
 ### 1.3 결과
 
@@ -50,7 +52,7 @@ canonical review record 는 `input.md`(operator-authored) + `result.md`(reviewer
 
 - **G1**: `result.md`(또는 result artifact) **단독**으로 실제 실행 provenance(reviewer adapter kind / version / model / requested+applied effort / reviewer-safe posture)를 판단 가능하게 한다.
 - **G2**: provenance 값은 호출자가 input.md 에 적는 **선언값이 아니라**, **config / active reviewer adapter / runtime observation / reviewer self-report** 에서 얻은 값이어야 한다 (§6 source 구분 참조).
-- **G3**: 현재 미관측 datum(reviewer kind/version)을 active adapter 의 runtime 으로부터 관측하고, 이미 stdout 으로만 emit 되는 Batch D run-fact 를 **persist** 한다 — 즉 휘발성 H1 stdout 의 신뢰 subset 을 canonical record 에 남긴다.
+- **G3**: (P2 전) 미관측이던 datum(reviewer kind/version)을 active adapter 의 runtime 으로부터 관측하고(**P2 가 이를 H1 stdout 으로 달성**), 그 값과 이미 stdout 으로만 emit 되는 Batch D run-fact 를 canonical record 에 **persist**(**P3 — 미구현**) 한다 — 즉 휘발성 H1 stdout 의 신뢰 subset 을 canonical record 에 남긴다.
 - **G4**: 위를 **canonical 2-file contract 를 깨지 않고**(sidecar 금지 §10), **기존 parser surface(`## Verdict` + 4 H2)를 깨지 않고**, **Batch D 의 stdout emission 을 제거하지 않고**, **특정 vendor/tool/version 에 결합하지 않고**(neutrality 원칙) 달성한다.
 
 ### 2.2 non-goals (이번 scope 가 다루지 않는 것 — required content #12)
@@ -124,8 +126,8 @@ provenance 를 input.md 에 두면 안 되는 이유:
 
 | # | field | 값 예 (현재 adapter, 예시일 뿐) | source | 현재 상태 (verified) |
 |---|---|---|---|---|
-| F1 | reviewer adapter kind/type | `codex` | **active reviewer adapter** identity (어떤 adapter 가 실제 실행됐는지의 runtime observation) | 관측됨(`-Reviewer` 해소값)·**미emit·미persist** (PV-NV1) |
-| F2 | reviewer version | (adapter 가 보고하는 version 문자열) | **active reviewer adapter / runtime observation** — adapter 가 version-reporting 을 **support 할 때** runtime-resolved observation 으로 기록; 미지원이면 `unknown`/`not-observed` | **아예 미관측** (PV-NV2) — 신규 관측 필요 |
+| F1 | reviewer adapter kind/type | `codex` | **active reviewer adapter** identity (어떤 adapter 가 실제 실행됐는지의 runtime observation) | **P2 이후 stdout emit**(`reviewer:`)·**미persist** (P2; 이전 PV-NV1 = 미emit) |
+| F2 | reviewer version | (adapter 가 보고하는 version 문자열) | **active reviewer adapter / runtime observation** — adapter 가 version-reporting 을 **support 할 때** runtime-resolved observation 으로 기록; 미지원이면 `unknown`/`not-observed` | **P2 이후 stdout 관측·emit**(`reviewer-version:`; support 시, 아니면 `not-observed`)·**미persist** (P2; 이전 PV-NV2 = 아예 미관측) |
 | F3 | model | (config 의 resolve 값) | **config**(`config/reviewer.json` model; 또는 explicit override) + **runtime observation**(resolver 결과) | stdout emit(D2)·**미persist** (PV-V1) |
 | F4 | model-source | `explicit` / `config` | **runtime observation** (실제 resolver branch) | stdout emit(D2)·미persist |
 | F5 | requested effort | `xhigh` 등 | **config / runtime observation** — 값은 config(또는 explicit) 에서 오고, *어느 source 로 어떻게 해소됐는지* 는 runner 가 관측 | stdout emit(D2)·미persist |
@@ -164,7 +166,7 @@ source 구분 요약 (모두 caller declaration 아님 — G2):
 > 아래는 **권고 분할**이다. 본 문서는 구현하지 않으며, 각 단계는 별도 scoped `/goal` + review gate + 사용자 commit/push 승인이 필요하다. 순서·묶음은 권고이며 확정 지시가 아니다. review tooling self-modification 이므로 각 단계 closeout review 는 §5a.7 대로 **global stable ToolRoot engine** 으로 수행한다.
 
 - **P1 — 본 planning/design spec + review gate (현재 단계)**. source 변경 없음.
-- **P2 — adapter kind/version runtime 관측 + H1 run-fact (source, 최소)**: `review-run.ps1` 에 active adapter kind 표면화(F1)와 version 신규 관측(F2; adapter 의 version-reporting 추상화를 통해 — §11 OQ1)을 추가하고 `reviewer:` / `reviewer-version:` 를 stdout 으로 emit + Pester AC. **이 단계는 stdout 만 건드리고 result.md authorship 은 바꾸지 않는다** — 가장 작은 additive 변경. contract 변경 없음(또는 run-fact 목록 mirror 한 줄). vendor-specific version call 은 adapter 추상화 뒤에 둔다.
+- **P2 — adapter kind/version runtime 관측 + H1 run-fact (source, 최소) — ✅ 구현됨(상단 Implementation status)**: `review-run.ps1` 에 active adapter kind 표면화(F1)와 version 신규 관측(F2; adapter 의 version-reporting 추상화를 통해 — §11 OQ1)을 추가하고 `reviewer:` / `reviewer-version:` 를 stdout 으로 emit + Pester AC. **이 단계는 stdout 만 건드리고 result.md authorship 은 바꾸지 않는다** — 가장 작은 additive 변경. contract 변경 없음(또는 run-fact 목록 mirror 한 줄). vendor-specific version call 은 adapter 추상화 뒤에 둔다. *구현 결과: version 관측은 codex adapter 의 run-banner stderr 파싱을 adapter-isolated reader 뒤에 둔 형태로 실현됐고(별도 vendor `--version` 프로세스 미사용), `tests/review-run.Tests.ps1` AC-RR25(관측)·AC-RR26(not-observed fallback)로 커버됐다.*
 - **P3 — result.md provenance 블록 persist (source + contract, artifact 변경)**: §5 Option A 구현 — runner 가 adapter 산출 후 result.md 에 `## Reviewer run provenance` 블록(F1–F8 [+F9])을 append. contract §3/§4/§10 amend + template + tests(parser 회귀 포함) + verifier-compat 확인. **이 단계가 핵심 artifact 변경** 이며 가장 무겁다 — P2 의 관측값에 의존.
 - **P4 — operator surfacing / docs 정합 (skill + docs)**: SKILL step 6/7 가 persist 된 provenance 를 읽어 보고하도록 정합, §6b.2 인용 근거 강화, STATUS/policy 한 줄. parser/gate 변경 없음.
 
@@ -197,17 +199,17 @@ source 구분 요약 (모두 caller declaration 아님 — G2):
 
 ## 12. 정직성 경계 (verified / inferred / not-done)
 
-- **verified (inspection)**: PV-V1(run-fact stdout-only, 라인 401–425), PV-V2(result.md 는 adapter 의 result-output mechanism 으로 adapter 가 작성, runner read-back only 라인 95/392), PV-NV1(adapter kind 미emit), PV-NV2(adapter version 아예 미관측; stderr 에서 effort 만 추출 라인 179), active adapter(codex)의 version-reporting 으로 version 문자열 관측 가능(`codex-cli 0.132.0` 1회 확인). 모두 현 repo 파일/1회 read-only 명령에서 직접 확인한 *현재 adapter 의 사실* 이다.
+- **verified (inspection) — *spec 작성 시점(= P2 전) 기준***: PV-V1(run-fact stdout-only, 라인 401–425), PV-V2(result.md 는 adapter 의 result-output mechanism 으로 adapter 가 작성, runner read-back only 라인 95/392), PV-NV1(adapter kind 미emit — *P2 전 baseline*), PV-NV2(adapter version 아예 미관측; stderr 에서 effort 만 추출 라인 179 — *P2 전 baseline*), active adapter(codex)의 version-reporting 으로 version 문자열 관측 가능(`codex-cli 0.132.0` 1회 확인). 이들은 spec 작성 시점(P2 전)에 현 repo 파일/1회 read-only 명령에서 직접 확인한 *그 시점 adapter 의 사실* 이다. **PV-V1·PV-V2 는 P2 후에도 유효**(P2 는 stdout run-fact 만 additive 추가, result.md authorship·persist 미변경)하지만, **PV-NV1·PV-NV2 는 P2 가 해소했다** — P2 이후 adapter kind/version 이 `reviewer:`/`reviewer-version:` H1 run-fact 로 emit 된다(상단 Implementation status; §1.2 의 P2-이후 표기). result.md persist 는 여전히 P3.
 - **inferred (미확정, spec 후보)**: §5 Option A 권고, `## Reviewer run provenance` heading 명, field 명칭(`reviewer:`/`reviewer-version:` 등), P2→P3→P4 분할·순서, OQ1 의 adapter version 관측 추상화, OQ3/OQ5 의 정책 선택 — 모두 implementation batch 가 확정.
-- **not-done (미구현)**: P2–P4 전부 미구현. 본 spec 작성/corrective 는 source/script/test/config/contract/template/verifier/skill 을 변경하지 않았다(본 spec 문서 + 등록용 STATUS/BACKLOG/INDEX pointer 외 mutation 없음). 본 spec 채택이 implementation/commit/push/activation 승인이 아니다.
+- **not-done (미구현) — *spec 작성 시점 기준; 상단 Implementation status 가 현재 상태를 정정***: spec 작성 당시 P2–P4 전부 미구현이었고, 본 spec 문서 작성/corrective 자체는 source/script/test/config/contract/template/verifier/skill 을 변경하지 않았다(본 spec 문서 + 등록용 STATUS/BACKLOG/INDEX pointer 외 mutation 없음). **그 이후 별도 승인된 P2 구현 batch 가 `scripts/review-run.ps1` + `tests/review-run.Tests.ps1` 를 변경했고(P2 구현됨), P3–P4 는 여전히 미구현이다.** 본 spec 채택이 P3–P4 implementation/commit/push/activation 승인이 아니다.
 
 ## 13. approval boundary / 본 spec 이 하지 않은 것
 
-- source/script/test/config 미변경(`review-run.ps1`·verifier·tests·`config/reviewer.json`·contract·template·SKILL·policy 불변). 본 작업의 mutation 은 본 spec 문서 + 등록용 BACKLOG RV-B-06 row + STATUS "Open / historical" pointer + `docs/backlog/INDEX.md` enumeration 1줄에 한정.
-- implementation(P2–P4) 미진입. global/user config 미변경. activation apply 없음. snapshot/manifest 없음. commit/push 없음.
-- P2–P4 구현 진입은 각각 별도 scoped `/goal` + review gate + 사용자 commit/push 승인 필요. reviewer verdict/opinion 은 그 승인이 아니다.
+- source/script/test/config 미변경(`review-run.ps1`·verifier·tests·`config/reviewer.json`·contract·template·SKILL·policy 불변) — ***이 approval-boundary 는 spec 작성/planning batch 기준이다.*** 본 (planning) 작업의 mutation 은 본 spec 문서 + 등록용 BACKLOG RV-B-06 row + STATUS "Open / historical" pointer + `docs/backlog/INDEX.md` enumeration 1줄에 한정한다. **이후 별도 승인된 P2 구현 batch 가 `scripts/review-run.ps1` + `tests/review-run.Tests.ps1` 를 변경했다(상단 Implementation status); verifier·`config/reviewer.json`·contract·template·SKILL·policy 는 P2 에서도 불변이다.**
+- implementation: **P2 진입·구현됨**(상단 Implementation status), **P3–P4 미진입**. global/user config 미변경. activation apply 없음. snapshot/manifest 없음. commit/push 없음.
+- P3–P4 구현 진입은 각각 별도 scoped `/goal` + review gate + 사용자 commit/push 승인 필요. reviewer verdict/opinion 은 그 승인이 아니다.
 - review tooling self-modification 이므로 본 spec 및 후속 단계의 closeout review 는 §5a.7 대로 global stable ToolRoot engine 으로 수행한다.
 
 ## 14. 다음 single action
 
-본 spec 의 corrected-state reviewer gate(planning/design 범위 + vendor/adapter-neutrality) 통과 후, 사용자 검토·채택을 기다린다. 채택되면 **P2**(adapter kind/version runtime 관측 + H1 run-fact, 최소 source 변경)를 별도 scoped `/goal` 로 진입. P3(result.md provenance persist)·P4(operator surfacing)는 그 뒤. 그 전까지 source/script/test/config 변경·implementation 진입 금지.
+**P2(adapter kind/version runtime 관측 + H1 run-fact)는 구현·리뷰 완료됐다**(상단 Implementation status; review task `review-result-provenance-p2-2026-06-03`). 다음 single action 은 사용자 결정에 따라 **P3**(result.md provenance persist + contract amend) 진입 여부다 — 그 자체가 별도 scoped `/goal` + review gate + 사용자 commit/push 승인을 요한다. P4(operator surfacing)는 그 뒤. 그 전까지 **P3/P4 implementation 진입·result.md persist·contract/template/skill/parser 변경·activation 금지.**

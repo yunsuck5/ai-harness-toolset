@@ -28,6 +28,32 @@ if ([string]::IsNullOrEmpty($Pass)) {
 . (Join-Path $PSScriptRoot 'lib/json.ps1')
 . (Join-Path $PSScriptRoot 'lib/resolve-script.ps1')
 
+function Get-CodexAdapterVersion {
+    # Adapter-specific (codex) version-reporting READER. The ACTIVE reviewer adapter's
+    # version is a RUNTIME OBSERVATION, not a caller declaration: it is read from the
+    # version banner the codex CLI prints to stderr on exec (the same banner that already
+    # yields the applied reasoning-effort run-fact), so no extra process is spawned and the
+    # observation is consistent with the applied-effort capture. No concrete version is
+    # hardcoded here — whatever version the adapter reports is captured; when the banner
+    # carries no parseable version the caller reports 'not-observed' (no silent success).
+    # reviewer-tool-specific: a different reviewer adapter supplies its OWN version-reporting
+    # reader; this function is only the codex adapter's path and is NOT a general durable
+    # rule. Keep the vendor-specific banner shape isolated behind this helper.
+    param([string] $StderrText)
+
+    if ([string]::IsNullOrEmpty($StderrText)) {
+        return ''
+    }
+    # Capture a semantic version that follows a codex / "OpenAI Codex" banner marker, so a
+    # model name or other digit-bearing banner line (e.g. the model: line) cannot be
+    # mistaken for the adapter version. The version literal itself is captured at runtime,
+    # never hardcoded as a default or expectation.
+    if ($StderrText -match '(?im)(?:codex[-\s]cli|OpenAI\s+Codex|codex)\s+v?(\d+\.\d+\.\d+(?:[-+.][0-9A-Za-z.-]+)?)') {
+        return $matches[1]
+    }
+    return ''
+}
+
 function Invoke-CodexExec {
     param(
         [string] $InputPath,
@@ -122,6 +148,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
 
     $stderrTemp = [System.IO.Path]::GetTempFileName()
     $appliedEffort = ''
+    $reviewerVersion = ''
     $prevPref = $ErrorActionPreference
     # Native stderr must be captured to a file (not merged) so the Codex exec
     # header line "reasoning effort: <value>" can be read back as the applied-effort
@@ -179,13 +206,16 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         if ($errText -match 'reasoning effort:\s*(none|minimal|low|medium|high|xhigh)\b') {
             $appliedEffort = $matches[1]
         }
+        # Adapter version run-fact (P2): runtime-observed from the same reviewer run banner.
+        # Isolated behind the codex adapter reader; absence -> '' (caller reports not-observed).
+        $reviewerVersion = Get-CodexAdapterVersion -StderrText $errText
         if ($code -ne 0 -and -not [string]::IsNullOrEmpty($errText)) {
             [Console]::Error.Write($errText)
         }
         Remove-Item -LiteralPath $stderrTemp -Force -ErrorAction SilentlyContinue
     }
 
-    return [pscustomobject]@{ ExitCode = $code; AppliedEffort = $appliedEffort; ReviewerSafePosture = $reviewerSafePosture }
+    return [pscustomobject]@{ ExitCode = $code; AppliedEffort = $appliedEffort; ReviewerSafePosture = $reviewerSafePosture; ReviewerVersion = $reviewerVersion }
 }
 
 function Get-VerdictFromResultMd {
@@ -402,6 +432,17 @@ Write-Host ('review-run: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
 Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('verdict: {0}' -f $verdict)
+# Reviewer adapter identity run-facts (P2). H1 stdout run-facts, additive to the Batch D2
+# set below. reviewer = the active reviewer adapter kind (runtime-resolved; MVP allows codex
+# only). reviewer-version = the adapter version observed from the run banner, or not-observed
+# when the active adapter reported no parseable version (no silent success, never hardcoded).
+Write-Host ('reviewer: {0}' -f $Reviewer)
+if ([string]::IsNullOrEmpty($codexResult.ReviewerVersion)) {
+    Write-Host 'reviewer-version: not-observed'
+}
+else {
+    Write-Host ('reviewer-version: {0}' -f $codexResult.ReviewerVersion)
+}
 Write-Host ('model: {0}' -f $model)
 Write-Host ('model-source: {0}' -f $modelSource)
 Write-Host ('requested-effort: {0}' -f $effort)

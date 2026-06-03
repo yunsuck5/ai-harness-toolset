@@ -60,7 +60,8 @@ BeforeAll {
         param(
             [string] $StubName,
             [string] $Mode = 'verdict-yes',
-            [bool] $EmitEffortHeader = $true
+            [bool] $EmitEffortHeader = $true,
+            [bool] $EmitVersionHeader = $true
         )
         $stubDir = Join-Path $TestDrive 'pester-review-run-stubs'
         if (-not (Test-Path -LiteralPath $stubDir -PathType Container)) {
@@ -119,6 +120,13 @@ BeforeAll {
         # EmitEffortHeader $false exercises review-run's not-observed honesty path.
         if ($EmitEffortHeader) {
             $body += '[Console]::Error.WriteLine(''reasoning effort: '' + $effortValue)'
+        }
+        # Mimic the codex run banner version line on stderr so review-run.ps1 can observe the
+        # adapter-version run-fact (P2). The emitted version is a CONTROLLED, non-real stub
+        # value (9.9.9-stub) so tests never bind to a real external version.
+        # EmitVersionHeader $false exercises review-run's not-observed honesty path.
+        if ($EmitVersionHeader) {
+            $body += '[Console]::Error.WriteLine(''codex-cli 9.9.9-stub'')'
         }
         # Capture the stdin payload review-run.ps1 pipes to Codex so tests can assert the
         # deterministic reviewer-mode preamble is injected ahead of the input.md content.
@@ -815,5 +823,49 @@ Describe 'review-run canonical pass directory' {
         $expectedTool    = [System.IO.Path]::GetFullPath($script:RepoRoot)
         $r.Output | Should -Match ('(?m)^project-root: ' + [regex]::Escape($expectedProject) + '$')
         $r.Output | Should -Match ('(?m)^tool-root: ' + [regex]::Escape($expectedTool) + '$')
+    }
+
+    It 'AC-RR25: reviewer kind and adapter-version run-facts are emitted, additive to Batch D2 (P2)' {
+        # P2: emit the active reviewer adapter kind and a runtime-observed adapter version as
+        # H1 stdout run-facts. reviewer = the resolved adapter (codex in MVP); reviewer-version
+        # is parsed from the adapter run banner. The stub emits a CONTROLLED non-real version
+        # (9.9.9-stub), so this assertion is not coupled to any real external version.
+        $project = script:New-RunCase -CaseName 'rr25'
+        $taskId  = 'rr25-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr25-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        # Exact-line anchored: new reviewer kind/version run-facts.
+        $r.Output | Should -Match '(?m)^reviewer: codex$'
+        $r.Output | Should -Match '(?m)^reviewer-version: 9\.9\.9-stub$'
+        $r.Output | Should -Not -Match '(?m)^reviewer-version: not-observed$'
+        # Additive: existing Batch D2 run-facts are preserved alongside the new lines.
+        $r.Output | Should -Match '(?m)^model-source: config$'
+        $r.Output | Should -Match '(?m)^applied-effort: xhigh$'
+        $r.Output | Should -Match '(?m)^reviewer-safe-posture: --ask-for-approval never --sandbox read-only --ignore-user-config web_search=disabled$'
+        $r.Output | Should -Match '(?m)^tool-root-source: explicit$'
+    }
+
+    It 'AC-RR26: adapter version falls back to not-observed when the run banner carries no version (no silent success)' {
+        # Honesty path: when the active adapter reports no parseable version in its run banner,
+        # review-run emits reviewer-version: not-observed rather than inventing or hardcoding one.
+        # reviewer kind is still emitted.
+        $project = script:New-RunCase -CaseName 'rr26'
+        $taskId  = 'rr26-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr26-yes' -Mode 'verdict-yes' -EmitVersionHeader $false
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^reviewer: codex$'
+        $r.Output | Should -Match '(?m)^reviewer-version: not-observed$'
     }
 }
