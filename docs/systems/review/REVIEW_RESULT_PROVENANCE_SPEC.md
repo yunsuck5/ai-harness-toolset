@@ -152,6 +152,8 @@ source 구분 요약 (모두 caller declaration 아님 — G2):
 - **F5 requested effort 의 미묘함**: 값 자체는 config(또는 explicit `-Effort`) 입력에서 온다. 그러나 provenance 가 기록하는 것은 *"이번 실행에서 어느 source 로 어떤 값이 적용됐는지"* 의 관측(F5+F6)이지, caller 의 input.md 선언 사본이 아니다.
 - **F9 engine identity** 는 self-modification 외 일반 review 에선 부수적이다. persist 대상에 포함할지 over-scope 여부는 §11 open question.
 
+> **U9 addendum (post-RV-B-06, category effort policy batch).** 본 field 표는 RV-B-06(P2/P3) 시점 기록이다. 이후 U9 config-backed category effort policy batch 가 provenance 블록에 두 field 를 추가했고 두 source 값을 확장했다 — 본 spec 은 historical design record 이므로 표 자체는 그대로 두고 변경분만 여기 명시한다(operative source-of-truth 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3/§6b.2): **(1)** 블록에 `effort-category`(operator 가 `-EffortCategory` 로 고른 category, 미선택 시 `none`)·`effort-policy-match`(`none`/`matched`/`missed`) 두 줄이 추가됐다(둘 다 runtime observation; persist 됨). **(2)** F4 model-source 값집합에 `category`(matched categoryPolicy entry 의 `model`), F6 effort-source 값집합에 `category`(matched entry 의 `reasoningEffort`)가 추가됐다. parser-gate 변화 없음, sidecar 없음, concrete model version durable-doc 미기입은 그대로 유지된다.
+
 > **최소 핵심 집합(권고)**: F1(adapter kind) + F2(version) + F3/F4(model+source) + F5/F6/F7(effort 3종) + F8(safe posture). F9 는 optional. 이 집합이 동기 사건("어떤 reviewer/version/model/effort 로 실행됐나")을 result 단독으로 답한다. 모든 field 는 adapter 가 바뀌어도 동일 schema 로 유효하며, 값 source 만 그 adapter 의 runtime 으로 re-derive 된다.
 
 ## 7. contract / template / verifier / tests / skill / docs 영향 예상 (required content #7)

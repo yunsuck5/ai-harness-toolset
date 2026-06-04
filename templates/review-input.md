@@ -16,6 +16,8 @@ informational sections (`## Stage` / `## Purpose` / `## Target files` / `## Vali
 
 본문에서 generic placeholder 모양 (예: `{{TOKEN}}`, `{{example}}`, 또는 `AI_TO_FILL_` prefix 가 없는 임의의 double-brace 형태) 을 인용해야 할 때는 별도의 escape / wildcard / brace-less workaround 가 필요 없다 — verifier 가 `AI_TO_FILL_` prefix 의 active placeholder 만 검출하므로 generic 형태는 documentation literal 로 그대로 prose 안에 인용할 수 있다. `AI_TO_FILL_` prefix 의 active placeholder 자체를 인용해야 할 때만 (예: 본 batch 가 그 placeholder 의 의미를 설명하는 경우) `AI_TO_FILL_VALIDATION_EVIDENCE` 같이 brace-less identifier 로 인용한다. RV-B-05 V1 첫 시기의 operator workaround 세 가지 (brace-less / wildcard / backslash-escape) 는 본 grammar narrowing 으로 obsoleted 되었으며 더 이상 maintained operator convention 이 아니다.
 
+> **Effort / model / review category 는 `input.md` section 이 아니라 review-run invocation 선택이다.** reviewer effort 와 model 은 `scripts/review-run.ps1` 의 `-Effort` / `-Model`, `config/reviewer.json`, 그리고 (선택) `-EffortCategory <key>` 로 정해진다 (U9 config-backed category policy; source-of-truth `docs/policies/REVIEWER_CONFIG_POLICY.md`). category 는 operator 가 변경 class 를 알 때 review-run 호출 시 *명시 선택*하는 optional 값이며, 본 template 에 적는 section 도 아니고 모든 review 가 지정할 필요도 없다 (미지정 시 scalar config 경로가 정상 동작). 자동 분류는 없고, 본 note 는 parser/lint 요구가 아니다.
+
 ## Stage
 
 {{AI_TO_FILL_STAGE}}

@@ -41,7 +41,7 @@ decision record §Final readiness 를 그대로 승계한다. 단일 verdict 아
 - 실제 source/script/test/config 변경 — 별도 scoped `/goal` + review gate.
 - 두 closed user-decision 재개.
 - operative policy 의 concrete agent/tool binding.
-- 세부 effort/model category 표 확정(decision record: 운용 데이터 후 refine).
+- 세부 effort/model category **값 튜닝** 확정 — 개별 category 의 effort 를 safe floor(xhigh) 아래로 낮추는 값 확정은 운용 데이터 후 refine (decision record). **단, category map *메커니즘* 자체(config-backed `category → {model, effort}` lookup, 1차 safe-default 전부 xhigh)는 본 plan 이후 별도 recovery batch 에서 구현됨 — 아래 §6 Batch B as-built note 참조. 따라서 "category 는 future work" 는 *값 튜닝* 에만 해당하며 map 골격에는 더 이상 해당하지 않는다.**
 - commit/push.
 
 ## 4. First hard gate — 두 검증 (U10 + reviewer-safety)
@@ -101,6 +101,7 @@ plan/spec 이 다뤄야 할 항목(검증 대상):
 
 - **Batch A — gate investigation + impl spec (source 변경 없음)**: Gate 1·Gate 2 의 override surface·허용값·실패거동·precedence 를 조사하고, 구현 spec(어떤 surface 를 어떻게 강제할지, config schema, run-fact 캡처 형태)을 작성. 산출물은 spec 문서. **이 batch 는 검증을 시작점으로 하되 source/script 변경은 하지 않는다.**
 - **Batch B — per-invocation effort override 구현(U10/U9)**: Batch A spec 기준으로 review-run 측 per-invocation effort override + config `category→{model,effort}` mapping(1차 safe-default 만: default latest+xhigh, 명확히 단순한 local correctness packet 만 downgrade) 구현 + 테스트 + run-fact 캡처. **이 batch 단독 통과는 U9 operational 보고를 가능케 하지 않는다** — U9 operational 보고는 first hard gate 의 두 축(Batch B effort override + Batch C reviewer-safety override)이 **함께** 검증된 후에만 가능하다(decision record §U10 hard gate: U10 검증 범위는 reviewer-safety override 를 포함; U10 검증 전 어떤 보고도 U9 operational 주장 금지).
+  - **As-built note (recovery batch, post-plan).** 실제 Batch B 구현은 위 두 부분 중 **per-invocation effort override(scalar)** 만 구현했고 **config `category→{model,effort}` mapping** 부분은 누락한 채 닫혔다 — 이것이 audit 이 식별한 U9 traceability gap 이다. 그 누락된 category-map 부분(1차 safe-default 만: 전 category `xhigh`)은 본 plan 이후 별도 **recovery implementation batch** 에서 schema/config/runtime/tests/docs/status/backlog 까지 구현되어 닫혔다(STATUS completed-ledger "U9 config-backed category effort policy implemented"; BACKLOG RV-B-07 closed). 따라서 Batch B 의 category-map scope 는 *이 plan 의 원래 sequencing 과 다르게* 후속 batch 에서 완결됐으며, 남은 deferred 는 per-category **값 튜닝**(운용 데이터 후)뿐이다. shipped category 는 **generic change-class 만**(install-update 등 프로젝트 전용 category 미포함, global-install portability) 이다.
 - **Batch C — reviewer-safe invocation override 구현/검증**: review runner 가 permissive global config 와 무관하게 reviewer-safe override 를 강제함을 구현·테스트(negative test 포함). 통과 후에야 reviewer-safe invocation 보장 보고 가능. **U9 operational 보고는 Batch B 와 Batch C 두 축이 모두 검증된 후에만 가능하다**(어느 한 batch 단독 통과로는 불가; 위 Batch B 참조).
 - **Batch D — report schema / run-fact wiring**: final report 10-field 분리, `artifact pass-NN`/corrective loop/invocation count 분리 표기, reviewer guard status, (B/C 통과 후) effort·safety run-fact 반영. parser enforcement 확대는 narrow 유지(user-decision 1: 새 semantic gate 금지).
 

@@ -7,6 +7,14 @@ param(
     [string] $Reviewer = 'codex',
     [string] $Model,
     [string] $Effort,
+    # Explicit, operator-chosen review category (U9 config-backed category->{model,effort}
+    # policy). The operator chooses the category (judgment); config/reviewer.json categoryPolicy
+    # supplies its {model, reasoningEffort} (mechanical lookup); this runner applies it. There is
+    # NO automatic category inference here (not from changed files, not from -Stage, not LLM-based).
+    # A category not present in categoryPolicy is a soft miss (falls back to the scalar config), not
+    # a hard failure. Precedence per axis: explicit -Model/-Effort > matched category entry >
+    # scalar config > (effort) built-in xhigh / (model) fail-fast.
+    [string] $EffortCategory,
     [string] $ProjectRoot,
     [string] $ToolRoot
 )
@@ -249,18 +257,77 @@ function Get-VerdictFromResultMd {
     return ''
 }
 
-function Get-ReviewerModel {
+function Resolve-ReviewerCategory {
     param(
-        [string] $ExplicitModel,
+        [string] $Category,
         [string] $ToolPath
     )
 
+    # U9 category->{model,effort} lookup. Reads config/reviewer.json categoryPolicy ONCE and
+    # reports the lookup outcome plus the matched entry object (or $null). Match values:
+    #   'none'    — no -EffortCategory supplied (not a lookup).
+    #   'matched' — supplied category key exists under categoryPolicy.
+    #   'missed'  — supplied category key is absent (no categoryPolicy at all, or key not found).
+    # A miss is a SOFT fallback to the scalar config (handled by the model/effort resolvers via a
+    # $null entry); it never fails hard here. The returned Entry is passed to Get-ReviewerModel /
+    # Get-ReviewerEffort so the category read happens in exactly one place and the run-facts cannot
+    # drift from what the resolvers actually use. reviewer-tool-agnostic: this is config policy.
+    if ([string]::IsNullOrEmpty($Category)) {
+        return [pscustomobject]@{ Category = ''; Match = 'none'; Entry = $null }
+    }
+
+    $entry = $null
+    $keyPresent = $false
+    $configPath = Join-Path -Path $ToolPath -ChildPath 'config/reviewer.json'
+    if (Test-Path -LiteralPath $configPath -PathType Leaf) {
+        $cfg = Read-JsonFile -Path $configPath
+        if ($null -ne $cfg -and $null -ne $cfg.PSObject.Properties['categoryPolicy']) {
+            $cp = $cfg.categoryPolicy
+            if ($null -ne $cp -and $null -ne $cp.PSObject.Properties[$Category]) {
+                $keyPresent = $true
+                # The value MAY be $null (JSON `"key": null`) — ConvertFrom-Json keeps the property
+                # with a null value. Match is decided by KEY PRESENCE below, not by entry non-null.
+                $entry = $cp.PSObject.Properties[$Category].Value
+            }
+        }
+    }
+
+    # Match by KEY PRESENCE, not by entry non-null. A present key whose value is null (or otherwise
+    # malformed) is a matched-but-malformed category — the caller fails fast — NOT a soft miss.
+    # Reporting it as 'missed' would silently fall back to the scalar config and hide a category
+    # config typo (the same class this hardening closes). 'missed' is reserved for a genuinely
+    # absent key. The returned Entry may be $null when matched-but-null; the caller handles that.
+    if ($keyPresent) {
+        return [pscustomobject]@{ Category = $Category; Match = 'matched'; Entry = $entry }
+    }
+    return [pscustomobject]@{ Category = $Category; Match = 'missed'; Entry = $null }
+}
+
+function Get-ReviewerModel {
+    param(
+        [string] $ExplicitModel,
+        [string] $ToolPath,
+        $CategoryEntry
+    )
+
     # Returns the resolved model AND the actual resolver branch as Source (never an
-    # inferred string): 'explicit' for -Model, 'config' for config/reviewer.json, and ''
+    # inferred string): 'explicit' for -Model, 'category' for a matched categoryPolicy entry
+    # carrying a non-empty 'model', 'config' for the scalar config/reviewer.json 'model', and ''
     # (empty model) for the fail-fast case. Mirrors Get-ReviewerEffort's shape so the
     # model-source run-fact is symmetric with effort-source.
     if (-not [string]::IsNullOrEmpty($ExplicitModel)) {
         return [pscustomobject]@{ Model = $ExplicitModel; Source = 'explicit' }
+    }
+
+    # Matched category entry MAY carry a per-category model override. 'model' is optional in a
+    # category entry (schema): when present and non-empty it wins over the scalar config model;
+    # when absent the scalar config model applies (a deliberate simplicity choice — no new model
+    # fail-fast is introduced for a matched-but-model-less entry; effort is the primary lever).
+    if ($null -ne $CategoryEntry -and $null -ne $CategoryEntry.PSObject.Properties['model']) {
+        $cm = [string]$CategoryEntry.model
+        if (-not [string]::IsNullOrEmpty($cm)) {
+            return [pscustomobject]@{ Model = $cm; Source = 'category' }
+        }
     }
 
     $configPath = Join-Path -Path $ToolPath -ChildPath 'config/reviewer.json'
@@ -294,13 +361,33 @@ function Get-AllowedReasoningEfforts {
 function Get-ReviewerEffort {
     param(
         [string] $ExplicitEffort,
-        [string] $ToolPath
+        [string] $ToolPath,
+        $CategoryEntry
     )
 
     # Precedence (docs/policies/REVIEWER_CONFIG_POLICY.md):
-    # explicit CLI -Effort > config/reviewer.json reasoningEffort > built-in safe default.
+    # explicit CLI -Effort > matched categoryPolicy entry reasoningEffort >
+    # scalar config/reviewer.json reasoningEffort > built-in safe default.
+    # Source is the actual resolver branch: 'explicit' / 'category' / 'config' / 'default'.
+    # The resolved effort (whatever its source) is validated against the allowed set by the
+    # caller; an out-of-enum value from a matched category fails fast there with source: category.
     if (-not [string]::IsNullOrEmpty($ExplicitEffort)) {
         return [pscustomobject]@{ Effort = $ExplicitEffort; Source = 'explicit' }
+    }
+
+    # A matched category entry MUST carry a usable reasoningEffort (schema-required). When the
+    # category is matched, this branch is authoritative for effort and does NOT silently fall back
+    # to the scalar config on a missing/empty value — that would hide a category-config typo while
+    # still reporting effort-policy-match: matched. So a matched entry always returns Source
+    # 'category'; the caller fails fast when the resolved value is empty (missing reasoningEffort)
+    # or out-of-enum. Only an UNMATCHED category (CategoryEntry $null) falls through to the scalar
+    # config below (the soft-miss path). model stays optional per Get-ReviewerModel; effort does not.
+    if ($null -ne $CategoryEntry) {
+        $ce = ''
+        if ($null -ne $CategoryEntry.PSObject.Properties['reasoningEffort']) {
+            $ce = [string]$CategoryEntry.reasoningEffort
+        }
+        return [pscustomobject]@{ Effort = $ce; Source = 'category' }
     }
 
     $configPath = Join-Path -Path $ToolPath -ChildPath 'config/reviewer.json'
@@ -342,6 +429,8 @@ function Add-ReviewerProvenanceBlock {
         [string] $RequestedEffort,
         [string] $EffortSource,
         [string] $AppliedEffort,
+        [string] $EffortCategory,
+        [string] $EffortPolicyMatch,
         [string] $ReviewerSafePosture,
         [string] $ToolRoot,
         [string] $ProjectRoot,
@@ -366,6 +455,8 @@ function Add-ReviewerProvenanceBlock {
     $body += ('requested-effort: {0}' -f $RequestedEffort)
     $body += ('effort-source: {0}' -f $EffortSource)
     $body += ('applied-effort: {0}' -f $appliedVal)
+    $body += ('effort-category: {0}' -f $EffortCategory)
+    $body += ('effort-policy-match: {0}' -f $EffortPolicyMatch)
     $body += ('reviewer-safe-posture: {0}' -f $ReviewerSafePosture)
     $body += ('tool-root: {0}' -f $ToolRoot)
     $body += ('project-root: {0}' -f $ProjectRoot)
@@ -433,7 +524,44 @@ if (Test-Path -LiteralPath $resultMdPath -PathType Leaf) {
     exit 1
 }
 
-$modelResolved = Get-ReviewerModel -ExplicitModel $Model -ToolPath $tool
+# U9: resolve the operator-chosen review category ONCE (soft-miss falls back to scalar config).
+# The matched entry (or $null) is threaded into both axis resolvers so the category read happens
+# in one place and the effort-category / effort-policy-match run-facts cannot drift from what the
+# resolvers actually applied.
+$categoryResolved = Resolve-ReviewerCategory -Category $EffortCategory -ToolPath $tool
+$effortCategory = if ([string]::IsNullOrEmpty($EffortCategory)) { 'none' } else { $EffortCategory }
+$effortPolicyMatch = $categoryResolved.Match
+
+$allowedEfforts = Get-AllowedReasoningEfforts
+
+# A matched category (key present) must be a WELL-FORMED config entry — validated UNCONDITIONALLY
+# here, before the resolvers and INDEPENDENT of any explicit -Effort/-Model override. Naming a
+# category whose entry is malformed is a config/usage error worth surfacing even when an explicit
+# override would otherwise win the value, so a malformed matched entry can never be silently
+# bypassed (by an override) nor silently downgraded to the scalar default. A matched entry must be
+# a non-null object carrying a required, allowed-set reasoningEffort (model stays optional — a
+# matched entry without model falls back to the scalar model). Only a genuinely absent key (Match
+# 'missed') soft-falls-back to the scalar config; a present-but-malformed key fails fast here.
+if ($effortPolicyMatch -eq 'matched') {
+    if ($null -eq $categoryResolved.Entry) {
+        Write-Host ('review-run: FAIL effort category ''{0}'' is present in config/reviewer.json categoryPolicy but its entry is null (a category entry must be an object with at least reasoningEffort). No silent fallback for a matched-but-malformed category.' -f $EffortCategory)
+        exit 1
+    }
+    $matchedEffort = ''
+    if ($null -ne $categoryResolved.Entry.PSObject.Properties['reasoningEffort']) {
+        $matchedEffort = [string]$categoryResolved.Entry.reasoningEffort
+    }
+    if ([string]::IsNullOrEmpty($matchedEffort)) {
+        Write-Host ('review-run: FAIL matched effort category ''{0}'' has no usable reasoningEffort in config/reviewer.json categoryPolicy (a category entry''s reasoningEffort is required). No silent fallback to the scalar default for a matched-but-malformed category; fix the category entry.' -f $EffortCategory)
+        exit 1
+    }
+    if ($allowedEfforts -cnotcontains $matchedEffort) {
+        Write-Host ('review-run: FAIL invalid reasoning effort ''{1}'' (source: category) in matched effort category ''{0}''. Allowed values (case-sensitive): {2}. No silent fallback; fix the category entry.' -f $EffortCategory, $matchedEffort, ($allowedEfforts -join ', '))
+        exit 1
+    }
+}
+
+$modelResolved = Get-ReviewerModel -ExplicitModel $Model -ToolPath $tool -CategoryEntry $categoryResolved.Entry
 $model = $modelResolved.Model
 $modelSource = $modelResolved.Source
 if ([string]::IsNullOrEmpty($model)) {
@@ -441,10 +569,9 @@ if ([string]::IsNullOrEmpty($model)) {
     exit 1
 }
 
-$effortResolved = Get-ReviewerEffort -ExplicitEffort $Effort -ToolPath $tool
+$effortResolved = Get-ReviewerEffort -ExplicitEffort $Effort -ToolPath $tool -CategoryEntry $categoryResolved.Entry
 $effort = $effortResolved.Effort
 $effortSource = $effortResolved.Source
-$allowedEfforts = Get-AllowedReasoningEfforts
 # Case-SENSITIVE membership: the reviewer tool's allowed values are exact lowercase
 # (Batch A). PowerShell -notcontains is case-insensitive, so a wrong-case value such as
 # 'XHIGH' would slip past and reach Codex (which then rejects it downstream) instead of
@@ -501,6 +628,7 @@ try {
         -Reviewer $Reviewer -ReviewerVersion $codexResult.ReviewerVersion `
         -Model $model -ModelSource $modelSource `
         -RequestedEffort $effort -EffortSource $effortSource -AppliedEffort $codexResult.AppliedEffort `
+        -EffortCategory $effortCategory -EffortPolicyMatch $effortPolicyMatch `
         -ReviewerSafePosture $codexResult.ReviewerSafePosture `
         -ToolRoot $tool -ProjectRoot $project -ToolRootSource $toolRootSource
 }
@@ -539,6 +667,15 @@ elseif ($codexResult.AppliedEffort -ne $effort) {
 else {
     Write-Host ('applied-effort: {0}' -f $codexResult.AppliedEffort)
 }
+# U9 category policy run-facts (additive H1 run-facts). effort-category = the operator-chosen
+# category (or 'none' when -EffortCategory was not supplied). effort-policy-match = the lookup
+# outcome (none / matched / missed); 'missed' means the category was supplied but not present in
+# config categoryPolicy, so the scalar config default applied (soft fallback, not a hard failure).
+# When matched, effort-source above reads 'category'; model-source reads 'category' only when the
+# matched entry carries a 'model' (else 'config' — category model is optional). explicit -Effort /
+# -Model still win per axis even when a category matched.
+Write-Host ('effort-category: {0}' -f $effortCategory)
+Write-Host ('effort-policy-match: {0}' -f $effortPolicyMatch)
 Write-Host ('reviewer-safe-posture: {0}' -f $codexResult.ReviewerSafePosture)
 Write-Host ('tool-root: {0}' -f $tool)
 Write-Host ('project-root: {0}' -f $project)

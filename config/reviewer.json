@@ -1,4 +1,18 @@
 {
   "model": "gpt-5.5",
-  "reasoningEffort": "xhigh"
+  "reasoningEffort": "xhigh",
+  "categoryPolicy": {
+    "default": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "simple-local": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "medium-scope": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "complex-broad": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "system-coherence-heavy": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "contract-sensitive": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "boundary-sensitive": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "script-runtime": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "test-code": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "mechanical-audit": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "docs-planning": { "model": "gpt-5.5", "reasoningEffort": "xhigh" },
+    "docs-wording": { "model": "gpt-5.5", "reasoningEffort": "xhigh" }
+  }
 }

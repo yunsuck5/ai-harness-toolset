@@ -56,6 +56,43 @@ BeforeAll {
         return ([System.IO.Path]::GetFullPath($tr))
     }
 
+    function script:New-CategoryToolRoot {
+        # A temp ToolRoot with a FIXTURE config/reviewer.json that carries a categoryPolicy with
+        # DISTINCT per-category values, so the U9 category lookup wiring can be proven end-to-end
+        # (a category effort/model that differs from the scalar default flowing into the Codex argv).
+        # review-run resolves config/reviewer.json AND review-input-verify.ps1 (+ lib/*) under the
+        # ToolRoot, and an explicit -ToolRoot suppresses the $PSScriptRoot script fallback, so the
+        # real scripts/ tree is copied in; only config/reviewer.json is fixture-custom. The fixture
+        # 'broken' category (out-of-enum effort) exercises the matched-category fail-fast path; it
+        # is harmless unless selected. The real repo config (all categories xhigh) is used by the
+        # no-category / miss / safety-floor tests instead.
+        param([string] $CaseName)
+        $tr = Join-Path $TestDrive ('pester-category-toolroot-' + $CaseName)
+        if (Test-Path -LiteralPath $tr) {
+            Remove-Item -LiteralPath $tr -Recurse -Force
+        }
+        $null = New-Item -ItemType Directory -Path $tr -Force
+        Copy-Item -LiteralPath (Join-Path $script:RepoRoot 'scripts') -Destination (Join-Path $tr 'scripts') -Recurse -Force
+        $cfgDir = Join-Path $tr 'config'
+        $null = New-Item -ItemType Directory -Path $cfgDir -Force
+        $json = @'
+{
+  "model": "fixture-scalar-model",
+  "reasoningEffort": "xhigh",
+  "categoryPolicy": {
+    "default": { "model": "fixture-scalar-model", "reasoningEffort": "xhigh" },
+    "simple-local": { "model": "fixture-simple-model", "reasoningEffort": "medium" },
+    "broken": { "model": "fixture-broken-model", "reasoningEffort": "bogus_value" },
+    "no-effort": { "model": "fixture-noeffort-model" },
+    "null-entry": null
+  }
+}
+'@
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText((Join-Path $cfgDir 'reviewer.json'), $json, $enc)
+        return ([System.IO.Path]::GetFullPath($tr))
+    }
+
     function script:Write-CodexStub {
         param(
             [string] $StubName,
@@ -267,6 +304,7 @@ BeforeAll {
             [string] $Reviewer = 'codex',
             [string] $Model,
             [string] $Effort,
+            [string] $EffortCategory,
             [string] $ToolRoot
         )
         if ([string]::IsNullOrEmpty($ToolRoot)) { $ToolRoot = $script:RepoRoot }
@@ -284,6 +322,9 @@ BeforeAll {
         }
         if (-not [string]::IsNullOrEmpty($Effort)) {
             $procArgs += @('-Effort', $Effort)
+        }
+        if (-not [string]::IsNullOrEmpty($EffortCategory)) {
+            $procArgs += @('-EffortCategory', $EffortCategory)
         }
 
         $previousEnv = $env:AI_HARNESS_CODEX_COMMAND
@@ -983,5 +1024,272 @@ Describe 'review-run canonical pass directory' {
 
         $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $v.ExitCode | Should -Be 0 -Because $v.Output
+    }
+
+    It 'AC-RR29: no -EffortCategory preserves scalar config behavior and emits none category run-facts (U9)' {
+        # U9: with no category supplied, behavior is identical to the pre-U9 scalar path
+        # (effort-source: config), and the new run-facts report the not-supplied state.
+        $project = script:New-RunCase -CaseName 'rr29'
+        $taskId  = 'rr29-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr29-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^effort-category: none$'
+        $r.Output | Should -Match '(?m)^effort-policy-match: none$'
+        # Scalar path unchanged: effort + model still resolve from config (not category).
+        $r.Output | Should -Match '(?m)^effort-source: config$'
+        $r.Output | Should -Match '(?m)^model-source: config$'
+        $r.Output | Should -Not -Match '(?m)^effort-source: category$'
+        $r.Output | Should -Not -Match '(?m)^model-source: category$'
+    }
+
+    It 'AC-RR30: matched -EffortCategory applies the category {model,effort} and emits matched run-facts (U9)' {
+        # U9 end-to-end: a matched category with DISTINCT values (simple-local = fixture-simple-model
+        # + medium) must flow into the Codex argv and be reported with source: category. Proves the
+        # lookup wires both axes, not just that a run-fact label exists.
+        $project = script:New-RunCase -CaseName 'rr30'
+        $taskId  = 'rr30-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CategoryToolRoot -CaseName 'rr30'
+        $stub = script:Write-CodexStub -StubName 'rr30-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'simple-local' -ToolRoot $toolRoot
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^effort-category: simple-local$'
+        $r.Output | Should -Match '(?m)^effort-policy-match: matched$'
+        $r.Output | Should -Match '(?m)^requested-effort: medium$'
+        $r.Output | Should -Match '(?m)^effort-source: category$'
+        $r.Output | Should -Match '(?m)^applied-effort: medium$'
+        $r.Output | Should -Match '(?m)^model: fixture-simple-model$'
+        $r.Output | Should -Match '(?m)^model-source: category$'
+
+        # The category values are actually present in the Codex argv.
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
+        $argv | Should -Match 'model_reasoning_effort=medium'
+        $argv | Should -Not -Match 'model_reasoning_effort=xhigh'
+        $argv | Should -Match 'fixture-simple-model'
+        $argv | Should -Not -Match 'fixture-scalar-model'
+    }
+
+    It 'AC-RR31: missed -EffortCategory falls back to scalar config and emits missed run-facts (U9, soft fallback)' {
+        # U9: a supplied category that is not present in categoryPolicy is a SOFT miss — it falls
+        # back to the scalar config (effort-source: config), it does not fail hard. The real repo
+        # config has a categoryPolicy but not this key.
+        $project = script:New-RunCase -CaseName 'rr31'
+        $taskId  = 'rr31-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr31-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'no-such-category-xyz'
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^effort-category: no-such-category-xyz$'
+        $r.Output | Should -Match '(?m)^effort-policy-match: missed$'
+        # Soft fallback to the scalar config default (xhigh), not a hard failure.
+        $r.Output | Should -Match '(?m)^requested-effort: xhigh$'
+        $r.Output | Should -Match '(?m)^effort-source: config$'
+        $r.Output | Should -Match '(?m)^model-source: config$'
+    }
+
+    It 'AC-RR32: explicit -Effort wins over a matched -EffortCategory (per-axis precedence; U9)' {
+        # Precedence axis 1 (effort): explicit -Effort overrides the matched category effort, but the
+        # category MODEL still applies (no -Model). effort-policy-match still reports matched.
+        $project = script:New-RunCase -CaseName 'rr32'
+        $taskId  = 'rr32-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CategoryToolRoot -CaseName 'rr32'
+        $stub = script:Write-CodexStub -StubName 'rr32-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'simple-local' -Effort 'high' -ToolRoot $toolRoot
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^requested-effort: high$'
+        $r.Output | Should -Match '(?m)^effort-source: explicit$'
+        $r.Output | Should -Match '(?m)^applied-effort: high$'
+        # Category model still applies for the non-overridden axis.
+        $r.Output | Should -Match '(?m)^model-source: category$'
+        $r.Output | Should -Match '(?m)^effort-policy-match: matched$'
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
+        $argv | Should -Match 'model_reasoning_effort=high'
+        $argv | Should -Not -Match 'model_reasoning_effort=medium'
+    }
+
+    It 'AC-RR33: explicit -Model wins over a matched -EffortCategory model (per-axis precedence; U9)' {
+        # Precedence axis 2 (model): explicit -Model overrides the matched category model, but the
+        # category EFFORT still applies (no -Effort).
+        $project = script:New-RunCase -CaseName 'rr33'
+        $taskId  = 'rr33-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CategoryToolRoot -CaseName 'rr33'
+        $stub = script:Write-CodexStub -StubName 'rr33-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'simple-local' -Model 'explicit-model-z' -ToolRoot $toolRoot
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^model: explicit-model-z$'
+        $r.Output | Should -Match '(?m)^model-source: explicit$'
+        # Category effort still applies for the non-overridden axis.
+        $r.Output | Should -Match '(?m)^requested-effort: medium$'
+        $r.Output | Should -Match '(?m)^effort-source: category$'
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
+        $argv | Should -Match 'explicit-model-z'
+        $argv | Should -Not -Match 'fixture-simple-model'
+    }
+
+    It 'AC-RR34: matched category with an out-of-enum effort fails fast before Codex (source: category)' {
+        # A matched category whose reasoningEffort is out of the allowed set is a config error and
+        # fails fast at the runner (source: category), exactly like the scalar/explicit path, before
+        # any Codex invocation. No silent fallback to the scalar default.
+        $project = script:New-RunCase -CaseName 'rr34'
+        $taskId  = 'rr34-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CategoryToolRoot -CaseName 'rr34'
+        $stub = script:Write-CodexStub -StubName 'rr34-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'broken' -ToolRoot $toolRoot
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'invalid reasoning effort'
+        $r.Output | Should -Match 'source: category'
+
+        # Fail-fast is before Codex: no result.md.
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+    }
+
+    It 'AC-RR35: shipped config/reviewer.json categoryPolicy keeps every category at the safe floor (xhigh)' {
+        # Safety regression: this batch ships every category at the safe default (xhigh). A category
+        # accidentally tuned below xhigh would lower review effort silently; pin the floor as a test.
+        # Per-category VALUE tuning below the floor is a deliberate, separately-reviewed future step.
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $cfg = [System.IO.File]::ReadAllText((Join-Path $script:RepoRoot 'config/reviewer.json'), $enc) | ConvertFrom-Json
+        $cfg.PSObject.Properties['categoryPolicy'] | Should -Not -BeNullOrEmpty -Because 'shipped config must carry the U9 categoryPolicy map'
+        $entries = @($cfg.categoryPolicy.PSObject.Properties)
+        $entries.Count | Should -BeGreaterThan 0
+        foreach ($p in $entries) {
+            ([string]$p.Value.reasoningEffort) | Should -BeExactly 'xhigh' -Because ('category ' + $p.Name + ' must ship at the safe floor xhigh')
+        }
+        # Scalar default unchanged.
+        ([string]$cfg.reasoningEffort) | Should -BeExactly 'xhigh'
+    }
+
+    It 'AC-RR36: U9 category run-facts are persisted in the result.md provenance block (P3 parallel)' {
+        # The provenance block mirrors the stdout run-facts; the two U9 category lines must appear in
+        # the persisted block too, and the block must still pass review-verify -RequireResult.
+        $project = script:New-RunCase -CaseName 'rr36'
+        $taskId  = 'rr36-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CategoryToolRoot -CaseName 'rr36'
+        $stub = script:Write-CodexStub -StubName 'rr36-full' -Mode 'verdict-yes-full'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'simple-local' -ToolRoot $toolRoot
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $content = [System.IO.File]::ReadAllText($resultMd, $enc)
+        $content | Should -Match '(?m)^## Reviewer run provenance$'
+        $content | Should -Match '(?m)^effort-category: simple-local$'
+        $content | Should -Match '(?m)^effort-policy-match: matched$'
+        $content | Should -Match '(?m)^effort-source: category$'
+
+        $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $v.ExitCode | Should -Be 0 -Because $v.Output
+    }
+
+    It 'AC-RR37: matched category missing required reasoningEffort fails fast before Codex (no silent scalar fallback)' {
+        # A matched category entry is authoritative for effort: reasoningEffort is schema-required.
+        # If a matched entry omits it, review-run must fail fast (config error) rather than silently
+        # falling back to the scalar default while still reporting effort-policy-match: matched — that
+        # would hide a category-config typo. Fail-fast is before Codex; no result.md.
+        $project = script:New-RunCase -CaseName 'rr37'
+        $taskId  = 'rr37-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CategoryToolRoot -CaseName 'rr37'
+        $stub = script:Write-CodexStub -StubName 'rr37-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'no-effort' -ToolRoot $toolRoot
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'no usable reasoningEffort'
+        $r.Output | Should -Not -Match '(?m)^effort-source: config$'
+
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+    }
+
+    It 'AC-RR38: a present category key with a null entry fails fast (matched-but-malformed, not a soft miss)' {
+        # Match is by KEY PRESENCE: a present key whose value is JSON null is matched-but-malformed,
+        # so review-run fails fast rather than reporting effort-policy-match: missed and soft-falling
+        # back to the scalar config (which would hide the typo). Fail-fast is before Codex; no result.md.
+        $project = script:New-RunCase -CaseName 'rr38'
+        $taskId  = 'rr38-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CategoryToolRoot -CaseName 'rr38'
+        $stub = script:Write-CodexStub -StubName 'rr38-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'null-entry' -ToolRoot $toolRoot
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'is present in config/reviewer.json categoryPolicy but its entry is null'
+        # Not silently downgraded to a soft miss + scalar fallback.
+        $r.Output | Should -Not -Match '(?m)^effort-policy-match: missed$'
+        $r.Output | Should -Not -Match '(?m)^effort-source: config$'
+
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+    }
+
+    It 'AC-RR39: explicit -Effort does NOT bypass a matched-but-malformed category (fail-fast is unconditional)' {
+        # A matched category entry must be well-formed config regardless of overrides: naming a
+        # malformed category is a config/usage error worth surfacing even when an explicit -Effort
+        # would otherwise win the value. So -EffortCategory broken (out-of-enum reasoningEffort) plus
+        # an explicit -Effort high still fails fast before Codex — the malformed entry is validated
+        # unconditionally, not bypassed by the override.
+        $project = script:New-RunCase -CaseName 'rr39'
+        $taskId  = 'rr39-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CategoryToolRoot -CaseName 'rr39'
+        $stub = script:Write-CodexStub -StubName 'rr39-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'broken' -Effort 'high' -ToolRoot $toolRoot
+        $r.ExitCode | Should -Not -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'invalid reasoning effort'
+        $r.Output | Should -Match 'source: category'
+        # The explicit effort did not silently win past the malformed category.
+        $r.Output | Should -Not -Match 'review-run: PASS'
+
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 }
