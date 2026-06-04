@@ -46,7 +46,7 @@ input.md 안에는 위 5 개의 required heading 외에 다음 informational sec
 - `## Stage` — design | implementation | test | review | release.
 - `## Purpose` — 한 줄 의도.
 - `## Target files` — repo-relative path 의 bullet list. forward slash. reviewer 가 읽어야 할 코어 파일 집합. source-managed file 만 담는 자리이며 `log/` 하위 runtime artifact 는 적지 않는다.
-- `## Validation evidence` — operator 가 validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean 등) 의 근거 evidence Markdown file path 를 명시할 자리. 의미와 boundary 는 §3a (R1 Markdown evidence convention) 가 source-of-truth.
+- `## Validation evidence` — operator 가 validation execution claim (예: Pester pass count, `verify-ps1` PASS, `git diff --check` clean 등) 의 근거 evidence Markdown file path 를 명시할 자리. 의미와 boundary 는 §3a (R1 Markdown evidence convention) 가 source-of-truth. reviewer reproduction 의 opt-in boundary (evidence inspect 가 default, broad validation / build / test command 재실행은 review input 의 명시 authorization 필요) 는 §3d 가 source-of-truth.
 - `## Known concerns` — operator 가 review 호출 전에 인지한 compromise / convention deviation / skipped alternative / baseline failure / validation limitation / operator assumption 을 reviewer 에게 사전 disclose 할 자리. recommended sub-categories: convention deviation, skipped alternatives, validation limitations, baseline failures, direct verification not performed, operator assumptions. operator 가 본 section 에 disclose 하지 않은 known concern 이 사후에 발견되면 §7 의 stale-by-omission 규칙이 발동한다. 본 section 은 두 종류를 담는다: **(1) confirmed disclosures** (위 sub-category 처럼 operator 가 확정 인지한 사실 — 사실로 기재; §7 stale-by-omission 전면 적용) 와 **(2) open concerns / hypotheses to verify** (미확정 의심 — `verify whether…` / `check whether…` 같은 중립 가설 표현으로 기재해 reviewer 가 추정-결함을 confirm 하지 않고 독립 평가; `## Review questions` neutral-phrasing 과 평행). **guard**: 진짜 known compromise / limitation 은 반드시 (1) 로 기재하며 (2) 로 위장 / 완화하지 않는다 — hypothesis 표현은 미확정 의심에만 쓰고 §7 의 disclosure duty 회피 수단이 아니다. 본 two-kind 구분은 wording / guidance convention 이며 §10 의 `## Known concerns` sub-shape lint non-goal 을 변경하지 않는다 (parser / lint 미도입).
 
 active review-input placeholder 는 `{{AI_TO_FILL_*}}` namespace (regex `\{\{AI_TO_FILL_[A-Za-z0-9_]+\}\}`) 로 한정된다. operator 가 본 prefix 의 placeholder 를 채우지 않은 채 남겨두면 `scripts/review-input-verify.ps1` 가 `FAIL unreplaced active placeholder` 로 거부한다. 또한 forbidden placeholder phrase (`Replace this placeholder`, `(Provide context here.)`, `(Provide review questions here.)`) 가 본문에 남아 있으면 같은 script 가 거부한다. 본 prefix 외의 generic `{{TOKEN}}` 형태 (예: `{{REAL}}`, `{{example}}`) 는 documentation literal 로 취급되어 verifier 가 거부하지 않는다 — 본 단순화는 Markdown parser / inline-code-span exemption / fenced-code-block exemption / HTML-comment exemption 의 도입이 아니라 active placeholder 와 documentation literal 의 syntax namespace 분리다. 미래의 review-input 활성 placeholder 는 반드시 `AI_TO_FILL_` prefix 를 사용해야 한다 (본 규칙이 active-placeholder safety invariant 다).
@@ -100,7 +100,7 @@ required disclosure section (각각 정확히 1 회 존재해야 함, parser-enf
 
 ### 3b. Mechanical behavior claim verification (P4)
 
-reviewer 의 verdict 가 input.md (또는 review 대상 source) 안의 **mechanical behavior claim** — 특정 regex, parser, verifier, 또는 script 가 특정 input 에 대해 실제로 어떻게 동작하는지에 대한 claim — 에 의존할 때, reviewer 는 그 claim 을 prose 만으로 수용하지 않는다. read-only sandbox 안에서 가능한 한 그 claim 의 **minimal reproducible check** 을 수행한다 — literal string 에 대한 tiny regex match, small parser input, small verifier fixture, any available scripting environment 에서의 isolated string / character inspection, one-line shell exit-code check 등. 본 check 는 의도적으로 narrow 다 — 수 초의 점검이지 full test suite 실행이 아니다. check 가 sandbox 환경 제약으로 불가능한 경우 (가용 scripting environment 부재, mutation 없이 artifact 를 exercise 할 수 없음 등) reviewer 는 미검증 mechanical claim 을 `## Review limitations` 에 기록한다 — prose 를 증명으로 취급하지 않는다. check 가 수행된 경우 그 결과는 `## Notes` 또는 `## Assumptions relied on` 에 surface 한다.
+reviewer 의 verdict 가 input.md (또는 review 대상 source) 안의 **mechanical behavior claim** — 특정 regex, parser, verifier, 또는 script 가 특정 input 에 대해 실제로 어떻게 동작하는지에 대한 claim — 에 의존할 때, reviewer 는 그 claim 을 prose 만으로 수용하지 않는다. read-only sandbox 안에서 가능한 한 그 claim 의 **minimal reproducible check** 을 수행한다 — literal string 에 대한 tiny regex match, small parser input, small verifier fixture, any available scripting environment 에서의 isolated string / character inspection, one-line shell exit-code check 등. 본 check 는 의도적으로 narrow 다 — 수 초의 점검이지 full test suite 실행이 아니다. check 가 sandbox 환경 제약으로 불가능한 경우 (가용 scripting environment 부재, mutation 없이 artifact 를 exercise 할 수 없음 등) reviewer 는 미검증 mechanical claim 을 `## Review limitations` 에 기록한다 — prose 를 증명으로 취급하지 않는다. check 가 수행된 경우 그 결과는 `## Notes` 또는 `## Assumptions relied on` 에 surface 한다. 본 minimal reproducible check 는 reviewer 가 직접 구성한 narrow inspection-grade probe (수 초; full test suite / build 가 아님) 이며, target project 의 broad validation / build / test command 재실행과는 구분된다 — 그 broad reproduction 은 §3d 의 opt-in 정책의 적용을 받는다 (§3d.6).
 
 ## 3a. Markdown validation evidence convention (R1)
 
@@ -124,6 +124,8 @@ Markdown evidence 의 의미적 boundary:
 - evidence 는 **deterministic truth oracle 이 아니다.** evidence 의 존재만으로 verdict 가 자동 정당화되지 않는다.
 - evidence 는 **freshness binding 이 아니다.** evidence file 의 mtime / 본문 timestamp 와 reviewed source 의 시점 일치를 본 contract 가 자동 검증하지 않는다. staleness 판단은 operator 와 사용자 책임이며, 본 toolset 의 script gate 는 이를 enforcement 하지 않는다.
 - evidence 는 **source-of-truth 로 승격되지 않는다.** evidence 는 `log/` 하위 runtime artifact 이며 commit / push 대상이 아니다. canonical review record (input.md + result.md) 의 sidecar 도 아니다 (§1 의 pass-dir sidecar 금지 그대로 유지).
+
+> reviewer 가 evidence inspection 을 넘어 target 의 broad validation / build / test command 를 재실행하는 것은 default 가 아니며, §3d 의 opt-in reproduction 정책의 적용을 받는다. 본 §3a 의 evidence-inspect boundary 자체는 불변이다.
 
 R1 first batch 의 scope 와 boundary:
 
@@ -185,6 +187,86 @@ R1 first batch 의 scope 와 boundary:
 본 mirror set 외부의 surface (`docs/user_guide/OPERATOR_GUIDE_KR.md`, `README.md`, Tier D managed-block snippets `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) 로의 mirror 확장은 사용자가 명시 결정한 별도 batch 의 scope 영역이다 (본 §3c 의 도입 batch 와 분리). 그 batch 가 entry 되지 않거나 indefinite defer 되면 본 mirror set 만으로 운영되며 reviewer reception path 는 영향을 받지 않는다.
 
 mirror surface 의 wording 이 본 §3c 와 충돌하면 본 §3c 가 우선한다.
+
+## 3d. Reviewer reproduction opt-in (broad validation / build / test execution)
+
+§3a 는 validation execution *claim* 의 근거 evidence 가 reviewer 가 *읽는* runtime supporting material 이며 command re-execution 이 아님을 정한다. §3b 는 mechanical behavior claim 에 대해 reviewer 가 read-only sandbox 안에서 narrow minimal reproducible check 를 *시도하길 기대* 한다. 본 §3d 는 그 사이에 명시되지 않았던 경계 — reviewer 가 target project 의 *broad* validation / build / test command 를 언제 실행해도 되는가 — 를 codify 한다. 본 절은 §3a 의 evidence boundary 와 §3b 의 minimal-check 기대를 **약화하지 않으며**, 그 위에 reproduction / execution 측 boundary 를 더한다.
+
+### 3d.1 역할 분리 (ownership)
+
+- **Local operator owns execution.** validation / build / test 실행은 operator 의 local 환경 책임이며, 그 사실은 evidence 로 남는다 (§3a; `docs/contracts/evidence/EVIDENCE_CONTRACT.md`).
+- **Reviewer owns inspection.** reviewer 는 diff / contract / local validation evidence 를 read 하여 판단한다.
+- **Evidence bridges the two.** local 실행 사실과 reviewer 판단을 잇는 다리는 evidence file 이며, reviewer 는 그것을 *읽는다* (재실행하지 않는다). evidence 는 source-of-truth 가 아니다 (§3a, §8).
+
+### 3d.2 Opt-in, not opportunistic
+
+reviewer 는 read-only sandbox 가 *실행 가능해 보인다는 이유만으로* validation / build / test command 를 재실행하지 않는다. reviewer-safe posture (`--sandbox read-only`) 는 *write* 를 막는 구조 guard 이지 read-only command *실행* 자체를 금지하지 않으므로, "sandbox 가 실행 가능하니 돌려보자" 는 opportunistic 해석은 명시적으로 배제된다. broad reproduction 은 review input 의 명시 authorization (§3d.3) 이 있을 때만 가능하다.
+
+### 3d.3 Opt-in authorization 의 최소 boundary
+
+reviewer 의 broad command reproduction 은 **review input 에서 명시적으로 authorize 된 경우에만** 가능하다. authorize 시 review input 은 **최소한** 다음을 명시한다:
+
+- **exact command** — 재실행할 정확한 command line (추정 / 일반화 금지).
+- **working directory** — 실행 기준 디렉터리.
+- **expected read/write behavior** — read-only 인지, write / side-effect 가 있는지, 있다면 무엇을 쓰는지.
+- **allowed temp/output path** — 산출 / 임시 파일이 허용되는 경로 범위 (있다면).
+- **dependency assumptions** — 전제되는 toolchain / SDK / runtime / network 가용성.
+- **timeout expectation** — 허용 실행 시간 한계 (긴 / 무한 실행 금지).
+- **interpretation boundary** — 결과 (특히 partial / nonzero exit) 를 어떻게 해석할지의 경계 — 무엇이 PASS / FAIL 신호이고 무엇이 환경 noise 인지.
+- **how to report sandbox limitation** — sandbox 제약으로 실행이 불가 / 부분 실패 시 그 사실을 `## Review limitations` 에 어떻게 기록할지.
+
+authorization 이 없거나 위 항목이 불완전하면 reviewer 는 reproduction 을 시도하지 않고 default 행동 (§3d.4) 으로 돌아간다. 본 authorization 은 wording / convention 이며 어떤 parser / lint gate 도 추가하지 않는다 (§10).
+
+### 3d.4 Default reviewer behavior
+
+broad reproduction authorization 이 없을 때 reviewer 의 default 는:
+
+- diff / contract / `## Validation evidence` 가 가리킨 local validation evidence 를 **inspect** 한다 (§3a).
+- operator 의 validation / build / test command 를 임의로 **재실행하지 않는다.**
+- 재실행하지 못했거나 하지 않은 사실을 `## Review limitations` 에 review limitation 으로 **보고한다** (§3d.5).
+
+§3b 의 mechanical minimal reproducible check 는 이 default 의 **예외로 기대** 된다 (narrow inspection-grade probe — §3d.6).
+
+### 3d.5 Sandbox non-reproduction is a review limitation, not target risk
+
+reviewer 가 재실행하지 못했거나 하지 않은 사실은 **자동으로 target risk 가 아니다** — reviewer 환경의 한계이지 reviewed target 의 결함이 아니며, §6 의 non-blocking 분류대로 `## Review limitations` 에 surface 한다. target risk (blocking 또는 risk-bearing) 로 승격하려면 sandbox 한계와 **독립된 근거** 가 있어야 한다:
+
+- **missing local evidence** — validation execution claim 이 있는데 이를 뒷받침할 local evidence 가 부재.
+- **stale evidence** — evidence 가 reviewed source 의 현재 상태와 명백히 시점 불일치.
+- **scope mismatch** — evidence 가 claim 의 scope 를 cover 하지 못함.
+- **static contradiction** — diff / contract / template 의 정적 자기모순 (재실행 없이 read 만으로 드러나는 inconsistency).
+- **explicit high-risk gap** — 명시적으로 고위험인 영역이 어떤 evidence 로도 cover 되지 않음.
+
+이런 독립 근거가 없으면 non-reproduction 은 `## Review limitations` 의 non-blocking 항목으로 남는다. 본 절은 §6 의 기존 non-blocking 분류를 약화하지 않고 target-risk 승격의 독립 근거를 명명하여 sharpen 한다.
+
+### 3d.6 Narrow mechanical probe (§3b) vs broad reproduction (§3d) 경계
+
+§3b 의 minimal reproducible check 와 본 §3d 의 broad reproduction 은 다음으로 구분된다 — 이 경계를 흐리면 두 절이 self-conflict 한다:
+
+- **§3b narrow mechanical probe (기대; default 예외)**: reviewer 가 *직접 구성한 tiny synthetic 입력* 에 대해 claimed mechanism (regex / parser / verifier / script 동작) 을 inspection-grade 로 점검 — literal 에 대한 regex match, small parser / verifier fixture, isolated string / character inspection, reviewer 가 작성한 one-line synthetic exit-code probe. 수 초의 점검이며 **full test suite / build 가 아니다.** §3b 가 자기 infeasibility 를 이미 `## Review limitations` 로 라우팅한다. 본 §3d 는 이 기대를 약화하지 않는다.
+- **§3d broad reproduction (opt-in)**: target project 의 *실제* validation / build / test pipeline 실행 — full test suite, build, network restore, generated-output write, repo-external SDK 호출 등 (§3d.7). default 로 시도하지 않으며 §3d.3 authorization 이 있을 때만.
+- **경계선**: "reviewer 가 합성한 narrow probe 로 claimed mechanic 을 점검" (§3b, 기대) vs "operator 의 실제 validation / build / test pipeline 을 돌림" (§3d, opt-in). §3b 의 "one-line shell exit-code check" 는 *reviewer 가 작성한 synthetic 한 줄 probe* 를 뜻하며 "operator 의 validation command 실행" 을 뜻하지 않는다.
+
+### 3d.7 Target-project validation examples (기본 비-재실행)
+
+다음 target-project validation 은 reviewer read-only sandbox 에서 *실행 가능해 보여도* 기본 reproduction 대상이 아니다 — 공통적으로 (a) sandbox 에 부재한 toolchain / SDK / network 를 요구하거나, (b) write / network / generated-output side-effect 라 read-only sandbox 에서 실패하거나 partial-run 으로 오도하거나, (c) operator 의 local 환경에 속한다:
+
+- Visual Studio / MSBuild / C++ build
+- CMake / Unity / Unreal / game SDK
+- network restore (NuGet / npm / pip / git submodule 등)
+- generated-output / write-heavy builds
+- repo-external tools / SDKs
+
+reviewer 는 대신 operator 의 local validation evidence 를 inspect 하고 (§3d.4), 재실행 불가를 `## Review limitations` 로 보고한다 (§3d.5). 본 예시는 universal build runner / sandbox capability probe / SDK detection / project-specific build integration 을 도입하자는 것이 아니다 (§10) — 정책의 이유를 일반화해 보여줄 뿐이다.
+
+### 3d.8 Mirror surfaces
+
+본 §3d 의 mirror 와 cross-reference 관계:
+
+- `templates/review-input.md` `## Validation evidence` guidance — operator-facing default (evidence-inspect) + opt-in authorization boundary.
+- `snippets/claude-skills/ai-harness-review/SKILL.md` — reviewer / operator workflow mirror (default no-repro / opt-in / non-repro → review limitation; §3b narrow check 예외). deployed self-contained surface 이므로 repo-doc `§N` pointer 없이 prose 로 mirror 한다.
+
+mirror surface 의 wording 이 본 §3d 와 충돌하면 본 §3d 가 우선한다. 본 §3d 는 §3a / §3b / §6 의 기존 wording 을 변경하지 않고 그 위에 reproduction boundary 를 더한다.
 
 ## 4. Script responsibility (deterministic gate only)
 
@@ -326,7 +408,7 @@ verdict 는 review scope 안의 판단만을 담는다. commit / push / publish 
 
 - review scope 밖의 wording 보강 권고.
 - 후속 batch / 후속 governance 의 input 으로 surface 되어야 할 design 관찰.
-- reviewer 의 sandbox / capability 한계로 인한 미검증 영역의 명시 (이는 `## Review limitations` 에 surface).
+- reviewer 의 sandbox / capability 한계로 인한 미검증 영역의 명시 (이는 `## Review limitations` 에 surface). 이는 자동으로 target risk 가 아니며, target-risk 승격에는 sandbox 한계와 독립된 근거가 필요하다 (§3d.5).
 - operator prose 에 의존한 validation claim 의 truthfulness (이는 `## Assumptions relied on` 에 surface).
 
 blocking 과 non-blocking 의 경계는 review scope 와 finding 의 substance 가 함께 결정한다 — 같은 종류의 finding 이 다른 review scope 에서는 blocking 일 수도 non-blocking 일 수도 있다. reviewer 가 본 contract 의 가이드를 base 로 finding 마다 판단하여 `## Blocking findings` 또는 `## Non-blocking concerns` 중 적절한 section 에 기록한다.
@@ -500,5 +582,6 @@ failed / incomplete pass (예: Codex 실패 또는 verdict parsing 실패로 `re
 - `## Known concerns` informational section 의 sub-shape lint (recommended sub-categories — convention deviation / skipped alternatives / validation limitations / baseline failures / direct verification not performed / operator assumptions — 의 본문 deterministic check). 본 lint 는 deterministic-lint scope 로 도입하지 않는다. operator 의 정직성 invariant + §7 stale-by-omission rule + supervisor 판단이 currently effective handling path 이며, sub-category 본문의 regex / string lint 는 semantic judgment 없이 brittle / high false-positive 한 surface 로 판단된다. reopen 은 informational disclosure omission 또는 misformatting 이 unsound verdict 를 유발한 concrete evidence 에 한정한다.
 - evidence file 의 freshness / hash / mtime binding, source-state staleness 의 자동 검증.
 - deterministic validation runner, automatic validation execution, JSON schema for evidence. 본 contract 는 evidence path referencing convention (§3a, Markdown-only) 만을 담는다.
+- reviewer 의 broad validation / build / test reproduction 을 위한 universal build runner / sandbox capability probe / SDK detection / project-specific build integration. §3d 의 opt-in reproduction 정책은 convention-by-docs 이며 어떤 parser / verifier / runtime / build automation 도 추가하지 않는다.
 
 removed legacy artifact design 의 historical reason 은 git history 에 보존되어 있다. 그 항목은 operator path 가 아니며 normal workflow 의 일부도 아니다.
