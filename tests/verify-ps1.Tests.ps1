@@ -51,10 +51,20 @@ BeforeAll {
             script:Write-Utf8NoBomFile -Path (Join-Path $repo 'config/reviewer.json')      -Content "{}`n"
         }
 
-        # Initialize a git repo so `git ls-files` works.
-        $null = & git -C $repo init --quiet 2>&1
-        $null = & git -C $repo config user.email 'pester@local' 2>&1
-        $null = & git -C $repo config user.name 'pester' 2>&1
+        # Initialize a git repo so `git ls-files` works. Invoke git through the
+        # Invoke-NativeProcess containment shim (separate stdout/stderr capture)
+        # rather than `& git ... 2>&1`: under Win PS 5.1 with file-level
+        # $ErrorActionPreference = 'Stop' and system core.autocrlf=true, git's
+        # stderr (e.g. the LF/CRLF auto-convert warning) crossing 2>&1 is promoted
+        # to a terminating NativeCommandError that aborts setup before the exit
+        # code can be read. The shim captures the streams separately, so failure
+        # is driven off the child exit code instead.
+        $initResult = Invoke-NativeProcess -Executable 'git' -Arguments @('-C', $repo, 'init', '--quiet')
+        if ($initResult.ExitCode -ne 0) { throw ("git init failed (exit {0}): {1}" -f $initResult.ExitCode, $initResult.Stderr) }
+        $emailResult = Invoke-NativeProcess -Executable 'git' -Arguments @('-C', $repo, 'config', 'user.email', 'pester@local')
+        if ($emailResult.ExitCode -ne 0) { throw ("git config user.email failed (exit {0}): {1}" -f $emailResult.ExitCode, $emailResult.Stderr) }
+        $nameResult = Invoke-NativeProcess -Executable 'git' -Arguments @('-C', $repo, 'config', 'user.name', 'pester')
+        if ($nameResult.ExitCode -ne 0) { throw ("git config user.name failed (exit {0}): {1}" -f $nameResult.ExitCode, $nameResult.Stderr) }
 
         return $repo
     }
@@ -67,7 +77,11 @@ BeforeAll {
         )
         $abs = Join-Path $Repo $RelativePath
         script:Write-Utf8NoBomFile -Path $abs -Content $Content
-        $null = & git -C $Repo add -- $RelativePath 2>&1
+        # Stage via the Invoke-NativeProcess shim (see Initialize-FakeSourceRepoForVerify):
+        # `git add` emits the core.autocrlf LF/CRLF warning on stderr, which under
+        # `& git ... 2>&1` + EAP=Stop becomes a terminating NativeCommandError.
+        $addResult = Invoke-NativeProcess -Executable 'git' -Arguments @('-C', $Repo, 'add', '--', $RelativePath)
+        if ($addResult.ExitCode -ne 0) { throw ("git add failed (exit {0}): {1}" -f $addResult.ExitCode, $addResult.Stderr) }
     }
 
     function script:Add-TestsFixtureFile {
