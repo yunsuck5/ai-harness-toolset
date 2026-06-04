@@ -424,6 +424,10 @@ Describe 'install-pipeline entry — source-cut detection / dogfooding guard' {
         Push-Location $shared
         try {
             & git init -q 2>&1 | Out-Null
+            # Disable line-ending conversion locally so fixture writes (LF) do not
+            # trigger git's CRLF warnings on systems with core.autocrlf enabled.
+            & git config core.autocrlf false 2>&1 | Out-Null
+            & git config core.safecrlf false 2>&1 | Out-Null
             & git config user.email 'test@example.com' 2>&1 | Out-Null
             & git config user.name  'test' 2>&1 | Out-Null
             $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
