@@ -69,7 +69,7 @@ P3 전에는 `result.md`(또는 review result artifact) **단독**으로 그 결
 - **N1**: `input.md` 에 reviewer version / provenance 를 기록하지 **않는다** (input.md 은 caller declaration 자리이며 runtime observation 자리가 아니다 — §4).
 - **N2**: 특정 reviewer-tool / vendor version pin 정책을 도입하지 **않는다** (version 은 외부/사용자 환경 관리 사안; 본 track 은 *관측·기록* 만 다루고 *강제·고정* 은 다루지 않는다). 어떤 concrete version 도 durable rule 로 박지 않는다.
 - **N3**: Batch D 를 재오픈하지 **않는다** (Batch D mainline complete; "no D4"). 본 track 은 Batch D 산출물 위에 얹히는 별도 track 이다.
-- **N4**: 다음을 본 scope 에 **섞지 않는다** — `## Known concerns` framing-tilt convention, operator stance fold-in, `.md` EOL normalization, design/analysis review mode, full-suite-green closeout policy. (각각 STATUS line 39 / Brief 의 별도 deferred 후보이며 본 track 과 독립.)
+- **N4**: 다음은 본 scope 에 **섞지 않는다** — `## Known concerns` framing-tilt convention, operator stance fold-in, `.md` EOL normalization, full-suite-green closeout policy. (각각 본 track 과 독립인 별도 항목이며, 그 lifecycle 은 각자의 트랙 문서가 관리한다 — line 번호처럼 stale 화되는 고정 참조는 두지 않는다.) 과거 본 note 는 "design/analysis review mode"도 위 목록에 별도 deferred 후보처럼 열거했으나, **그런 review mode 는 본 toolset 에 정의·계획·요구된 적이 없다**(STATUS / IDEAS / BACKLOG 어디에도 등록되지 않은 orphan 라벨)이므로, open / deferred 항목으로 오독되지 않도록 여기서 close 한다. 현행 verdict vocabulary(`yes` / `no` / `yes with risk`)는 review scope 에 무관하게 동일 적용되는 **scope-agnostic** vocabulary 로 불변이고(source-of-truth `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6 — design 관찰은 이미 non-blocking concern 으로 수용된다), `## Stage` 는 강제되지 않는 **advisory 라벨**로 불변이다. 본 close 는 새 review mode 도, 새 STATUS / IDEAS / BACKLOG candidate 도 만들지 않는다.
 
 convention 파생 non-goals (contract §10 / decision record invariant 7 / neutrality 원칙 정합):
 
