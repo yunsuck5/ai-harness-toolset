@@ -81,7 +81,7 @@ contract §5/§7 의 stale-by-omission wording 과 §10 의 "no `## Known concer
 - **`## Known concerns` heading rename 금지** (§5 (c)).
 - **`snippets/CLAUDE_SNIPPET.md` / `AGENTS_SNIPPET.md` 미변경(기본)** — deployed 글로벌 managed-block guard 이며 disclosure duty 의 최소 mirror 만 담는다(상세는 contract 소유, §5a precedence). 만약 구현 batch 가 이 mirror 를 **의도적으로 미변경으로 둔다면**, 그 결정을 구현 batch 의 review `input.md` `## Known concerns` 에 **deliberate mirror asymmetry 로 명시 disclose** 한다(§8).
 - **RV-B-06 재오픈 금지** (§2).
-- **EOL normalization 금지** — `.md` blob EOL convention(`.gitattributes` `eol=lf` vs 커밋된 CRLF)은 이 batch 의 scope 가 아니다.
+- **EOL normalization 금지** — `.md` blob EOL convention(`.gitattributes` 의 `*.md text eol=lf`)은 이 batch 의 scope 가 아니다. [stale 전제 정정: 과거 "커밋된 CRLF" 표현은 HEAD `a26f9d4` audit 에서 normalization no-op 으로 확인됨 — `docs/systems/review/STATUS.md` 의 `.md` EOL audit closeout 참조.]
 - **global / user file 수정 금지**, **snapshot / manifest 생성 금지**, **commit / push 금지** — 모두 별도 사용자 명시 승인 사항.
 - **verdict vocabulary / stale-by-omission semantics 변경 금지**, 기존 `## Review questions` neutral convention 재오픈 금지.
 
