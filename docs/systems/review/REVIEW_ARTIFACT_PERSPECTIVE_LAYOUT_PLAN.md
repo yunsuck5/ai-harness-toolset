@@ -227,7 +227,7 @@ C1-first 를 staged batch 로 제안한다(실제 split 은 구현 batch 가 evi
 > **Closeout 완료 (commit `460ee3e`).** 아래는 이 design 의 구현-closeout 처리 기록이다. 초안 작성 시점에는 pre-commit 이었고 일부 단계(commit 해시 보강·BACKLOG tombstone·global adoption)를 commit 시점 후속으로 두었으나 **그 후속 단계는 모두 완료됐다** — 각 항목의 괄호는 현재 done-state 를 반영한다.
 
 - **이 문서가 정한 C1-first design 은 구현·closeout 됐다**(working tree → commit `460ee3e`; 위 Status 블록). 본 §11 의 구현-closeout 처리:
-  - **STATUS ledger 갱신(완료)**: `docs/systems/review/STATUS.md` Open/historical 의 S6 C1 bullet + 이 문서로의 inbound pointer. commit 해시 `460ee3e` 로 보강됨, bullet 은 done 으로 flip(완료).
+  - **STATUS 갱신(완료)**: `docs/systems/review/STATUS.md` Open/historical 의 S6 strict-C1 bullet (+ Completed-ledger RV-B-08) + 이 문서로의 inbound pointer. commit 해시 `460ee3e` 로 보강됨, bullet 은 done 으로 flip(완료).
   - **BACKLOG RV-B-08 tombstone 추가(완료)**: 본 트랙은 원래 open BACKLOG 행이 아니었으므로(설계 plan 출처, BACKLOG triage 아님) RV-B-06/07 식 `[CLOSED]` tombstone 을 commit 시점에 추가하는 것이 natural follow-up 이었다 — 그 RV-B-08 closed tombstone 은 commit `460ee3e` 시점에 `docs/systems/review/BACKLOG.md` 에 추가됨. tracking 의 1차 home 은 STATUS ledger 가 담당한다.
   - **이 PLAN 문서(완료)**: Status 블록을 done 으로 갱신, commit 해시 `460ee3e` 보강. 규약이 contract §1 + SKILL 로 흡수되었으므로 향후 retirement note 로 축소 가능(별도 결정). "latest state 를 docs 가 반영, 누적 서술은 git history" 원칙.
 - **STATUS inbound pointer 는 이 구현-closeout 에서 wiring 했다** — 설계-doc commit 단계의 일시적 orphan([[feedback_planning_doc_scope_defer_pointer]])은 해소됨. commit / push / global (channel 3) update / managed-block snippet adoption 은 모두 완료됨(commit `460ee3e`).

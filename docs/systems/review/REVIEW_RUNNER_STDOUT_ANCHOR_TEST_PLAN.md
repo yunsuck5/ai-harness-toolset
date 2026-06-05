@@ -1,6 +1,6 @@
 # 리뷰 시스템 — runner stdout exact-line-anchor test authoring discipline (planning/design doc, 2026-06-04)
 
-> **Status (planning — not implemented) — 2026-06-04.** 이 문서는 runner stdout run-fact 의 **stdout contract test 작성 규율** — line-oriented run-fact 를 loose substring 이 아니라 exact-line anchor(`(?m)^key: value$`)로 검증한다 — 를 codify 하기 위한 **durable design/plan source-of-truth** 다. 작성 시점에 어떤 test / script / doc 도 이 규율을 위해 **수정되지 않았다**. 구현은 이 문서를 입력으로 삼는 **별도 scoped batch** 이며 각 단계마다 Codex review gate + 사용자 commit/push 승인을 거친다. 이 문서 작성 자체는 parser / verifier / runtime behavior 를 바꾸지 않고 기존 test 를 rewrite 하지 않는다.
+> **Status (implemented — done) — 구현 commit `2a15255`(작성 plan-doc commit `c0136a6`).** 이 문서가 정한 runner stdout exact-line-anchor test 작성 규율(line-oriented run-fact 를 loose substring 이 아니라 `(?m)^key: value$` 로 검증)은 **구현됐다** — `tests/README.md` 에 codify(현 상태 source-of-truth: `docs/systems/review/STATUS.md` governance increments bullet). 본 문서는 그 규율의 **durable design source-of-truth** 로 보존된다. 아래 본문의 plan-time 표현(예: "Status (planning — not implemented)", "수정되지 않았다", deferred 신호, "STATUS 는 이것을 deferred 후보로 명시한다", 조건부-closeout)은 **작성 시점 design-time 기록**이며 current-state claim 이 아니다 — 현재 상태는 위 STATUS bullet 이 권위다. (구현 batch 는 별도 Codex review gate + 사용자 commit/push 승인을 거쳤다.)
 
 ## Document character
 

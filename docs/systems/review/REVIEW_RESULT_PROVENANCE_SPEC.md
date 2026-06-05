@@ -194,7 +194,7 @@ source 구분 요약 (모두 caller declaration 아님 — G2):
 
 ## 10. activation 필요 가능성 판단 기준 (required content #10)
 
-- **판단**: activation(global stable install payload `%USERPROFILE%\.claude\ai-harness-toolset\current` refresh) 이 **필요할 가능성이 높다.** 변경 surface(runner `review-run.ps1` / contract / template / SKILL)가 모두 **deployed reviewer surface(channel 3 payload)** 이기 때문이다 — Batch D 가 "committed, pushed, globally activated" 로 닫힌 것과 동일 패턴(STATUS 의 "Batch D mainline complete (closeout)" 항목 참조 — 고정 줄번호 대신 항목 이름으로 가리킨다).
+- **판단**: activation(global stable install payload `%USERPROFILE%\.claude\ai-harness-toolset\current` refresh) 이 **필요할 가능성이 높다.** 변경 surface(runner `review-run.ps1` / contract / template / SKILL)가 모두 **deployed reviewer surface(channel 3 payload)** 이기 때문이다 — Batch D 가 "committed, pushed, globally activated" 로 닫힌 것과 동일 패턴(STATUS 의 Batch D mainline closeout 항목 참조 — 고정 줄번호 대신 항목으로 가리킨다; 현 명칭 "Batch D mainline complete (D1→D2→D3; no D4)").
 - **기준**: activation 은 (1) 해당 구현 단계(P2/P3/P4)가 완료·리뷰(global stable engine)·커밋되고, (2) 사용자가 **명시적으로 activation 을 승인**한 후에만 수행한다. **본 planning 단계(P1)는 activation 을 수행하지 않으며 판단만 제시한다.**
 - self-modification 이라 §5a.7: in-dev runner 를 closeout engine 으로 쓰지 않고 global stable engine 으로 리뷰. activation 으로 deployed surface 가 바뀌면 그 이후 review 의 engine identity(F9)도 새 payload 를 가리킨다.
 

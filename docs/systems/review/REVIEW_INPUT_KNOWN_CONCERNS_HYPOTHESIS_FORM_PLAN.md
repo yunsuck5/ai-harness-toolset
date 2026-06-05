@@ -1,6 +1,6 @@
 # 리뷰 입력 거버넌스 — `## Known concerns` hypothesis-form convention (planning/design doc, 2026-06-04)
 
-> **Status (planning — not implemented) — 2026-06-04.** 이 문서는 review-input 의 `## Known concerns` informational section 을 *확정 결함처럼* 쓰지 않고 *confirmed disclosures* 와 *open concerns / hypotheses to verify* 로 구분하는 convention 의 **durable design/plan source-of-truth** 다. 작성 시점에 어떤 implementation surface(`templates/review-input.md` / `snippets/claude-skills/ai-harness-review/SKILL.md` / `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`)도 **아직 수정되지 않았다**. 구현은 이 문서를 입력으로 삼는 **별도 scoped batch** 이며, 각 단계마다 별도 Codex review gate + 사용자 commit/push 승인을 거친다. 이 문서 작성 자체는 source/script/test/config/contract/template/verifier/skill 변경을 동반하지 않는다.
+> **Status (implemented — done) — 구현 commit `88f6788`(작성 plan-doc commit `929f534`).** 이 문서가 정한 `## Known concerns` hypothesis-form convention(*confirmed disclosures* 와 *open concerns / hypotheses to verify* 구분)은 **구현됐다** — `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §2 + `templates/review-input.md` + `snippets/claude-skills/ai-harness-review/SKILL.md` 에 반영(현 상태 source-of-truth: `docs/systems/review/STATUS.md` governance increments bullet). 본 문서는 그 convention 의 **durable design source-of-truth** 로 보존된다. 아래 본문의 plan-time 표현(예: "Status (planning — not implemented)", "아직 수정되지 않았다", deferred 신호, "STATUS 는 이것을 deferred 후보로 명시한다", 조건부-closeout)은 **작성 시점 design-time 기록**이며 current-state claim 이 아니다 — 현재 상태는 위 STATUS bullet 이 권위다. (구현 batch 는 별도 Codex review gate + 사용자 commit/push 승인을 거쳤다.)
 
 ## Document character
 

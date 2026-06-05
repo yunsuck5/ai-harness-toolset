@@ -1,6 +1,6 @@
 # 리뷰 시스템 — local validation closeout policy: validation scope by change class (planning/design doc, 2026-06-04)
 
-> **Status (planning — not implemented) — 2026-06-04.** 이 문서는 **local operator 가 작업을 closeout 하기 전에 어떤 validation 을 수행해야 하는지를 change class 별로** 정하는 정책의 **durable design/plan source-of-truth** 다. "full suite 가 항상 green 이어야 한다" 를 무조건 요구하지 않고, 어떤 변경 class 에서 어떤 validation scope 가 기대되는지, 그리고 full suite 를 돌리지 않은 경우 그 사실을 어떻게 reason / evidence 로 보고하는지를 정의한다. 작성 시점에 어떤 implementation surface(`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` / `templates/review-input.md` / `snippets/claude-skills/ai-harness-review/SKILL.md` / `tests/README.md` / `docs/contracts/evidence/EVIDENCE_CONTRACT.md`)도 **아직 수정되지 않았다**. 구현은 이 문서를 입력으로 삼는 **별도 scoped batch** 이며, 각 단계마다 별도 Codex review gate + 사용자 commit/push 승인을 거친다. 이 문서 작성 자체는 source/script/test/config/contract/template/verifier/skill/parser/runtime 변경을 동반하지 않는다.
+> **Status (implemented — done) — 구현 commit `94f375c`(작성 plan-doc commit `028f8dc`).** 이 문서가 정한 local validation closeout scope(change class 별 closeout validation obligation; "full suite 항상 green" 무조건 요구 아님)은 **구현됐다** — `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6c + `tests/README.md` + `templates/review-input.md` + `snippets/claude-skills/ai-harness-review/SKILL.md` 에 반영(현 상태 source-of-truth: `docs/systems/review/STATUS.md` governance increments bullet). 본 문서는 그 정책의 **durable design source-of-truth** 로 보존된다. 아래 본문의 plan-time 표현(예: "Status (planning — not implemented)", "아직 수정되지 않았다", deferred 신호, "STATUS 는 이것을 deferred 후보로 명시한다", 조건부-closeout)은 **작성 시점 design-time 기록**이며 current-state claim 이 아니다 — 현재 상태는 위 STATUS bullet 이 권위다.
 
 ## Document character
 
@@ -20,7 +20,7 @@
 
 ## 2. Track 위치 — umbrella / adjacency / 무엇이 아닌가
 
-- **umbrella (확정 아님 — 구현 closeout 결정)**: 본 트랙은 review subsystem 의 *operator-side validation discipline* 정책으로, `docs/systems/review/BACKLOG.md` 의 **RV-B-05(review input governance — operator-side honest-framing conventions)** 와 가장 인접하다. 동시에 §3d reviewer reproduction opt-in(**RV-B-04** 우산)의 operator-side 대응이다. 현재 BACKLOG 에는 이 정책에 해당하는 **번호 행이 없다** — "full-suite-green closeout policy" 라벨은 직전 plan 의 §2·§10 forward-reference 로만 존재한다. 새 BACKLOG 행(예: 가칭 RV-B-07)으로 승격할지, 아니면 RV-B-05 하위로 둘지는 **구현/closeout 시점의 결정**이며 본 planning 단계에서 확정하지 않는다(§14).
+- **umbrella (확정 아님 — 구현 closeout 결정)**: 본 트랙은 review subsystem 의 *operator-side validation discipline* 정책으로, `docs/systems/review/BACKLOG.md` 의 **RV-B-05(review input governance — operator-side honest-framing conventions)** 와 가장 인접하다. 동시에 §3d reviewer reproduction opt-in(**RV-B-04** 우산)의 operator-side 대응이다. 현재 BACKLOG 에는 이 정책에 해당하는 **번호 행이 없다** — "full-suite-green closeout policy" 라벨은 직전 plan 의 §2·§10 forward-reference 로만 존재한다. 새 BACKLOG 행(예: 신규 RV-B-NN)으로 승격할지, 아니면 RV-B-05 하위로 둘지는 **구현/closeout 시점의 결정**이며 본 planning 단계에서 확정하지 않는다(§14 — 실제로는 RV-B-05 하위 편입으로 닫힘; ID RV-B-07 은 별건 U9 에 배정됨).
 - **adjacency (우산 아님)**: `tests/README.md`(testing convention home), `EVIDENCE_CONTRACT.md`(evidence shape), §6b(final report field 8). 본 트랙은 이들을 재정의하지 않고 *closeout validation 의 scope 결정* 이라는 새 layer 를 그 위에 얹는다.
 - **무엇이 아닌가 (혼입 금지, §11)**:
   - **reviewer reproduction opt-in policy(§3d) 재오픈 아님** — reviewer 가 sandbox 에서 무엇을 재실행하는가의 경계는 §3d 가 source-of-truth 이며 불변. 본 트랙은 operator-side 만 다룬다.
@@ -150,7 +150,7 @@ full suite 를 돌리지 않았다면 operator 는 closeout report(`REVIEW_RESUL
 - **모든 작업에 full suite 의무화** — 핵심 목적(§1.2)에 위배. full suite 는 change class 별 기대치이지 universal 요구가 아니다.
 - **reviewer sandbox reproduction 정책(§3d) 변경 / 재오픈** — reviewer-side 는 본 트랙 밖.
 - **reviewer 가 full suite 를 실행하도록 쓰는 wording** — reviewer 의 실행 의무를 늘리지 않는다.
-- **EOL / autocrlf normalization** — `.md` blob EOL convention 은 본 batch scope 밖이다(별도 deferred 트랙). 신규 본 문서는 sibling planning doc 과 동일하게 LF/no-BOM 으로 작성됨.
+- **EOL / autocrlf normalization** — `.md` blob EOL convention(`.gitattributes` 의 `*.md text eol=lf`)은 본 batch scope 밖이다. 신규 본 문서는 sibling planning doc 과 동일하게 LF/no-BOM 으로 작성됨. [stale 전제 정정: '별도 deferred 트랙' 표현은 plan-time — `.md` EOL 은 그 후 HEAD `a26f9d4` audit 에서 normalization no-op 으로 closed(STATUS `.md` EOL audit closeout 참조).]
 - **design verdict vocabulary 변경**(`yes` / `no` / `yes with risk` 불변), **RV-B-06 재오픈**, **`## Validation evidence` / `## Known concerns` sub-shape lint 도입**(§10 non-goal 불변).
 - **global / user file·memory·shell config·git config 수정**, **snapshot / manifest 생성**, **commit / push** — 모두 별도 사용자 명시 승인 사항.
 
@@ -176,8 +176,8 @@ full suite 를 돌리지 않았다면 operator 는 closeout report(`REVIEW_RESUL
 
 ## 14. STATUS / BACKLOG handling (검사 기준 11)
 
-- **현재 deferred 항목 식별**: `docs/systems/review/STATUS.md` 에 "full-suite-green closeout policy" 또는 본 트랙에 해당하는 **deferred 항목은 존재하지 않는다.** 이 라벨은 직전 plan(`REVIEW_VALIDATION_EVIDENCE_REPRODUCTION_POLICY_PLAN.md`)의 §2·§10 **forward-reference(non-goal)** 로만 존재한다(STATUS 의 Batch-D deferred 목록에도 없음 — 거기 남은 deferred 는 optional mirror propagation + `.md` EOL convention 뿐). 따라서 본 트랙은 *기존 deferred 항목의 promotion* 이 아니라 forward-referenced 별도 정책의 **planning 착수**다.
-- **closeout pointer 는 implementation-time, not planning-time**: planning-doc scope 규율([[feedback_planning_doc_scope_defer_pointer]]; `docs/policies/DOCS_OPERATING_MODEL.md` §4·§7)에 따라, (a) STATUS ledger bullet + 이 문서로의 inbound pointer, (b) BACKLOG 행 승격(가칭 RV-B-07 신설 vs RV-B-05 하위 편입) 결정은 **구현 batch 의 closeout 에서** 수행한다. 이 planning 단계에서는 그 wiring 을 하지 않으며, 일시적 orphan(이 문서를 가리키는 inbound pointer 부재)을 수용한다. 그 이유로 본 단계에서 commit 하면 STATUS/BACKLOG 변경이 함께 가지 않는다 — 이는 의도된 scope 분리다.
+- **현재 deferred 항목 식별**: `docs/systems/review/STATUS.md` 에 "full-suite-green closeout policy" 또는 본 트랙에 해당하는 **deferred 항목은 존재하지 않는다.** 이 라벨은 직전 plan(`REVIEW_VALIDATION_EVIDENCE_REPRODUCTION_POLICY_PLAN.md`)의 §2·§10 **forward-reference(non-goal)** 로만 존재한다(STATUS 의 Batch-D deferred 목록에도 없음 — 거기 남은 deferred 는 optional mirror propagation 뿐; `.md` EOL convention 은 그 후 audited no-op 으로 closed). 따라서 본 트랙은 *기존 deferred 항목의 promotion* 이 아니라 forward-referenced 별도 정책의 **planning 착수**다.
+- **closeout pointer 는 implementation-time, not planning-time**: planning-doc scope 규율([[feedback_planning_doc_scope_defer_pointer]]; `docs/policies/DOCS_OPERATING_MODEL.md` §4·§7)에 따라, (a) STATUS ledger bullet + 이 문서로의 inbound pointer, (b) BACKLOG 행 승격(신규 행 신설 vs RV-B-05 하위 편입) 결정은 **구현 batch 의 closeout 에서** 수행한다 [정정: 실제로는 RV-B-05 하위 편입으로 닫힘; ID RV-B-07 은 별건 U9 category-effort policy 에 배정됨]. 이 planning 단계에서는 그 wiring 을 하지 않으며, 일시적 orphan(이 문서를 가리키는 inbound pointer 부재)을 수용한다. 그 이유로 본 단계에서 commit 하면 STATUS/BACKLOG 변경이 함께 가지 않는다 — 이는 의도된 scope 분리다.
 - 단, 본 planning 자체가 commit 대상이 되는지(그리고 그 시점)는 사용자 명시 승인 사항이며(§11), 본 문서는 그 승인을 전제하지 않는다.
 
 ---
