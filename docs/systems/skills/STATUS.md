@@ -21,7 +21,7 @@ This subsystem owns the snippet↔skill responsibility split (what stays always-
 
 Each is a separate scoped goal + Codex review gate + explicit user approval (plan §8); none is approved by the plan or by this status file.
 
-- **Batch 2** — restore-offer removal + manual brief-skill extraction. *(2B — BR-D-02 restore-offer-component retirement — and 2A — unsolicited session-start restore-offer removal from the snippet + active surfaces — landed in this working tree; 2C manual brief-skill extraction remains. Full Batch 2 closeout (STATUS done-flip / SK-02 ledger) is deferred to 2D.)*
+- **Batch 2** — restore-offer removal + manual brief-skill extraction. *(2B — BR-D-02 restore-offer-component retirement — and 2A — unsolicited session-start restore-offer removal from the snippet + active surfaces — landed in this working tree; 2C manual brief-skill extraction remains. Full Batch 2 closeout (STATUS done-flip / SK-02 ledger) is deferred to 2D.)* **Batch 2C now carries a lifecycle prerequisite: 2C-0 (generic deployed-extension mirror + verification) must land before `ai-harness-brief` is snippet-routed** — a snippet routing to a skill the lifecycle does not force-mirror + verify would break current behavior; missing `ai-harness-brief` at its runtime destination after install/update is an install/update failure. Sequence: 2C-0 → 2C-1 (create skill) → 2C-2 (extract procedure; no large snippet fallback) → 2D. Governing policy: `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §8A (plan §7 / §8).
 - **Batch 3** — remove non-current items (Chatlog section, BF Level 3 note) from the snippet.
 - **Batch 4** — review-polishing selective-capture vehicle decision (instruction vs skill; non-hook).
 
