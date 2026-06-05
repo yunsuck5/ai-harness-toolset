@@ -93,3 +93,13 @@ For "how should a docs change or a feature/system closeout propagate top-down th
 - **Implementation:** n/a (an operating-model / process document; no code implementation).
 - **Historical:** n/a.
 - **Do not use:** `docs/policies/DOCS_OPERATING_MODEL.md` as a placement authority (placement → `docs/README.md`) or as commit / push approval (a review verdict approves neither).
+
+## Q10. skill / snippet surface architecture (function-level skill plan)
+
+For "what is the planned target architecture of the deployed instruction surface — what stays in the always-loaded snippet vs what becomes a function-level on-demand skill?"
+
+- **Primary:** `docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` — **design-stage plan, not implementation approval**; defines the snippet policy-minimization + function-level-skill principles, snippet/skill responsibility split, non-goals, proposed batch plan, and review criteria.
+- **Secondary:** `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` (current always-loaded payload), `snippets/claude-skills/ai-harness-review/SKILL.md` (the one existing function-level skill), `docs/README.md` §4 (the high bar for always-on content), `docs/policies/DOCS_OPERATING_MODEL.md` §1 (single-home-plus-pointers).
+- **Implementation:** n/a — design-stage plan with no code implementation; each migration batch is a separate scoped goal + Codex review gate + explicit user approval, and `docs/systems/skills/STATUS.md` is created only when the first batch lands.
+- **Historical:** n/a (new scope).
+- **Do not use:** this plan as implementation / commit / push approval, or as authority over install / update / uninstall (LTS, out of scope — routes via Q1).

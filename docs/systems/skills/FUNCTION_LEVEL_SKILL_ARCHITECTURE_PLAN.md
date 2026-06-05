@@ -1,0 +1,160 @@
+# Function-Level Skill Architecture & Global Snippet Policy-Minimization — Plan
+
+**Status: design-stage planning source. NOT an implementation-approval document.** This file is the design/plan source-of-truth for two coupled directions — (a) minimizing the always-loaded global snippet to invariants/routing for **current, implemented** capabilities only, and (b) splitting **explicit-prompt-triggered** feature procedures into function-level skills. A governing rule throughout: an item that is **not a current implemented capability** is **removed** from the snippet, never retained as a "future / deferred / later-track" mention. It defines principles, scope, non-goals, a proposed batch plan, and review criteria. It changes no implementation, script, runtime, or behavior. Each implementation batch named here requires its own scoped goal, Codex review gate, and explicit user approval; this document approves none of them.
+
+**Placement.** This doc opens a new `docs/systems/skills/` scope because the deployed-surface architecture (snippet payload + on-demand skills) is a coherent area not owned by `review` / `brief` / `install-update` individually (anti-mixing, `docs/README.md` §3–§4). It is covered by the generic `docs/systems/` row in `docs/README.md` §5 (no per-subfolder row is added, consistent with how the other `docs/systems/*` subfolders are not individually enumerated there). No `docs/systems/skills/STATUS.md` is created yet: there is no skills *subsystem* implementation beyond the existing review skill, and a STATUS doc would assert an operational posture that does not exist. A STATUS doc is created only when the first implementation batch lands. Routing entry: `docs/current/SOURCE_OF_TRUTH.md`.
+
+**Authorities this plan obeys (does not redefine).** Docs placement → `docs/README.md`; docs change/closeout flow + single-home-plus-pointers → `docs/policies/DOCS_OPERATING_MODEL.md`; review artifact/verdict contract → `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`; Brief primitive → `docs/contracts/brief/BRIEF_CONTRACT.md`; Chatlog boundary → `docs/contracts/chatlog/CHATLOG_CONTRACT.md`.
+
+---
+
+## 1. Problem statement
+
+The global install adopts the snippet payload (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) into a `CLAUDE.md` / `AGENTS.md` managed block. That payload is **always loaded** into every session of every project, regardless of the task. Today it carries far more than always-on invariants: it embeds full review-flow mechanics, the BF save/checkpoint step procedure, the new-session restore-offer step procedure, execution discipline, and verdict-meaning detail — procedure that is *also* owned by the on-demand `ai-harness-review` skill and by non-deployed contracts.
+
+Three consequences follow:
+
+1. **Always-on context cost for every task.** A non-review, non-brief task still pays the full procedure payload.
+2. **Triple-duplication staleness risk.** Verdict vocabulary, result.md required sections, and review-flow mechanics appear in snippet + skill + contract. Duplication is the engine of staleness (`DOCS_OPERATING_MODEL.md` §1): each change needs an N-place sweep, and any missed place silently drifts.
+3. **Public-readiness friction.** A prior read-only architecture review of this surface found operator-personal / non-deployed-doc references **elsewhere in the deployed surface** (not in the always-loaded snippet, which had no such mention) — an off-repo `polishing/` example in the deployed `SKILL.md` and deployed→non-deployed-doc provenance pointers in deployed `config/` / `scripts/`. For a public/open-source adopter these are warts, not capability claims, but they reduce surface clarity.
+4. **Non-current items in the always-on payload.** Part of what the snippet carries is not a current, implemented capability at all: the **unsolicited session-start restore-offer**, the **Chatlog** section, and the **BF Level 3** non-claim. For these the fix is not minimization but **removal** — the snippet must not retain an unimplemented or non-current item even as a "future / deferred / later-track" note (the authoritative deferred record lives in non-deployed docs, e.g. `docs/systems/brief/DEFERRED.md`, not in the always-loaded payload).
+
+The fix direction: the snippet keeps only what every session must always know **for current, implemented capabilities** (rules / policy / hard boundaries / routing invariants); every **explicit-prompt-triggered** feature procedure moves into a **function-level skill** loaded on demand; and any non-current / unimplemented item is **removed** from the snippet rather than reframed as future/deferred.
+
+## 2. Current deployed snippet/skill surface (summary)
+
+Deployed payload = `config/` + `scripts/` + `snippets/` + `templates/` (mirrored to `%USERPROFILE%\.claude\ai-harness-toolset\current\`). `docs/`, `tests/`, `log/` are **not** deployed.
+
+**Snippet payload (always-loaded), 14 H2 sections, near-identical across CLAUDE/AGENTS:**
+Adoption destination · Adoption rules · Role neutrality · Project layout · Review flow · Result verdict vocabulary · Operator stance · Brief · Chatlog · New session restore-offer · BF save / checkpoint protocol · Forbidden in this toolset · Execution discipline · Other rules.
+
+**Skill payload (on-demand):** exactly one — `snippets/claude-skills/ai-harness-review/SKILL.md`, confirmed **review-only** (no install / brief / chatlog procedure mixed in; install/brief simply have no skill). Adopted to `~/.claude/skills/ai-harness-review/`.
+
+**Capability homes today (where each lives now):**
+
+| Capability | Snippet | Skill | Scripts | Contract/Docs (non-deployed) | Runtime (non-deployed) |
+|---|---|---|---|---|---|
+| Review | Review flow + verdict vocab + execution discipline | `ai-harness-review` (full lifecycle) | `review-*.ps1` | `contracts/review/REVIEW_RESULT_CONTRACT.md` | `log/review/**` |
+| Brief save / restore / BF lv1–2 | Brief + BF save/checkpoint + restore-offer (full step detail) | — (no skill) | `brief-init/check/status.ps1` | `contracts/brief/BRIEF_CONTRACT.md` | `log/brief/BRIEF.md` |
+| Chatlog | Chatlog section | — | — | `contracts/chatlog/CHATLOG_CONTRACT.md` | `log/chatlog/**` |
+| Install / update / uninstall | Adoption destination/rules | — (LTS, no skill) | `install-*/update-*/uninstall-*.ps1` | `systems/install-update/**`, `INSTALL.md` | n/a |
+| Review-polishing | — (not a snippet capability) | — | — (no deployed script) | `systems/review/REVIEW_POLISHING_*` | `log/review_polishing/**` |
+
+**Removal targets (not minimization targets).** Three things the current snippet carries are not current implemented capabilities and are slated for **removal** (§7, §8), not reduction: the unsolicited session-start **restore-offer**, the **Chatlog** section, and the **BF Level 3** non-claim. By contrast, the current **manual Brief workflow** — save / checkpoint / user-requested restore / update (explicit-prompt, `brief-*.ps1`-backed) — is a real current capability; it is retained as routing (§4) with its step detail moving to the brief-family skill (§5).
+
+## 3. Target architecture
+
+**Core rule.** The snippet is paid by every session. Therefore the snippet holds **only**, and only for **current, implemented** capabilities: (1) always-true rules / policy / hard boundaries, (2) routing invariants (path topology, role-binding, verdict vocabulary as a quick reference), and (3) **trigger declarations** that map an **explicit prompt** to the skill that owns the procedure. The *procedure behind a trigger* never lives in the snippet, and an item that is not a current implemented capability is **not represented in the snippet at all** (no "future/deferred" placeholder).
+
+**Function-level skills.** Each **explicit-prompt-triggered** feature is one on-demand skill owning that feature's full procedure: `ai-harness-review` (exists), a brief-family skill (candidate), and a selectively-invoked review-polishing capture (candidate). Granularity is **function-level** — one skill per coherent capability — not micro-skills (which would multiply trigger/chaining risk) and not a mega-skill (which would re-mix unrelated scope).
+
+**Discarded: the unsolicited session-start restore-offer.** The current snippet's *New session restore-offer* protocol — automatically asking "restore from Brief?" at the start of a session — is **discarded, not relocated**. By the time a session is active the user has already entered a prompt expressing explicit intent; an unsolicited restore question is weak and can conflict with that intent, and the absence of an explicit restore request is read as *"do not start this session in a restore flow."* Brief **restore** survives only as an **explicit, user-requested** operation owned by the brief-family skill (§5/§6) — the user asks to restore from Brief, and only then does the restore procedure run. This is a **removal** of the auto-offer; it is not relocated to a skill and not held as a BF Level 3 automation candidate. Correspondingly, the currently-deferred BF Level 3 "restore-offer source-side automation" item (`docs/systems/brief/DEFERRED.md` BR-D-02) is **retired** — discarding the offer means there is no future automation of it to defer. The manual Brief save/restore discipline of BF Level 1/2 is **not** removed by this — it survives as the explicit-prompt brief-family skill (§5/§6); only the *unsolicited session-start offer* is dropped. (Cross-surface reconciliation is scoped in §8 Batch 2.)
+
+**Layering (target):**
+
+```
+always-loaded snippet  →  invariants + hard boundaries + routing/trigger table  (every session)
+on-demand skill        →  one capability's full procedure                        (loaded when its trigger fires)
+non-deployed contract  →  artifact/shape source-of-truth                         (referenced by pointer)
+scripts                →  deterministic lifecycle implementation                 (install/update/uninstall, brief, review)
+```
+
+## 4. Snippet responsibility (what STAYS always-on)
+
+Keep only content that applies to *every* task with no conditional body (the high always-on bar of `docs/README.md` §4):
+
+- **Hard boundaries / Forbidden** — no implicit/whole-file global-instruction mutation; no daemon/watcher/scheduler/hook; commit/push requires explicit approval; no auto-`.gitignore` mutation. (snippet: *Forbidden in this toolset*, *Other rules*.)
+- **Adoption discipline** — managed-block-only adoption, no whole-file overwrite, fail-fast on malformed markers. (snippet: *Adoption destination*, *Adoption rules*.)
+- **Path / topology invariants** — ToolRoot resolution order, ProjectRoot, `log/` layout, canonical Brief path `<ProjectRoot>/log/brief/BRIEF.md`. (snippet: *Project layout*.)
+- **Role neutrality + reviewer-mode exclusion** — which parts bind in operator vs reviewer role. (snippet: *Role neutrality*.)
+- **Verdict vocabulary (quick reference)** — the three values + the "verdict approves nothing" invariant; the narrowed next-action mapping is pointer-referenced to skill/contract, not inlined. (snippet: *Result verdict vocabulary*, reduced.)
+- **Operator boundary stance (cross-task)** — stay in approved scope; stop/report at a source/runtime/global/commit-push boundary; explicit retraction over silent overwrite. (snippet: *Operator stance*, kept compact.)
+- **Cross-task execution invariants** — native-stream separate-capture rule; `.ps1` = UTF-8 BOM + CRLF. These genuinely apply to every task. (snippet: *Other rules*.)
+- **Routing / trigger table** — the new always-on element: "intent/trigger → owner," **for current capabilities only**. E.g. review intent → `ai-harness-review` skill; Brief save / checkpoint / restore / update phrases (**explicit prompt**) → brief skill; install/update/uninstall → `scripts/*` + `INSTALL.md`. The table lists triggers and owners; it does **not** restate the procedures, and it carries **no entry for a non-current or unimplemented item** (no session-start restore-offer trigger, no Chatlog, no BF lv3). This table is a narrow, acknowledged tension with the `docs/README.md` §4 "no conditional content" bar: it is admissible only because it is pure routing (trigger → owner), and each migration batch must keep it minimal — adding any procedure body to it would breach the always-on bar (see §11 criterion 4).
+- **Current-capability-only rule.** The snippet represents **only current, implemented** capabilities. It does **not** carry the unsolicited session-start restore-offer, a Chatlog section, or a BF Level 3 note in any form — these are removed (§7, §8), because retaining an unimplemented or non-current item (even as "future/deferred") violates the always-on bar and grows the payload every adopter pays for. Deferred/roadmap status lives in non-deployed docs, not in the snippet.
+
+## 5. Skill responsibility (what MOVES to on-demand skills)
+
+Each skill owns one feature's full procedure, loaded only when its snippet-declared trigger fires:
+
+- **Review procedure** — already in `ai-harness-review`. The snippet's *Review flow* + verdict-meaning + review-specific *Execution discipline* detail is reduced to routing + the verdict-vocabulary invariant; the mechanics live in the skill + `REVIEW_RESULT_CONTRACT.md`.
+- **Brief procedure (manual workflow)** — the brief-family skill owns the **explicit-prompt** Brief workflow: save / checkpoint / restore / update (the step detail currently inline in the snippet's *Brief* and *BF save / checkpoint* sections). "Restore" here is the **user-requested** restore (the user explicitly asks to restore from Brief), **not** an unsolicited session-start offer — the auto restore-offer is **discarded** (§3), not moved here, so this skill has no situation trigger. The snippet keeps only the explicit-prompt **trigger routing** (the Korean save phrases + an explicit restore/update request → brief skill) and the canonical-Brief-path invariant; the skill owns the steps.
+- **Review-polishing selective-capture** — candidate only (see §6, §7); not implemented in any batch this plan approves.
+
+## 6. Function-level skill candidates
+
+| Candidate | Trigger type | Disposition in this plan |
+|---|---|---|
+| `ai-harness-review` | explicit prompt ("review with codex") | **Exists**, review-only confirmed. No behavioral change; only the snippet stops duplicating its procedure. |
+| brief-family skill (e.g. `ai-harness-brief`) | **explicit prompt only** (Brief save / checkpoint / restore / update phrases) | **Candidate.** Owns the current **manual** Brief workflow — save / checkpoint / **user-requested** restore / update — as explicit-prompt operations. The unsolicited session-start **restore-offer is discarded** (§3), not absorbed here, so this skill has **no** situation trigger. BF lv1–2 are the current capabilities it covers. **BF Level 3 is deferred and is represented neither here nor in the snippet** — its deferred record lives in `docs/systems/brief/DEFERRED.md` (non-deployed); a future BF lv3 skill (or a hook only via a separately approved exception to the no-hook hard boundary, §4) is out of this plan's scope and is **not** a snippet placeholder. |
+| review-polishing selective-capture | review-caller judgment ("this review surfaced an improvement signal worth keeping") | **Candidate, compare-only.** It is **selective capture** — not an automatic per-review record — left only when the review caller judges an improvement signal worth keeping. Compare three vehicles: source-managed instruction (in the review skill/contract), a dedicated skill, or a hook. **Hook is constrained by the no-hook/daemon invariant** (§4 Forbidden), so an automatic background recorder is out; a selective, caller-invoked instruction or skill is the live design space. Not implemented in any batch this plan approves. |
+
+## 7. Non-goals / what this plan will NOT do
+
+- **No implementation** in this batch — design/plan source only.
+- **No "future/deferred" placeholders in the snippet.** The snippet carries routing/policy for **current, implemented** capabilities only. Any unimplemented, deferred, later-track, or non-current item is **removed** from the snippet outright; its status, if any, lives in non-deployed docs. This plan adds no such placeholder, and Batch 3 removes the ones that exist.
+- **No retention of the session-start restore-offer.** The unsolicited "restore from Brief?" session-start offer is **discarded** (§3) — not relocated to a skill, and not held as a BF Level 3 automation candidate. Only an **explicit, user-requested** Brief restore remains, owned by the brief-family skill.
+- **No install / update / uninstall change.** That subsystem is LTS; its behavior, docs, runtime flow, and structure are **out of scope** and are **not** skill-ized. The snippet's adoption-discipline invariants stay; the install lifecycle remains script-driven.
+- **No BF Level 3 implementation, and no BF lv3 mention in the snippet.** BF lv3 is deferred (`docs/systems/brief/DEFERRED.md`, non-deployed); it is **removed from the current snippet surface entirely** — not retained as a "future/deferred" note. A future BF lv3 skill (or a hook only via a separately approved exception to the no-hook hard boundary) is out of scope here.
+- **No Chatlog in the snippet.** Chatlog is **not** a current implemented capability, so it is **removed from the snippet entirely** (not reduced to a boundary line). Its contract/boundary lives in the non-deployed `docs/contracts/chatlog/CHATLOG_CONTRACT.md`; no Chatlog section, capability claim, or boundary note is retained in the always-loaded payload.
+- **No review-polishing mechanism built.** Vehicle comparison only; selective-capture, never an automatic per-review hook.
+- **No hook implementation** of any kind (the no-hook invariant holds).
+- **No global/user file mutation, no snapshot/manifest, no commit/push, no BRIEF.md update** as part of producing this plan.
+
+## 8. Migration / implementation batch plan (proposed; each needs separate approval)
+
+Ordered low-risk → higher-risk. **No batch below is approved by this document.** Each is a separate scoped goal with its own Codex review gate and explicit user approval. Batches are sequential because each removes snippet content the next assumes already routed.
+
+- **Batch 0 — this planning doc.** ✅ produced here (design source). No code/runtime change.
+- **Batch 1 — snippet review-procedure de-duplication.** Reduce the snippet's *Review flow* / verdict-meaning / review-specific *Execution discipline* to routing + the verdict-vocabulary invariant + pointers to `ai-harness-review` + `REVIEW_RESULT_CONTRACT.md`. Lowest risk: the review skill already exists and is review-only. Acceptance: no hard boundary or routing invariant dropped; review still fully specified via skill+contract.
+- **Batch 2 — restore-offer removal + manual brief-skill extraction.** (a) **Remove** the snippet's unsolicited session-start *New session restore-offer* protocol entirely (discard, §3). (b) **Extract** the manual Brief workflow — save / checkpoint / user-requested restore / update — into a new on-demand brief skill; the snippet keeps only the explicit-prompt save/restore/update trigger routing + the canonical Brief path. **Two senses of "restore-offer" across the surface.** A repo-wide sweep (`restore-offer`, repo minus `log/`) shows the term in two senses: (1) the **manual session-start offer** — the snippet *New session restore-offer* protocol and the BF Level 1/2 "manual save/restore discipline" wording; (2) the **BF Level 3 automated restore-offer** — one component of the deferred BF Level 3 automation (`BR-D-02`), enumerated in several decision/plan/install docs. Discarding restore-offer covers **both**: remove the manual protocol from the snippet, and **retire the BF lv3 automation component** (BR-D-02). The rest of BF Level 3 (deterministic writer, validation, stale warning, session-start guidance) stays deferred; only its restore-offer component is retired.
+
+  **Cross-surface reconciliation (classified; restore-offer is not snippet-only).** Batch 2 must reconcile every **active** surface carrying either sense, leaving none that implies restore-offer is current discipline or future-scoped automation:
+  - **Snippet (primary):** `snippets/CLAUDE_SNIPPET.md` / `AGENTS_SNIPPET.md` — delete the *New session restore-offer* section.
+  - **BF-level authority + records (single home = `docs/contracts/brief/BRIEF_CONTRACT.md`):** in BRIEF_CONTRACT.md, narrow the BF Level 2 "manual save/restore discipline (… restore-offer 자동화는 없다)" wording, the `brief-status.ps1` "session-start / restore-offer manual discipline" role-statement (behavior unchanged; purpose narrows to explicit user-requested restore/status), the BF Level 3 restore-offer component, and the forbidden "restore-offer confirm prompt UX 자동화" line. Then propagate to the records/pointers that enumerate restore-offer as a BF lv3 future-automation component: `docs/systems/brief/DEFERRED.md` **BR-D-02** (retire), `docs/decisions/POST_MVP_PLAN.md` §5 (the BF-level decision lines), `docs/decisions/DECISIONS.md` (the BF Level 3 enumeration), `docs/decisions/GLOBAL_ADOPTION_DECISION.md` (the BF lv3 enumeration), `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` (the Step-3-out-of-scope BF lv3 enumeration), and `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` (its §9 / §9.3 **3차 reconciliation "현행 기준"** current-basis notes at lines ~339/366 actively list restore-offer as a BF lv3 future-scoped component — these are the **current basis**, not the superseded 1차/2차 historical wording). In each, the restore-offer component is removed / marked retired while the remaining BF lv3 components stay deferred.
+  - **Discipline / UX / index:** `docs/decisions/GLOBAL_ADOPTION_DECISION.md` "BF save / restore-offer discipline" parity item; `docs/user_guide/OPERATOR_GUIDE_KR.md` restore UX; `docs/user_guide/README.md` index row; root `README.md` overview mention.
+  - **Review machinery (low-priority):** the restore-offer reference in the reviewer-mode-exclusion preamble of `scripts/review-run.ps1` + its test become **moot** (a reviewer can no longer be told to skip a non-existent restore-offer); touch only if a review-machinery batch is separately approved.
+  - **No purely-historical restore-offer surface.** The sweep found **every** restore-offer occurrence to be **active** — none is safely left as frozen historical text. (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`'s §9 brief-path *1차/2차 framing* is historical lineage, but it carries **no** restore-offer text; that file's two restore-offer mentions are in its **3차 "현행 기준"** current-basis notes and are reconciled in the BF-level group above. An earlier draft of this plan mis-listed that file as historical/inert; corrected here.)
+
+  **Acceptance:** no session-start auto-offer remains in the snippet **or** any active reconciled surface; the manual save/checkpoint/restore/update workflow still works via explicit prompt + the brief skill; BF Level 1/2 manual save/restore (explicit-prompt) is preserved; BR-D-02 is retired while the remaining BF lv3 components stay deferred; the install-update §9 *1차/2차* brief-path historical lineage is left intact (it carries no restore-offer text); **no `brief-*.ps1` behavior change**.
+- **Batch 3 — remove non-current items from the snippet.** **Delete** the snippet's *Chatlog* section and any *BF Level 3* note entirely (neither is a current implemented capability; their records live in the non-deployed contract / `DEFERRED.md`). No "future/deferred" placeholder is left behind. Acceptance: the snippet contains no Chatlog section and no BF lv3 mention in any form; the non-deployed contract / DEFERRED docs remain the authoritative homes.
+- **Batch 4 — review-polishing selective-capture vehicle decision (deferred / optional).** Decide instruction vs skill among the non-hook vehicles; may conclude "leave as caller-judgment instruction." Decision batch, not necessarily an implementation batch.
+- **Cross-cutting on first landing:** when Batch 1 (or the first batch that materializes a skills-subsystem posture) lands, create `docs/systems/skills/STATUS.md` and add the routing already seeded in `SOURCE_OF_TRUTH.md`.
+
+## 9. Public-readiness impact
+
+- **Lower always-on cost** for every adopter; the snippet shrinks to invariants + routing for current capabilities, and **drops non-current items entirely** (the session-start restore-offer, Chatlog, BF lv3).
+- **Self-describing surface** — one skill = one capability is easier for a public adopter to reason about than a monolithic always-on payload.
+- **Less staleness** — removing snippet↔skill↔contract triple-duplication aligns with single-home-plus-pointers.
+- **Cleaner public surface** — removing operator-personal / non-deployed-doc references (the `polishing/` off-repo example in the deployed skill; deployed→non-deployed provenance pointers in `config/` / `scripts/`) from the deployed surface. The always-loaded snippet itself is already free of such references; this concern is about the wider deployed surface, not the snippet.
+- **New adoption obligation** — function-level skills are adopted separately from the snippet (skills go to `~/.claude/skills/**`, not the managed block). The plan must keep the adoption story explicit: a public adopter installs the snippet *and* the skills. This is a public-readiness consideration, not a blocker, but the routing/trigger table in the snippet must name the skills an adopter is expected to have.
+
+## 10. Risks
+
+- **Under-triggering.** Moving procedure out of the always-on snippet means a trigger must reliably load the skill; a missed trigger leaves the procedure unavailable. Mitigation: keep precise trigger declarations in the snippet as routing invariants.
+- **Restore-offer removal — situation-trigger tension eliminated; a convenience is dropped.** Discarding the session-start restore-offer (§3) **eliminates** the earlier situation-trigger-vs-on-demand-load tension: the brief-family skill is now purely **explicit-prompt-triggered**, so no procedure must load before the user's first prompt. The residual is a deliberate UX trade — a user who would have wanted the auto-prompt must now explicitly request a Brief restore. This is an **accepted** design choice (an unsolicited offer conflicts with the user's already-expressed intent); the explicit restore path stays available via the brief skill.
+- **Restore-offer reconciliation breadth.** "restore-offer" is woven into the BF-level definitions and several decision/plan/install records, not just the snippet, so Batch 2 is a **multi-surface** reconciliation (§8), larger than a single snippet edit. Mitigation: drive it **single-home-first** (`docs/contracts/brief/BRIEF_CONTRACT.md` is the BF-level home; update it, then propagate to the records/pointers), and **classify each match** as active-reconcile vs historical-inert before editing — taking care that "현행 기준 (current basis)" reconciliation notes are **active**, not historical (in this surface set every restore-offer occurrence turned out active; see §8).
+- **Invariant erosion during de-duplication.** Deleting the wrong snippet content could drop a hard boundary or routing invariant rather than mere procedure. Mitigation: classify every snippet section as invariant-keep vs procedure-move (§4/§5) before any deletion; review each batch for dropped invariants.
+- **Over-fragmentation.** Too many tiny skills increases trigger/chaining complexity (a concern surfaced in the prior investigation). Mitigation: function-level granularity only.
+- **review-polishing/hook conflict.** A hook vehicle for review-polishing conflicts with the no-hook invariant; selecting it would breach a hard boundary. Mitigation: exclude the automatic-hook vehicle; keep selective caller-invoked capture.
+- **Adoption drift.** If a public adopter installs the snippet but not the skills, capabilities the snippet routes to are missing. Mitigation: explicit adoption story (§9) + the snippet naming expected skills.
+
+## 11. Review criteria (for the future implementation batches)
+
+Each batch is reviewed under **system-coherence**, plus a snippet-specific invariant check:
+
+1. **No dropped invariant** — after a snippet reduction, confirm no hard boundary, forbidden rule, adoption rule, path topology, role-binding, or verdict invariant was removed; only procedure moved.
+2. **Single-home-plus-pointers** — each moved fact has exactly one authoritative home + pointers; no new duplication introduced.
+3. **Trigger preservation (current capabilities only)** — every **current** capability still has a reliable snippet-declared **explicit-prompt** trigger; confirm **no** situation / session-start trigger remains (the restore-offer is removed, not preserved).
+4. **No new always-on in `docs/`** — always-on content lives only in the snippet (`docs/README.md` §4); a batch must not relocate always-on rules into `docs/`.
+5. **LTS untouched** — install/update/uninstall behavior, docs, runtime, structure unchanged.
+6. **No non-current item in the snippet** — the snippet contains no session-start restore-offer, no Chatlog section, and no BF lv3 note **in any form** (removed, not reframed as future/deferred); confirm a batch left no "future/deferred" placeholder behind. Review-polishing stays selective and non-hook.
+7. **Adoption story intact** — the snippet still names the skills an adopter must have for the routed capabilities.
+8. **Restore-offer reconciliation completeness** — confirm a restore-offer-removal batch leaves **no active surface** implying restore-offer is current discipline or future-scoped BF lv3 automation: every restore-offer-bearing source file is either reconciled or explicitly classified as historical/inert (§8), with `BRIEF_CONTRACT.md` updated as the single home and BR-D-02 retired while the remaining BF lv3 components stay deferred.
+
+## 12. Approval boundaries
+
+- This document **approves nothing**. It is a design/plan source, not an implementation or commit/push approval.
+- Each implementation batch (§8) = a separate scoped goal + Codex review gate + explicit user approval.
+- Producing or revising this plan does not authorize: snippet/skill implementation, global/user file mutation, hook creation, install/update/uninstall change, snapshot/manifest creation, `BRIEF.md` update, or commit/push.
+- A Codex review verdict on this plan (`yes` / `no` / `yes with risk`) does not auto-approve any batch or any commit/push; that remains an explicit user decision.
