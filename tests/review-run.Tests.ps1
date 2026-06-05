@@ -570,9 +570,9 @@ Describe 'review-run canonical pass directory' {
     }
 
     It 'AC-RR11: reviewer-mode preamble is injected ahead of input.md on the Codex stdin payload' {
-        # Regression for the BRIEF restore-offer pollution defect: review-run.ps1 must
+        # Regression for the BRIEF / operator-side session-restore pollution defect: review-run.ps1 must
         # prepend a deterministic reviewer-mode shield to the content piped to Codex, so a
-        # global AGENTS.md/CLAUDE.md restore-offer can never turn a verdict into a question.
+        # global AGENTS.md/CLAUDE.md session-restore / continuation protocol can never turn a verdict into a question.
         $project = script:New-RunCase -CaseName 'rr11'
         $taskId  = 'rr11-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
@@ -592,10 +592,10 @@ Describe 'review-run canonical pass directory' {
         $enc = New-Object System.Text.UTF8Encoding($false)
         $stdin = [System.IO.File]::ReadAllText($stdinCapture, $enc)
 
-        # Reviewer-mode declaration + the specific anti-restore-offer guards.
+        # Reviewer-mode declaration + the operator-side session/Brief/restore isolation guards.
         $stdin | Should -Match 'CODEX REVIEWER MODE'
         $stdin | Should -Match 'BRIEF'
-        $stdin | Should -Match 'restore-offer'
+        $stdin | Should -Match 'session-restore'
         $stdin | Should -Match 'Do NOT ask the user any question'
         $stdin | Should -Match '## Verdict'
         # RV-B-05 V2 four required disclosure H2s must be named in the preamble so

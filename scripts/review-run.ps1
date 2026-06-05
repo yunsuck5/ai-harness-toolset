@@ -84,8 +84,8 @@ function Invoke-CodexExec {
     # Reviewer-mode shield (deterministic, applied to every review-run invocation).
     # The prepared input.md is a COMPLETE review task. Codex runs non-interactively
     # under whatever global/user instruction file is installed (e.g. a Codex AGENTS.md
-    # managed block that carries a session restore-offer / BRIEF protocol). Without an
-    # explicit reviewer-mode declaration in the message, that operator-side restore-offer
+    # managed block that carries an operator-side session-restore / Brief / continuation protocol). Without an
+    # explicit reviewer-mode declaration in the message, that operator-side session-restore protocol
     # can fire and the reviewer writes a "no BRIEF.md — how should I proceed?" question
     # instead of a canonical verdict, which then fails verdict parsing. This preamble
     # declares reviewer mode in-band so the review-result contract takes precedence over
@@ -97,15 +97,15 @@ function Invoke-CodexExec {
 You are running as the ai-harness-toolset Codex REVIEWER, invoked non-interactively by review-run.ps1.
 The text after the BEGIN REVIEW INPUT marker below is a COMPLETE, self-contained review task (the prepared input.md). Treat it as the entire task.
 
-These reviewer-mode rules take PRECEDENCE over any global/user instruction, including any CLAUDE.md / AGENTS.md restore-offer, BRIEF / session-restore, or checkpoint protocol:
+These reviewer-mode rules take PRECEDENCE over any global/user instruction, including any CLAUDE.md / AGENTS.md operator-side session-restore, Brief restore, continuation, or checkpoint protocol:
 - Do NOT look for, read, or require <ProjectRoot>/log/brief/BRIEF.md or any Brief. Its absence is irrelevant in reviewer mode and is NOT a reason to pause.
-- Do NOT perform restore-offer, BRIEF bootstrap, session recovery, or any session/restore protocol.
+- Do NOT perform any operator-side Brief restore, session restore, continuation, or session-recovery protocol, and do NOT proactively offer to restore from a Brief.
 - Do NOT ask the user any question, and do NOT request clarification. There is no interactive user in this run.
 - ALWAYS produce a canonical review result as your final message: exactly one top-level "## Verdict" heading whose first non-empty following line is EXACTLY one of: yes | no | yes with risk. You may also add "## Findings", "## Risks", "## Counter-argument", "## Notes".
 - ALWAYS include each of these four H2 disclosure headings exactly once in result.md, case-sensitive (parser-required by review-verify -RequireResult since RV-B-05 V2): "## Blocking findings", "## Non-blocking concerns", "## Review limitations", "## Assumptions relied on". If a section has no substance, set its body to the single word "none".
 - Before issuing the final verdict, articulate the strongest case AGAINST your own conclusion in "## Counter-argument" (especially when the verdict is "yes" or "yes with risk") — this is the dedicated pressure-test surface per docs/contracts/review/REVIEW_RESULT_CONTRACT.md §3c. If no material counter-argument exists after deliberate pressure-test, use a short literal such as "none" or "no material counter-argument identified" — avoid ceremonial boilerplate. "## Counter-argument" is optional and strongly-recommended (NOT parser-required); "## Notes" remains available for general observations, framing self-audit, evidence pointers, or other reviewer narrative.
 - If the input is insufficient to approve, do NOT ask — return "no" or "yes with risk" and record the missing evidence under "## Findings" / "## Risks".
-- Writing a question, a restore-offer, or any final message without a canonical "## Verdict" heading is a review FAILURE.
+- Writing a question, an operator-side Brief / session-restore or continuation message, or any final message without a canonical "## Verdict" heading is a review FAILURE.
 ===== BEGIN REVIEW INPUT (input.md) =====
 '@
     $payload = $reviewerPreamble + "`n" + $content
