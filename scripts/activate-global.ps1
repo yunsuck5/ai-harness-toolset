@@ -22,18 +22,19 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'lib/hash.ps1')
 . (Join-Path $PSScriptRoot 'lib/activation-surface.ps1')
 
-# Full 3-surface activation apply orchestrator (Phase 4a).
+# Full activation apply orchestrator (Phase 4a; generic deployed-extension surface set, Batch 2C-0).
 #
-# It applies the SAME three activation surfaces that scripts/install-update.ps1 VERIFIES, resolved
-# through the shared scripts/lib/activation-surface.ps1 helper so apply coverage == verify coverage
-# (no apply-vs-verify destination drift, including the Codex AGENTS.override.md precedence).
+# It applies the SAME activation surfaces that scripts/install-update.ps1 VERIFIES — two managed
+# blocks plus one canonical-overwrite mirror per source skill — resolved through the shared
+# scripts/lib/activation-surface.ps1 helper so apply coverage == verify coverage (no apply-vs-verify
+# destination drift, including the Codex AGENTS.override.md precedence).
 #
 # Two mutation classes (INSTALL.md §9.1 / §10) handled by DIFFERENT mechanisms:
 #   - managed-block surfaces  (Claude CLAUDE.md, Codex effective AGENTS.md / AGENTS.override.md):
 #       marker-bounded splice via the hardened scripts/apply-managed-block.ps1 in a child process.
 #       User-authored content OUTSIDE the marker pair is preserved. The .amb-backup / rollback
 #       lifecycle lives ENTIRELY inside that primitive and is scoped to this class only.
-#   - canonical-overwrite surface  (review skill mirror SKILL.md):
+#   - canonical-overwrite surface  (each source skill's SKILL.md mirror):
 #       whole-file overwrite from the canonical payload + post-write SHA-256 verify. No merge, no
 #       marker parsing, no .amb-backup, no rollback, no backup sidecar. A post-write verify failure
 #       is fail-fast + report + reinstall guidance (the canonical source is the recovery source).
@@ -45,9 +46,9 @@ $ErrorActionPreference = 'Stop'
 # boundary — it fails/reports), and implements NO cross-surface transaction (per-surface semantics).
 #
 # Snippet/source -> destination mapping (source of truth: scripts/lib/activation-surface.ps1):
-#   - snippets/CLAUDE_SNIPPET.md                          -> <ClaudeHome>/CLAUDE.md          (managed-block)
-#   - snippets/AGENTS_SNIPPET.md                          -> <CodexHome>/AGENTS.md|override   (managed-block)
-#   - snippets/claude-skills/ai-harness-review/SKILL.md   -> <ClaudeHome>/skills/ai-harness-review/SKILL.md (canonical-overwrite)
+#   - snippets/CLAUDE_SNIPPET.md              -> <ClaudeHome>/CLAUDE.md            (managed-block)
+#   - snippets/AGENTS_SNIPPET.md              -> <CodexHome>/AGENTS.md|override     (managed-block)
+#   - snippets/claude-skills/<name>/SKILL.md  -> <ClaudeHome>/skills/<name>/SKILL.md (canonical-overwrite, one per source skill)
 # Where (overridable for tests so real %USERPROFILE% is never touched):
 #   - ClaudeHome default = %USERPROFILE%\.claude
 #   - CodexHome  default = %CODEX_HOME% if set, else %USERPROFILE%\.codex

@@ -23,7 +23,7 @@ Uninstall is the teardown counterpart to the install / update (`INSTALL.md` §6/
 Uninstall succeeds **iff the global/user ai-harness-toolset footprint is reduced to zero**, while every non-target (§7) is left untouched:
 
 1. Install root `%USERPROFILE%\.claude\ai-harness-toolset\` — absent (including `current/`, `install.json`, `payload-manifest.json`, `payload-marker.json`, the managed root `README.md`, and any in-root run-evidence tree).
-2. Skill mirror `%USERPROFILE%\.claude\skills\ai-harness-review\` — absent.
+2. Owned skill mirrors `%USERPROFILE%\.claude\skills\<name>\` (one per source skill in the installed payload; currently the single shipped `ai-harness-review`) — absent.
 3. Claude managed-block surface `%USERPROFILE%\.claude\CLAUDE.md` — **zero** `AI_HARNESS_TOOLSET_GLOBAL` marker pairs (the file itself may remain, carrying the user's marker-outside content).
 4. Codex managed-block surface `%USERPROFILE%\.codex\AGENTS.md` (or `%CODEX_HOME%\AGENTS.md`; `AGENTS.override.md` precedence per `scripts/lib/activation-surface.ps1`) — **zero** marker pairs (file may remain).
 
@@ -43,7 +43,7 @@ The main entrypoint does **only**:
 
 1. **Preflight (all surfaces, no mutation).** Resolve all targets via the read-only resolver `scripts/lib/uninstall-target.ps1` (`Get-UninstallPlan`, which uses the shared `scripts/lib/activation-surface.ps1` for the effective surfaces) plus the install-root footprint enumeration (§5). Apply the preflight-all-then-act discipline (mirrors `activate-global.ps1`): if any fail-fast condition holds (unexpected install-root content, malformed/ambiguous marker, pre-existing `.amb-backup`, managedBy mismatch, install-root path-guard failure), **remove nothing** and report `uninstall_blocked`.
 2. **Managed-block removal** of the two instruction-file surfaces (§4) — marker-span excision only, outside content preserved.
-3. **Skill mirror removal** — delete `%USERPROFILE%\.claude\skills\ai-harness-review\` only (§6).
+3. **Skill mirror removal** — delete each owned `%USERPROFILE%\.claude\skills\<name>\` directory (one per source skill in the installed payload; currently the single shipped `ai-harness-review`) (§6).
 4. **Create and launch the temp finalizer**, passing it the resolved install-root path and the parent process id, then **exit**. The main entrypoint does **not** delete the install root itself.
 
 Targets (2)–(4 launch) all happen outside the install root and are not blocked by the running process's own file handles.
@@ -94,7 +94,7 @@ The actual root deletion executes in the finalizer (§3.2); this enumeration/gua
 
 ## 6. Skill mirror removal
 
-Delete the skill directory `%USERPROFILE%\.claude\skills\ai-harness-review\` only, then verify absence. This is the direct application of the existing skill-removal rule already documented in `INSTALL.md` §10 ("Skill adoption 규칙" → removal): propose the `<name>/` directory and its file list, on approval delete **only that directory** (no files outside it), verify absence; the source repo's `snippets/claude-skills/<name>/` is unaffected. Sibling skills under `skills/` and the `skills/` parent are never touched (§7). Already-absent is an idempotent no-op success.
+Delete the OWNED skill directories `%USERPROFILE%\.claude\skills\<name>\` — one per source skill in the installed payload (`current/snippets/claude-skills/*`), currently the single shipped `ai-harness-review` — then verify absence. This is the direct application of the existing skill-removal rule already documented in `INSTALL.md` §10 ("Skill adoption 규칙" → removal): propose each `<name>/` directory and its file list, on approval delete **only those directories** (no files outside them), verify absence; the source repo's `snippets/claude-skills/<name>/` is unaffected. The owned set is enumerated from the installed payload, so sibling skills under `skills/` that are NOT in the payload, and the `skills/` parent, are never touched (§7). Already-absent is an idempotent no-op success.
 
 ## 7. Non-targets (never touched)
 
@@ -102,7 +102,7 @@ Uninstall is a **global/user** teardown of the ai-harness footprint and explicit
 
 - **Project-local `<ProjectRoot>/log/`** — Brief (`log/brief/`), Chatlog (`log/chatlog/`), review records (`log/review/`), evidence (`log/evidence/`). These are user runtime work products, not install footprint. Global uninstall never operates on any project root.
 - **Source repo / ToolRoot clone** — the repository the user installed from (and any `-ToolRoot` / `AI_HARNESS_TOOL_ROOT` clone). Uninstall removes the *installed* footprint, not the source.
-- **Sibling skills** under `%USERPROFILE%\.claude\skills\` other than `ai-harness-review/`.
+- **Sibling skills** under `%USERPROFILE%\.claude\skills\` that are not owned by this install (i.e. not in the installed payload's `current/snippets/claude-skills/*`).
 - **Marker-outside instruction content** in `CLAUDE.md` / `AGENTS.md`, and the instruction files themselves (§4).
 - **Non-toolset files** under `.claude` / `.codex`, and those directories themselves.
 - **Project-root managed blocks** (project-specific adoption per `INSTALL.md` §10) — a separate explicit scope, not part of global uninstall.

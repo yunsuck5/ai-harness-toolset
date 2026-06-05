@@ -312,9 +312,9 @@ Describe 'activate-global 3-surface coverage (Phase 4a)' {
         $result.Output | Should -Match 'surfaces=3'
         $result.Output | Should -Match 'claude-user-global-managed-block'
         $result.Output | Should -Match 'codex-user-global-managed-block'
-        $result.Output | Should -Match 'review-skill-mirror'
+        $result.Output | Should -Match 'skill-mirror:ai-harness-review'
         # The skill destination does not exist in the temp home, so its preview action is create.
-        $result.Output | Should -Match 'review-skill-mirror.*action=would-create'
+        $result.Output | Should -Match 'skill-mirror:ai-harness-review.*action=would-create'
         $result.Output | Should -Match 'activationStatus=preview'
         $result.Output | Should -Match 'activate-global: PASS'
     }
@@ -329,7 +329,7 @@ Describe 'activate-global skill mirror canonical-overwrite (Phase 4a)' {
         (Test-Path -LiteralPath $dst) | Should -BeFalse
         $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
         $result.ExitCode | Should -Be 0 -Because $result.Output
-        $result.Output | Should -Match 'review-skill-mirror.*action=create'
+        $result.Output | Should -Match 'skill-mirror:ai-harness-review.*action=create'
         $result.Output | Should -Match 'activationStatus=applied'
         $result.Output | Should -Match 'activate-global: PASS'
 
@@ -350,7 +350,7 @@ Describe 'activate-global skill mirror canonical-overwrite (Phase 4a)' {
 
         $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
         $result.ExitCode | Should -Be 0 -Because $result.Output
-        $result.Output | Should -Match 'review-skill-mirror.*action=overwrite'
+        $result.Output | Should -Match 'skill-mirror:ai-harness-review.*action=overwrite'
         $result.Output | Should -Match 'activationStatus=applied'
 
         [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
@@ -368,7 +368,7 @@ Describe 'activate-global skill mirror canonical-overwrite (Phase 4a)' {
 
         $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
         $result.ExitCode | Should -Be 0 -Because $result.Output
-        $result.Output | Should -Match 'review-skill-mirror.*action=unchanged'
+        $result.Output | Should -Match 'skill-mirror:ai-harness-review.*action=unchanged'
         $result.Output | Should -Match 'activationStatus=applied'
         [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
         @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
@@ -385,7 +385,7 @@ Describe 'activate-global skill mirror canonical-overwrite (Phase 4a)' {
         $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
         $result.ExitCode | Should -Not -Be 0
         $result.Output | Should -Match 'activationStatus=activation_applied_verify_failed'
-        $result.Output | Should -Match 'review-skill-mirror.*(write error|FAIL)'
+        $result.Output | Should -Match 'skill-mirror:ai-harness-review.*(write error|FAIL)'
         $result.Output | Should -Match 'activate-global: FAIL'
         # No backup/sidecar created for the canonical-overwrite class even on failure.
         @(Get-ChildItem -Path $dir -Recurse -Filter '*.amb-backup' -ErrorAction SilentlyContinue).Count | Should -Be 0

@@ -3,12 +3,15 @@ $ErrorActionPreference = 'Stop'
 
 # Shared activation-surface resolver.
 #
-# Single source of truth for the three activation surfaces and their canonical
-# source -> destination mapping + mutation class. Both the install-update.ps1
-# VERIFY path (byte-identity check) and the activate-global.ps1 APPLY path
-# resolve surfaces through this helper, so apply coverage and verify coverage
-# cannot drift on WHICH files are the surfaces (e.g. the Codex
-# AGENTS.override.md precedence is decided here, once).
+# Single source of truth for the activation surfaces and their canonical source -> destination
+# mapping + mutation class. The surfaces are: two always-present managed-block surfaces (Claude
+# CLAUDE.md, Codex effective AGENTS.md/.override.md) plus ONE canonical-overwrite skill mirror per
+# source skill under snippets/claude-skills/<name>/SKILL.md (generic, deterministic, local-first
+# directory enumeration — no per-skill hardcoding, no registry; Batch 2C-0, policy
+# docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md §8A). The install-global / install-update
+# VERIFY path (byte-identity check), the activate-global APPLY path, and the uninstall owned-surface
+# resolver all resolve surfaces through this helper, so coverage cannot drift on WHICH files are the
+# surfaces (e.g. the Codex AGENTS.override.md precedence is decided here, once).
 #
 # Two mutation classes (INSTALL.md §9.1 / §10):
 #   - managed-block        : marker-bounded splice; user-authored content OUTSIDE
@@ -36,10 +39,8 @@ function Get-ActivationSurfacePlan {
 
     $sourceClaudeSnippet = Join-Path $PayloadRoot 'snippets/CLAUDE_SNIPPET.md'
     $sourceCodexSnippet  = Join-Path $PayloadRoot 'snippets/AGENTS_SNIPPET.md'
-    $sourceSkillFile     = Join-Path $PayloadRoot 'snippets/claude-skills/ai-harness-review/SKILL.md'
 
     $destClaudeMd  = Join-Path $ClaudeHome 'CLAUDE.md'
-    $destSkillFile = Join-Path $ClaudeHome 'skills/ai-harness-review/SKILL.md'
 
     # Codex effective destination: AGENTS.override.md takes precedence over
     # AGENTS.md when present (INSTALL.md §10 valid-destination rule). Resolving it
@@ -50,30 +51,54 @@ function Get-ActivationSurfacePlan {
     $codexOverride = Join-Path $CodexHome 'AGENTS.override.md'
     $destCodexMd   = if (Test-Path -LiteralPath $codexOverride -PathType Leaf) { $codexOverride } else { $codexAgentsMd }
 
-    return @(
-        [pscustomobject]@{
-            Name        = 'claude-user-global-managed-block'
-            Scope       = 'Claude'
-            Destination = $destClaudeMd
-            Source      = $sourceClaudeSnippet
-            CompareMode = 'managed-block'
-            Class       = 'managed-block'
-        },
-        [pscustomobject]@{
-            Name        = 'codex-user-global-managed-block'
-            Scope       = 'Codex'
-            Destination = $destCodexMd
-            Source      = $sourceCodexSnippet
-            CompareMode = 'managed-block'
-            Class       = 'managed-block'
-        },
-        [pscustomobject]@{
-            Name        = 'review-skill-mirror'
-            Scope       = 'Skill'
-            Destination = $destSkillFile
-            Source      = $sourceSkillFile
-            CompareMode = 'whole-file'
-            Class       = 'canonical-overwrite'
+    $plan = New-Object System.Collections.Generic.List[psobject]
+
+    # Two always-present managed-block surfaces.
+    $plan.Add([pscustomobject]@{
+        Name        = 'claude-user-global-managed-block'
+        Scope       = 'Claude'
+        Destination = $destClaudeMd
+        Source      = $sourceClaudeSnippet
+        CompareMode = 'managed-block'
+        Class       = 'managed-block'
+        SkillName   = $null
+    })
+    $plan.Add([pscustomobject]@{
+        Name        = 'codex-user-global-managed-block'
+        Scope       = 'Codex'
+        Destination = $destCodexMd
+        Source      = $sourceCodexSnippet
+        CompareMode = 'managed-block'
+        Class       = 'managed-block'
+        SkillName   = $null
+    })
+
+    # Generic deployed runtime extension (skill) mirrors: every source skill
+    # snippets/claude-skills/<name>/SKILL.md becomes a forced-mirror + final-verify surface
+    # (canonical-overwrite) at <ClaudeHome>/skills/<name>/SKILL.md. Deterministic, local-first
+    # directory enumeration (no registry, no per-skill hardcoding); ordering is by skill name so the
+    # surface list is stable across apply / verify / uninstall. A directory without a SKILL.md is not a
+    # skill and is skipped. The skill is enumerated only when it exists under PayloadRoot, so callers
+    # MUST pass the payload root that actually contains snippets/ (the install area's current/ for
+    # verify + uninstall; the repo root for an apply run from a source clone).
+    $skillsRoot = Join-Path $PayloadRoot 'snippets/claude-skills'
+    if (Test-Path -LiteralPath $skillsRoot -PathType Container) {
+        $skillDirs = @(Get-ChildItem -LiteralPath $skillsRoot -Directory |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_.FullName 'SKILL.md') -PathType Leaf } |
+            Sort-Object -Property Name)
+        foreach ($d in $skillDirs) {
+            $skillName = $d.Name
+            $plan.Add([pscustomobject]@{
+                Name        = ('skill-mirror:' + $skillName)
+                Scope       = 'Skill'
+                Destination = (Join-Path $ClaudeHome ('skills/' + $skillName + '/SKILL.md'))
+                Source      = (Join-Path $d.FullName 'SKILL.md')
+                CompareMode = 'whole-file'
+                Class       = 'canonical-overwrite'
+                SkillName   = $skillName
+            })
         }
-    )
+    }
+
+    return $plan.ToArray()
 }

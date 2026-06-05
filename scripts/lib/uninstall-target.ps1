@@ -215,42 +215,65 @@ function Get-UninstallPlan {
         }
     }
 
-    # ---- activation surfaces (managed-block) + skill mirror (read-only) ----------------------
-    # PayloadRoot is only used by the shared resolver to compute SOURCE paths; uninstall reads only
-    # the DESTINATION + class, so the PayloadRoot value is irrelevant here (install root passed).
-    $surfaces = Get-ActivationSurfacePlan -PayloadRoot $installAreaFull -ClaudeHome $ClaudeHome -CodexHome $CodexHome
+    # ---- activation surfaces (managed-block) + skill mirrors (read-only) ----------------------
+    # OWNED skill inventory comes from the INSTALLED payload (current/snippets/claude-skills/*), so the
+    # resolver is given the install area's current/ as PayloadRoot — NOT the install root. With generic
+    # skill enumeration the surface SET depends on PayloadRoot, so passing the install root (which has
+    # no snippets/ directly) would enumerate ZERO skills and ORPHAN owned skill dirs. Enumerating from
+    # current/ means uninstall reclaims exactly the skills this install shipped; skills present under
+    # <ClaudeHome>/skills/ that are NOT in the payload (sibling skills) are never enumerated → preserved.
+    # (The managed-block surfaces' DESTINATIONS do not depend on PayloadRoot.)
+    $currentDir = Join-Path $installAreaFull 'current'
+    $skillInventoryRoot = Join-Path $currentDir 'snippets/claude-skills'
+    $surfaces = Get-ActivationSurfacePlan -PayloadRoot $currentDir -ClaudeHome $ClaudeHome -CodexHome $CodexHome
+    # Owned-skill inventory trust guard: a healthy install always ships >= 1 source skill, so if the
+    # install root is present and WOULD be removed (managed install confirmed) but the resolver
+    # enumerates ZERO owned skills from the installed payload — for ANY reason: current/ itself,
+    # current/snippets/, or current/snippets/claude-skills/ missing; that directory empty; or every
+    # candidate dir lacking a SKILL.md — the OWNED skill set cannot be trusted. Removing the install
+    # root while cleaning up zero skills would ORPHAN owned runtime skill dirs under <ClaudeHome>/skills/
+    # (footprint-zero violation). Refuse rather than risk an orphan. (Treating an unenumerable inventory
+    # as a legitimate zero-skill payload would need explicit manifest-backed evidence, which uninstall
+    # does not consult — so the safe, recoverable choice is to block and report.)
+    $ownedSkillCount = @($surfaces | Where-Object { $_.Class -eq 'canonical-overwrite' }).Count
+    if ($rootPresent -and $managedByOk -and $ownedSkillCount -eq 0) {
+        $targets.Add([pscustomobject]@{ Name = 'skill-inventory'; Kind = 'skill-inventory'; Path = $skillInventoryRoot; Status = 'blocked'; Reason = 'the installed payload (current/snippets/claude-skills/) yields ZERO owned skills (absent / empty / no SKILL.md), so the OWNED skill set cannot be trusted; refusing to avoid orphaning owned runtime skill dirs under skills/ — resolve manually'; WouldRemove = $false; Blocked = $true })
+    }
     foreach ($s in $surfaces) {
         if ($s.Class -eq 'managed-block') {
             $st = script:Get-UninstallManagedBlockState -Path $s.Destination
             $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'managed-block'; Path = ([System.IO.Path]::GetFullPath($s.Destination)); Status = $st.Status; Reason = $st.Reason; WouldRemove = $st.WouldRemove; Blocked = $st.Blocked })
         }
         elseif ($s.Class -eq 'canonical-overwrite') {
-            # review skill mirror: existence + expected-path guard only (read-only).
+            # Owned skill mirror: existence + expected-path guard only (read-only). The expected leaf is
+            # the surface's own SkillName (NOT a hardcoded skill), so each owned skill is classified
+            # against its own skills/<name>/ directory.
+            $skillName = $s.SkillName
             $dstFull = [System.IO.Path]::GetFullPath($s.Destination)
             $sleaf  = Split-Path -Leaf $dstFull
             $sparent = Split-Path -Leaf (Split-Path -Parent $dstFull)
             $sgrand  = Split-Path -Leaf (Split-Path -Parent (Split-Path -Parent $dstFull))
-            $pathOk = ($sleaf -ieq 'SKILL.md' -and $sparent -ieq 'ai-harness-review' -and $sgrand -ieq 'skills')
-            # The removal TARGET is the ai-harness-review skill DIRECTORY (the existing skill-removal
-            # rule deletes the <name>/ dir), so Path reports that directory; presence is DETECTED via
-            # the canonical SKILL.md artifact inside it. (Reported Path == the thing a future apply
-            # removes, so the dry-run plan the apply batch consumes is unambiguous.)
+            $pathOk = ($sleaf -ieq 'SKILL.md' -and $sparent -ieq $skillName -and $sgrand -ieq 'skills')
+            # The removal TARGET is the skill DIRECTORY (the skill-removal rule deletes the <name>/ dir),
+            # so Path reports that directory; presence is DETECTED via the canonical SKILL.md artifact
+            # inside it. (Reported Path == the thing a future apply removes, so the dry-run plan the
+            # apply batch consumes is unambiguous.)
             $skillDir = Split-Path -Parent $dstFull
-            # Footprint-zero requires the ai-harness-review skill DIRECTORY to be absent, so presence is
-            # keyed on the DIRECTORY existing — NOT on SKILL.md. A skills/ai-harness-review/ dir that
-            # exists without SKILL.md (e.g. a partially-removed mirror) is still removable; otherwise
-            # the dir would survive a "successful" uninstall and break footprint-zero.
+            # Footprint-zero requires the skill DIRECTORY to be absent, so presence is keyed on the
+            # DIRECTORY existing — NOT on SKILL.md. A skills/<name>/ dir that exists without SKILL.md
+            # (e.g. a partially-removed mirror) is still removable; otherwise the dir would survive a
+            # "successful" uninstall and break footprint-zero.
             if (-not $pathOk) {
-                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $dstFull; Status = 'blocked'; Reason = 'unexpected skill-mirror path shape (expected skills/ai-harness-review/SKILL.md); NOT proposed for removal'; WouldRemove = $false; Blocked = $true })
+                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $dstFull; Status = 'blocked'; Reason = ('unexpected skill-mirror path shape (expected skills/{0}/SKILL.md); NOT proposed for removal' -f $skillName); WouldRemove = $false; Blocked = $true; SkillName = $skillName })
             }
             elseif (Test-Path -LiteralPath $skillDir -PathType Container) {
                 $hasSkillMd = Test-Path -LiteralPath $dstFull -PathType Leaf
-                $reason = if ($hasSkillMd) { 'ai-harness-review skill dir present (with SKILL.md); the skill DIRECTORY would be removed' }
-                          else { 'ai-harness-review skill dir present (WITHOUT SKILL.md — partial mirror); the skill DIRECTORY would still be removed for footprint-zero' }
-                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'removable'; Reason = $reason; WouldRemove = $true; Blocked = $false })
+                $reason = if ($hasSkillMd) { ('{0} skill dir present (with SKILL.md); the skill DIRECTORY would be removed' -f $skillName) }
+                          else { ('{0} skill dir present (WITHOUT SKILL.md — partial mirror); the skill DIRECTORY would still be removed for footprint-zero' -f $skillName) }
+                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'removable'; Reason = $reason; WouldRemove = $true; Blocked = $false; SkillName = $skillName })
             }
             else {
-                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'absent'; Reason = ('skill mirror directory absent ({0})' -f $skillDir); WouldRemove = $false; Blocked = $false })
+                $targets.Add([pscustomobject]@{ Name = $s.Name; Kind = 'skill-mirror'; Path = $skillDir; Status = 'absent'; Reason = ('skill mirror directory absent ({0})' -f $skillDir); WouldRemove = $false; Blocked = $false; SkillName = $skillName })
             }
         }
     }

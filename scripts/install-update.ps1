@@ -672,7 +672,7 @@ function script:Invoke-InspectMode {
         }
     }
 
-    # 4. activation surface byte-identity check (3 surfaces).
+    # 4. activation surface byte-identity check (two managed blocks + one mirror per source skill).
     $surfacesObj = script:Get-ActivationSurfacePaths -InstallArea $installAreaResolved -ClaudeHome $ClaudeHome -CodexHome $CodexHome
     $surfaceResults = @()
     $activationDrift = $false
@@ -742,8 +742,8 @@ function script:Invoke-VerifyMode {
         foreach ($e in $verifyResult.errors) { $reasons.Add($e) }
     }
 
-    # Activation surface byte-identity (3 surfaces). verify is the superset of
-    # inspect, so the same activation check applies.
+    # Activation surface byte-identity (two managed blocks + one mirror per source skill). verify is
+    # the superset of inspect, so the same activation check applies.
     $surfacesObj = script:Get-ActivationSurfacePaths -InstallArea $installAreaResolved -ClaudeHome $ClaudeHome -CodexHome $CodexHome
     $surfaceResults = @()
     foreach ($s in $surfacesObj.Surfaces) {
@@ -882,7 +882,7 @@ function script:Write-HumanReport {
             $lines += 'install-update: payload=ok'
             $lines += 'install-update: activation=pending'
             $lines += 'install-update: result=INCOMPLETE (payload OK; activation follow-up required — NOT a payload failure, NOT verify_failed)'
-            $lines += 'install-update: next step — activation apply MODIFIES your global/user instruction files (managed-block surfaces get a .amb-backup rollback backup; the review skill mirror is a whole-file overwrite with no backup); run it only after your explicit approval:'
+            $lines += 'install-update: next step — activation apply MODIFIES your global/user instruction files (managed-block surfaces get a .amb-backup rollback backup; each skill mirror is a whole-file overwrite with no backup); run it only after your explicit approval:'
             $lines += ('install-update:   dry-run preview : powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" -Scope All' -f $activateScript)
             $lines += ('install-update:   apply           : powershell.exe -NoProfile -ExecutionPolicy Bypass -File "{0}" -Scope All -Apply' -f $activateScript)
         }

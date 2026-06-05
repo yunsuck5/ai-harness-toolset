@@ -23,8 +23,8 @@ $ErrorActionPreference = 'Stop'
 #                               excised, marker-outside content preserved, .amb-backup/rollback reused,
 #                               file never deleted); non-effective Codex stale markers are detect-warn
 #                               only and never removed;
-#                           (2) review skill MIRROR DIRECTORY removal (skills/ai-harness-review only,
-#                               path-guarded; siblings + the skills/ parent untouched);
+#                           (2) owned skill MIRROR DIRECTORY removal (skills/<name> per owned source
+#                               skill, path-guarded; sibling skills + the skills/ parent untouched);
 #                           (3) install-root deletion DELEGATED to a self-contained temp finalizer
 #                               (the main entrypoint may run from inside the install root, so it cannot
 #                               delete that tree itself) — this entrypoint only creates + launches it.
@@ -136,13 +136,17 @@ foreach ($t in @($plan.Targets | Where-Object { $_.Kind -eq 'managed-block' -and
     }
 }
 
-# (2) review skill MIRROR DIRECTORY removal (removable only), path-guarded.
+# (2) owned skill MIRROR DIRECTORY removal (removable only), path-guarded per owned skill name.
 foreach ($t in @($plan.Targets | Where-Object { $_.Kind -eq 'skill-mirror' -and $_.WouldRemove })) {
     $dir = [System.IO.Path]::GetFullPath($t.Path)
     $dLeaf   = Split-Path -Leaf $dir
     $dParent = Split-Path -Leaf (Split-Path -Parent $dir)
-    if (-not ($dLeaf -ieq 'ai-harness-review' -and $dParent -ieq 'skills')) {
-        Write-Host ('uninstall-global: skill-mirror path guard FAILED (expected skills\ai-harness-review): {0}' -f $dir)
+    # Guard against the owned skill's OWN name (skills/<name>), never a hardcoded skill: the dir leaf
+    # must equal the plan target's SkillName and sit directly under a skills/ parent. This keeps the
+    # removal bound to owned skills only (sibling skills under skills/ are never in the plan).
+    $expectedLeaf = $t.SkillName
+    if ([string]::IsNullOrEmpty($expectedLeaf) -or -not ($dLeaf -ieq $expectedLeaf -and $dParent -ieq 'skills')) {
+        Write-Host ('uninstall-global: skill-mirror path guard FAILED (expected skills\{0}): {1}' -f $expectedLeaf, $dir)
         $surfaceFailed = $true
         continue
     }

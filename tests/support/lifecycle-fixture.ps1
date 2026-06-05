@@ -18,7 +18,10 @@ function New-LifecycleFixtureSource {
     # and the review-skill mirror source. Returns the absolute source root path.
     param(
         [Parameter(Mandatory = $true)] [string] $TestDriveRoot,
-        [Parameter(Mandatory = $true)] [string] $CaseName
+        [Parameter(Mandatory = $true)] [string] $CaseName,
+        # Extra source skills (beyond the always-present ai-harness-review) seeded under
+        # snippets/claude-skills/<name>/SKILL.md, so generic multi-skill mirror + verify can be exercised.
+        [string[]] $ExtraSkills = @()
     )
     $root = Join-Path $TestDriveRoot ('lifecycle-src-' + $CaseName)
     if (Test-Path -LiteralPath $root) { Remove-Item -LiteralPath $root -Recurse -Force }
@@ -41,6 +44,11 @@ function New-LifecycleFixtureSource {
     $skillDir = Join-Path $root 'snippets/claude-skills/ai-harness-review'
     $null = New-Item -ItemType Directory -Path $skillDir -Force
     [System.IO.File]::WriteAllText((Join-Path $skillDir 'SKILL.md'), "# ai-harness-review skill`nmirror body`n", $utf8)
+    foreach ($extra in $ExtraSkills) {
+        $exDir = Join-Path $root ('snippets/claude-skills/' + $extra)
+        $null = New-Item -ItemType Directory -Path $exDir -Force
+        [System.IO.File]::WriteAllText((Join-Path $exDir 'SKILL.md'), "# $extra skill`nmirror body`n", $utf8)
+    }
 
     Push-Location $root
     try {

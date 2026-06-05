@@ -58,6 +58,24 @@ Describe 'install-global.ps1 fresh install (IU-B-09)' {
         ([regex]::Matches($agentsMd, '(?m)^' + [regex]::Escape($script:Begin) + '$')).Count | Should -Be 1
     }
 
+    It 'AC-IG-MULTISKILL: a second source skill is also force-mirrored + finally verified (generic enumeration)' {
+        $src = New-LifecycleFixtureSource -TestDriveRoot $TestDrive -CaseName 'multiskill' -ExtraSkills @('ai-harness-extra')
+        $h   = New-LifecycleHomes -TestDriveRoot $TestDrive -CaseName 'multiskill'
+        $r = script:Install -Params @{ InstallArea = $h.Area; SourcePath = $src; ClaudeHome = $h.Claude; CodexHome = $h.Codex; SkipSmoke = $true }
+        $r.ExitCode | Should -Be 0
+        $r.Output | Should -Match 'installStatus=installed'
+        # verify_pass requires ALL activation surfaces (both skill mirrors) byte-identical.
+        $r.Output | Should -Match 'verify reached verify_pass'
+
+        # BOTH source skills are mirrored to their runtime destinations (forced mirror, not just the payload copy).
+        (Test-Path -LiteralPath (Join-Path $h.Claude 'skills/ai-harness-review/SKILL.md') -PathType Leaf) | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $h.Claude 'skills/ai-harness-extra/SKILL.md') -PathType Leaf)  | Should -BeTrue
+        # The extra skill's runtime mirror is byte-identical to its installed payload source.
+        $extSrc = script:Read-NoBom -Path (Join-Path $h.Area 'current/snippets/claude-skills/ai-harness-extra/SKILL.md')
+        $extDst = script:Read-NoBom -Path (Join-Path $h.Claude 'skills/ai-harness-extra/SKILL.md')
+        $extDst | Should -Be $extSrc
+    }
+
     It 'AC-IG-2: pre-existing 0-pair CLAUDE.md content is preserved (append, not overwrite)' {
         $src = New-LifecycleFixtureSource -TestDriveRoot $TestDrive -CaseName 'append'
         $h   = New-LifecycleHomes -TestDriveRoot $TestDrive -CaseName 'append'

@@ -45,9 +45,11 @@ BeforeAll {
         }
         script:Write-File (Join-Path $Area 'install.json') ($md | ConvertTo-Json)
     }
-    function script:New-InstallRoot { param([string] $Area, [string] $ManagedBy = 'claude-code', [switch] $WithSourceCache, [switch] $WithLog)
+    function script:New-InstallRoot { param([string] $Area, [string] $ManagedBy = 'claude-code', [switch] $WithSourceCache, [switch] $WithLog, [string[]] $Skills = @('ai-harness-review'))
         $null = script:New-Dir (Join-Path $Area 'current/scripts')
         script:Write-File (Join-Path $Area 'current/scripts/x.ps1') '# payload'
+        # OWNED skill inventory under current/snippets/claude-skills/<name>/SKILL.md (what uninstall enumerates).
+        foreach ($sk in $Skills) { script:Write-File (Join-Path $Area ('current/snippets/claude-skills/' + $sk + '/SKILL.md')) ('# ' + $sk + ' skill') }
         script:Write-InstallJson -Area $Area -ManagedBy $ManagedBy
         script:Write-File (Join-Path $Area 'payload-manifest.json') '{}'
         script:Write-File (Join-Path $Area 'payload-marker.json') '{}'
@@ -313,5 +315,34 @@ Describe 'uninstall-global.ps1 -Apply' {
         $proc.ExitCode | Should -Be 1
         ($proc.Stdout) | Should -Match 'uninstallStatus=uninstall_partial'
         (Test-Path -LiteralPath $fx.Area) | Should -BeTrue            # install root left intact (finalizer never launched)
+    }
+
+    It 'removes ALL owned skill dirs (generic) and preserves a non-owned sibling; skill cleanup is NOT the finalizer' {
+        $root   = script:New-Dir (Join-Path $TestDrive 'a-multiskill')
+        $claude = script:New-Dir (Join-Path $root '.claude')
+        $codex  = script:New-Dir (Join-Path $root '.codex')
+        $area   = script:New-Dir (Join-Path $claude 'ai-harness-toolset')
+        script:New-InstallRoot -Area $area -Skills @('ai-harness-review', 'ai-harness-extra')
+        script:Write-Marked (Join-Path $claude 'CLAUDE.md') 1
+        script:Write-Marked (Join-Path $codex 'AGENTS.md') 1
+        script:Write-File (Join-Path $claude 'skills/ai-harness-review/SKILL.md') 'a'
+        script:Write-File (Join-Path $claude 'skills/ai-harness-extra/SKILL.md') 'b'
+        script:Write-File (Join-Path $claude 'skills/other-skill/SKILL.md') 'sibling'   # present but NOT in the installed payload
+        $tmp = script:New-Dir (Join-Path $root 'fin-temp')
+
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script:Entry,
+            '-ClaudeHome', $claude, '-CodexHome', $codex, '-Apply', '-FinalizerTempRoot', $tmp)
+        $proc.ExitCode | Should -Be 0
+        ($proc.Stdout) | Should -Match 'uninstallStatus=uninstall_finalizer_launched'
+        # Both OWNED skill dirs are removed synchronously by the entrypoint (BEFORE the finalizer is
+        # launched — the finalizer only deletes the install root, never the skill surfaces).
+        (Test-Path -LiteralPath (Join-Path $claude 'skills/ai-harness-review')) | Should -BeFalse
+        (Test-Path -LiteralPath (Join-Path $claude 'skills/ai-harness-extra'))  | Should -BeFalse
+        # The non-owned sibling skill (and the skills/ parent) is preserved.
+        (Test-Path -LiteralPath (Join-Path $claude 'skills/other-skill/SKILL.md')) | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $claude 'skills')) | Should -BeTrue
+        # The install root is deleted by the (async) finalizer — its sole responsibility.
+        (script:Wait-Until { -not (Test-Path -LiteralPath $area) } 25) | Should -BeTrue
     }
 }

@@ -44,11 +44,14 @@ BeforeAll {
     }
 
     function script:New-ExpectedInstallRoot {
-        # install root with the full expected footprint (no source-cache/log unless asked).
-        param([string] $Area, [string] $ManagedBy = 'claude-code', [switch] $WithSourceCache, [switch] $WithLog)
+        # install root with the full expected footprint (no source-cache/log unless asked). The OWNED
+        # skill inventory lives under current/snippets/claude-skills/<name>/SKILL.md — this is what
+        # uninstall enumerates to know which skill dirs it owns; default = the single shipped review skill.
+        param([string] $Area, [string] $ManagedBy = 'claude-code', [switch] $WithSourceCache, [switch] $WithLog, [string[]] $Skills = @('ai-harness-review'))
         $null = script:New-Dir (Join-Path $Area 'current')
         $null = script:New-Dir (Join-Path $Area 'current/scripts')
         script:Write-File (Join-Path $Area 'current/scripts/x.ps1') '# payload'
+        foreach ($sk in $Skills) { script:Write-File (Join-Path $Area ('current/snippets/claude-skills/' + $sk + '/SKILL.md')) ('# ' + $sk + ' skill') }
         script:Write-InstallJson -Area $Area -ManagedBy $ManagedBy
         script:Write-File (Join-Path $Area 'payload-manifest.json') '{}'
         script:Write-File (Join-Path $Area 'payload-marker.json') '{}'
@@ -249,17 +252,17 @@ Describe 'Get-UninstallPlan — activation surfaces' {
         $area = script:New-Case 'c-skill'; script:New-ExpectedInstallRoot -Area $area
         $hP = script:New-Homes 'c-skillP'
         script:Write-File (Join-Path $hP.ClaudeHome 'skills/ai-harness-review/SKILL.md') "---`nname: ai-harness-review`n---`n"
-        (script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $hP.ClaudeHome -CodexHome $hP.CodexHome) 'review-skill-mirror').Status | Should -Be 'removable'
+        (script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $hP.ClaudeHome -CodexHome $hP.CodexHome) 'skill-mirror:ai-harness-review').Status | Should -Be 'removable'
 
         $hA = script:New-Homes 'c-skillA'
-        (script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $hA.ClaudeHome -CodexHome $hA.CodexHome) 'review-skill-mirror').Status | Should -Be 'absent'
+        (script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $hA.ClaudeHome -CodexHome $hA.CodexHome) 'skill-mirror:ai-harness-review').Status | Should -Be 'absent'
     }
 
     It 'skill mirror removal-target Path is the ai-harness-review DIRECTORY (not the SKILL.md file)' {
         $area = script:New-Case 'c-skilldir'; script:New-ExpectedInstallRoot -Area $area
         $h = script:New-Homes 'c-skilldir'
         script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-review/SKILL.md') 'skill'
-        $t = script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome) 'review-skill-mirror'
+        $t = script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome) 'skill-mirror:ai-harness-review'
         $t.Path | Should -Match 'ai-harness-review$'
         $t.Path | Should -Not -Match 'SKILL\.md$'
     }
@@ -268,10 +271,83 @@ Describe 'Get-UninstallPlan — activation surfaces' {
         $area = script:New-Case 'c-skillnomd'; script:New-ExpectedInstallRoot -Area $area
         $h = script:New-Homes 'c-skillnomd'
         $null = script:New-Dir (Join-Path $h.ClaudeHome 'skills/ai-harness-review')   # dir, no SKILL.md
-        $t = script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome) 'review-skill-mirror'
+        $t = script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome) 'skill-mirror:ai-harness-review'
         $t.Status | Should -Be 'removable'
         $t.WouldRemove | Should -BeTrue
         $t.Path | Should -Match 'ai-harness-review$'
+    }
+
+    It 'generic enumeration: multiple owned skills each get a removable surface; a non-owned sibling is not enumerated' {
+        $area = script:New-Case 'c-multiskill'
+        script:New-ExpectedInstallRoot -Area $area -Skills @('ai-harness-review', 'ai-harness-extra')
+        $h = script:New-Homes 'c-multiskill'
+        script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-review/SKILL.md') 'a'
+        script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-extra/SKILL.md') 'b'
+        script:Write-File (Join-Path $h.ClaudeHome 'skills/other-skill/SKILL.md') 'sibling'   # present but NOT in the installed payload
+        $plan = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome
+        (script:Get-Target $plan 'skill-mirror:ai-harness-review').Status | Should -Be 'removable'
+        (script:Get-Target $plan 'skill-mirror:ai-harness-extra').Status  | Should -Be 'removable'
+        # Exactly the two owned skills are enumerated; the non-owned sibling produces no surface.
+        @($plan.Targets | Where-Object { $_.Kind -eq 'skill-mirror' }).Count | Should -Be 2
+        @($plan.Targets | Where-Object { $_.Name -match 'other-skill' }).Count | Should -Be 0
+        ((script:Get-Target $plan 'skill-mirror:ai-harness-extra').Path) | Should -Match 'ai-harness-extra$'
+    }
+
+    It 'present + managed install root WITHOUT current/ → blocked (owned skill inventory unknowable; no silent orphan)' {
+        # Corrupt/partial install: valid install.json + expected top-level footprint, but current/ is
+        # ABSENT, so the owned skill inventory cannot be enumerated. Removing the install root while
+        # skipping skill cleanup would orphan the owned runtime skill dir → must block, not silently
+        # enumerate zero skills.
+        $area = script:New-Case 'c-nocurrent'
+        script:Write-InstallJson -Area $area
+        script:Write-File (Join-Path $area 'payload-manifest.json') '{}'
+        script:Write-File (Join-Path $area 'payload-marker.json') '{}'
+        script:Write-File (Join-Path $area 'README.md') '# landing'
+        $h = script:New-Homes 'c-nocurrent'
+        script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-review/SKILL.md') 'owned but unknowable'
+        $plan = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome
+        $inv = script:Get-Target $plan 'skill-inventory'
+        $inv | Should -Not -BeNullOrEmpty
+        $inv.Blocked | Should -BeTrue
+        $inv.WouldRemove | Should -BeFalse
+        $plan.OverallStatus | Should -Be 'uninstall_blocked'
+    }
+
+    It 'present + managed install root with current/ but NO snippets/claude-skills/ → blocked (inventory source damaged; no silent orphan)' {
+        # current/ exists but the skill-inventory source (current/snippets/claude-skills/) is missing —
+        # the OWNED skill set still cannot be determined, so this narrower partial-install shape must
+        # block too (same footprint-zero failure class as an absent current/).
+        $area = script:New-Case 'c-noinv'
+        $null = script:New-Dir (Join-Path $area 'current/scripts')
+        script:Write-File (Join-Path $area 'current/scripts/x.ps1') '# payload'
+        script:Write-InstallJson -Area $area
+        script:Write-File (Join-Path $area 'payload-manifest.json') '{}'
+        script:Write-File (Join-Path $area 'payload-marker.json') '{}'
+        script:Write-File (Join-Path $area 'README.md') '# landing'
+        $h = script:New-Homes 'c-noinv'
+        script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-review/SKILL.md') 'owned but unknowable'
+        $plan = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome
+        (script:Get-Target $plan 'skill-inventory').Blocked | Should -BeTrue
+        $plan.OverallStatus | Should -Be 'uninstall_blocked'
+    }
+
+    It 'present + managed install root with claude-skills/ present but yielding ZERO skills (no SKILL.md) → blocked (untrusted inventory)' {
+        # claude-skills/ exists and even holds a candidate dir, but it has NO SKILL.md, so the resolver
+        # enumerates zero owned skills. A removable managed install with zero trustworthy owned skills
+        # must still block (the broadest footprint-zero-safe case: absent OR empty OR malformed).
+        $area = script:New-Case 'c-emptyinv'
+        $null = script:New-Dir (Join-Path $area 'current/scripts')
+        script:Write-File (Join-Path $area 'current/scripts/x.ps1') '# payload'
+        $null = script:New-Dir (Join-Path $area 'current/snippets/claude-skills/broken-skill')   # dir, NO SKILL.md
+        script:Write-InstallJson -Area $area
+        script:Write-File (Join-Path $area 'payload-manifest.json') '{}'
+        script:Write-File (Join-Path $area 'payload-marker.json') '{}'
+        script:Write-File (Join-Path $area 'README.md') '# landing'
+        $h = script:New-Homes 'c-emptyinv'
+        script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-review/SKILL.md') 'owned but untrusted'
+        $plan = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome
+        (script:Get-Target $plan 'skill-inventory').Blocked | Should -BeTrue
+        $plan.OverallStatus | Should -Be 'uninstall_blocked'
     }
 }
 

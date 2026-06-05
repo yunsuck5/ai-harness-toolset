@@ -455,7 +455,7 @@ Describe 'install-update.ps1 — inspect mode' {
         }
         $r.ExitCode | Should -BeExactly 0
         $r.Json.status | Should -BeExactly 'inspect_activation_drift'
-        $skillRow = $r.Json.activationSurfaces | Where-Object { $_.name -eq 'review-skill-mirror' }
+        $skillRow = $r.Json.activationSurfaces | Where-Object { $_.name -eq 'skill-mirror:ai-harness-review' }
         $skillRow.exists        | Should -BeExactly $true
         $skillRow.byteIdentical | Should -BeExactly $false
         $skillRow.reason        | Should -Match '^byte-mismatch'
@@ -998,7 +998,7 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         [string](Read-InstallPipelineMetadata -InstallArea $fx.Area).lastUpdatedHead | Should -BeExactly $newHead
         # The drifted activation surface was NOT rewritten by the apply (still drifted content).
         (Get-FileSha256 -Path $skillDest) | Should -Not -BeExactly $skillBefore
-        $skillRow = $res.ActivationSurfaces | Where-Object { $_.Name -eq 'review-skill-mirror' }
+        $skillRow = $res.ActivationSurfaces | Where-Object { $_.Name -eq 'skill-mirror:ai-harness-review' }
         $skillRow.ByteIdentical | Should -BeExactly $false
     }
 
