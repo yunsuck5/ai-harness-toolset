@@ -33,7 +33,7 @@ The matched-category tier appears only when the operator passes `-EffortCategory
 ## Constraints
 
 - Reviewer model and effort must remain config-driven.
-- The reviewer **model** must never be hardcoded in a script as a default/fallback — it comes only from config (or an explicit `-Model`), and a missing/empty model fails fast (no silent fallback). The reviewer **effort** has a single policy safe-default (`xhigh`) that is an allowed built-in default; `timeoutSeconds` / `sandbox` are handled per their rows below.
+- The reviewer **model** must never be hardcoded in a script as a default/fallback — it comes only from config (or an explicit `-Model`), and a missing/empty model fails fast (no silent fallback). The reviewer **effort** has a single policy safe-default (`xhigh`) that is an allowed built-in default; `sandbox` is handled per its row below.
 
 The bullets above state the intended policy direction. The section below records the current as-built enforcement status, which does not yet match that intent for every key.
 
@@ -51,22 +51,9 @@ Current as-built status of each key (in terms of the canonical operator-facing f
 | `reasoningEffort` | **Enforced** — read by review-run.ps1 and passed to the Codex CLI as `-c model_reasoning_effort=<value>` (Batch B; previously metadata-only). Precedence: explicit `-Effort` CLI parameter > matched `categoryPolicy` entry `reasoningEffort` (U9) > this scalar value > built-in safe default `xhigh`. Allowed values `none`/`minimal`/`low`/`medium`/`high`/`xhigh`; an out-of-set value fails fast (no silent fallback) whatever its source (`source: explicit` / `config` / `category`). The applied effort is captured as a run-fact from the Codex stderr header and reported by review-run as `applied-effort:` (`not-observed` when the header is absent). |
 | `categoryPolicy` | **Enforced (U9)** — optional config-backed `category → {model, reasoningEffort}` lookup, selected per-invocation by `review-run.ps1 -EffortCategory <key>`. Read by review-run.ps1; a matched entry supplies `reasoningEffort` (and optionally `model`) at the matched-category precedence tier above. A supplied-but-absent key is a **soft miss** (falls back to the scalar config; `effort-policy-match: missed`); a matched entry with an out-of-enum `reasoningEffort` fails fast (`source: category`). No automatic category inference (not from changed files / `-Stage` / LLM). Schema is portable (`config/reviewer.schema.json`): the category key set + per-entry values are per-project tunable; this batch ships all canonical categories at `xhigh`. See "Category policy (`categoryPolicy`)" below. |
 | `sandbox` | Metadata-only — informational; the reviewer-safe invocation hardcodes `--sandbox read-only` (plus `--ask-for-approval never` and `--ignore-user-config`). See "Reviewer-safe invocation" below (Batch C). |
-| `timeoutSeconds` | **Metadata-only / unenforced** — see below. |
 | `outputFormat`, `resultFile` | Dead config — read by no script. |
 
 > The canonical operator-facing artifact set is exactly `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/input.md` + `result.md` (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). Current scripts emit this three-level canonical layout directly (`-Perspective` required; no two-level fallback — legacy two-level records from before strict C1 are manual-readable runtime artifacts only, not tool-supported); sidecar files outside that pair (for example `meta.json`, `target-files.list`, `result.json`) are not produced on the operator path and are not part of the contract. Historical references to those removed-legacy artifacts are preserved in git history and are not operator paths.
-
-### `timeoutSeconds` status
-
-`timeoutSeconds` is currently **metadata-only and unenforced**. The single-shot run executes the Codex CLI with no process timeout, so the value does not bound the Codex review process.
-
-`timeoutSeconds` is explicitly **not**:
-
-- a review quality or completeness guarantee — review validity is judged by the canonical artifact pair (`input.md`, `result.md`) and the deterministic gates listed in `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §4;
-- the Claude Code harness tool timeout — that is a separate harness-level value that governs the shell tool call and can trigger harness auto-background conversion;
-- a background-conversion control — it has no effect on whether a run is foregrounded or backgrounded.
-
-Whether to enforce, demote to explicit metadata-only, or remove `timeoutSeconds` is a separate future decision tracked as review backlog candidate RV-B-02 (`docs/systems/review/BACKLOG.md`). This document does not decide it.
 
 ## Category policy (`categoryPolicy`)
 
