@@ -1,10 +1,10 @@
 # Review Artifact Perspective Layout Plan
 
-> **Status (planning — not implemented) — 2026-06-05.** 이 문서는 review artifact 의 **perspective 축(local correctness / system coherence 같은 review viewpoint)** 을 layout 에 어떻게 표기할지를 정하는 **단일 정규 design proposal** 이다. **사용자 design constraint(2026-06-05)** 가 추가되어 추천안을 이전 버전의 H1(C2 + C3b)에서 **C1-first** 로 개정했다(아래 §6). 작성 시점에 어떤 implementation surface(`scripts/review-prepare.ps1` / `scripts/review-run.ps1` / `scripts/review-verify.ps1` / `scripts/lib/path.ps1` / `templates/review-input.md` / `templates/review-result.md` / `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` / `snippets/claude-skills/ai-harness-review/SKILL.md` / `tests/review-*.Tests.ps1` / `config/**`)도 **아직 수정되지 않았다**. 구현은 이 문서를 입력으로 삼는 **별도 scoped batch** 이며 각 단계마다 별도 Codex review gate + 사용자 commit/push 승인을 거친다. 이 문서 작성 자체는 source / script / test / config / contract / template / verifier / skill / parser / runtime 변경을 동반하지 않으며, commit / push 도 동반하지 않는다.
+> **Status (implemented — complete-candidate, pre-commit) — 2026-06-05.** 이 문서가 정한 **C1-first** target layout (`log/review/<review-task-id>/<perspective>/pass-NN/` — 작업 식별자 / perspective / corrective attempt 를 별도 path segment 로 분리)이 **현재 working tree 에 구현되었다.** 구현 surface: `scripts/lib/path.ps1`(`Test-ValidPerspective` / `Assert-ValidPerspective` / `Get-ReviewPassParent` / `Assert-InTaskRoot` 신설 + `Get-ReviewPassDir` perspective-aware), `scripts/review-prepare.ps1` / `scripts/review-run.ps1` / `scripts/review-verify.ps1`(optional `-Perspective`, old/new 분기), `tests/{path,review-prepare,review-run,review-verify}.Tests.ps1`(old/new + perspective validation + task-root containment TC), `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`(§1 / §3 / §5 / §7 / §4 item 1 / §4a / §6b.1 field 4 / §8), `templates/review-input.md`(+ optional `## Review perspective` informational section) / `templates/review-result.md`, `snippets/claude-skills/ai-harness-review/SKILL.md`, `README.md`, `docs/user_guide/OPERATOR_GUIDE_KR.md`, `tests/README.md`. operator-visible activation 과 source-of-truth/mirror wording 을 같은 batch 에 정합시켰다(coupling invariant form (a)). **Codex corrected-state review: task `s6-c1-perspective-impl-2026-06-05` (global stable ToolRoot, `system-coherence-heavy`) — pass-01 no → pass-02 no → pass-03 yes (blocking 0); closeout cleanup 후 pass-04 재검토.** Status / detail home: `docs/systems/review/STATUS.md`(Open/historical 의 S6 C1 ledger bullet). **남은 단계(각각 별도 사용자 승인, 미수행):** commit / push; **global (channel 3) update — pending**; **managed-block snippet (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) 정합/adoption 은 별도 boundary (Q8 = option B disclosed asymmetry; §8 표 / §9 Batch 3)**. 아래 본문(§1–§12)은 채택된 C1-first **design 기록**으로 보존한다(구현 후에도 design home; 누적 narrative 는 git history).
 
 ## Document character
 
-- **성격**: design/plan 문서. **implementation 아님 / parser·verifier·runtime 변경 아님 / operational claim 아님 / 승인 문서 아님 / artifact layout 의 실제 변경 아님.** "권장(recommended)" / "추천(recommendation)" 은 구현 확정이 아니라 design 후보이자 사용자 결정을 위한 입력이다.
+- **성격**: design 기록 문서(이 subsystem 의 design home). 이 문서가 정한 C1-first design 은 **현재 working tree 에 구현되었다**(위 Status 블록; 구현 surface + Codex 재검토 task 는 거기에 열거). 본문 §1–§12 는 그 채택된 design 의 기록으로 보존된다 — 문서 자체는 코드가 아니며(읽기/쓰기로 runtime 을 바꾸지 않음), 구현된 target = **C1-first** 다. "권장(recommended)" / "추천(recommendation)" 은 design 시점의 표현이며 최종 채택은 C1-first 다. commit / push / global update 는 미수행(별도 승인).
 - **무엇을 결정하려는가**: review artifact 의 의미 축(작업 식별자 / perspective / corrective attempt)을 path 구조에서 어떻게 분리할지(이하 **S6**). 이 문서는 선택지(C1 / C2 / C3 / hybrid)를 비교하고, **사용자 design constraint** 를 만족하는 추천(C1-first)을 제시한다. **구현 batch 도, 구현 승인도 아니다.**
 - **사용자 design constraint (2026-06-05, 권위 입력)**: (1) 폴더 이름 하나에 작업 식별자와 review perspective 두 의미를 같이 넣지 않는다. (2) `<review-task-id>` 는 작업 / goal / review gate 를 의미한다. (3) perspective 는 **별도 path segment** 로 분리된다. (4) `pass-NN` 은 해당 perspective 안의 corrective attempt 를 의미한다. (5) AI 는 긴 설명보다 path/name/artifact shape 를 먼저 보고 판단하므로, 의미 축은 **path 구조에서 분리되어 보여야** 한다.
 - **이전 버전 대비 변경(stale 사유)**: 직전 pass(`log/review/s6-perspective-artifact-layout-design-2026-06-05/pass-01`)는 추천을 H1(C2 + C3b)로 둔 문서를 review 했고 `yes with risk` 를 받았다. 그 verdict 의 risk 는 "H1 은 convention-only tradeoff(파서 없음·64자 예산·`--` 해석)를 사용자가 명시 수용해야 함" 이었다. 사용자가 위 design constraint 를 명시함으로써 **그 tradeoff 를 수용하지 않고 의미 축 분리를 우선** 하기로 결정했다. 따라서 이전 review 는 stale 이며, 본 개정판은 C1-first 로 corrected-state re-review 대상이다.
@@ -222,16 +222,17 @@ C1-first 를 staged batch 로 제안한다(실제 split 은 구현 batch 가 evi
 
 ## 11. Cleanup / Lifecycle
 
-- **이 문서는 구현 전 design 문서다**(현재 design proposal, historical diary 아님). 어떤 implementation surface 변경도 아직 수행되지 않았다(Status 블록).
-- **구현 완료 시 STATUS/BACKLOG/plan 처리 기준**:
-  - `docs/systems/review/STATUS.md` completed-ledger 에 구현 bullet + 이 문서로의 inbound pointer(최근 convention: 구현-state 를 ledger 에 기록, BACKLOG 행은 compact).
-  - `docs/systems/review/BACKLOG.md` 본 트랙 행(가칭 **RV-B-08**; RV-B-07 까지 사용됨) — RV-B-05 하위 vs 신규 행 승격은 구현 closeout 시점 결정(최근 convention: 같은 batch open+close 로 orphan 회피).
-  - 이 PLAN 문서는 구현 후 stale open plan 으로 남지 않도록 (a) Status 블록을 `implemented`(commit 해시 + STATUS pointer)로 갱신하거나 (b) 규약이 contract §1 + SKILL 로 완전 흡수되면 retirement note + pointer 로 축소. "latest state 를 docs 가 반영, 누적 서술은 git history" 원칙.
-- **planning-doc scope — pointer wiring 은 implementation-time**: STATUS inbound pointer + BACKLOG 행 승격은 구현 batch closeout 에서 수행하고, 이 단계에서는 일시적 orphan 을 수용한다([[feedback_planning_doc_scope_defer_pointer]]; `DOCS_OPERATING_MODEL.md` §4·§7). 그래서 이 단계에서 commit 하면 STATUS/BACKLOG 변경이 함께 가지 않는다 — 의도된 scope 분리.
+- **이 문서가 정한 C1-first design 은 구현되었다**(working tree; 위 Status 블록). 본 §11 의 구현-closeout 처리 기준 중 다음을 이 closeout batch(commit 전)에서 수행했다:
+  - **STATUS ledger 갱신(수행)**: `docs/systems/review/STATUS.md` Open/historical 에 S6 C1 구현 bullet(complete-candidate, pre-commit) + 이 문서로의 inbound pointer 추가. commit 해시는 commit 시점에 보강.
+  - **BACKLOG 미변경(의도된 결정)**: 본 트랙은 원래 open BACKLOG 행이 아니었고(설계 plan 출처, BACKLOG triage 아님) 아직 pre-commit 이므로, RV-B-06/07 식 `[CLOSED]` tombstone(commit 해시 동반)은 시기상조다. tracking 은 STATUS ledger 가 담당하며 BACKLOG 는 건드리지 않는다 — commit 시 RV-B-08 closed tombstone 추가는 natural follow-up(별도).
+  - **이 PLAN 문서**: Status 블록을 `implemented`(complete-candidate)로 갱신(수행); commit 해시는 commit 시 보강. 규약이 contract §1 + SKILL 로 흡수되었으므로 향후 retirement note 로 축소 가능(별도 결정). "latest state 를 docs 가 반영, 누적 서술은 git history" 원칙.
+- **STATUS inbound pointer 는 이 구현-closeout 에서 wiring 했다** — 설계-doc commit 단계의 일시적 orphan([[feedback_planning_doc_scope_defer_pointer]])은 이 closeout 으로 해소. commit / push / global update / managed-block snippet adoption 은 각각 별도 사용자 승인 후속 단계(미수행).
 - **git history 가 historical source, docs 는 latest state**: 본 문서는 현재 design 안만 담고, 과거 우회(§1 origin)·이전 H1 추천은 §Document character 의 stale 기록 + path pointer 로만 참조한다.
 - **S8 는 이번 문서에서 수행하지 않음**: docs de-dup / tombstone 은 별도 handoff track(§4 non-goal).
 
-## 12. Open Questions
+## 12. Open Questions (resolved by the implementation batch)
+
+> **Resolved — 2026-06-05.** 아래 design-time open questions 는 구현 batch(task `s6-c1-perspective-impl-2026-06-05`)에서 다음과 같이 확정됐다: **Q1** = 자유 문자열 + path-safety 불변(`Test-ValidPerspective`; 권장 어휘 `local-correctness` / `system-coherence`, enum 강제 안 함); **Q2** = `-Perspective <viewpoint>`; **Q3** = 미지정 = old 2-level default(확정; 빈 값도 omitted=2-level); **Q4** = 지금 구현(complete-candidate, pre-commit); **Q5** = C2 interim 불채택(C1 직접 구현); **Q6** = per-perspective reporting(contract §6b.1 field 4 / SKILL step 7); **Q7** = form (a) — operator-visible activation + 모든 mirror wording 동시 착지; **Q8** = option B — managed-block snippet 의도적 2-level-only + disclosed asymmetry(별도 Batch 3 / adoption boundary). 아래 목록은 design 시점 기록으로 보존한다(누적 narrative 는 git history).
 
 1. **perspective enum 을 고정할지** — 최소 enum(`local-correctness` / `system-coherence`)으로 시작할지, 자유 문자열을 허용할지. (운용 데이터 후 결정; decision record 의 "category 는 운용 데이터 후" 와 동일 보수 자세.)
 2. **review CLI option 이름** — `-Perspective <viewpoint>` 를 제안. 다른 이름(`-View`, `-Lens`)을 쓸지.
@@ -244,4 +245,4 @@ C1-first 를 staged batch 로 제안한다(실제 split 은 구현 batch 가 evi
 
 ---
 
-*이 문서는 open track 의 design/plan 이다. 구현·리뷰·commit/push 는 각각 별도 사용자 승인이 필요한 후속 단계다. 추천(C1-first)은 사용자 design constraint 를 반영한 것이며, 구현 착수 여부·시점은 사용자 결정 사항이다.*
+*이 문서가 정한 C1-first design 은 working tree 에 구현되었고 Codex corrected-state review(task `s6-c1-perspective-impl-2026-06-05`)로 수렴했다(Status 블록). 본 문서는 그 채택된 design 의 기록 home 으로 보존된다. commit / push / global (channel 3) update / managed-block snippet adoption 은 각각 별도 사용자 승인이 필요한 후속 단계로 남아 있다(미수행).*

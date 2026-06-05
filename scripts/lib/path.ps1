@@ -286,6 +286,44 @@ function Assert-ValidPass {
     return $true
 }
 
+function Test-ValidPerspective {
+    [CmdletBinding()]
+    param(
+        [string] $Value
+    )
+
+    # A <perspective> is operator-supplied and becomes a single filesystem path
+    # segment in the C1 three-level layout (<task>/<perspective>/pass-NN/). It must
+    # therefore pass the SAME safety rules as Test-ValidReviewTaskId, plus a pass-NN
+    # exclusion so a perspective directory can never be confused with a pass directory:
+    #   (i)   single path segment (no nesting),
+    #   (ii)  no parent-dir traversal token ('..'),
+    #   (iii) no path separators ('/' or '\'),
+    #   (iv)  safe charset + length (same shape as Test-ValidReviewTaskId),
+    #   (v)   not the pass-NN shape (pass-\d\d), which would make old/new layout
+    #         resolution ambiguous (a perspective named like a pass directory).
+    if ([string]::IsNullOrEmpty($Value)) { return $false }
+    if ($Value.Contains('..')) { return $false }
+    if ($Value.Contains('/') -or $Value.Contains('\')) { return $false }
+    # Case-insensitive so PASS-01 / Pass-99 are rejected too (Windows filesystem
+    # comparisons are case-insensitive, so a wrong-case pass-shaped name would still
+    # collide with a real pass directory).
+    if ($Value -imatch '^pass-\d\d$') { return $false }
+    return ($Value -match '^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$')
+}
+
+function Assert-ValidPerspective {
+    [CmdletBinding()]
+    param(
+        [string] $Value
+    )
+
+    if (-not (Test-ValidPerspective -Value $Value)) {
+        throw "Assert-ValidPerspective: invalid Perspective (expected a single safe path segment, not '..'/separator/pass-NN, charset [A-Za-z0-9._-], max 64): '$Value'"
+    }
+    return $true
+}
+
 function Get-ReviewTaskRoot {
     [CmdletBinding()]
     param(
@@ -301,6 +339,31 @@ function Get-ReviewTaskRoot {
     return [System.IO.Path]::GetFullPath($taskDir)
 }
 
+function Get-ReviewPassParent {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $ProjectLogRoot,
+        [Parameter(Mandatory = $true)]
+        [string] $ReviewTaskId,
+        # Optional review viewpoint. Empty -> old two-level parent is the task dir.
+        # Non-empty -> new three-level parent is <taskDir>/<perspective>.
+        [string] $Perspective
+    )
+
+    # The directory that directly holds pass-NN children for this (task[, perspective]).
+    # In the old two-level layout this is the task dir; in the C1 three-level layout it is
+    # <taskDir>/<perspective>. Get-NextPassName scans this dir, so it is perspective-aware
+    # purely by being given the right parent (no inference here — perspective is explicit).
+    $taskDir = Get-ReviewTaskRoot -ProjectLogRoot $ProjectLogRoot -ReviewTaskId $ReviewTaskId
+    if ([string]::IsNullOrEmpty($Perspective)) {
+        return $taskDir
+    }
+    [void] (Assert-ValidPerspective -Value $Perspective)
+    $perspectiveDir = Join-Path -Path $taskDir -ChildPath $Perspective
+    return [System.IO.Path]::GetFullPath($perspectiveDir)
+}
+
 function Get-ReviewPassDir {
     [CmdletBinding()]
     param(
@@ -309,13 +372,24 @@ function Get-ReviewPassDir {
         [Parameter(Mandatory = $true)]
         [string] $ReviewTaskId,
         [Parameter(Mandatory = $true)]
-        [string] $Pass
+        [string] $Pass,
+        # Optional review viewpoint. When supplied, a middle <perspective> segment is
+        # inserted: <taskDir>/<perspective>/<pass> (C1 three-level layout). When omitted
+        # or empty, the historical two-level <taskDir>/<pass> layout is produced
+        # (backward compatible; this is today's default behavior).
+        [string] $Perspective
     )
 
     [void] (Assert-ValidPass -Value $Pass)
-    $taskDir = Get-ReviewTaskRoot -ProjectLogRoot $ProjectLogRoot -ReviewTaskId $ReviewTaskId
-    $passDir = Join-Path -Path $taskDir -ChildPath $Pass
-    return [System.IO.Path]::GetFullPath($passDir)
+    $parent = Get-ReviewPassParent -ProjectLogRoot $ProjectLogRoot -ReviewTaskId $ReviewTaskId -Perspective $Perspective
+    $passDir = Join-Path -Path $parent -ChildPath $Pass
+    $full = [System.IO.Path]::GetFullPath($passDir)
+    # Task-root containment (defense-in-depth). Perspective segment validation already
+    # blocks '..' and separators, but the plan requires proving the constructed pass dir
+    # stayed inside the INTENDED <taskDir>/ — review-root containment alone is necessary
+    # but not sufficient (it cannot prove the path did not traverse into a sibling task).
+    [void] (Assert-InTaskRoot -Path $full -ProjectLogRoot $ProjectLogRoot -ReviewTaskId $ReviewTaskId)
+    return $full
 }
 
 function Assert-InReviewRoot {
@@ -349,6 +423,43 @@ function Assert-InReviewRoot {
         return $true
     }
     throw "Assert-InReviewRoot: path is outside review root. Path=$full ReviewRoot=$baseNorm"
+}
+
+function Assert-InTaskRoot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path,
+        [Parameter(Mandatory = $true)]
+        [string] $ProjectLogRoot,
+        [Parameter(Mandatory = $true)]
+        [string] $ReviewTaskId
+    )
+
+    if ([string]::IsNullOrEmpty($ProjectLogRoot)) {
+        throw 'Assert-InTaskRoot: -ProjectLogRoot is required.'
+    }
+
+    # Review-root containment is necessary but NOT sufficient: it only proves the path is
+    # somewhere under <logRoot>/review/, not that it stayed inside the intended task. So
+    # first assert review-root containment, then assert the stricter <taskDir>/ containment.
+    [void] (Assert-InReviewRoot -Path $Path -ProjectLogRoot $ProjectLogRoot)
+
+    $taskDir = Get-ReviewTaskRoot -ProjectLogRoot $ProjectLogRoot -ReviewTaskId $ReviewTaskId
+    $full = [System.IO.Path]::GetFullPath($Path)
+
+    $sep = [System.IO.Path]::DirectorySeparatorChar
+    $baseNorm = $taskDir.TrimEnd($sep)
+    $cmp = [System.StringComparison]::OrdinalIgnoreCase
+
+    if ([string]::Equals($full, $baseNorm, $cmp)) {
+        return $true
+    }
+    $prefix = $baseNorm + $sep
+    if ($full.StartsWith($prefix, $cmp)) {
+        return $true
+    }
+    throw "Assert-InTaskRoot: path is outside task root (would traverse out of the intended task). Path=$full TaskRoot=$baseNorm"
 }
 
 function Get-NextPassName {

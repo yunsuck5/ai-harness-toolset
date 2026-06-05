@@ -4,6 +4,11 @@ param(
 
     [string] $Pass,
 
+    # Optional review viewpoint (C1 three-level layout). Omitted -> resolve the historical
+    # two-level pass dir log/review/<task>/pass-NN/. Supplied -> resolve the three-level
+    # pass dir log/review/<task>/<perspective>/pass-NN/. Backward compatible; no inference.
+    [string] $Perspective,
+
     [string] $Reviewer = 'codex',
     [string] $Model,
     [string] $Effort,
@@ -494,11 +499,21 @@ catch {
     exit 1
 }
 
+if (-not [string]::IsNullOrEmpty($Perspective)) {
+    try {
+        [void] (Assert-ValidPerspective -Value $Perspective)
+    }
+    catch {
+        Write-Host ('review-run: FAIL invalid Perspective: {0}' -f $Perspective)
+        exit 1
+    }
+}
+
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 $tool    = Get-ToolRoot -ToolRoot $ToolRoot -ProjectRoot $project
 $logRoot = Get-ProjectLogRoot -ProjectRoot $project
 
-$passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Pass $Pass
+$passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Pass $Pass -Perspective $Perspective
 try {
     [void] (Assert-InReviewRoot -Path $passDir -ProjectLogRoot $logRoot)
 }
@@ -639,6 +654,9 @@ catch {
 
 Write-Host ('review-run: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
+if (-not [string]::IsNullOrEmpty($Perspective)) {
+    Write-Host ('perspective: {0}' -f $Perspective)
+}
 Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('verdict: {0}' -f $verdict)
 # Reviewer adapter identity run-facts (P2). H1 stdout run-facts, additive to the Batch D2

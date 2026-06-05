@@ -1,8 +1,8 @@
 # Review Result
 
-이 파일은 `log/review/<review-task-id>/pass-NN/result.md` 의 형식 기준이다. active reviewer adapter (현재 MVP adapter = codex) 가 `--output-last-message` 로 같은 pass directory 에 result.md 의 verdict/disclosure **body** 를 작성하고, `scripts/review-run.ps1` 가 그 뒤에 `## Reviewer run provenance` 블록을 append 한다 (result.md 는 dual-authored — 아래 note 참조). operator-role AI (Claude Code) 가 `result.md` 본문을 읽고 finding / risk / required change 의 의미를 판단한다.
+이 파일은 `log/review/<review-task-id>/pass-NN/result.md` (또는 perspective 지정 시 `log/review/<review-task-id>/<perspective>/pass-NN/result.md`) 의 형식 기준이다. active reviewer adapter (현재 MVP adapter = codex) 가 `--output-last-message` 로 같은 pass directory 에 result.md 의 verdict/disclosure **body** 를 작성하고, `scripts/review-run.ps1` 가 그 뒤에 `## Reviewer run provenance` 블록을 append 한다 (result.md 는 dual-authored — 아래 note 참조). operator-role AI (Claude Code) 가 `result.md` 본문을 읽고 finding / risk / required change 의 의미를 판단한다.
 
-`<review-task-id>` 는 하나의 Claude Code `/goal` 작업 또는 하나의 review gate 단위이며 Claude Code chat / session id 가 아니다. `pass-NN` 는 같은 review task 의 corrective loop 안에서의 각 Codex review attempt 다.
+`<review-task-id>` 는 하나의 Claude Code `/goal` 작업 또는 하나의 review gate 단위이며 Claude Code chat / session id 가 아니다. `<perspective>` (optional) 는 review viewpoint 를 나타내는 별도 path segment 이며 명시될 때만 layout 에 들어간다 (operator-named, 자동 추론 없음). `pass-NN` 는 같은 review task (perspective 지정 시 같은 perspective) 의 corrective loop 안에서의 각 Codex review attempt 다. result shape (verdict + 4 disclosure H2) 규약은 two-level / three-level 동일하다.
 
 결과는 본 한 파일로 닫힌다. 다른 sidecar 파일은 canonical contract 의 일부가 아니다.
 

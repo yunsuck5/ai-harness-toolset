@@ -233,3 +233,90 @@ Describe 'review-prepare canonical layout' {
         Test-Path -LiteralPath (Join-Path $project 'log/review/task-beta/pass-01/input.md')  -PathType Leaf | Should -BeTrue
     }
 }
+
+Describe 'review-prepare perspective (C1 three-level) layout' {
+    It 'AC-PR-PERSP1: -Perspective local-correctness creates the three-level pass dir and reports the perspective' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-persp1'
+        $taskId  = 'persp-task'
+
+        $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -ExtraArgs @('-Perspective', 'local-correctness')
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'review-prepare: PASS'
+        $r.Output | Should -Match 'perspective: local-correctness'
+        $r.Output | Should -Match 'pass-dir: log/review/persp-task/local-correctness/pass-01'
+
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')) -PathType Leaf | Should -BeTrue
+        # The old two-level pass dir is NOT created when a perspective is given.
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01')) -PathType Container | Should -BeFalse
+    }
+
+    It 'AC-PR-PERSP2: -Perspective system-coherence creates its own perspective subtree' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-persp2'
+        $taskId  = 'persp-task'
+
+        $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -ExtraArgs @('-Perspective', 'system-coherence')
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'perspective: system-coherence'
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/system-coherence/pass-01/input.md')) -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-PR-PERSP3: pass-NN auto-allocation is per-perspective (corrective attempt within a perspective)' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-persp3'
+        $taskId  = 'persp-task'
+
+        $first = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -ExtraArgs @('-Perspective', 'local-correctness')
+        $first.ExitCode | Should -Be 0 -Because $first.Output
+        $first.Output | Should -Match 'pass: pass-01'
+
+        $second = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -ExtraArgs @('-Perspective', 'local-correctness')
+        $second.ExitCode | Should -Be 0 -Because $second.Output
+        $second.Output | Should -Match 'pass: pass-02'
+
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-02/input.md')) -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-PR-PERSP4: a second perspective starts its own pass-01 sequence (perspectives are independent)' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-persp4'
+        $taskId  = 'persp-task'
+
+        # Two passes on local-correctness, then one on system-coherence: the second perspective
+        # must start at pass-01, not continue local-correctness's numbering.
+        $null = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -ExtraArgs @('-Perspective', 'local-correctness')
+        $null = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -ExtraArgs @('-Perspective', 'local-correctness')
+
+        $sc = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -ExtraArgs @('-Perspective', 'system-coherence')
+        $sc.ExitCode | Should -Be 0 -Because $sc.Output
+        $sc.Output | Should -Match 'pass: pass-01'
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/system-coherence/pass-01/input.md')) -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-PR-PERSP5: old two-level and new three-level layouts coexist under the same task' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-persp5'
+        $taskId  = 'coexist-task'
+
+        $old = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $old.ExitCode | Should -Be 0 -Because $old.Output
+        $new = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -ExtraArgs @('-Perspective', 'local-correctness')
+        $new.ExitCode | Should -Be 0 -Because $new.Output
+
+        # Both records exist side by side; no migration, no collision.
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')) -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-PR-PERSP6: invalid perspective values are rejected before any directory is created' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr-persp6'
+        $taskId  = 'persp-task'
+
+        # empty, traversal, separators, pass-NN shape, over-length, invalid char.
+        $bad = @('..', 'foo/bar', 'foo\bar', 'pass-01', ('a' * 65), 'foo bar')
+        foreach ($p in $bad) {
+            $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -ExtraArgs @('-Perspective', $p)
+            $r.ExitCode | Should -Not -Be 0 -Because ("perspective '" + $p + "' must be rejected: " + $r.Output)
+            $r.Output   | Should -Match 'invalid Perspective'
+        }
+        # No task subtree was created by any rejected attempt.
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId)) -PathType Container | Should -BeFalse
+    }
+}

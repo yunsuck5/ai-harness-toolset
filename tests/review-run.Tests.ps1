@@ -228,7 +228,8 @@ BeforeAll {
         param(
             [string] $ProjectRoot,
             [string] $ReviewTaskId,
-            [string] $Pass
+            [string] $Pass,
+            [string] $Perspective
         )
         $procArgs = @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
@@ -241,6 +242,9 @@ BeforeAll {
         )
         if (-not [string]::IsNullOrEmpty($Pass)) {
             $procArgs += @('-Pass', $Pass)
+        }
+        if (-not [string]::IsNullOrEmpty($Perspective)) {
+            $procArgs += @('-Perspective', $Perspective)
         }
         $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
         $exitCode = $proc.ExitCode
@@ -305,7 +309,8 @@ BeforeAll {
             [string] $Model,
             [string] $Effort,
             [string] $EffortCategory,
-            [string] $ToolRoot
+            [string] $ToolRoot,
+            [string] $Perspective
         )
         if ([string]::IsNullOrEmpty($ToolRoot)) { $ToolRoot = $script:RepoRoot }
         $procArgs = @(
@@ -317,6 +322,9 @@ BeforeAll {
             '-ProjectRoot', $ProjectRoot,
             '-ToolRoot', $ToolRoot
         )
+        if (-not [string]::IsNullOrEmpty($Perspective)) {
+            $procArgs += @('-Perspective', $Perspective)
+        }
         if (-not [string]::IsNullOrEmpty($Model)) {
             $procArgs += @('-Model', $Model)
         }
@@ -353,7 +361,8 @@ BeforeAll {
             [string] $ProjectRoot,
             [string] $ReviewTaskId,
             [string] $Pass,
-            [string] $ToolRoot
+            [string] $ToolRoot,
+            [string] $Perspective
         )
         if ([string]::IsNullOrEmpty($ToolRoot)) { $ToolRoot = $script:RepoRoot }
         $procArgs = @(
@@ -365,6 +374,9 @@ BeforeAll {
             '-ToolRoot', $ToolRoot,
             '-RequireResult'
         )
+        if (-not [string]::IsNullOrEmpty($Perspective)) {
+            $procArgs += @('-Perspective', $Perspective)
+        }
         $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
         $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
         return [pscustomobject]@{
@@ -1291,5 +1303,93 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Not -Match 'review-run: PASS'
 
         Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+    }
+}
+
+Describe 'review-run perspective (C1 three-level) layout' {
+    It 'AC-RR-PERSP1: run resolves the three-level pass dir and writes result.md there' {
+        $project = script:New-RunCase -CaseName 'rr-persp1'
+        $taskId  = 'rr-persp-task'
+
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -Perspective 'local-correctness'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr-persp1-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Perspective 'local-correctness'
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'review-run: PASS'
+        $r.Output | Should -Match 'perspective: local-correctness'
+        $r.Output | Should -Match 'verdict: yes'
+
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
+        Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
+        # The reviewer wrote into the three-level pass dir, not the old two-level location.
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+    }
+
+    It 'AC-RR-PERSP2: corrective loop increments pass-NN within a perspective' {
+        $project = script:New-RunCase -CaseName 'rr-persp2'
+        $taskId  = 'rr-persp-task'
+
+        $prep1 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -Perspective 'local-correctness'
+        $prep1.ExitCode | Should -Be 0 -Because $prep1.Output
+        script:Set-InputFilled -InputPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md'))
+
+        $stubNo = script:Write-CodexStub -StubName 'rr-persp2-no' -Mode 'verdict-no'
+        $r1 = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stubNo -Perspective 'local-correctness'
+        $r1.ExitCode | Should -Be 0 -Because $r1.Output
+        $r1.Output | Should -Match 'verdict: no'
+
+        # Allocate the next pass under the SAME perspective (per-perspective auto-allocation).
+        $prep2 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Perspective 'local-correctness'
+        $prep2.ExitCode | Should -Be 0 -Because $prep2.Output
+        $prep2.Output | Should -Match 'pass: pass-02'
+        script:Set-InputFilled -InputPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-02/input.md'))
+
+        $stubYes = script:Write-CodexStub -StubName 'rr-persp2-yes' -Mode 'verdict-yes'
+        $r2 = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-02' -StubPath $stubYes -Perspective 'local-correctness'
+        $r2.ExitCode | Should -Be 0 -Because $r2.Output
+        $r2.Output | Should -Match 'verdict: yes'
+
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-02/result.md')) -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-RR-PERSP3: review-verify -RequireResult passes on a three-level pass' {
+        $project = script:New-RunCase -CaseName 'rr-persp3'
+        $taskId  = 'rr-persp-task'
+
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -Perspective 'system-coherence'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        script:Set-InputFilled -InputPath (Join-Path $project ('log/review/' + $taskId + '/system-coherence/pass-01/input.md'))
+
+        $stub = script:Write-CodexStub -StubName 'rr-persp3-full' -Mode 'verdict-yes-full'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Perspective 'system-coherence'
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -Perspective 'system-coherence'
+        $v.ExitCode | Should -Be 0 -Because $v.Output
+        $v.Output | Should -Match 'perspective: system-coherence'
+        $v.Output | Should -Match 'result\.md verdict shape valid \(verdict=yes\)'
+        $v.Output | Should -Match 'disclosure sections present'
+    }
+
+    It 'AC-RR-PERSP4: invalid perspective is rejected before Codex (no result.md)' {
+        $project = script:New-RunCase -CaseName 'rr-persp4'
+        $taskId  = 'rr-persp-task'
+
+        # Prepare a real old-layout pass so a pass dir exists; the run still must reject the
+        # bad perspective before invoking Codex (validation precedes pass-dir resolution).
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        script:Set-InputFilled -InputPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md'))
+
+        $stub = script:Write-CodexStub -StubName 'rr-persp4-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Perspective 'pass-02'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'invalid Perspective'
     }
 }

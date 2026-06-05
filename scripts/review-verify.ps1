@@ -4,6 +4,12 @@ param(
 
     [string] $Pass,
 
+    # Optional review viewpoint (C1 three-level layout). Omitted -> verify the historical
+    # two-level pass dir log/review/<task>/pass-NN/. Supplied -> verify the three-level
+    # pass dir log/review/<task>/<perspective>/pass-NN/. The operator names the layout
+    # explicitly (no inference); the result-shape gates are unchanged either way.
+    [string] $Perspective,
+
     [string] $ProjectRoot,
     [string] $ToolRoot,
 
@@ -113,6 +119,16 @@ catch {
     exit 1
 }
 
+if (-not [string]::IsNullOrEmpty($Perspective)) {
+    try {
+        [void] (Assert-ValidPerspective -Value $Perspective)
+    }
+    catch {
+        Write-Host ('review-verify: FAIL invalid Perspective: {0}' -f $Perspective)
+        exit 1
+    }
+}
+
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 $logRoot = Get-ProjectLogRoot -ProjectRoot $project
 
@@ -126,7 +142,7 @@ catch {
     exit 1
 }
 
-$passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Pass $Pass
+$passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Pass $Pass -Perspective $Perspective
 try {
     [void] (Assert-InReviewRoot -Path $passDir -ProjectLogRoot $logRoot)
 }
@@ -193,6 +209,9 @@ else {
 $relPass = (Resolve-ProjectRelativePath -Path $passDir -ProjectRoot $project) -replace '\\', '/'
 Write-Host ('review-verify: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
+if (-not [string]::IsNullOrEmpty($Perspective)) {
+    Write-Host ('perspective: {0}' -f $Perspective)
+}
 Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('pass-dir: {0}' -f $relPass)
 exit 0

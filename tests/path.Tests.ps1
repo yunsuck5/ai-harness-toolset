@@ -423,3 +423,136 @@ Describe 'Get-ProjectRoot D9 CWD advisory' {
         $flat | Should -Not -Match 'Get-ProjectRoot: WARN'
     }
 }
+
+Describe 'Test-ValidPerspective (C1 perspective segment validation)' {
+    BeforeEach { script:Clear-EnvToolRoot }
+
+    It 'AC-PERSP-1: accepts the recommended perspective vocabulary' {
+        Test-ValidPerspective -Value 'local-correctness' | Should -BeTrue
+        Test-ValidPerspective -Value 'system-coherence' | Should -BeTrue
+    }
+
+    It 'AC-PERSP-2: accepts other safe single-segment names up to 64 chars' {
+        Test-ValidPerspective -Value 'a'            | Should -BeTrue
+        Test-ValidPerspective -Value 'review_1.2-x' | Should -BeTrue
+        Test-ValidPerspective -Value ('a' * 64)     | Should -BeTrue
+    }
+
+    It 'AC-PERSP-3: rejects empty / null' {
+        Test-ValidPerspective -Value ''    | Should -BeFalse
+        Test-ValidPerspective -Value $null | Should -BeFalse
+    }
+
+    It 'AC-PERSP-4: rejects parent-dir traversal token' {
+        Test-ValidPerspective -Value '..'        | Should -BeFalse
+        Test-ValidPerspective -Value 'foo..bar'  | Should -BeFalse
+        Test-ValidPerspective -Value '..\escape' | Should -BeFalse
+    }
+
+    It 'AC-PERSP-5: rejects path separators (forward and back slash)' {
+        Test-ValidPerspective -Value 'foo/bar' | Should -BeFalse
+        Test-ValidPerspective -Value 'foo\bar' | Should -BeFalse
+        Test-ValidPerspective -Value '/abs'    | Should -BeFalse
+    }
+
+    It 'AC-PERSP-6: rejects the pass-NN shape (old/new ambiguity guard), case-insensitively' {
+        Test-ValidPerspective -Value 'pass-01' | Should -BeFalse
+        Test-ValidPerspective -Value 'pass-99' | Should -BeFalse
+        Test-ValidPerspective -Value 'PASS-01' | Should -BeFalse
+        Test-ValidPerspective -Value 'Pass-07' | Should -BeFalse
+    }
+
+    It 'AC-PERSP-6b: still allows pass-prefixed names that are not the two-digit pass shape' {
+        Test-ValidPerspective -Value 'pass-review' | Should -BeTrue
+        Test-ValidPerspective -Value 'pass-1'      | Should -BeTrue
+        Test-ValidPerspective -Value 'passing'     | Should -BeTrue
+    }
+
+    It 'AC-PERSP-7: rejects over-length (> 64 chars)' {
+        Test-ValidPerspective -Value ('a' * 65) | Should -BeFalse
+    }
+
+    It 'AC-PERSP-8: rejects invalid characters and a non-alphanumeric leading char' {
+        Test-ValidPerspective -Value 'foo bar'  | Should -BeFalse
+        Test-ValidPerspective -Value 'foo@bar'  | Should -BeFalse
+        Test-ValidPerspective -Value '-leading' | Should -BeFalse
+        Test-ValidPerspective -Value '.hidden'  | Should -BeFalse
+    }
+
+    It 'AC-PERSP-9: Assert-ValidPerspective throws on invalid, returns true on valid' {
+        { Assert-ValidPerspective -Value '..' }      | Should -Throw
+        { Assert-ValidPerspective -Value 'pass-01' } | Should -Throw
+        Assert-ValidPerspective -Value 'local-correctness' | Should -BeTrue
+    }
+}
+
+Describe 'Get-ReviewPassDir / Get-ReviewPassParent perspective-aware layout' {
+    BeforeEach { script:Clear-EnvToolRoot }
+
+    It 'AC-PERSP-PD1: omitted perspective produces the old two-level pass dir' {
+        $logRoot = script:New-CaseDir -Name 'persp-pd1'
+        $passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01'
+        $expected = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/pass-01'))
+        $passDir | Should -Be $expected
+    }
+
+    It 'AC-PERSP-PD2: supplied perspective inserts a middle perspective segment (three-level)' {
+        $logRoot = script:New-CaseDir -Name 'persp-pd2'
+        $passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' -Perspective 'local-correctness'
+        $expected = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/local-correctness/pass-01'))
+        $passDir | Should -Be $expected
+    }
+
+    It 'AC-PERSP-PD3: Get-ReviewPassParent returns task dir (old) or task-plus-perspective (new)' {
+        $logRoot = script:New-CaseDir -Name 'persp-pd3'
+        $old = Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId 'task-x'
+        $old | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x')))
+        $new = Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Perspective 'system-coherence'
+        $new | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/system-coherence')))
+    }
+
+    It 'AC-PERSP-PD4: invalid perspective is rejected before any path is built' {
+        $logRoot = script:New-CaseDir -Name 'persp-pd4'
+        { Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' -Perspective '..' }      | Should -Throw
+        { Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' -Perspective 'a/b' }     | Should -Throw
+        { Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' -Perspective 'pass-02' } | Should -Throw
+    }
+
+    It 'AC-PERSP-PD5: an empty perspective is treated as omitted (two-level), not as an invalid value' {
+        # The scripts pass [string] $Perspective, which is '' when not supplied. Empty must mean
+        # "no perspective" (two-level default), distinct from a non-empty value that fails validation.
+        # This is the intentional "empty = omitted" behavior the entrypoints rely on.
+        $logRoot = script:New-CaseDir -Name 'persp-pd5'
+        $expectedTask = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x'))
+        Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Perspective ''     | Should -Be $expectedTask
+        $expectedOldPass = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/pass-01'))
+        Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' -Perspective '' | Should -Be $expectedOldPass
+    }
+}
+
+Describe 'Assert-InTaskRoot task-root containment' {
+    BeforeEach { script:Clear-EnvToolRoot }
+
+    It 'AC-PERSP-TR1: accepts a pass dir under the intended task root (old and new layout)' {
+        $logRoot = script:New-CaseDir -Name 'persp-tr1'
+        $old = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/pass-01'))
+        Assert-InTaskRoot -Path $old -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' | Should -BeTrue
+        $new = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/local-correctness/pass-01'))
+        Assert-InTaskRoot -Path $new -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' | Should -BeTrue
+    }
+
+    It 'AC-PERSP-TR2: rejects a path inside review-root but in a DIFFERENT task (cross-task traversal)' {
+        $logRoot = script:New-CaseDir -Name 'persp-tr2'
+        # This path is under <logRoot>/review/ (passes review-root containment) but lives under a
+        # sibling task, not task-x. Review-root prefix alone would accept it; task-root must reject —
+        # this is exactly the gap the plan flags (review-root containment necessary, not sufficient).
+        $sibling = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/other-task/pass-01'))
+        { Assert-InTaskRoot -Path $sibling -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' } | Should -Throw
+    }
+
+    It 'AC-PERSP-TR3: rejects a task-name prefix sibling (task-x-evil is not under task-x)' {
+        $logRoot = script:New-CaseDir -Name 'persp-tr3'
+        $prefix = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x-evil/pass-01'))
+        { Assert-InTaskRoot -Path $prefix -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' } | Should -Throw
+    }
+}

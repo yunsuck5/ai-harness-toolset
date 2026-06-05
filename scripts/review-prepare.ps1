@@ -4,6 +4,12 @@ param(
 
     [string] $Pass,
 
+    # Optional review viewpoint (C1 three-level layout). Omitted -> the historical
+    # two-level layout log/review/<task>/pass-NN/. Supplied -> the three-level layout
+    # log/review/<task>/<perspective>/pass-NN/. The operator names the perspective
+    # explicitly; there is no automatic inference.
+    [string] $Perspective,
+
     [ValidateSet('design', 'implementation', 'test', 'review', 'release')]
     [string] $Stage,
 
@@ -44,11 +50,25 @@ catch {
     exit 1
 }
 
+if (-not [string]::IsNullOrEmpty($Perspective)) {
+    try {
+        [void] (Assert-ValidPerspective -Value $Perspective)
+    }
+    catch {
+        Write-Host ('review-prepare: FAIL invalid Perspective: {0}' -f $Perspective)
+        exit 1
+    }
+}
+
 $taskDir = Get-ReviewTaskRoot -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId
 [void] (Assert-InReviewRoot -Path $taskDir -ProjectLogRoot $logRoot)
 
+# Pass parent = task dir (old two-level) or <taskDir>/<perspective> (new three-level).
+# Get-NextPassName scans this parent, so pass-NN auto-allocation is per-perspective.
+$passParent = Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Perspective $Perspective
+
 if ([string]::IsNullOrEmpty($Pass)) {
-    $Pass = Get-NextPassName -TaskDir $taskDir
+    $Pass = Get-NextPassName -TaskDir $passParent
 }
 
 try {
@@ -59,7 +79,7 @@ catch {
     exit 1
 }
 
-$passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Pass $Pass
+$passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Pass $Pass -Perspective $Perspective
 [void] (Assert-InReviewRoot -Path $passDir -ProjectLogRoot $logRoot)
 
 if (Test-Path -LiteralPath $passDir -PathType Container) {
@@ -84,6 +104,9 @@ $relInput = (Resolve-ProjectRelativePath -Path $inputPath -ProjectRoot $project)
 
 Write-Host ('review-prepare: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
+if (-not [string]::IsNullOrEmpty($Perspective)) {
+    Write-Host ('perspective: {0}' -f $Perspective)
+}
 Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('stage: {0}' -f $Stage)
 Write-Host ('purpose: {0}' -f $Purpose)

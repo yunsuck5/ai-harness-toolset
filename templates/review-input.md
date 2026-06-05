@@ -1,8 +1,10 @@
 # Review Input
 
-이 파일은 `log/review/<review-task-id>/pass-NN/input.md` 의 형식 기준이다. Claude Code (operator-role AI) 가 본 template 을 기반으로 한 pass directory 의 `input.md` 본문을 직접 작성한다. Codex reviewer 는 결과로 같은 pass directory 의 `result.md` 한 파일만 생성한다.
+이 파일은 `log/review/<review-task-id>/pass-NN/input.md` (또는 perspective 지정 시 `log/review/<review-task-id>/<perspective>/pass-NN/input.md`) 의 형식 기준이다. Claude Code (operator-role AI) 가 본 template 을 기반으로 한 pass directory 의 `input.md` 본문을 직접 작성한다. Codex reviewer 는 결과로 같은 pass directory 의 `result.md` 한 파일만 생성한다.
 
 `<review-task-id>` 는 하나의 Claude Code `/goal` 작업 또는 하나의 review gate 단위다. Claude Code chat / session id 가 아니다. 한 세션 안에서 서로 다른 주제의 `/goal` 이 여러 개 진행되면 각각 별도의 `<review-task-id>` 디렉터리를 사용한다. `pass-NN` (예: `pass-01`, `pass-02`) 는 같은 review task 안에서의 corrective loop 의 각 Codex review attempt 다. 각 pass directory 는 write-once 다 — input / result 가 stale 또는 부적절하면 새 pass 를 만들고, 기존 pass 의 파일을 손으로 보정해 review 를 닫지 않는다.
+
+review artifact layout 은 optional 한 perspective segment 를 갖는다. review viewpoint (예: `local-correctness` / `system-coherence`) 를 분리해 표기하려면 `review-prepare.ps1` / `review-run.ps1` / `review-verify.ps1` 호출 시 `-Perspective <viewpoint>` 를 명시한다 — 이때 layout 이 `log/review/<review-task-id>/<perspective>/pass-NN/` (three-level) 가 되어 작업 식별자 / perspective / corrective attempt 가 각각 별도 path segment 로 분리된다. perspective 를 명시하지 않으면 기존 two-level `log/review/<review-task-id>/pass-NN/` 가 default 다. perspective 는 operator 가 명시하며 자동 추론하지 않고, single path segment (`..` / `/` / `\` / `pass-NN` 형태 금지, safe charset/length) 여야 한다. perspective 가 명시되면 `pass-NN` 은 그 perspective 안의 corrective attempt 다 (perspective 마다 자기 pass 시퀀스). 본 perspective 는 effort / model / category 와 마찬가지로 **review-run invocation 선택이지 input.md 의 required section 이 아니다** — 다만 artifact 안에 viewpoint 를 같이 기록하고 싶으면 아래 optional `## Review perspective` informational section 에 적을 수 있다 (parser 강제 없음). 정책 source-of-truth: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §1.
 
 본 template 의 `{{AI_TO_FILL_*}}` placeholder 는 모두 AI 가 실제 내용으로 교체해야 한다. unfilled active placeholder 가 남아 있으면 `scripts/review-input-verify.ps1` 의 `\{\{AI_TO_FILL_[A-Za-z0-9_]+\}\}` regex 가 거부한다. 본 verifier 는 `AI_TO_FILL_` prefix 의 active placeholder 만 검사하므로, 본문에 generic `{{TOKEN}}` 형태 (예: `{{REAL}}`, `{{example}}`) 는 documentation literal 로 자유롭게 인용할 수 있다.
 
@@ -29,6 +31,10 @@ informational sections (`## Stage` / `## Purpose` / `## Target files` / `## Vali
 ## Purpose
 
 {{AI_TO_FILL_PURPOSE}}
+
+## Review perspective
+
+(optional) `-Perspective <viewpoint>` 로 three-level layout (`log/review/<review-task-id>/<perspective>/pass-NN/`) 을 사용한 경우, 그 viewpoint (예: `local-correctness` / `system-coherence`) 를 여기에 적어 input.md 가 자기 layout 을 self-document 하게 한다. perspective 를 쓰지 않은 two-level review 에서는 `N/A — two-level layout (no perspective).` 로 둔다. 본 section 은 informational 이며 `scripts/review-input-verify.ps1` 의 shape gate 대상이 아니다 (parser 강제 없음; active placeholder 도 두지 않는다).
 
 ## Target files
 
