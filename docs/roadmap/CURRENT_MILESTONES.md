@@ -11,6 +11,6 @@ The post-MVP **remaining-order** milestones, carried 1:1 from `docs/decisions/PO
 | 3 | Install/update implementation (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §3–§5) | partial-progress closeout; deferred remainder open | STATUS IU-11; DEFERRED IU-D-01/02/03; `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` §13 |
 | 4 | Install/update validation (Tier A / Tier B) | done — closed | STATUS IU-12; `docs/decisions/POST_MVP_PLAN.md` §11.1 |
 | 5 | `ai-harness-toolset` self-adoption (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9) | done — closed (resolved HEAD `8293878d`, apply 2026-05-25) | STATUS completed-ledger IU-13 |
-| 6 | Post-MVP closeout decision | deferred | DEFERRED IU-D-05 |
+| 6 | Post-MVP closeout decision | done — closed | `docs/decisions/DECISIONS.md` "Post-MVP closeout" block; `docs/decisions/POST_MVP_PLAN.md` §11 step 6; DEFERRED IU-D-05 (Resolved) |
 
 Operations backlog track (open items consolidated in `docs/systems/install-update/BACKLOG.md`) runs parallel to this numbered order; its items support step 2 / step 5.
