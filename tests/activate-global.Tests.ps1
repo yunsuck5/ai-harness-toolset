@@ -299,8 +299,12 @@ Describe 'activate-global does not touch real %USERPROFILE%' {
     }
 }
 
-Describe 'activate-global 3-surface coverage (Phase 4a)' {
-    It 'AC-AG-3SURFACE-DRYRUN: Scope All dry-run lists all three verified surfaces (incl. the skill mirror)' {
+Describe 'activate-global all-surface coverage (Phase 4a)' {
+    # The real repo payload enumerates two managed blocks + one canonical-overwrite mirror per source
+    # skill under snippets/claude-skills/*. As of Batch 2C-1 there are two source skills
+    # (ai-harness-review + ai-harness-brief), so the concrete surface count is 4. The test ID stays
+    # AC-AG-3SURFACE-DRYRUN for identifier continuity; the asserted count tracks the real payload.
+    It 'AC-AG-3SURFACE-DRYRUN: Scope All dry-run lists all four verified surfaces (both skill mirrors)' {
         $dir = script:New-CaseDir -CaseName '3surface'
         $ch  = Join-Path $dir '.claude'
         $cx  = Join-Path $dir '.codex'
@@ -309,12 +313,14 @@ Describe 'activate-global 3-surface coverage (Phase 4a)' {
 
         $result = script:Invoke-Activate -Scope 'All' -ClaudeHome $ch -CodexHome $cx
         $result.ExitCode | Should -Be 0 -Because $result.Output
-        $result.Output | Should -Match 'surfaces=3'
+        $result.Output | Should -Match 'surfaces=4'
         $result.Output | Should -Match 'claude-user-global-managed-block'
         $result.Output | Should -Match 'codex-user-global-managed-block'
         $result.Output | Should -Match 'skill-mirror:ai-harness-review'
-        # The skill destination does not exist in the temp home, so its preview action is create.
+        $result.Output | Should -Match 'skill-mirror:ai-harness-brief'
+        # The skill destinations do not exist in the temp home, so their preview action is create.
         $result.Output | Should -Match 'skill-mirror:ai-harness-review.*action=would-create'
+        $result.Output | Should -Match 'skill-mirror:ai-harness-brief.*action=would-create'
         $result.Output | Should -Match 'activationStatus=preview'
         $result.Output | Should -Match 'activate-global: PASS'
     }

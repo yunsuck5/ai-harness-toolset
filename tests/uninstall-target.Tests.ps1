@@ -46,7 +46,9 @@ BeforeAll {
     function script:New-ExpectedInstallRoot {
         # install root with the full expected footprint (no source-cache/log unless asked). The OWNED
         # skill inventory lives under current/snippets/claude-skills/<name>/SKILL.md — this is what
-        # uninstall enumerates to know which skill dirs it owns; default = the single shipped review skill.
+        # uninstall enumerates to know which skill dirs it owns; the default seeds one skill (ai-harness-review)
+        # to exercise the single-owned-skill enumeration path — the real repo now ships more than one, and
+        # multi-skill cases pass -Skills explicitly.
         param([string] $Area, [string] $ManagedBy = 'claude-code', [switch] $WithSourceCache, [switch] $WithLog, [string[]] $Skills = @('ai-harness-review'))
         $null = script:New-Dir (Join-Path $Area 'current')
         $null = script:New-Dir (Join-Path $Area 'current/scripts')

@@ -45,6 +45,7 @@
 현재 source repo 에 존재하는 skill 자산.
 
 - `snippets/claude-skills/ai-harness-review/SKILL.md`
+- `snippets/claude-skills/ai-harness-brief/SKILL.md` (Batch 2C-1 skeleton — source 에 존재하므로 lifecycle mirror·verify 대상이지만, snippet routing / 절차 본문 이전은 아직 Batch 2C-2)
 
 추가 skill 이 source repo 에 도입되는 경우 본 문서의 동일 절차가 동일하게 적용된다. 각 skill 의 자산은 자체 디렉터리로 격리된다 (`<skill-name>/` 단위).
 
