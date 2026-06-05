@@ -4,10 +4,11 @@ param(
 
     [string] $Pass,
 
-    # Optional review viewpoint (C1 three-level layout). Omitted -> verify the historical
-    # two-level pass dir log/review/<task>/pass-NN/. Supplied -> verify the three-level
-    # pass dir log/review/<task>/<perspective>/pass-NN/. The operator names the layout
-    # explicitly (no inference); the result-shape gates are unchanged either way.
+    # Required review viewpoint (strict C1 canonical layout). Verifies the three-level pass
+    # dir log/review/<review-task-id>/<perspective>/pass-NN/. There is no two-level fallback
+    # and no inference; empty / missing fails fast. Old two-level artifacts from before strict
+    # C1 are legacy runtime records — read them manually, not via this tool. The result-shape
+    # gates are unchanged.
     [string] $Perspective,
 
     [string] $ProjectRoot,
@@ -25,6 +26,10 @@ if ([string]::IsNullOrEmpty($ReviewTaskId)) {
 }
 if ([string]::IsNullOrEmpty($Pass)) {
     Write-Host 'review-verify: FAIL -Pass is required (e.g., pass-01).'
+    exit 1
+}
+if ([string]::IsNullOrEmpty($Perspective)) {
+    Write-Host 'review-verify: FAIL -Perspective is required. The canonical review artifact layout is log/review/<review-task-id>/<perspective>/pass-NN/; there is no two-level fallback. Pass the same -Perspective used at review-prepare. (Old two-level artifacts from before strict C1 are legacy runtime records — read them manually.)'
     exit 1
 }
 
@@ -119,14 +124,12 @@ catch {
     exit 1
 }
 
-if (-not [string]::IsNullOrEmpty($Perspective)) {
-    try {
-        [void] (Assert-ValidPerspective -Value $Perspective)
-    }
-    catch {
-        Write-Host ('review-verify: FAIL invalid Perspective: {0}' -f $Perspective)
-        exit 1
-    }
+try {
+    [void] (Assert-ValidPerspective -Value $Perspective)
+}
+catch {
+    Write-Host ('review-verify: FAIL invalid Perspective: {0}' -f $Perspective)
+    exit 1
 }
 
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
@@ -209,9 +212,7 @@ else {
 $relPass = (Resolve-ProjectRelativePath -Path $passDir -ProjectRoot $project) -replace '\\', '/'
 Write-Host ('review-verify: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
-if (-not [string]::IsNullOrEmpty($Perspective)) {
-    Write-Host ('perspective: {0}' -f $Perspective)
-}
+Write-Host ('perspective: {0}' -f $Perspective)
 Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('pass-dir: {0}' -f $relPass)
 exit 0

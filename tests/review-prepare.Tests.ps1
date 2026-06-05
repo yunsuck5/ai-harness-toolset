@@ -22,6 +22,11 @@ BeforeAll {
             [string] $Pass,
             [string] $Stage = 'implementation',
             [string] $Purpose = 'pester prepare',
+            # Strict C1: -Perspective is required, so the helper injects a default
+            # ('local-correctness') for tests that do not care about the viewpoint, unless the
+            # caller already supplies one via -ExtraArgs or asks to omit it with -OmitPerspective.
+            [string] $Perspective = 'local-correctness',
+            [switch] $OmitPerspective,
             [string[]] $ExtraArgs
         )
         $procArgs = @(
@@ -36,6 +41,10 @@ BeforeAll {
         )
         if (-not [string]::IsNullOrEmpty($Pass)) {
             $procArgs += @('-Pass', $Pass)
+        }
+        $extraHasPerspective = ($null -ne $ExtraArgs) -and ($ExtraArgs -contains '-Perspective')
+        if ((-not $OmitPerspective) -and (-not $extraHasPerspective)) {
+            $procArgs += @('-Perspective', $Perspective)
         }
         if ($null -ne $ExtraArgs -and $ExtraArgs.Count -gt 0) {
             $procArgs += $ExtraArgs
@@ -78,8 +87,9 @@ Describe 'review-prepare canonical layout' {
         $r.Output | Should -Match 'review-prepare: PASS'
         $r.Output | Should -Match ('review-task-id: ' + [regex]::Escape($taskId))
         $r.Output | Should -Match 'pass: pass-01'
+        $r.Output | Should -Match 'perspective: local-correctness'
 
-        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
         Test-Path -LiteralPath $passDir -PathType Container | Should -BeTrue
 
         $inputPath = Join-Path $passDir 'input.md'
@@ -105,8 +115,8 @@ Describe 'review-prepare canonical layout' {
         $second.ExitCode | Should -Be 0 -Because $second.Output
         $second.Output | Should -Match 'pass: pass-02'
 
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')) -PathType Leaf | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-02/input.md')) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-02/input.md')) -PathType Leaf | Should -BeTrue
     }
 
     It 'AC-PR3: pass-NN write-once — re-running with the same -Pass fails and preserves prior pass body' {
@@ -116,7 +126,7 @@ Describe 'review-prepare canonical layout' {
         $first = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $first.ExitCode | Should -Be 0 -Because $first.Output
 
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
 
         # Operator hand-edits input.md after seeding (this is the normal authoring step).
@@ -209,7 +219,7 @@ Describe 'review-prepare canonical layout' {
         $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $r.ExitCode | Should -Be 0 -Because $r.Output
 
-        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
         Test-Path -LiteralPath (Join-Path $passDir 'input.md')          -PathType Leaf | Should -BeTrue
         Test-Path -LiteralPath (Join-Path $passDir 'meta.json')         -PathType Leaf | Should -BeFalse
         Test-Path -LiteralPath (Join-Path $passDir 'target-files.list') -PathType Leaf | Should -BeFalse
@@ -229,8 +239,20 @@ Describe 'review-prepare canonical layout' {
         $b = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId 'task-beta' -Pass 'pass-01'
         $b.ExitCode | Should -Be 0 -Because $b.Output
 
-        Test-Path -LiteralPath (Join-Path $project 'log/review/task-alpha/pass-01/input.md') -PathType Leaf | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path $project 'log/review/task-beta/pass-01/input.md')  -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project 'log/review/task-alpha/local-correctness/pass-01/input.md') -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project 'log/review/task-beta/local-correctness/pass-01/input.md')  -PathType Leaf | Should -BeTrue
+    }
+
+    It 'AC-PR10: prepare without -Perspective fails fast (strict C1 — required) before any directory is created' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr10'
+        $taskId  = 'no-perspective-task'
+
+        $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -OmitPerspective
+        $r.ExitCode | Should -Not -Be 0 -Because $r.Output
+        $r.Output | Should -Match '-Perspective is required'
+
+        # No task subtree created.
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId)) -PathType Container | Should -BeFalse
     }
 }
 
@@ -246,7 +268,7 @@ Describe 'review-prepare perspective (C1 three-level) layout' {
         $r.Output | Should -Match 'pass-dir: log/review/persp-task/local-correctness/pass-01'
 
         Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')) -PathType Leaf | Should -BeTrue
-        # The old two-level pass dir is NOT created when a perspective is given.
+        # Strict C1: no stray two-level pass dir is ever created directly under the task dir.
         Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01')) -PathType Container | Should -BeFalse
     }
 
@@ -289,20 +311,6 @@ Describe 'review-prepare perspective (C1 three-level) layout' {
         $sc.ExitCode | Should -Be 0 -Because $sc.Output
         $sc.Output | Should -Match 'pass: pass-01'
         Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/system-coherence/pass-01/input.md')) -PathType Leaf | Should -BeTrue
-    }
-
-    It 'AC-PR-PERSP5: old two-level and new three-level layouts coexist under the same task' {
-        $project = script:New-PrepareCaseRoot -CaseName 'pr-persp5'
-        $taskId  = 'coexist-task'
-
-        $old = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
-        $old.ExitCode | Should -Be 0 -Because $old.Output
-        $new = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -ExtraArgs @('-Perspective', 'local-correctness')
-        $new.ExitCode | Should -Be 0 -Because $new.Output
-
-        # Both records exist side by side; no migration, no collision.
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')) -PathType Leaf | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')) -PathType Leaf | Should -BeTrue
     }
 
     It 'AC-PR-PERSP6: invalid perspective values are rejected before any directory is created' {

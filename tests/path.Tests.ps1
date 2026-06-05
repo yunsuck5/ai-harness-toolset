@@ -489,11 +489,13 @@ Describe 'Test-ValidPerspective (C1 perspective segment validation)' {
 Describe 'Get-ReviewPassDir / Get-ReviewPassParent perspective-aware layout' {
     BeforeEach { script:Clear-EnvToolRoot }
 
-    It 'AC-PERSP-PD1: omitted perspective produces the old two-level pass dir' {
+    It 'AC-PERSP-PD1: omitted / empty perspective fails (strict C1 — no two-level fallback)' {
         $logRoot = script:New-CaseDir -Name 'persp-pd1'
-        $passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01'
-        $expected = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/pass-01'))
-        $passDir | Should -Be $expected
+        # Strict C1: the canonical layout is always three-level. Get-ReviewPassDir requires a
+        # perspective; omitting it (empty string) fails validation rather than producing a
+        # two-level path.
+        { Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' }                 | Should -Throw
+        { Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' -Perspective '' } | Should -Throw
     }
 
     It 'AC-PERSP-PD2: supplied perspective inserts a middle perspective segment (three-level)' {
@@ -503,10 +505,9 @@ Describe 'Get-ReviewPassDir / Get-ReviewPassParent perspective-aware layout' {
         $passDir | Should -Be $expected
     }
 
-    It 'AC-PERSP-PD3: Get-ReviewPassParent returns task dir (old) or task-plus-perspective (new)' {
+    It 'AC-PERSP-PD3: Get-ReviewPassParent requires a perspective and returns task-plus-perspective' {
         $logRoot = script:New-CaseDir -Name 'persp-pd3'
-        $old = Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId 'task-x'
-        $old | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x')))
+        { Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Perspective '' } | Should -Throw
         $new = Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Perspective 'system-coherence'
         $new | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/system-coherence')))
     }
@@ -518,25 +519,26 @@ Describe 'Get-ReviewPassDir / Get-ReviewPassParent perspective-aware layout' {
         { Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' -Perspective 'pass-02' } | Should -Throw
     }
 
-    It 'AC-PERSP-PD5: an empty perspective is treated as omitted (two-level), not as an invalid value' {
-        # The scripts pass [string] $Perspective, which is '' when not supplied. Empty must mean
-        # "no perspective" (two-level default), distinct from a non-empty value that fails validation.
-        # This is the intentional "empty = omitted" behavior the entrypoints rely on.
+    It 'AC-PERSP-PD5: an empty perspective fails (strict C1 removed the empty-as-omitted fallback)' {
+        # Strict C1 removed empty-as-omitted: an empty perspective is rejected, never silently
+        # resolved to the task dir / a two-level path.
         $logRoot = script:New-CaseDir -Name 'persp-pd5'
-        $expectedTask = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x'))
-        Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Perspective ''     | Should -Be $expectedTask
-        $expectedOldPass = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/pass-01'))
-        Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' -Perspective '' | Should -Be $expectedOldPass
+        { Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Perspective '' }              | Should -Throw
+        { Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' -Pass 'pass-01' -Perspective '' } | Should -Throw
     }
 }
 
 Describe 'Assert-InTaskRoot task-root containment' {
     BeforeEach { script:Clear-EnvToolRoot }
 
-    It 'AC-PERSP-TR1: accepts a pass dir under the intended task root (old and new layout)' {
+    It 'AC-PERSP-TR1: accepts a pass dir under the intended task root (perspective child; legacy direct child)' {
         $logRoot = script:New-CaseDir -Name 'persp-tr1'
-        $old = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/pass-01'))
-        Assert-InTaskRoot -Path $old -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' | Should -BeTrue
+        # Assert-InTaskRoot is a layout-agnostic containment check: any path under <taskDir>/ is
+        # accepted — the canonical perspective child, and also a legacy direct child (such a path
+        # is no longer tool-created under strict C1, but containment itself does not depend on the
+        # perspective segment).
+        $direct = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/pass-01'))
+        Assert-InTaskRoot -Path $direct -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' | Should -BeTrue
         $new = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x/local-correctness/pass-01'))
         Assert-InTaskRoot -Path $new -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' | Should -BeTrue
     }

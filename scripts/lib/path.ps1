@@ -346,20 +346,18 @@ function Get-ReviewPassParent {
         [string] $ProjectLogRoot,
         [Parameter(Mandatory = $true)]
         [string] $ReviewTaskId,
-        # Optional review viewpoint. Empty -> old two-level parent is the task dir.
-        # Non-empty -> new three-level parent is <taskDir>/<perspective>.
+        # Required review viewpoint (strict C1 — there is no two-level fallback). Empty /
+        # missing is rejected here (Assert-ValidPerspective rejects empty), never silently
+        # resolved to the task dir.
         [string] $Perspective
     )
 
-    # The directory that directly holds pass-NN children for this (task[, perspective]).
-    # In the old two-level layout this is the task dir; in the C1 three-level layout it is
-    # <taskDir>/<perspective>. Get-NextPassName scans this dir, so it is perspective-aware
-    # purely by being given the right parent (no inference here — perspective is explicit).
-    $taskDir = Get-ReviewTaskRoot -ProjectLogRoot $ProjectLogRoot -ReviewTaskId $ReviewTaskId
-    if ([string]::IsNullOrEmpty($Perspective)) {
-        return $taskDir
-    }
+    # The directory that directly holds pass-NN children for this (task, perspective):
+    # <taskDir>/<perspective>. There is no two-level (task-dir-direct) form — the canonical
+    # layout is always three-level. Get-NextPassName scans this dir, so pass numbering is
+    # per-perspective. operator-supplied perspective is validated; no inference here.
     [void] (Assert-ValidPerspective -Value $Perspective)
+    $taskDir = Get-ReviewTaskRoot -ProjectLogRoot $ProjectLogRoot -ReviewTaskId $ReviewTaskId
     $perspectiveDir = Join-Path -Path $taskDir -ChildPath $Perspective
     return [System.IO.Path]::GetFullPath($perspectiveDir)
 }
@@ -373,10 +371,9 @@ function Get-ReviewPassDir {
         [string] $ReviewTaskId,
         [Parameter(Mandatory = $true)]
         [string] $Pass,
-        # Optional review viewpoint. When supplied, a middle <perspective> segment is
-        # inserted: <taskDir>/<perspective>/<pass> (C1 three-level layout). When omitted
-        # or empty, the historical two-level <taskDir>/<pass> layout is produced
-        # (backward compatible; this is today's default behavior).
+        # Required review viewpoint. The pass dir is always the three-level canonical layout
+        # <taskDir>/<perspective>/<pass>. Empty / missing perspective fails fast (via
+        # Get-ReviewPassParent -> Assert-ValidPerspective); there is no two-level fallback.
         [string] $Perspective
     )
 

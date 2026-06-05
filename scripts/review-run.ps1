@@ -4,9 +4,9 @@ param(
 
     [string] $Pass,
 
-    # Optional review viewpoint (C1 three-level layout). Omitted -> resolve the historical
-    # two-level pass dir log/review/<task>/pass-NN/. Supplied -> resolve the three-level
-    # pass dir log/review/<task>/<perspective>/pass-NN/. Backward compatible; no inference.
+    # Required review viewpoint (strict C1 canonical layout). Resolves the three-level pass
+    # dir log/review/<review-task-id>/<perspective>/pass-NN/. There is no two-level fallback
+    # and no inference; empty / missing fails fast.
     [string] $Perspective,
 
     [string] $Reviewer = 'codex',
@@ -33,6 +33,10 @@ if ([string]::IsNullOrEmpty($ReviewTaskId)) {
 }
 if ([string]::IsNullOrEmpty($Pass)) {
     Write-Host 'review-run: FAIL -Pass is required (e.g., pass-01).'
+    exit 1
+}
+if ([string]::IsNullOrEmpty($Perspective)) {
+    Write-Host 'review-run: FAIL -Perspective is required. The canonical review artifact layout is log/review/<review-task-id>/<perspective>/pass-NN/; there is no two-level fallback. Pass the same -Perspective used at review-prepare.'
     exit 1
 }
 
@@ -499,14 +503,12 @@ catch {
     exit 1
 }
 
-if (-not [string]::IsNullOrEmpty($Perspective)) {
-    try {
-        [void] (Assert-ValidPerspective -Value $Perspective)
-    }
-    catch {
-        Write-Host ('review-run: FAIL invalid Perspective: {0}' -f $Perspective)
-        exit 1
-    }
+try {
+    [void] (Assert-ValidPerspective -Value $Perspective)
+}
+catch {
+    Write-Host ('review-run: FAIL invalid Perspective: {0}' -f $Perspective)
+    exit 1
 }
 
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
@@ -535,7 +537,7 @@ if (-not (Test-Path -LiteralPath $inputPath -PathType Leaf)) {
 
 $resultMdPath = Join-Path -Path $passDir -ChildPath 'result.md'
 if (Test-Path -LiteralPath $resultMdPath -PathType Leaf) {
-    Write-Host ('review-run: FAIL result.md already exists in pass directory: {0}. Each pass is write-once; allocate a new pass-NN under the same ReviewTaskId for another attempt.' -f $resultMdPath)
+    Write-Host ('review-run: FAIL result.md already exists in pass directory: {0}. Each pass is write-once; allocate a new pass-NN under the same ReviewTaskId/Perspective for another attempt.' -f $resultMdPath)
     exit 1
 }
 
@@ -607,7 +609,7 @@ $verifyInputArgs = @(
 & powershell.exe @verifyInputArgs
 $verifyInputExit = $LASTEXITCODE
 if ($verifyInputExit -ne 0) {
-    Write-Host ('review-run: FAIL input.md not ready (review-input-verify exit {0}). Allocate a new pass-NN under the same ReviewTaskId with a corrected input.md.' -f $verifyInputExit)
+    Write-Host ('review-run: FAIL input.md not ready (review-input-verify exit {0}). Allocate a new pass-NN under the same ReviewTaskId/Perspective with a corrected input.md.' -f $verifyInputExit)
     exit 1
 }
 
@@ -624,7 +626,7 @@ if (-not (Test-Path -LiteralPath $resultMdPath -PathType Leaf)) {
 
 $verdict = Get-VerdictFromResultMd -Path $resultMdPath
 if ([string]::IsNullOrEmpty($verdict)) {
-    Write-Host ('review-run: FAIL. Could not parse verdict from {0}. The failed pass is preserved on disk; allocate a new pass-NN under the same ReviewTaskId after fixing the reviewer output, prompt, or tooling.' -f $resultMdPath)
+    Write-Host ('review-run: FAIL. Could not parse verdict from {0}. The failed pass is preserved on disk; allocate a new pass-NN under the same ReviewTaskId/Perspective after fixing the reviewer output, prompt, or tooling.' -f $resultMdPath)
     exit 1
 }
 
@@ -654,9 +656,7 @@ catch {
 
 Write-Host ('review-run: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
-if (-not [string]::IsNullOrEmpty($Perspective)) {
-    Write-Host ('perspective: {0}' -f $Perspective)
-}
+Write-Host ('perspective: {0}' -f $Perspective)
 Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('verdict: {0}' -f $verdict)
 # Reviewer adapter identity run-facts (P2). H1 stdout run-facts, additive to the Batch D2

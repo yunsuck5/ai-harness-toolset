@@ -229,7 +229,11 @@ BeforeAll {
             [string] $ProjectRoot,
             [string] $ReviewTaskId,
             [string] $Pass,
-            [string] $Perspective
+            # Strict C1: -Perspective is required, so the helper defaults it to 'local-correctness'
+            # for tests that do not care about the viewpoint. -OmitPerspective drops it entirely
+            # (for the "without -Perspective fails" tests).
+            [string] $Perspective = 'local-correctness',
+            [switch] $OmitPerspective
         )
         $procArgs = @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
@@ -243,7 +247,7 @@ BeforeAll {
         if (-not [string]::IsNullOrEmpty($Pass)) {
             $procArgs += @('-Pass', $Pass)
         }
-        if (-not [string]::IsNullOrEmpty($Perspective)) {
+        if ((-not $OmitPerspective) -and (-not [string]::IsNullOrEmpty($Perspective))) {
             $procArgs += @('-Perspective', $Perspective)
         }
         $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
@@ -310,7 +314,10 @@ BeforeAll {
             [string] $Effort,
             [string] $EffortCategory,
             [string] $ToolRoot,
-            [string] $Perspective
+            # Strict C1: -Perspective is required; default 'local-correctness', -OmitPerspective
+            # drops it (for the "without -Perspective fails" tests).
+            [string] $Perspective = 'local-correctness',
+            [switch] $OmitPerspective
         )
         if ([string]::IsNullOrEmpty($ToolRoot)) { $ToolRoot = $script:RepoRoot }
         $procArgs = @(
@@ -322,7 +329,7 @@ BeforeAll {
             '-ProjectRoot', $ProjectRoot,
             '-ToolRoot', $ToolRoot
         )
-        if (-not [string]::IsNullOrEmpty($Perspective)) {
+        if ((-not $OmitPerspective) -and (-not [string]::IsNullOrEmpty($Perspective))) {
             $procArgs += @('-Perspective', $Perspective)
         }
         if (-not [string]::IsNullOrEmpty($Model)) {
@@ -362,7 +369,8 @@ BeforeAll {
             [string] $ReviewTaskId,
             [string] $Pass,
             [string] $ToolRoot,
-            [string] $Perspective
+            [string] $Perspective = 'local-correctness',
+            [switch] $OmitPerspective
         )
         if ([string]::IsNullOrEmpty($ToolRoot)) { $ToolRoot = $script:RepoRoot }
         $procArgs = @(
@@ -374,7 +382,7 @@ BeforeAll {
             '-ToolRoot', $ToolRoot,
             '-RequireResult'
         )
-        if (-not [string]::IsNullOrEmpty($Perspective)) {
+        if ((-not $OmitPerspective) -and (-not [string]::IsNullOrEmpty($Perspective))) {
             $procArgs += @('-Perspective', $Perspective)
         }
         $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
@@ -393,7 +401,7 @@ Describe 'review-run canonical pass directory' {
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr1-yes' -Mode 'verdict-yes'
@@ -402,7 +410,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match 'review-run: PASS'
         $r.Output | Should -Match 'verdict: yes'
 
-        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
         Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
 
         # Canonical contract: only input.md + result.md.
@@ -426,7 +434,7 @@ Describe 'review-run canonical pass directory' {
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         Remove-Item -LiteralPath $inputPath -Force
 
         $stub = script:Write-CodexStub -StubName 'rr3-yes' -Mode 'verdict-yes'
@@ -434,7 +442,7 @@ Describe 'review-run canonical pass directory' {
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'input\.md not found'
 
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
     It 'AC-RR4: placeholder-only input.md fails through review-input-verify and Codex is not invoked' {
@@ -450,7 +458,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match 'input\.md not ready'
         $r.Output | Should -Match 'review-input-verify'
 
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
     It 'AC-RR5: result.md already present blocks re-run for the same pass (write-once)' {
@@ -459,14 +467,14 @@ Describe 'review-run canonical pass directory' {
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr5-yes' -Mode 'verdict-yes'
         $first = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $first.ExitCode | Should -Be 0 -Because $first.Output
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $before = [System.IO.File]::ReadAllText($resultMd, $enc)
 
@@ -485,7 +493,7 @@ Describe 'review-run canonical pass directory' {
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr6-nv' -Mode 'no-verdict'
@@ -493,7 +501,7 @@ Describe 'review-run canonical pass directory' {
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'Could not parse verdict'
 
-        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
         Test-Path -LiteralPath $passDir                       -PathType Container | Should -BeTrue
         Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf      | Should -BeTrue
         Test-Path -LiteralPath (Join-Path $passDir 'result.json') -PathType Leaf    | Should -BeFalse
@@ -505,7 +513,7 @@ Describe 'review-run canonical pass directory' {
 
         $prep1 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep1.ExitCode | Should -Be 0
-        $input1 = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $input1 = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $input1
 
         $stubNo = script:Write-CodexStub -StubName 'rr7-no' -Mode 'verdict-no'
@@ -517,7 +525,7 @@ Describe 'review-run canonical pass directory' {
         $prep2 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId
         $prep2.ExitCode | Should -Be 0 -Because $prep2.Output
         $prep2.Output | Should -Match 'pass: pass-02'
-        $input2 = Join-Path $project ('log/review/' + $taskId + '/pass-02/input.md')
+        $input2 = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-02/input.md')
         script:Set-InputFilled -InputPath $input2
 
         $stubYes = script:Write-CodexStub -StubName 'rr7-yes' -Mode 'verdict-yes'
@@ -526,8 +534,8 @@ Describe 'review-run canonical pass directory' {
         $r2.Output | Should -Match 'verdict: yes'
 
         # Both passes exist on disk independently.
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeTrue
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-02/result.md')) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-02/result.md')) -PathType Leaf | Should -BeTrue
     }
 
     It 'AC-RR8: non-codex reviewer fails with the MVP boundary message' {
@@ -535,7 +543,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr8-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr8-yes' -Mode 'verdict-yes'
@@ -549,7 +557,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr10-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr10-title' -Mode 'verdict-title-yes'
@@ -557,7 +565,7 @@ Describe 'review-run canonical pass directory' {
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'Could not parse verdict'
 
-        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
         Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
     }
 
@@ -570,14 +578,14 @@ Describe 'review-run canonical pass directory' {
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr11-yes' -Mode 'verdict-yes'
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Be 0 -Because $r.Output
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $stdinCapture = $resultMd + '.stdin.txt'
         Test-Path -LiteralPath $stdinCapture -PathType Leaf | Should -BeTrue -Because 'stub must have received piped stdin'
 
@@ -652,7 +660,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr12-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr12-lower' -Mode 'verdict-lowercase-heading'
@@ -660,7 +668,7 @@ Describe 'review-run canonical pass directory' {
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'Could not parse verdict'
 
-        $passDir = Join-Path $project ('log/review/' + $taskId + '/pass-01')
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
         Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
     }
 
@@ -671,7 +679,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr13-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr13-yes' -Mode 'verdict-yes'
@@ -682,7 +690,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match 'applied-effort: xhigh'
 
         # The effort override is actually present in the argv passed to Codex.
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $argvCapture = $resultMd + '.argv.txt'
         Test-Path -LiteralPath $argvCapture -PathType Leaf | Should -BeTrue
         $enc = New-Object System.Text.UTF8Encoding($false)
@@ -695,7 +703,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr14-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr14-yes' -Mode 'verdict-yes'
@@ -705,7 +713,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match 'effort-source: explicit'
         $r.Output | Should -Match 'applied-effort: medium'
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
         $argv | Should -Match 'model_reasoning_effort=medium'
@@ -717,7 +725,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr15-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr15-yes' -Mode 'verdict-yes'
@@ -726,7 +734,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match 'invalid reasoning effort'
 
         # Fail-fast is before Codex: no result.md is produced.
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
     It 'AC-RR16: applied-effort is reported not-observed when the reviewer emits no effort header (no silent success)' {
@@ -736,7 +744,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr16-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr16-yes' -Mode 'verdict-yes' -EmitEffortHeader $false
@@ -754,7 +762,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr17-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr17-yes' -Mode 'verdict-yes'
@@ -762,7 +770,7 @@ Describe 'review-run canonical pass directory' {
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'invalid reasoning effort'
 
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
     It 'AC-RR18: reviewer-safe hardening — --ignore-user-config is passed to Codex (Batch C)' {
@@ -772,14 +780,14 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr18-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr18-yes' -Mode 'verdict-yes'
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Be 0 -Because $r.Output
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
         $argv | Should -Match '--ignore-user-config'
@@ -792,7 +800,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr19-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $modelless = script:New-ModellessToolRoot -CaseName 'rr19'
@@ -802,7 +810,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match 'reviewer model could not be resolved'
 
         # Codex was not invoked: no result.md.
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
     It 'AC-RR20: explicit -Model overrides the config model (precedence: explicit > config)' {
@@ -813,14 +821,14 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr20-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr20-yes' -Mode 'verdict-yes'
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Model 'explicit-test-model-x'
         $r.ExitCode | Should -Be 0 -Because $r.Output
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
         $argv | Should -Match 'explicit-test-model-x'
@@ -836,7 +844,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr21-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr21-yes' -Mode 'verdict-yes'
@@ -855,7 +863,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr22-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr22-yes' -Mode 'verdict-yes'
@@ -874,7 +882,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr23-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr23-yes' -Mode 'verdict-yes'
@@ -893,7 +901,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr24-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr24-yes' -Mode 'verdict-yes'
@@ -920,7 +928,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr25-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr25-yes' -Mode 'verdict-yes'
@@ -945,7 +953,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr26-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr26-yes' -Mode 'verdict-yes' -EmitVersionHeader $false
@@ -965,7 +973,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr27-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr27-full' -Mode 'verdict-yes-full'
@@ -975,7 +983,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match '(?m)^provenance-persisted: '
         $r.Output | Should -Not -Match '(?m)^provenance-persisted: FAILED'
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $content = [System.IO.File]::ReadAllText($resultMd, $enc)
 
@@ -1021,14 +1029,14 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr28-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr28-full' -Mode 'verdict-yes-full' -EmitVersionHeader $false
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Be 0 -Because $r.Output
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $content = [System.IO.File]::ReadAllText($resultMd, $enc)
         $content | Should -Match '(?m)^## Reviewer run provenance$'
@@ -1045,7 +1053,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr29-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr29-yes' -Mode 'verdict-yes'
@@ -1068,7 +1076,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr30-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $toolRoot = script:New-CategoryToolRoot -CaseName 'rr30'
@@ -1084,7 +1092,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match '(?m)^model-source: category$'
 
         # The category values are actually present in the Codex argv.
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
         $argv | Should -Match 'model_reasoning_effort=medium'
@@ -1101,7 +1109,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr31-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $stub = script:Write-CodexStub -StubName 'rr31-yes' -Mode 'verdict-yes'
@@ -1122,7 +1130,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr32-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $toolRoot = script:New-CategoryToolRoot -CaseName 'rr32'
@@ -1136,7 +1144,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match '(?m)^model-source: category$'
         $r.Output | Should -Match '(?m)^effort-policy-match: matched$'
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
         $argv | Should -Match 'model_reasoning_effort=high'
@@ -1150,7 +1158,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr33-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $toolRoot = script:New-CategoryToolRoot -CaseName 'rr33'
@@ -1163,7 +1171,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match '(?m)^requested-effort: medium$'
         $r.Output | Should -Match '(?m)^effort-source: category$'
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $argv = [System.IO.File]::ReadAllText(($resultMd + '.argv.txt'), $enc)
         $argv | Should -Match 'explicit-model-z'
@@ -1178,7 +1186,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr34-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $toolRoot = script:New-CategoryToolRoot -CaseName 'rr34'
@@ -1189,7 +1197,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match 'source: category'
 
         # Fail-fast is before Codex: no result.md.
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
     It 'AC-RR35: shipped config/reviewer.json categoryPolicy keeps every category at the safe floor (xhigh)' {
@@ -1215,7 +1223,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr36-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $toolRoot = script:New-CategoryToolRoot -CaseName 'rr36'
@@ -1223,7 +1231,7 @@ Describe 'review-run canonical pass directory' {
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -EffortCategory 'simple-local' -ToolRoot $toolRoot
         $r.ExitCode | Should -Be 0 -Because $r.Output
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $content = [System.IO.File]::ReadAllText($resultMd, $enc)
         $content | Should -Match '(?m)^## Reviewer run provenance$'
@@ -1244,7 +1252,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr37-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $toolRoot = script:New-CategoryToolRoot -CaseName 'rr37'
@@ -1254,7 +1262,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match 'no usable reasoningEffort'
         $r.Output | Should -Not -Match '(?m)^effort-source: config$'
 
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
     It 'AC-RR38: a present category key with a null entry fails fast (matched-but-malformed, not a soft miss)' {
@@ -1265,7 +1273,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr38-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $toolRoot = script:New-CategoryToolRoot -CaseName 'rr38'
@@ -1277,7 +1285,7 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Not -Match '(?m)^effort-policy-match: missed$'
         $r.Output | Should -Not -Match '(?m)^effort-source: config$'
 
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
     It 'AC-RR39: explicit -Effort does NOT bypass a matched-but-malformed category (fail-fast is unconditional)' {
@@ -1290,7 +1298,7 @@ Describe 'review-run canonical pass directory' {
         $taskId  = 'rr39-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md')
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
         $toolRoot = script:New-CategoryToolRoot -CaseName 'rr39'
@@ -1302,11 +1310,11 @@ Describe 'review-run canonical pass directory' {
         # The explicit effort did not silently win past the malformed category.
         $r.Output | Should -Not -Match 'review-run: PASS'
 
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 }
 
-Describe 'review-run perspective (C1 three-level) layout' {
+Describe 'review-run strict C1 (perspective-required) layout' {
     It 'AC-RR-PERSP1: run resolves the three-level pass dir and writes result.md there' {
         $project = script:New-RunCase -CaseName 'rr-persp1'
         $taskId  = 'rr-persp-task'
@@ -1326,8 +1334,6 @@ Describe 'review-run perspective (C1 three-level) layout' {
 
         $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
         Test-Path -LiteralPath (Join-Path $passDir 'result.md') -PathType Leaf | Should -BeTrue
-        # The reviewer wrote into the three-level pass dir, not the old two-level location.
-        Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
     It 'AC-RR-PERSP2: corrective loop increments pass-NN within a perspective' {
@@ -1377,19 +1383,28 @@ Describe 'review-run perspective (C1 three-level) layout' {
         $v.Output | Should -Match 'disclosure sections present'
     }
 
-    It 'AC-RR-PERSP4: invalid perspective is rejected before Codex (no result.md)' {
+    It 'AC-RR-PERSP4: invalid perspective is rejected before Codex' {
         $project = script:New-RunCase -CaseName 'rr-persp4'
-        $taskId  = 'rr-persp-task'
-
-        # Prepare a real old-layout pass so a pass dir exists; the run still must reject the
-        # bad perspective before invoking Codex (validation precedes pass-dir resolution).
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
-        $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        script:Set-InputFilled -InputPath (Join-Path $project ('log/review/' + $taskId + '/pass-01/input.md'))
-
+        # An invalid perspective is rejected at validation, before any pass-dir resolution or
+        # Codex invocation — no prepared pass is needed.
         $stub = script:Write-CodexStub -StubName 'rr-persp4-yes' -Mode 'verdict-yes'
-        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -Perspective 'pass-02'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId 'rr-persp-task' -Pass 'pass-01' -StubPath $stub -Perspective 'pass-02'
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'invalid Perspective'
+    }
+
+    It 'AC-RR-PERSP5: review-run without -Perspective fails fast (strict C1 — required) before Codex' {
+        $project = script:New-RunCase -CaseName 'rr-persp5'
+        $stub = script:Write-CodexStub -StubName 'rr-persp5-yes' -Mode 'verdict-yes'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId 'rr-persp-task' -Pass 'pass-01' -StubPath $stub -OmitPerspective
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match '-Perspective is required'
+    }
+
+    It 'AC-RR-PERSP6: review-verify without -Perspective fails fast (strict C1 — required)' {
+        $project = script:New-RunCase -CaseName 'rr-persp6'
+        $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId 'rr-persp-task' -Pass 'pass-01' -OmitPerspective
+        $v.ExitCode | Should -Not -Be 0
+        $v.Output | Should -Match '-Perspective is required'
     }
 }

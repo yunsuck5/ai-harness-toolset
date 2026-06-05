@@ -4,10 +4,10 @@ param(
 
     [string] $Pass,
 
-    # Optional review viewpoint (C1 three-level layout). Omitted -> the historical
-    # two-level layout log/review/<task>/pass-NN/. Supplied -> the three-level layout
-    # log/review/<task>/<perspective>/pass-NN/. The operator names the perspective
-    # explicitly; there is no automatic inference.
+    # Required review viewpoint (strict C1 canonical layout). The pass directory is always
+    # log/review/<review-task-id>/<perspective>/pass-NN/. The operator names the perspective
+    # explicitly; there is no automatic inference and no two-level fallback. Empty / missing
+    # fails fast.
     [string] $Perspective,
 
     [ValidateSet('design', 'implementation', 'test', 'review', 'release')]
@@ -37,6 +37,10 @@ if ([string]::IsNullOrEmpty($Purpose)) {
     Write-Host 'review-prepare: FAIL -Purpose is required.'
     exit 1
 }
+if ([string]::IsNullOrEmpty($Perspective)) {
+    Write-Host 'review-prepare: FAIL -Perspective is required. The canonical review artifact layout is log/review/<review-task-id>/<perspective>/pass-NN/; there is no two-level fallback. Pass an explicit review viewpoint (e.g. -Perspective local-correctness or -Perspective system-coherence).'
+    exit 1
+}
 
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 $tool    = Get-ToolRoot -ToolRoot $ToolRoot -ProjectRoot $project
@@ -50,21 +54,19 @@ catch {
     exit 1
 }
 
-if (-not [string]::IsNullOrEmpty($Perspective)) {
-    try {
-        [void] (Assert-ValidPerspective -Value $Perspective)
-    }
-    catch {
-        Write-Host ('review-prepare: FAIL invalid Perspective: {0}' -f $Perspective)
-        exit 1
-    }
+try {
+    [void] (Assert-ValidPerspective -Value $Perspective)
+}
+catch {
+    Write-Host ('review-prepare: FAIL invalid Perspective: {0}' -f $Perspective)
+    exit 1
 }
 
 $taskDir = Get-ReviewTaskRoot -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId
 [void] (Assert-InReviewRoot -Path $taskDir -ProjectLogRoot $logRoot)
 
-# Pass parent = task dir (old two-level) or <taskDir>/<perspective> (new three-level).
-# Get-NextPassName scans this parent, so pass-NN auto-allocation is per-perspective.
+# Pass parent = <taskDir>/<perspective> (canonical three-level). Get-NextPassName scans this
+# parent, so pass-NN auto-allocation is per-perspective.
 $passParent = Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Perspective $Perspective
 
 if ([string]::IsNullOrEmpty($Pass)) {
@@ -83,7 +85,7 @@ $passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskI
 [void] (Assert-InReviewRoot -Path $passDir -ProjectLogRoot $logRoot)
 
 if (Test-Path -LiteralPath $passDir -PathType Container) {
-    Write-Host ('review-prepare: FAIL pass directory already exists: {0}. Each pass is write-once; allocate a new pass-NN under the same ReviewTaskId.' -f $passDir)
+    Write-Host ('review-prepare: FAIL pass directory already exists: {0}. Each pass is write-once; allocate a new pass-NN under the same ReviewTaskId/Perspective.' -f $passDir)
     exit 1
 }
 
@@ -104,9 +106,7 @@ $relInput = (Resolve-ProjectRelativePath -Path $inputPath -ProjectRoot $project)
 
 Write-Host ('review-prepare: PASS')
 Write-Host ('review-task-id: {0}' -f $ReviewTaskId)
-if (-not [string]::IsNullOrEmpty($Perspective)) {
-    Write-Host ('perspective: {0}' -f $Perspective)
-}
+Write-Host ('perspective: {0}' -f $Perspective)
 Write-Host ('pass: {0}' -f $Pass)
 Write-Host ('stage: {0}' -f $Stage)
 Write-Host ('purpose: {0}' -f $Purpose)

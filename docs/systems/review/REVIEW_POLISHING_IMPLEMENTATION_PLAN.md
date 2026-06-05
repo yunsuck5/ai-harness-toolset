@@ -117,6 +117,8 @@ plan/spec 이 다뤄야 할 항목(검증 대상):
 
 ## 8. HEAD `1107566` 에서 가능한 caller-side 2-pass review closeout 방식
 
+> **Superseded / historical (strict C1 이후).** 본 절은 HEAD `1107566` 시점의 **pre-strict-C1 implementation-plan 기록**이다 — 아래 "현 시점에서 실제 사용 가능한" 서술과 `review-prepare`/`review-run`/`review-verify` 예시는 그 시점 기준이며 현행 가이드가 아니다. **현행 canonical review flow 는 strict C1**(three-level `log/review/<review-task-id>/<perspective>/pass-NN/`)이고, `review-prepare.ps1` / `review-run.ps1` / `review-verify.ps1` 는 이제 **`-Perspective <viewpoint>` 를 필수**로 요구한다(미지정 시 fail-fast; two-level fallback 없음). 현행 source-of-truth 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 와 `docs/systems/review/STATUS.md` 의 **S6 strict C1 항목**이다.
+
 본 절은 **현 시점에서 실제 사용 가능한** review closeout 메커니즘을 서술한다. 새로 정의한 자동 "2-pass review" 기능이 존재한다고 가정하지 않는다 — closeout 은 **caller-side orchestration** 으로 reviewer 를 두 관점으로 분리해 수행한다.
 
 **canonical terminology 매핑**: 여기서 말하는 "2-pass" 는 decision record 의 `dual-perspective coverage`(= `local correctness review` + `system coherence review`)를 `two focused invocations` packaging 으로 충족하는 것이다. reviewer invocation count(2)·`artifact pass-NN`·`corrective review loop` 는 서로 **다른 축**이다(`2-pass` 는 legacy/familiar label).

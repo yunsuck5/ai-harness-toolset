@@ -63,10 +63,10 @@ Review record retention is human-managed at `<review-task-id>/` directory (or pe
 
 ## Review artifact contract
 
-The canonical review artifact layout is one pass directory per Codex attempt, grouped under one task directory per review task:
+The canonical review artifact layout is **three-level** — one pass directory per Codex attempt, under one perspective directory per review viewpoint, under one task directory per review task:
 
 ```text
-<ProjectRoot>/log/review/<review-task-id>/
+<ProjectRoot>/log/review/<review-task-id>/<perspective>/
   pass-01/
     input.md   AI-authored from templates/review-input.md
     result.md  reviewer-adapter body + runner-appended provenance block (dual-authored)
@@ -75,25 +75,18 @@ The canonical review artifact layout is one pass directory per Codex attempt, gr
     result.md
 ```
 
-An optional `<perspective>` segment (a review viewpoint such as `local-correctness` / `system-coherence`) gives a three-level layout when supplied via `-Perspective <viewpoint>`; omitting it keeps the two-level default. Existing two-level records keep working unchanged (backward compatible; no migration):
-
-```text
-<ProjectRoot>/log/review/<review-task-id>/<perspective>/
-  pass-01/
-    input.md
-    result.md
-```
+`<perspective>` is **required** (the scripts fail fast without it; there is no two-level fallback). Legacy two-level `<review-task-id>/pass-NN/` records from before strict C1 may still exist on disk and can be read manually, but the current scripts require `-Perspective` and the canonical layout is three-level — those legacy records are not tool-supported, not migrated, and not deleted.
 
 - `<review-task-id>` identifies one Claude Code `/goal` task or one review gate. It is **not** a Claude Code chat / session id. A single session may contain multiple `<review-task-id>` directories for different `/goal` tasks. Operator / AI passes it explicitly via `scripts/review-prepare.ps1 -ReviewTaskId <id>`.
-- `<perspective>` (optional) is a review viewpoint passed explicitly via `scripts/review-prepare.ps1 -Perspective <viewpoint>` (no automatic inference). It is a separate path segment between `<review-task-id>` and `pass-NN`, validated as a single safe segment (no `..` / `/` / `\` / `pass-NN` shape; safe charset / length). Omitting it yields the two-level layout.
-- `pass-NN` (zero-padded two-digit) identifies one Codex review attempt inside the corrective loop. The first attempt is `pass-01`; subsequent corrective passes are `pass-02`, `pass-03`, and so on. `review-prepare.ps1 -Pass <pass-NN>` selects it explicitly; omitting `-Pass` auto-allocates the next pass under the same task directory (or, with `-Perspective`, under the same perspective directory — pass numbering is per-perspective).
-- Each `pass-NN/` is write-once. If the input or result is wrong or stale, allocate a fresh `pass-NN/` under the same `<review-task-id>/` (and same `<perspective>/` when one is used); do not edit the old pass to close the review.
+- `<perspective>` (**required**) is a review viewpoint passed explicitly via `scripts/review-prepare.ps1 -Perspective <viewpoint>` (no automatic inference; omitting it fails fast). It is a separate path segment between `<review-task-id>` and `pass-NN`, validated as a single safe segment (no `..` / `/` / `\` / `pass-NN` shape; safe charset / length).
+- `pass-NN` (zero-padded two-digit) identifies one Codex review attempt inside the corrective loop. The first attempt is `pass-01`; subsequent corrective passes are `pass-02`, `pass-03`, and so on. `review-prepare.ps1 -Pass <pass-NN>` selects it explicitly; omitting `-Pass` auto-allocates the next pass under the same perspective directory (pass numbering is per-perspective).
+- Each `pass-NN/` is write-once. If the input or result is wrong or stale, allocate a fresh `pass-NN/` under the same `<review-task-id>/<perspective>/`; do not edit the old pass to close the review.
 
 `input.md` is authored by Claude Code (the operator-role AI). It contains the target files, context, required inspection paths, review questions, constraints, and the final verdict instruction, in five required H2 sections (`## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`, `## Final verdict`) plus recommended informational sections (`## Stage`, `## Purpose`, `## Target files`). The user does not type CLI arguments; the natural-language entrypoint is `docs/user_guide/OPERATOR_GUIDE_KR.md` §7, and the skill that orchestrates the run is `snippets/claude-skills/ai-harness-review/SKILL.md`.
 
 `result.md` is **dual-authored**: the verdict/disclosure body is authored by the active reviewer adapter (current MVP adapter: codex, via `--output-last-message`), and `scripts/review-run.ps1` then appends a runner-authored `## Reviewer run provenance` block (a machine run-fact, not reviewer judgment; `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3). The reviewer-authored body must contain exactly one top-level `## Verdict` heading whose first non-empty body line is one of `yes`, `no`, `yes with risk` (lowercase, no qualifier, no inline form), plus four required disclosure H2s — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` — each exactly once, with `none` as the body when a section has no substance. Additional sections (`## Findings`, `## Risks`, `## Counter-argument`, `## Notes`) are free-form. `## Counter-argument` is optional and strongly-recommended (non-parser) — the reviewer's dedicated position for the strongest case AGAINST a `yes` / `yes with risk` verdict; convention source: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3c.
 
-The toolset script that drives a pass performs only deterministic gates: pass-directory containment under `<ProjectRoot>/log/review/` (and, for an operator-supplied `<perspective>` segment, containment within the intended `<review-task-id>/` task root so a perspective cannot traverse into a sibling task), the five required headings in `input.md`, exactly one Codex execution, the existence of `result.md`, the `## Verdict` allowed-value check, and the four required disclosure H2s each present exactly once in `result.md` (the disclosure check is the `-RequireResult` mode of `scripts/review-verify.ps1`). It does not interpret findings, decide correction scope, or trigger commit / push / publish / merge / release.
+The toolset script that drives a pass performs only deterministic gates: pass-directory containment under `<ProjectRoot>/log/review/` (and, because `<perspective>` is operator-supplied, containment within the intended `<review-task-id>/` task root so a perspective cannot traverse into a sibling task), the five required headings in `input.md`, exactly one Codex execution, the existence of `result.md`, the `## Verdict` allowed-value check, and the four required disclosure H2s each present exactly once in `result.md` (the disclosure check is the `-RequireResult` mode of `scripts/review-verify.ps1`). It does not interpret findings, decide correction scope, or trigger commit / push / publish / merge / release.
 
 - Single-shot, user-triggered. One Codex CLI execution per `review-run.ps1` call. No retry, no fallback model use, no auto-fix loop.
 - Verdict (`yes` / `no` / `yes with risk`) does not approve commit, push, publish, merge, or release. The user decides the next action explicitly.
@@ -137,7 +130,7 @@ The marker text `AI_HARNESS_TOOLSET_GLOBAL` is the canonical form for both snipp
 
 ## Optional Claude Code skill
 
-`snippets/claude-skills/ai-harness-review/SKILL.md` is an optional, copy-only Claude Code skill template. It defines the natural-language entrypoint for the canonical two-step review flow — `scripts/review-prepare.ps1 -ReviewTaskId <id> [-Perspective <viewpoint>] [-Pass <pass-NN>]` → AI authors the pass `input.md` at `log/review/<review-task-id>/pass-NN/input.md` (or `log/review/<review-task-id>/<perspective>/pass-NN/input.md` with `-Perspective`) → `scripts/review-run.ps1 -ReviewTaskId <id> [-Perspective <viewpoint>] -Pass <pass-NN>` — that natural-language triggers like `현재 진행한 작업 코덱스 리뷰 진행해` resolve to. Adoption is a deliberate user action — copy it to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `~/.claude/skills/ai-harness-review/SKILL.md` (global, opt-in only). Nothing is auto-installed. Details: `docs/user_guide/OPERATOR_GUIDE_KR.md` sections 7–8.
+`snippets/claude-skills/ai-harness-review/SKILL.md` is an optional, copy-only Claude Code skill template. It defines the natural-language entrypoint for the canonical two-step review flow — `scripts/review-prepare.ps1 -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>]` → AI authors the pass `input.md` at `log/review/<review-task-id>/<perspective>/pass-NN/input.md` → `scripts/review-run.ps1 -ReviewTaskId <id> -Perspective <viewpoint> -Pass <pass-NN>` — that natural-language triggers like `현재 진행한 작업 코덱스 리뷰 진행해` resolve to. Adoption is a deliberate user action — copy it to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `~/.claude/skills/ai-harness-review/SKILL.md` (global, opt-in only). Nothing is auto-installed. Details: `docs/user_guide/OPERATOR_GUIDE_KR.md` sections 7–8.
 
 ## What this toolset does not do
 
@@ -167,7 +160,7 @@ Tags: `active operational` (current source-of-truth), `active reference` (adviso
 | `docs/user_guide/OPERATOR_GUIDE_KR.md` | active operational | Current Korean operator guide for shared/global operation, CLI usage, legacy mode appendix, and acceptance checklist. |
 | `docs/policies/POWERSHELL_POLICY.md` | active operational | Encoding, line-ending, file IO, and collection return rules. |
 | `docs/policies/REVIEWER_CONFIG_POLICY.md` | active operational | Reviewer config location, precedence, defaults, and MVP reviewer boundary. |
-| `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` | active operational | Canonical review artifact contract — `log/review/<review-task-id>/pass-NN/input.md` (AI-authored) + `result.md` (dual-authored: reviewer-adapter verdict/disclosure body + runner-appended `## Reviewer run provenance` block) only, with an optional `<perspective>` segment (`.../<review-task-id>/<perspective>/pass-NN/`); deterministic gates and verdict vocabulary. |
+| `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` | active operational | Canonical review artifact contract — three-level `log/review/<review-task-id>/<perspective>/pass-NN/input.md` (AI-authored) + `result.md` (dual-authored: reviewer-adapter verdict/disclosure body + runner-appended `## Reviewer run provenance` block) only, with `<perspective>` required; deterministic gates and verdict vocabulary. |
 | `docs/project/TOOLING_POSITION.md` | active reference | Position statements for adjacent tools. |
 
 ### Current state, systems, and roadmap

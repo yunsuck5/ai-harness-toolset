@@ -109,15 +109,12 @@ BeforeAll {
             [switch] $WithResult,
             [string] $Verdict = 'yes',
             [string] $ResultBodyOverride,
-            [string] $Perspective
+            # Strict C1: the canonical layout is three-level. Default the perspective so the
+            # general verify tests build a three-level pass dir.
+            [string] $Perspective = 'local-correctness'
         )
         $projectRoot = script:New-VerifyCase -CaseName $CaseName
-        if ([string]::IsNullOrEmpty($Perspective)) {
-            $passDir = Join-Path $projectRoot ('log/review/' + $ReviewTaskId + '/' + $Pass)
-        }
-        else {
-            $passDir = Join-Path $projectRoot ('log/review/' + $ReviewTaskId + '/' + $Perspective + '/' + $Pass)
-        }
+        $passDir = Join-Path $projectRoot ('log/review/' + $ReviewTaskId + '/' + $Perspective + '/' + $Pass)
         $null = New-Item -ItemType Directory -Path $passDir -Force
         $inputPath = Join-Path $passDir 'input.md'
         script:Write-Utf8NoBomFile -Path $inputPath -Content (script:Build-FilledInput)
@@ -151,7 +148,10 @@ BeforeAll {
             [string] $ReviewTaskId,
             [string] $Pass,
             [string] $ToolRoot,
-            [string] $Perspective,
+            # Strict C1: -Perspective is required; default 'local-correctness', -OmitPerspective
+            # drops it (for the "without -Perspective fails" test).
+            [string] $Perspective = 'local-correctness',
+            [switch] $OmitPerspective,
             [switch] $RequireResult
         )
         $procArgs = @(
@@ -162,7 +162,7 @@ BeforeAll {
             '-Pass', $Pass,
             '-ProjectRoot', $ProjectRoot
         )
-        if (-not [string]::IsNullOrEmpty($Perspective)) {
+        if ((-not $OmitPerspective) -and (-not [string]::IsNullOrEmpty($Perspective))) {
             $procArgs += @('-Perspective', $Perspective)
         }
         if ([string]::IsNullOrEmpty($ToolRoot)) {
@@ -409,7 +409,7 @@ Describe 'review-verify -RequireResult mode (canonical)' {
     }
 }
 
-Describe 'review-verify perspective (C1 three-level) layout' {
+Describe 'review-verify strict C1 (perspective-required) layout' {
     It 'AC-VF-PERSP1: default mode verifies a three-level pass and surfaces the perspective' {
         $packet = script:Initialize-CanonicalPass -CaseName 'vf-persp1' -Perspective 'local-correctness'
         $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -Perspective $packet.Perspective
@@ -427,14 +427,13 @@ Describe 'review-verify perspective (C1 three-level) layout' {
         $r.Output | Should -Match 'disclosure sections present'
     }
 
-    It 'AC-VF-PERSP3: omitting -Perspective resolves the OLD path and does not find the three-level pass' {
-        # Explicit operator-named resolution (no inference): a three-level pass is only reached
-        # when the operator names the perspective. Verifying the same task / pass WITHOUT
-        # -Perspective resolves the old two-level path, which has no pass dir here.
+    It 'AC-VF-PERSP3: verify without -Perspective fails fast (strict C1 — required)' {
+        # Strict C1: there is no two-level fallback. Omitting -Perspective fails fast rather than
+        # resolving a two-level path; the prepared three-level pass is only reached when named.
         $packet = script:Initialize-CanonicalPass -CaseName 'vf-persp3' -Perspective 'local-correctness'
-        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass
+        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -OmitPerspective
         $r.ExitCode | Should -Not -Be 0
-        $r.Output | Should -Match 'pass directory not found'
+        $r.Output | Should -Match '-Perspective is required'
     }
 
     It 'AC-VF-PERSP4: invalid perspective is rejected' {
@@ -442,13 +441,5 @@ Describe 'review-verify perspective (C1 three-level) layout' {
         $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -Perspective '..'
         $r.ExitCode | Should -Not -Be 0
         $r.Output | Should -Match 'invalid Perspective'
-    }
-
-    It 'AC-VF-PERSP5: old two-level verify is unchanged when no perspective is given' {
-        $packet = script:Initialize-CanonicalPass -CaseName 'vf-persp5'
-        $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass
-        $r.ExitCode | Should -Be 0 -Because $r.Output
-        $r.Output | Should -Match 'pass-dir: log/review/verify-task/pass-01'
-        $r.Output | Should -Not -Match 'perspective:'
     }
 }

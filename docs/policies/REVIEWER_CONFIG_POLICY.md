@@ -54,7 +54,7 @@ Current as-built status of each key (in terms of the canonical operator-facing f
 | `timeoutSeconds` | **Metadata-only / unenforced** — see below. |
 | `outputFormat`, `resultFile` | Dead config — read by no script. |
 
-> The canonical operator-facing artifact set is exactly `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` + `result.md` (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). Current scripts emit this canonical layout directly; sidecar files outside that pair (for example `meta.json`, `target-files.list`, `result.json`) are not produced on the operator path and are not part of the contract. Historical references to those removed-legacy artifacts are preserved in git history and are not operator paths.
+> The canonical operator-facing artifact set is exactly `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/input.md` + `result.md` (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). Current scripts emit this three-level canonical layout directly (`-Perspective` required; no two-level fallback — legacy two-level records from before strict C1 are manual-readable runtime artifacts only, not tool-supported); sidecar files outside that pair (for example `meta.json`, `target-files.list`, `result.json`) are not produced on the operator path and are not part of the contract. Historical references to those removed-legacy artifacts are preserved in git history and are not operator paths.
 
 ### `timeoutSeconds` status
 
@@ -89,12 +89,12 @@ Entry shape (`config/reviewer.schema.json` `$defs/categoryEntry`): `reasoningEff
 
 ## Output location
 
-Reviewer output lives under `<ProjectRoot>/log/review/<review-task-id>/pass-NN/` — the canonical two-level layout that current scripts emit directly (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). A root `codex-review-input.md` or `codex-review-result*.json` is forbidden.
+Reviewer output lives under `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` — the canonical three-level layout that current scripts emit directly (`-Perspective` required; `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`). A root `codex-review-input.md` or `codex-review-result*.json` is forbidden.
 
 ## Reviewer boundary
 
 - `-Reviewer codex` is the only supported reviewer.
-- The canonical review entry is the two-step `scripts/review-prepare.ps1 -ReviewTaskId <id> [-Pass <pass-NN>]` → AI authors the pass `input.md` at `<ProjectRoot>/log/review/<review-task-id>/pass-NN/input.md` → `scripts/review-run.ps1 -ReviewTaskId <id> -Pass <pass-NN>` flow. Codex CLI is invoked exactly once per `review-run.ps1` call.
+- The canonical review entry is the two-step `scripts/review-prepare.ps1 -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>]` → AI authors the pass `input.md` at `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/input.md` → `scripts/review-run.ps1 -ReviewTaskId <id> -Perspective <viewpoint> -Pass <pass-NN>` flow (`-Perspective` required). Codex CLI is invoked exactly once per `review-run.ps1` call.
 - `fallbackModel` is dead/legacy (not in the current schema, read by no script, never auto-used as a model fallback); reviewer model resolution fails fast on a missing/empty config `model` rather than falling back.
 - reviewer verdict is not approval for commit / push / publish / merge / release / deployment.
 
@@ -129,10 +129,10 @@ On a successful run, `review-run.ps1` emits single-invocation run-facts to stdou
 For diagnosing Codex CLI invocation compatibility, the equivalent command shape (matching what `scripts/review-run.ps1` runs internally against the canonical pass directory) is:
 
 ```powershell
-# Paths below use the canonical <review-task-id>/pass-NN/ layout per
-# docs/contracts/review/REVIEW_RESULT_CONTRACT.md.
-Get-Content -Raw -LiteralPath "log/review/<review-task-id>/pass-NN/input.md" |
-  codex --ask-for-approval never exec --sandbox read-only --ignore-user-config --model <model> -c web_search=disabled -c model_reasoning_effort=<effort> --output-last-message "log/review/<review-task-id>/pass-NN/result.md" -
+# Paths below use the canonical <review-task-id>/<perspective>/pass-NN/ layout per
+# docs/contracts/review/REVIEW_RESULT_CONTRACT.md (-Perspective required).
+Get-Content -Raw -LiteralPath "log/review/<review-task-id>/<perspective>/pass-NN/input.md" |
+  codex --ask-for-approval never exec --sandbox read-only --ignore-user-config --model <model> -c web_search=disabled -c model_reasoning_effort=<effort> --output-last-message "log/review/<review-task-id>/<perspective>/pass-NN/result.md" -
 ```
 
 The normal path for a completed review record is the two-step `review-prepare.ps1` + `review-run.ps1` flow. The canonical contract is `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.
