@@ -8,20 +8,20 @@ This subsystem owns the snippet↔skill responsibility split (what stays always-
 
 - **One existing function-level skill:** `snippets/claude-skills/ai-harness-review/SKILL.md` (review-only; owns the full review lifecycle).
 - **Always-loaded payload responsibility (per the plan):** for current implemented capabilities only — hard boundaries / forbidden rules, adoption discipline, path/topology invariants, role neutrality + reviewer-mode exclusion, the verdict quick reference, cross-task execution invariants, and explicit-prompt trigger routing. Review *procedure* is not restated in the payload; it lives in the `ai-harness-review` skill + the review contract, referenced by pointer.
-- **Batch 1 has landed** (working tree; commit pending explicit user approval) as the first implementation batch. Batches 2–4 (plan §8) are not approved and not implemented.
+- **Batch 1 landed** (commit `56de8d3`) as the first implementation batch. **Batch 2 is partially landed in this working tree** — 2B (BR-D-02 restore-offer-component retirement) + 2A (unsolicited session-start restore-offer removal); 2C (manual brief-skill extraction) and 2D (closeout) remain (see *Not yet done*). Batches 3–4 (plan §8) are not implemented. The plan approves no batch by itself; each is a separate scoped goal + review gate + explicit user approval.
 
 ## Completed ledger
 
 | ID | Item | Closed at | Current meaning | Detail |
 |---|---|---|---|---|
 | SK-00 | Function-level skill architecture plan | `936969f` | design-stage plan source; approves no batch | `docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` |
-| SK-01 | Batch 1 — snippet review-procedure de-duplication | working tree (commit pending) | `snippets/CLAUDE_SNIPPET.md` / `AGENTS_SNIPPET.md` `## Review flow` reduced to routing + pointer to the `ai-harness-review` skill + the review contract, and the `## Execution discipline` section **removed entirely** (launch discipline owned by the skill step 5, review-scope-integrity relocated to the skill step 2, temporary-file cleanup generalized to `## Other rules`); the verdict quick reference (`## Result verdict vocabulary`) is retained as the single in-snippet home; no hard boundary / routing invariant dropped (review still fully specified via skill + contract) | plan §8 Batch 1; `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` |
+| SK-01 | Batch 1 — snippet review-procedure de-duplication | `56de8d3` | `snippets/CLAUDE_SNIPPET.md` / `AGENTS_SNIPPET.md` `## Review flow` reduced to routing + pointer to the `ai-harness-review` skill + the review contract, and the `## Execution discipline` section **removed entirely** (launch discipline owned by the skill step 5, review-scope-integrity relocated to the skill step 2, temporary-file cleanup generalized to `## Other rules`); the verdict quick reference (`## Result verdict vocabulary`) is retained as the single in-snippet home; no hard boundary / routing invariant dropped (review still fully specified via skill + contract) | plan §8 Batch 1; `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` |
 
 ## Not yet done
 
 Each is a separate scoped goal + Codex review gate + explicit user approval (plan §8); none is approved by the plan or by this status file.
 
-- **Batch 2** — restore-offer removal + manual brief-skill extraction.
+- **Batch 2** — restore-offer removal + manual brief-skill extraction. *(2B — BR-D-02 restore-offer-component retirement — and 2A — unsolicited session-start restore-offer removal from the snippet + active surfaces — landed in this working tree; 2C manual brief-skill extraction remains. Full Batch 2 closeout (STATUS done-flip / SK-02 ledger) is deferred to 2D.)*
 - **Batch 3** — remove non-current items (Chatlog section, BF Level 3 note) from the snippet.
 - **Batch 4** — review-polishing selective-capture vehicle decision (instruction vs skill; non-hook).
 

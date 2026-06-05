@@ -33,7 +33,7 @@
   - 단, core functionality 검증 이전에 installer / rollback / global mutation 을 먼저 productize 하려 한 sequencing 이 문제였다.
 - `ai-harness-toolset` MVP 단계.
   - copy-only / CLI-only / project-local 방식으로 핵심 기능을 먼저 검증하기 위해 유효한 선택이었다.
-  - MVP closeout 이후, core functionality (review subsystem, brief primitive, BF Level 1/2 manual save/restore discipline) 는 운영 가능 상태에 도달했다 (`POST_MVP_PLAN.md` §1, §2, §3 참조). 여기서 brief primitive 는 `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 라는 narrow source-side primitive 를 가리키며, BF Level 3 capability (deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer) 자체는 **미구현 future scoped work** 다 (`docs/contracts/brief/BRIEF_CONTRACT.md` §"BF Level — save/restore capability maturity").
+  - MVP closeout 이후, core functionality (review subsystem, brief primitive, BF Level 1/2 manual save/restore discipline) 는 운영 가능 상태에 도달했다 (`POST_MVP_PLAN.md` §1, §2, §3 참조). 여기서 brief primitive 는 `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 라는 narrow source-side primitive 를 가리키며, BF Level 3 capability (deterministic Brief maintenance / validation / stale warning / session-start guidance) 자체는 **미구현 future scoped work** 다 (`docs/contracts/brief/BRIEF_CONTRACT.md` §"BF Level — save/restore capability maturity"). 무요청 session-start restore-offer 의 source-side automation 은 retire 됨 (`docs/systems/brief/DEFERRED.md` BR-D-02).
 - 다중 프로젝트 운용 관점.
   - 동일 운영 규칙을 N 개의 target repo 에 각각 복제 / 동기화 하는 cost 가 누적된다.
   - shared/global 방식이 더 자연스러운 단계에 도달했다.
@@ -55,7 +55,7 @@
 - Codex reviewer discipline
 - verdict handling
 - commit / push approval separation
-- BF save / restore-offer discipline
+- BF save / explicit Brief restore discipline
 - global/shared toolset usage
 
 ### Project-specific layer

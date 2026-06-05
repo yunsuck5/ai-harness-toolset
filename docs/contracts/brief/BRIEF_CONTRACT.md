@@ -6,7 +6,7 @@
 
 ## 핵심 정의 — Brief vs Chatlog
 
-- **Brief** 는 한 project 의 **durable restore source-of-truth** 다. 작업을 (재)개할 때 가장 먼저 읽는 한 자리이며, 여러 session 에 걸쳐 의미가 유지된다.
+- **Brief** 는 한 project 의 **durable restore source-of-truth** 다. 사용자가 명시적으로 복원을 요청할 때 읽는 한 자리이며 (무요청 session-start 자동 읽기는 없다), 여러 session 에 걸쳐 의미가 유지된다.
 - **Chatlog** 는 Brief 가 아니다. Chatlog 는 history / decision rationale / Brief reconstruction evidence 다. 현재 restore source 가 아니다 (`docs/contracts/chatlog/CHATLOG_CONTRACT.md`).
 - 두 책임은 분리되어 있고 한쪽이 다른 쪽을 대체하지 않는다. Brief 가 오염 / 삭제 / stale 인 경우 Chatlog 가 Brief 재구성의 evidence 가 될 수 있으나, 그 자체가 Brief 의 자리는 아니다.
 
@@ -16,16 +16,16 @@
 
 | Level | 의미 | 현재 상태 |
 |---|---|---|
-| BF Level 1 | manual save / restore discipline. operator 는 BF 저장 / 복원 / 폐기의 **trigger / approve / reject / discard** 주체이며 BRIEF 본문을 손으로 편집하지 않는다. BRIEF 본문의 생성 / 갱신은 명시적 AI-assisted command flow (operator 의 trigger 시 agent 가 본문을 작성) 또는 deterministic tooling 이 담당하고, 새 session 진입 시 그 자리를 다시 읽어 작업을 복원한다. 자동화 없음. | 운영 중. operator trigger + agent (또는 tooling) 가 본문 작성. |
-| BF Level 2 | 같은 manual save / restore discipline 을, snippet protocol 또는 합의된 자연어 trigger 로 더 일관되게 적용하는 단계. operator 의 책임은 여전히 trigger / approve / reject / discard 이며, BRIEF 본문은 agent 가 protocol 을 따라 작성한다. 자동 detect / 자동 갱신 / restore-offer 자동화는 없다. | 운영 중. snippet / protocol 채택 시 활성. |
-| BF Level 3 | **deterministic Brief maintenance / validation / stale warning / session-start guidance / restore-offer** 의 자동화. deterministic writer 또는 명시적 AI-assisted command flow 가 BRIEF 의 갱신 / 점검 / 경고 / restore-offer 를 일관되게 수행하며, operator 가 BRIEF 본문을 손편집하지 않는 점은 BF Level 1/2 와 동일하다. | **현재 미구현.** future scoped work. |
+| BF Level 1 | manual save / restore discipline. operator 는 BF 저장 / 복원 / 폐기의 **trigger / approve / reject / discard** 주체이며 BRIEF 본문을 손으로 편집하지 않는다. BRIEF 본문의 생성 / 갱신은 명시적 AI-assisted command flow (operator 의 trigger 시 agent 가 본문을 작성) 또는 deterministic tooling 이 담당하고, **사용자가 명시적으로 복원을 요청하면** 그 자리를 다시 읽어 작업을 복원한다 (무요청 session-start 자동 읽기 / 제안은 없다). 자동화 없음. | 운영 중. operator trigger + agent (또는 tooling) 가 본문 작성. |
+| BF Level 2 | 같은 manual save / restore discipline 을, snippet protocol 또는 합의된 자연어 trigger 로 더 일관되게 적용하는 단계. operator 의 책임은 여전히 trigger / approve / reject / discard 이며, BRIEF 본문은 agent 가 protocol 을 따라 작성한다. 자동 detect / 자동 갱신 은 없다. | 운영 중. snippet / protocol 채택 시 활성. |
+| BF Level 3 | **deterministic Brief maintenance / validation / stale warning / session-start guidance** 의 자동화. deterministic writer 또는 명시적 AI-assisted command flow 가 BRIEF 의 갱신 / 점검 / 경고 를 일관되게 수행하며, operator 가 BRIEF 본문을 손편집하지 않는 점은 BF Level 1/2 와 동일하다. | **현재 미구현.** future scoped work. (무요청 session-start restore-offer 의 source-side automation 은 BF Level 3 component 가 아니다 — retire 됨; `docs/systems/brief/DEFERRED.md` BR-D-02.) |
 
 핵심:
 
 - BF Level 은 maturity 다. 같은 자리에서 더 일관되고 더 deterministic 한 운영으로 올라가는 layer 다. Level 별로 다른 path 를 두지 않는다.
 - BRIEF 본문은 어느 Level 에서도 **사람이 손으로 편집하는 모델에 의존하지 않는다.** operator 는 trigger / approve / reject / discard 의 주체이며, 본문 생성 / 갱신은 deterministic tooling 또는 명시적 AI-assisted command flow 가 담당한다 (clean decision memo D-BRIEF-8). BF Level 3 의 방향은 그 generation / update layer 자체를 deterministic 하게 만드는 것이며, BF Level 1/2 의 hand-edit 운영을 안정화하는 것이 아니다.
 - 현재 `scripts/brief-init.ps1` / `scripts/brief-check.ps1` / `scripts/brief-status.ps1` 는 BF Level 3 의 **full implementation 이 아니라** source-side primitive 다 (아래 §"source-side primitive 책임" 참조). 세 script 가 존재한다고 해서 BF Level 3 capability 가 갖춰진 상태는 아니다.
-- BF Level 1/2 의 manual save 단계에서 agent 가 본문 작성을 담당하는 흐름은 BF Level 3 의 deterministic writer / 자동 restore-offer 가 흡수해야 할 대상이다. 본 contract 는 그 흡수의 완료를 강제하지 않는다.
+- BF Level 1/2 의 manual save 단계에서 agent 가 본문 작성을 담당하는 흐름은 BF Level 3 의 deterministic writer 가 흡수해야 할 대상이다. 본 contract 는 그 흡수의 완료를 강제하지 않는다. (무요청 session-start restore-offer 자동화는 retire 됨 — 흡수 대상이 아니다; `docs/systems/brief/DEFERRED.md` BR-D-02.)
 
 ## canonical Brief 자리 — project-local runtime under `<ProjectRoot>/log/`
 
@@ -53,21 +53,21 @@
 
 - `brief-init.ps1` — `<ProjectRoot>/log/brief/BRIEF.md` 에 template artifact 를 한 번 seed. 이미 존재하면 default 동작은 거부 (no overwrite).
 - `brief-check.ps1` — 지정된 BRIEF artifact 의 shape (canonical heading 8 종, placeholder / sentinel 잔존, duplicate, empty body) 만 검증. read-only.
-- `brief-status.ps1` — canonical Brief 자리의 존재 여부를 확인하고, shape 검증은 `brief-check.ps1` 에 delegate 한 뒤, shape PASS 인 경우 required heading 8 종 각각의 첫 비어있지 않은 본문 줄을 Korean label 과 함께 stdout 으로 출력. read-only. session-start / restore-offer manual discipline 의 deterministic input 으로 호출자가 활용한다. 호출 시점, confirm UX, stale 판단은 본 primitive 의 책임이 아니다.
+- `brief-status.ps1` — canonical Brief 자리의 존재 여부를 확인하고, shape 검증은 `brief-check.ps1` 에 delegate 한 뒤, shape PASS 인 경우 required heading 8 종 각각의 첫 비어있지 않은 본문 줄을 Korean label 과 함께 stdout 으로 출력. read-only. explicit user-requested Brief restore / status discipline 의 deterministic input 으로 호출자가 활용한다. 호출 시점, confirm UX, stale 판단은 본 primitive 의 책임이 아니다.
 
 세 primitive 의 destination / default check path / default read path 는 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`) 와 일치한다. 위 §"canonical Brief 자리" 의 정의가 primitive 의 동작과 정합한다.
 
 - `ai-harness-toolset` 가 자기 자신을 dogfooding ProjectRoot 로 동작할 때, 그 결과로 생기는 `<ToolsetRepoRoot>/log/brief/BRIEF.md` 는 ai-harness-toolset 자신의 self-dogfooding canonical Brief instance 다. operator-local runtime artifact 이며 source payload / install payload / 다른 project 의 Brief 와 무관하다.
 - 외부 target repo 에 primitive 를 적용해도 같은 자리 (`<TargetRoot>/log/brief/BRIEF.md`) 가 canonical 이다. routing 변경 future scoped work 는 없다 — destination 자체가 이미 canonical 이다.
 
-primitive 의 narrow 성격은 destination 의 문제가 아니라 capability 의 문제다 — deterministic save / update writer, restore-offer 의 confirm UX 자동화, stale warning, deterministic session-start guidance (호출 시점의 자동화) 같은 BF Level 3 의 자동화는 세 primitive 가 제공하지 않는다 (§"Future scoped work" 참조). `brief-status.ps1` 은 session-start / restore-offer manual discipline 이 사용할 수 있는 deterministic summary input 만 제공하며, 그 자체가 호출 시점이나 confirm UX 를 자동화하지 않는다.
+primitive 의 narrow 성격은 destination 의 문제가 아니라 capability 의 문제다 — deterministic save / update writer, stale warning, deterministic session-start guidance (호출 시점의 자동화) 같은 BF Level 3 의 자동화는 세 primitive 가 제공하지 않는다 (§"Future scoped work" 참조). `brief-status.ps1` 은 explicit user-requested Brief restore / status discipline 이 사용할 수 있는 deterministic summary input 만 제공하며, 그 자체가 호출 시점이나 confirm UX 를 자동화하지 않는다. (무요청 session-start restore-offer 의 source-side automation 은 retire 됨 — `docs/systems/brief/DEFERRED.md` BR-D-02.)
 
 ## Future scoped work — 본 contract 가 자동 승인하지 않는 항목
 
 아래는 BF Level 3 capability 의 완성에 필요하지만 본 contract 가 자동 승인하지 않는 항목이다. 각각 별도 scoped 승인이 필요하다.
 
 - deterministic save / update writer — agent 또는 사람이 BRIEF 본문을 손편집하지 않고도 정해진 trigger 에 따라 BRIEF 를 갱신하는 writer.
-- restore-offer behavior — 새 session 진입 시 BRIEF 를 읽고 현재 상태 / 다음 단일 action / do-not-do / pending user decision 을 사용자에게 요약 보고하고, "이 복구 지점에서 이어서 진행할까요?" 류의 확인을 받는 흐름. `brief-status.ps1` 은 그 흐름의 manual discipline 이 사용할 수 있는 deterministic summary input 만 제공한다 — confirm UX 자체와 호출 시점의 자동화는 여전히 future scoped work 다. 본 contract 는 그 흐름의 source-side automation 을 강제하지 않는다.
+- ~~restore-offer behavior~~ — **retired (not future scoped work).** 무요청 session-start restore-offer 의 source-side automation 은 폐기됨 (`docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §3 / `docs/systems/brief/DEFERRED.md` BR-D-02). 명시적 user-requested Brief restore — 사용자가 직접 복원을 요청할 때 BRIEF 를 읽고 현재 상태 / 다음 단일 action / do-not-do / pending user decision 을 요약 보고하고 "이 복구 지점에서 이어서 진행할까요?" 류의 확인을 받는 흐름 — 은 현행 manual capability (BF Level 1/2) 로 유지되며, `brief-status.ps1` 이 그 manual discipline 의 deterministic summary input 을 제공한다. 무요청 자동 제안의 source-side automation 만 retire 된 것이며, BR-D-01 (deterministic writer) · BR-D-03 (stale warning · session-start guidance) 는 future scoped work 로 유지된다.
 - stale warning — BRIEF 가 일정 시간 / 일정 작업 단위 이상 갱신되지 않은 상태를 감지하고 사용자에게 알리는 메커니즘.
 - session-start guidance — 새 agent session 이 BRIEF 를 가장 먼저 읽도록 일관되게 유도하는 deterministic guidance. `brief-status.ps1` 의 deterministic summary 출력은 그 guidance 가 호출 시점에 활용할 수 있는 input 일 뿐이며, 호출 자체를 강제하거나 자동화하지 않는다.
 - 위 항목들의 source-side automation 을 ai-harness-toolset 내부에 도입할지, 외부 의도에 위임할지의 decision.
@@ -82,8 +82,8 @@ target repo 의 BRIEF artifact 자리는 `<ProjectRoot>/log/brief/BRIEF.md` 한 
 
 독자 우선순위:
 
-- 제 1 독자는 그 project 를 지금 운영하는 **operator** 다. 작업 (재)개 시 가장 먼저 열어 durable 상태를 복원한다.
-- 제 2 독자는 **AI agent** 다. 새 CLI agent session, long context 손실 후 복원, 또는 cross-session handoff 시 첫 진입점이다.
+- 제 1 독자는 그 project 를 지금 운영하는 **operator** 다. 명시적으로 복원을 요청할 때 이 자리를 열어 durable 상태를 복원한다 (무요청 session-start 자동 읽기는 없다).
+- 제 2 독자는 **AI agent** 다. 사용자가 명시적으로 복원을 요청하면 (새 CLI agent session, long context 손실 후 복원, 또는 cross-session handoff 시) 이 자리를 진입점으로 삼는다 — 무요청 자동 진입은 아니다.
 - BRIEF 는 shared human handoff 문서가 아니다. 다른 사람에게 넘길 durable project 정보는 BRIEF 가 아니라 그 project 의 정식 docs 가 담는다.
 
 BRIEF 는 짧고 자족적이어야 한다. 누적 history, 자세한 review payload, evidence 본문, raw transcript 는 BRIEF 본문에 옮겨 적지 않고 path / link 로만 가리킨다.
@@ -141,7 +141,7 @@ durable-project interpretation:
 | Current scope | 지금 phase / workstream 의 범위 |
 | Next single action | 다음 durable 단계의 단일 action |
 | Do not do | project 차원에서 명시적으로 금지된 항목 (scope guardrail) |
-| Files to inspect first | 새 session 이 가장 먼저 읽을 path |
+| Files to inspect first | 복원 시 가장 먼저 확인할 path |
 | Open risks | project 차원의 알려진 위험 / 가정 / unknown |
 | Pending user decision | project 방향에 영향을 주는 미결 결정 |
 | Relevant artifacts (optional) | durable artifact 위치 (path 만; 본문 인라인 금지) |
@@ -202,7 +202,7 @@ forbidden behavior:
 
 ### brief-status.ps1
 
-`scripts/brief-status.ps1` 은 canonical Brief 의 존재 여부 + shape 검증 결과 (delegated) + required heading 별 첫 비어있지 않은 본문 줄을 Korean label 과 함께 stdout 으로 출력하는 read-only CLI 다. session-start / restore-offer manual discipline 의 deterministic input 으로만 활용된다.
+`scripts/brief-status.ps1` 은 canonical Brief 의 존재 여부 + shape 검증 결과 (delegated) + required heading 별 첫 비어있지 않은 본문 줄을 Korean label 과 함께 stdout 으로 출력하는 read-only CLI 다. explicit user-requested Brief restore / status discipline 의 deterministic input 으로만 활용된다.
 
 required behavior:
 
@@ -220,7 +220,7 @@ forbidden behavior:
 - `yes` / `no` / `yes with risk` verdict 생성. commit / push / publish / merge / release / adoption 승인 또는 차단.
 - BRIEF 본문 mutation. shape 검증 의미 변경. `brief-check.ps1` 의 책임 확장.
 - stale heuristic (mtime 임계, HEAD SHA cross-check, branch 비교 등) 도입.
-- restore-offer confirm prompt UX 자동화. session-start hook / SessionStart hook / OnStop hook / OnPromptSubmit hook / 어떤 형태의 background trigger.
+- session-start restore / confirm-prompt UX 의 자동화 (어떤 형태든; 무요청 restore-offer 포함). session-start hook / SessionStart hook / OnStop hook / OnPromptSubmit hook / 어떤 형태의 background trigger.
 - daemon / watcher / scheduler / hook / background process.
 - 글로벌 파일 변경, `.gitignore` 변경, snapshot / manifest / handoff 생성.
 

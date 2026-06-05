@@ -1,6 +1,6 @@
 # Project Brief
 
-이 파일은 이 project 의 **canonical Brief** — 이 project 의 local runtime restore summary — 다. 현재 operator 또는 새 AI agent session 이 작업을 (재)개할 때 가장 먼저 읽는 local restore entrypoint 이며, shared project source-of-truth 나 human handoff 문서가 아니다.
+이 파일은 이 project 의 **canonical Brief** — 이 project 의 local runtime restore summary — 다. 현재 operator 또는 새 AI agent session 이 **명시적으로 복원을 요청할 때** 읽는 local restore entrypoint 이며 (무요청 session-start 자동 읽기는 없다), shared project source-of-truth 나 human handoff 문서가 아니다.
 
 canonical 자리는 `<ProjectRoot>/log/brief/BRIEF.md` 다. project 의 checkout 안 `<ProjectRoot>/log/` 트리 아래 runtime artifact 이며, project 의 `.gitignore` 의 `log/` 규칙에 의해 기본적으로 ignored 된다 — commit / push / merge / release 대상이 아니다. **root `<ProjectRoot>/brief/` 는 canonical 자리가 아니며 만들지 않는다.** user-home 의 operator-local runtime root 도 canonical 자리가 아니다.
 
@@ -46,7 +46,7 @@ heading set 은 아래 구조를 그대로 유지한다. 임의의 새 top-level
 
 ## Files to inspect first
 
-> 현재 operator / 새 AI agent session 이 가장 먼저 읽을 path. 경로 위주로 짧게.
+> 복원 시 가장 먼저 확인할 path. 경로 위주로 짧게.
 
 (Replace this section with project-specific content.)
 

@@ -10,14 +10,14 @@
 
 ## 1. Problem statement
 
-The global install adopts the snippet payload (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) into a `CLAUDE.md` / `AGENTS.md` managed block. That payload is **always loaded** into every session of every project, regardless of the task. Today it carries far more than always-on invariants: it embeds full review-flow mechanics, the BF save/checkpoint step procedure, the new-session restore-offer step procedure, execution discipline, and verdict-meaning detail — procedure that is *also* owned by the on-demand `ai-harness-review` skill and by non-deployed contracts.
+The global install adopts the snippet payload (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) into a `CLAUDE.md` / `AGENTS.md` managed block. That payload is **always loaded** into every session of every project, regardless of the task. Today it carries far more than always-on invariants: it embeds full review-flow mechanics, the BF save/checkpoint step procedure, the new-session restore-offer step procedure (**since removed / discarded by Batch 2** — §3/§8/STATUS), execution discipline, and verdict-meaning detail — procedure that is *also* owned by the on-demand `ai-harness-review` skill and by non-deployed contracts.
 
 Three consequences follow:
 
 1. **Always-on context cost for every task.** A non-review, non-brief task still pays the full procedure payload.
 2. **Triple-duplication staleness risk.** Verdict vocabulary, result.md required sections, and review-flow mechanics appear in snippet + skill + contract. Duplication is the engine of staleness (`DOCS_OPERATING_MODEL.md` §1): each change needs an N-place sweep, and any missed place silently drifts.
 3. **Public-readiness friction.** A prior read-only architecture review of this surface found operator-personal / non-deployed-doc references **elsewhere in the deployed surface** (not in the always-loaded snippet, which had no such mention) — an off-repo `polishing/` example in the deployed `SKILL.md` and deployed→non-deployed-doc provenance pointers in deployed `config/` / `scripts/`. For a public/open-source adopter these are warts, not capability claims, but they reduce surface clarity.
-4. **Non-current items in the always-on payload.** Part of what the snippet carries is not a current, implemented capability at all: the **unsolicited session-start restore-offer**, the **Chatlog** section, and the **BF Level 3** non-claim. For these the fix is not minimization but **removal** — the snippet must not retain an unimplemented or non-current item even as a "future / deferred / later-track" note (the authoritative deferred record lives in non-deployed docs, e.g. `docs/systems/brief/DEFERRED.md`, not in the always-loaded payload).
+4. **Non-current items in the always-on payload.** Part of what the snippet carried is not a current, implemented capability at all: the **unsolicited session-start restore-offer** (**removed by Batch 2**), the **Chatlog** section, and the **BF Level 3** non-claim (the latter two are still in the current snippet, pending **Batch 3**). For these the fix is not minimization but **removal** — the snippet must not retain an unimplemented or non-current item even as a "future / deferred / later-track" note (the authoritative deferred record lives in non-deployed docs, e.g. `docs/systems/brief/DEFERRED.md`, not in the always-loaded payload).
 
 The fix direction: the snippet keeps only what every session must always know **for current, implemented capabilities** (rules / policy / hard boundaries / routing invariants); every **explicit-prompt-triggered** feature procedure moves into a **function-level skill** loaded on demand; and any non-current / unimplemented item is **removed** from the snippet rather than reframed as future/deferred.
 
@@ -25,8 +25,8 @@ The fix direction: the snippet keeps only what every session must always know **
 
 Deployed payload = `config/` + `scripts/` + `snippets/` + `templates/` (mirrored to `%USERPROFILE%\.claude\ai-harness-toolset\current\`). `docs/`, `tests/`, `log/` are **not** deployed.
 
-**Snippet payload (always-loaded), near-identical across CLAUDE/AGENTS.** Originally 14 H2 sections; Batch 1 removed the *Execution discipline* section (its review-run launch discipline is owned by the `ai-harness-review` skill), leaving 13:
-Adoption destination · Adoption rules · Role neutrality · Project layout · Review flow · Result verdict vocabulary · Operator stance · Brief · Chatlog · New session restore-offer · BF save / checkpoint protocol · Forbidden in this toolset · Other rules. (Section structure is not frozen for its own sake — a function-specific procedure section is removed once its procedure is owned by a function-level skill.)
+**Snippet payload (always-loaded), near-identical across CLAUDE/AGENTS.** Originally 14 H2 sections; Batch 1 removed the *Execution discipline* section, and Batch 2 removed the *New session restore-offer* section (the unsolicited session-start offer is discarded; the reviewer-mode exclusion it carried moved to *Role neutrality*), leaving 12:
+Adoption destination · Adoption rules · Role neutrality · Project layout · Review flow · Result verdict vocabulary · Operator stance · Brief · Chatlog · BF save / checkpoint protocol · Forbidden in this toolset · Other rules. (Section structure is not frozen for its own sake — a function-specific procedure section is removed once its procedure is owned by a function-level skill or discarded.)
 
 **Skill payload (on-demand):** exactly one — `snippets/claude-skills/ai-harness-review/SKILL.md`, confirmed **review-only** (no install / brief / chatlog procedure mixed in; install/brief simply have no skill). Adopted to `~/.claude/skills/ai-harness-review/`.
 
@@ -35,12 +35,12 @@ Adoption destination · Adoption rules · Role neutrality · Project layout · R
 | Capability | Snippet | Skill | Scripts | Contract/Docs (non-deployed) | Runtime (non-deployed) |
 |---|---|---|---|---|---|
 | Review | Review flow (routing) + verdict vocab | `ai-harness-review` (full lifecycle, incl. review-run launch + scope-integrity discipline) | `review-*.ps1` | `contracts/review/REVIEW_RESULT_CONTRACT.md` | `log/review/**` |
-| Brief save / restore / BF lv1–2 | Brief + BF save/checkpoint + restore-offer (full step detail) | — (no skill) | `brief-init/check/status.ps1` | `contracts/brief/BRIEF_CONTRACT.md` | `log/brief/BRIEF.md` |
+| Brief save / restore / BF lv1–2 | Brief + BF save/checkpoint (full step detail; unsolicited session-start restore-offer removed — Batch 2) | — (no skill yet; brief-family skill = Batch 2C) | `brief-init/check/status.ps1` | `contracts/brief/BRIEF_CONTRACT.md` | `log/brief/BRIEF.md` |
 | Chatlog | Chatlog section | — | — | `contracts/chatlog/CHATLOG_CONTRACT.md` | `log/chatlog/**` |
 | Install / update / uninstall | Adoption destination/rules | — (LTS, no skill) | `install-*/update-*/uninstall-*.ps1` | `systems/install-update/**`, `INSTALL.md` | n/a |
 | Review-polishing | — (not a snippet capability) | — | — (no deployed script) | `systems/review/REVIEW_POLISHING_*` | `log/review_polishing/**` |
 
-**Removal targets (not minimization targets).** Three things the current snippet carries are not current implemented capabilities and are slated for **removal** (§7, §8), not reduction: the unsolicited session-start **restore-offer**, the **Chatlog** section, and the **BF Level 3** non-claim. By contrast, the current **manual Brief workflow** — save / checkpoint / user-requested restore / update (explicit-prompt, `brief-*.ps1`-backed) — is a real current capability; it is retained as routing (§4) with its step detail moving to the brief-family skill (§5).
+**Removal targets (not minimization targets).** Three things slated for **removal** (§7, §8), not reduction: the unsolicited session-start **restore-offer** (**removed by Batch 2**), the **Chatlog** section, and the **BF Level 3** non-claim (the latter two are still carried by the current snippet, pending **Batch 3**). By contrast, the current **manual Brief workflow** — save / checkpoint / user-requested restore / update (explicit-prompt, `brief-*.ps1`-backed) — is a real current capability; it is retained as routing (§4) with its step detail moving to the brief-family skill (§5).
 
 ## 3. Target architecture
 

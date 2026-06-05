@@ -7,13 +7,13 @@
 ## 핵심 정의 — Chatlog ≠ Brief
 
 - **Chatlog** 는 AI-assisted development session 의 작업 기록 / 결정 근거 / forensic trace 를 사람이 읽는 file 형태로 보존하는 영역이다.
-- Chatlog 는 **Brief 가 아니다.** Brief 는 작업 (재)개 시 가장 먼저 읽는 durable restore source 이며 그 contract 는 `docs/contracts/brief/BRIEF_CONTRACT.md` 다.
+- Chatlog 는 **Brief 가 아니다.** Brief 는 (사용자가 명시적으로 복원을 요청할 때 읽는) durable restore source 이며 그 contract 는 `docs/contracts/brief/BRIEF_CONTRACT.md` 다.
 - Chatlog 의 책임은 **history / decision rationale / Brief reconstruction evidence** 이다. 현재 restore source 의 자리가 아니다.
 - 두 책임은 분리되어 있고 한쪽이 다른 쪽을 대체하지 않는다. 본 contract 는 Chatlog 를 Brief 의 대용으로 쓰는 model 을 정의하지 않는다.
 
 ## current restore source 는 Brief 다
 
-- 어떤 session 이든 작업 (재)개 시 **가장 먼저 읽는 자리는 Brief** 다 (`docs/contracts/brief/BRIEF_CONTRACT.md`). canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` — 그 project 의 checkout 안 `log/` 트리 아래 project-local, operator-local, source-control-excluded runtime artifact. root `<ProjectRoot>/brief/` 와 user-home operator-local runtime root 는 Brief 자리가 아니다.
+- 사용자가 명시적으로 복원을 요청할 때 읽는 자리는 (Chatlog 가 아니라) **Brief** 다 (`docs/contracts/brief/BRIEF_CONTRACT.md`); 무요청 session-start 자동 읽기는 없다. canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` — 그 project 의 checkout 안 `log/` 트리 아래 project-local, operator-local, source-control-excluded runtime artifact. root `<ProjectRoot>/brief/` 와 user-home operator-local runtime root 는 Brief 자리가 아니다.
 - Chatlog 는 새 session 의 default context 가 아니다. AI agent 가 raw transcript / 누적 Chatlog 본문을 읽어 자체 요약으로 restore 를 시도하는 우회는 권장되지 않는다.
 - Chatlog 가 사용되는 정상 경로는 두 가지뿐이다.
   - Brief 가 가리키는 path 를 따라가 특정 결정 / 근거 / 인용 wording 을 확인할 때.

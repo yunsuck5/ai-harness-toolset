@@ -25,8 +25,8 @@ The forbidden destination is `%USERPROFILE%\.claude\AGENTS.md`. That path is not
 
 This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-prepare.ps1` / `review-run.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
 
-- When acting as **reviewer**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form the verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict.
-- The operator-side protocols described below — BF save triggers, new-session restore-offer, the `review-prepare` / `review-run` review flow — apply only when acting as **operator**.
+- When acting as **reviewer**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form the verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict. In reviewer mode do not run the operator-side Brief / session-restore protocols, do not pause for a missing `BRIEF.md`, and do not ask a restore / session / clarification question — produce the canonical review `result.md` verdict instead (the review-result contract takes precedence).
+- The operator-side protocols described below — BF save triggers and the `review-prepare` / `review-run` review flow — apply only when acting as **operator**.
 - Nothing in this payload forces accept / approve. Nothing in it weakens reviewer independence. Nothing in it permits whole-file overwrite of a global instruction file.
 
 ## Project layout
@@ -64,8 +64,8 @@ Stay within the user-approved review / `/goal` scope. If a finding or fix would 
 
 ## Brief
 
-- **Brief** is a project's durable restore source-of-truth. The current operator — or a new AI agent session — reads it first as a local restore entrypoint when (re)starting work. It is not a shared project handoff document.
-- **Canonical Brief** = `<ProjectRoot>/log/brief/BRIEF.md`. That single path is the canonical reading position for any session. It is a project-local, operator-local runtime artifact under `<ProjectRoot>/log/` (gitignored by default and not a commit / push target).
+- **Brief** is a project's durable restore source-of-truth. The current operator — or a new AI agent session — reads it as the local restore entrypoint **when an explicit Brief restore is requested**, not as an unsolicited session-start auto-read. It is not a shared project handoff document.
+- **Canonical Brief** = `<ProjectRoot>/log/brief/BRIEF.md`. That single path is the canonical reading position when restoring. It is a project-local, operator-local runtime artifact under `<ProjectRoot>/log/` (gitignored by default and not a commit / push target).
 - **Rejected locations**: root `<ProjectRoot>/brief/BRIEF.md` is not the canonical Brief. Any user-home operator-local runtime root is also not the canonical Brief.
 - The operator is the trigger / approve / reject / discard owner and does not hand-edit the Brief. Brief content is written or updated by the agent (an explicit AI-assisted command flow on operator trigger) or by deterministic tooling.
 - BF Level 3 — automated Brief management — is not implemented in this toolset. Do not claim that capability.
@@ -77,22 +77,6 @@ Stay within the user-approved review / `/goal` scope. If a finding or fix would 
 - **Chatlog ≠ Brief.** Chatlog is the history / decision rationale / Brief reconstruction evidence area at `<ProjectRoot>/log/chatlog/`. It is **not** the current restore source and is **not** the default-restore target for a new session.
 - The current restore source is **Brief** (`<ProjectRoot>/log/brief/BRIEF.md`).
 - Chatlog may be consulted when Brief is missing, corrupted, or stale, as **reconstruction evidence only**. Chatlog is never promoted into Brief's seat.
-
-## New session restore-offer
-
-> **Reviewer-mode exclusion.** This restore-offer protocol is **operator-mode only**. When acting as a reviewer — for example the Codex reviewer invoked by `review-run.ps1` with a prepared `log/review/<review-task-id>/<perspective>/pass-NN/input.md` — do **not** perform any step below: do not read or require `BRIEF.md`, do not treat its absence as a reason to pause, and do not ask any restore / session / clarification question. In reviewer mode the review-result contract takes precedence over this protocol — produce the canonical `result.md` verdict instead (exactly one `## Verdict` heading with `yes` / `no` / `yes with risk`, and the four required disclosure H2s `## Blocking findings` / `## Non-blocking concerns` / `## Review limitations` / `## Assumptions relied on` each exactly once with `none` as the body when empty; if evidence is insufficient, return `no` or `yes with risk` with the gap recorded under the appropriate disclosure section, never a question).
-
-At the start of meaningful work, read the canonical Brief at `<ProjectRoot>/log/brief/BRIEF.md`. This is the single canonical location — there is no fallback location and no read-order chain. Do not look for or read `<ProjectRoot>/brief/BRIEF.md` (rejected) or any user-home operator-local runtime root. Referenced review / evidence / Chatlog artifacts are read only when the canonical Brief points to them.
-
-Then:
-
-1. Summarize the restore point in Korean, covering current state, next single action, do-not-do, and pending user decision. The human-facing summary must be in Korean so the human reader can pick up immediately; agent-internal reasoning may be in any language.
-2. Ask the user whether to resume from that point. Use a canonical prompt equivalent to `이 복구 지점에서 이어서 진행할까요?`.
-3. Proceed only after the user confirms.
-
-Missing-file handling:
-
-- If `<ProjectRoot>/log/brief/BRIEF.md` is missing, do **not** default-restore from Chatlog. Report the absence and ask the user how to proceed. If the user explicitly asks for reconstruction from Chatlog, treat Chatlog as evidence and produce a draft Brief for the user's review rather than restoring blindly. Do not write a fresh Brief without user confirmation.
 
 ## BF save / checkpoint protocol
 

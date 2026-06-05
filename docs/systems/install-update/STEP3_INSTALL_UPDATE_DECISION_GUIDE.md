@@ -117,7 +117,7 @@ scope drift:
 
 - Step 4 (install / update validation) 동작의 Step 3 안 수행.
 - self-adoption (`ai-harness-toolset` 자체의 self-target 운영) 의 Step 3 안 수행.
-- BF Level 3 (deterministic Brief maintenance / validation / restore-offer / stale warning / session-start guidance) 의 Step 3 안 implementation.
+- BF Level 3 (deterministic Brief maintenance / validation / stale warning / session-start guidance) 의 Step 3 안 implementation. (무요청 session-start restore-offer automation 은 retire 됨 — `docs/systems/brief/DEFERRED.md` BR-D-02.)
 - Chatlog system 의 fuller implementation.
 - 실제 `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` global / user filesystem mutation 의 수행.
 - commit / push / publish / merge / release / adoption 의 승인.
