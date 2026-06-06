@@ -8,7 +8,7 @@ Read an architecture doc when a task touches **how a structural concern is divid
 
 | Subfolder | Concern | Read when |
 |---|---|---|
-| `instruction-surface/` | `INSTRUCTION_SURFACE_PLAN.md` — how operating rules are partitioned across instruction tiers (global instruction / repo-local always-on instruction / skill `description` / `SKILL.md` / `docs/contracts` / memory / hooks; Codex Rules excluded) | planning or auditing the instruction/capability surface split |
+| `instruction-surface/` | `INSTRUCTION_SURFACE_PLAN.md` — how operating rules are partitioned across instruction tiers (global instruction / repo-local always-on instruction / skill `description` / `SKILL.md` / `docs/contracts` / memory / hooks; Codex Rules excluded); `GLOBAL_SNIPPET_RELOCATION_AUDIT.md` — the plan's Track B per-section classification of the remaining global snippet content | planning or auditing the instruction/capability surface split |
 
 ## How this differs from `docs/systems/`
 
