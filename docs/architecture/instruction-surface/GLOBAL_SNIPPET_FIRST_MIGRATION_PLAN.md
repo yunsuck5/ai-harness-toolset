@@ -43,6 +43,7 @@ Ordered lowest-coupling-first. Each batch is sequential where a later batch assu
 - **Review gate.** Codex **system-coherence** (the question is cross-surface role coherence, not local correctness); `review-verify -RequireResult`. A docs-classification round does not require the full Pester suite (no code/test/snippet/template change) — state the change class in the review input.
 
 ### GSF-B3 — `rules/` extraction MVP consideration (decision batch)
+- **Status: decision landed** — `docs/architecture/instruction-surface/GLOBAL_SNIPPET_FIRST_GSF_B3_RULES_LOADING_DECISION.md` (decision-only; **create no rules surface now** — GSF-B2 found zero rule candidates; records the vendor-neutral rules loading model + future adoption conditions; no `/rules/`, no `.claude/rules/`, no `.codex/rules/`, no `@import`). The bullets below remain the batch's standing charter.
 - **Goal.** With the rule candidates classified in GSF-B1/B2 in hand, decide whether to extract a **minimal** `rules/` surface (design §9), using the three rule kinds (global-distributed / repo-local / global-always-on) for classification. May conclude "defer further — not yet worth a surface."
 - **Hard boundaries.** **No broad `rules/` catalog.** If a candidate is an immediately-needed deterministic guard, prefer fixing it as a `tests`/verifier first (design §8 step 3). Shipped-globally ≠ applied-always-on (design §9).
 - **Review gate.** Codex **system-coherence**; `review-verify -RequireResult`.
@@ -53,7 +54,7 @@ Ordered lowest-coupling-first. Each batch is sequential where a later batch assu
 - **Hard boundaries.** No deletion without owner-migration evidence; a four-class reference sweep (path / token / folder-bucket / semantic) for dangling references before the review; inbound references updated.
 - **Review gate.** Codex **local-correctness** (dangling-reference / deletion sweep is the primary review surface) **+ system-coherence**; `review-verify -RequireResult`.
 
-**Stage flow.** design (committed, `4f31cd9`) → **this plan** → spec for GSF-B1 → GSF-B1 implementation (landed) → **GSF-B2 docs policy-warehouse audit (landed — classification-only record `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`)** → (GSF-B3, then GSF-B4, each with its own scoped goal + spec-where-it-mutates + review + approval).
+**Stage flow.** design (committed, `4f31cd9`) → **this plan** → spec for GSF-B1 → GSF-B1 implementation (landed) → **GSF-B2 docs policy-warehouse audit (landed — classification-only record `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`)** → **GSF-B3 rules loading model decision (landed — decision-only record `GLOBAL_SNIPPET_FIRST_GSF_B3_RULES_LOADING_DECISION.md`; create no rules surface now)** → (GSF-B4, with its own scoped goal + spec-where-it-mutates + review + approval).
 
 ---
 
