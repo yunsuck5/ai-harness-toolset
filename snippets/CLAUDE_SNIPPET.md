@@ -24,7 +24,7 @@ The forbidden destination is `%USERPROFILE%\.claude\AGENTS.md`. That path is not
 
 This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-prepare.ps1` / `review-run.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
 
-- When acting as **reviewer** or **auditor**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form any verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict. In reviewer mode do not run the operator-side Brief / session-restore protocols, do not pause for a missing `BRIEF.md`, and do not ask a restore / session / clarification question — produce the canonical review `result.md` verdict instead (the review-result contract takes precedence).
+- When acting as **reviewer** or **auditor**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`), verdict vocabulary, the no-overwrite contract for global files, and the source-of-truth priority. Form any verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict. In reviewer mode do not run the operator-side Brief / session-restore protocols, do not pause for a missing `BRIEF.md`, and do not ask a restore / session / clarification question — produce the canonical review `result.md` verdict instead (the review-result contract takes precedence).
 - The operator-side protocols — the Brief save / checkpoint / restore / update workflow, and the `review-prepare` / `review-run` review flow — apply only when acting as **operator**.
 - Nothing in this payload forces accept / approve. Nothing in it weakens reviewer independence. Nothing in it permits whole-file overwrite of a global instruction file.
 
@@ -56,16 +56,6 @@ A reviewer verdict does not approve commit, push, publish, merge, release, uploa
 
 Stay within the user-approved review / `/goal` scope. If a finding or fix would cross a source / runtime / sibling-report / user-global / global-install / commit-push boundary, stop and report instead of silently absorbing it. If you discover an earlier judgment of yours was wrong, retract it explicitly rather than overwriting it. The full operator stance (target-file accuracy, off-repo material handling, stop/report vs self-correct, retraction protocol, scope discipline) lives in the ai-harness-review skill and the canonical review contract — not duplicated here.
 
-## Brief
-
-- BF Level 3 — automated Brief management — is not implemented in this toolset. Do not claim that capability.
-
-## Chatlog
-
-- **Chatlog ≠ Brief.** Chatlog is the history / decision rationale / Brief reconstruction evidence area at `<ProjectRoot>/log/chatlog/`. It is **not** the current restore source and is **not** the default-restore target for a new session.
-- The current restore source is **Brief** (`<ProjectRoot>/log/brief/BRIEF.md`).
-- Chatlog may be consulted when Brief is missing, corrupted, or stale, as **reconstruction evidence only**. Chatlog is never promoted into Brief's seat.
-
 ## Forbidden in this toolset
 
 - No per-user / per-operator log partitioning, operator-id, machine-id, or ownership metadata.
@@ -73,7 +63,6 @@ Stay within the user-approved review / `/goal` scope. If a finding or fix would 
 - No daemon, watcher, scheduler, hook, or background task.
 - No implicit, automatic, or whole-file mutation of a global instruction file. Specifically: `%USERPROFILE%\.claude\CLAUDE.md` (Claude), `%USERPROFILE%\.codex\AGENTS.md` (Codex default), `%CODEX_HOME%\AGENTS.md` (Codex with `CODEX_HOME` set), `AGENTS.override.md` at the Codex user-global scope, and any project-root `CLAUDE.md` / `AGENTS.md`. Explicit user-approved managed-block insert / replace per `Adoption rules` is the one governed exception. No file is auto-created under `~/.claude/` or `~/.codex/`.
 - No creation of `%USERPROFILE%\.claude\AGENTS.md`. That path is not a recognized global instruction location for any agent; ai-harness never writes to it.
-- No automatic mirror between Brief (`<ProjectRoot>/log/brief/BRIEF.md`) and Chatlog (`<ProjectRoot>/log/chatlog/`).
 - No automatic target `.gitignore` mutation.
 
 ## Other rules

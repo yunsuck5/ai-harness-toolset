@@ -16,8 +16,8 @@ This migration introduces its **own** batch namespace — `GSF-B1 … GSF-B4` �
 
 | Existing order | Status | This plan's relationship |
 |---|---|---|
-| Skill plan §8 — `Batch 1…4` | Batch 1/2 landed; **Batch 3** (Chatlog / BF-lv3 removal) + **Batch 4** (review-polishing) deferred | **Not re-owned.** Skill-plan Batch 3/4 stay authoritative under `FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §8. GSF-B1 (§2) coordinates with skill Batch 3 but does not renumber or absorb it (design §3). |
-| Instruction-surface §14 — `Track A…G` | A–D landed; **Track E** (ToolRoot) + Track F (= skill Batch 3) + Track G (= skill Batch 4) deferred | **Track D was the conservative-default snippet pass; GSF-B1 is the aggressive continuation that re-opens that default** (design §3). Track E (ToolRoot) is a separate decision surface, untouched here. |
+| Skill plan §8 — `Batch 1…4` | Batch 1/2 landed; **Batch 3** (Chatlog / BF-lv3 removal) **landed** (`docs/systems/skills/STATUS.md` SK-05); **Batch 4** (review-polishing) deferred | **Not re-owned.** Skill-plan Batch 3/4 stay authoritative under `FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §8. GSF-B1 (§2) coordinates with skill Batch 3 but does not renumber or absorb it (design §3). |
+| Instruction-surface §14 — `Track A…G` | A–D landed; **Track F** (= skill Batch 3) **landed** (`docs/systems/skills/STATUS.md` SK-05); **Track E** (ToolRoot) + Track G (= skill Batch 4) deferred | **Track D was the conservative-default snippet pass; GSF-B1 is the aggressive continuation that re-opens that default** (design §3). Track E (ToolRoot) is a separate decision surface, untouched here. |
 
 `GSF-Bn` are migration batches; `Batch n` always means the skill plan; `Track X` always means the instruction-surface plan §14. Where they overlap (the snippet), the skill plan stays the authority for the Chatlog/BF-lv3 deletions and this plan stays the authority for the keep-by-proof re-judgment of the remaining sections.
 

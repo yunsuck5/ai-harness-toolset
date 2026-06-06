@@ -180,7 +180,7 @@ This is the substance a repo-local instruction surface would carry: for each tas
 
 ## 9. Remaining global-snippet section classification criteria
 
-When these classification criteria were written, the always-loaded snippet (CLAUDE/AGENTS, near-identical) carried **11 H2 sections**: Adoption destination · Adoption rules · Role neutrality · Project layout · Review record · Result verdict vocabulary · Operator stance · Brief · Chatlog · Forbidden in this toolset · Other rules. (The fifth section was named *Review flow* when this list was written; Track D renamed it *Review record*, and **GSF-B1** then folded it into *Project layout* — the **current** snippet is **10 H2 sections**; current-state authority `docs/systems/skills/STATUS.md` SK-04.)
+When these classification criteria were written, the always-loaded snippet (CLAUDE/AGENTS, near-identical) carried **11 H2 sections**: Adoption destination · Adoption rules · Role neutrality · Project layout · Review record · Result verdict vocabulary · Operator stance · Brief · Chatlog · Forbidden in this toolset · Other rules. (The fifth section was named *Review flow* when this list was written; Track D renamed it *Review record*, and **GSF-B1** then folded it into *Project layout*; **Batch 3 / Track F** then deleted *Brief* + *Chatlog* (and the `no Brief↔Chatlog mirror` *Forbidden* bullet) — the **current** snippet is **8 H2 sections**; current-state authority `docs/systems/skills/STATUS.md` SK-05.)
 
 This plan does **not** edit the snippet (that is the later relocation/reduction batch). It defines the **classification criteria** the audit batch will apply to each remaining section. Each section/sentence is classified into exactly one disposition:
 
@@ -203,7 +203,7 @@ This plan does **not** edit the snippet (that is the later relocation/reduction 
 - *Review flow* (now *Review record*) — review-record hard boundary is a **global keep** candidate; the title/content mismatch was **resolved by Track D** (renamed to `## Review record`, no-sidecar invariant preserved; skill plan SK-03); verdict-meaning is **`docs/contracts`/skill** owned.
 - *Result verdict vocabulary* — **global keep** (the three values + "verdict approves nothing" invariant); the next-action mapping is **`docs/contracts`/skill** owned.
 - *Operator stance* — **global keep** for the cross-task boundary stance; any review-specific detail is **skill** owned.
-- *Brief* — BF-lv3 non-claim line is **Batch 3 defer**; the canonical-Brief path invariant is a **global keep** candidate.
+- *Brief* — BF-lv3 non-claim line is **Batch 3 defer** (since removed — `docs/systems/skills/STATUS.md` SK-05); the canonical-Brief path was a **global keep** candidate in this non-binding first pass, but the binding Track B audit §5 superseded it — the restore-source pointer is owned by `BRIEF_CONTRACT.md` + the `ai-harness-brief` skill, and Batch 3 did **not** relocate it into the snippet.
 - *Chatlog* — **Batch 3 defer** (delete target, skill plan §8 Batch 3).
 - *Forbidden in this toolset*, *Other rules* — **global keep** (hard boundaries + cross-task execution invariants: managed-block-only mutation, no daemon/hook, commit/push needs approval). *(The two PowerShell rules — `.ps1` = UTF-8 BOM+CRLF, native-stream separate capture — that this non-binding first pass placed here were **superseded**: the Track B audit §3.11 reclassified them repo-local and Track D moved them out of the snippet to the root `CLAUDE.md`/`AGENTS.md`.)*
 
@@ -265,7 +265,7 @@ The instruction-surface direction reorders the remaining toolset work into the f
 | **C — Repo-local instruction implementation** | create the approved §4/§6 repo-local surface(s) with the §8 trigger map; public-safe verify (§7) | new; depends on A; the §6 relationship + `.claude/*` sub-decisions are **resolved** (Track C: Option A; `.claude/*` out of scope) |
 | **D — Global snippet aggressive reduction** | remove what B relocated; resolve the Review-flow title/content mismatch | **Landed** (`STATUS.md` SK-03): PowerShell rules removed, `## Review flow`→`## Review record`, Role-neutrality symmetry aligned; ran **separately** — did **not** absorb Track F (Batch 3) |
 | **E — Vendor-neutral ToolRoot decision** | evaluate current vs neutral roots; migration / backward-compat / uninstall plan (§13) | separate decision surface; independent of A–D ordering |
-| **F — Batch 3** | remove snippet `## Chatlog` + BF-lv3 non-claim | **= skill plan §8 Batch 3** (authority there); **not** absorbed by Track D (Track D ran separately — SK-03); remains deferred |
+| **F — Batch 3** | remove snippet `## Chatlog` + BF-lv3 non-claim | **= skill plan §8 Batch 3** (authority there); **Landed** (`docs/systems/skills/STATUS.md` SK-05 — `## Brief` + `## Chatlog` deleted, the `no Brief↔Chatlog mirror` *Forbidden* bullet removed, snippet 10 → 8 H2); ran **separately** from Track D (SK-03) |
 | **G — Batch 4** | review-polishing selective-capture vehicle decision (instruction vs skill; non-hook) | **= skill plan §8 Batch 4** |
 
 Track ordering is a recommendation, not an approval; each track is a separate scoped goal + Codex review + explicit user approval.
@@ -280,7 +280,7 @@ Items are annotated inline as later, separately-approved tracks resolve them; a 
 2. **`.claude/*` as a secondary location** — **Resolved (Track C): out of scope** for the instruction surface (root files are the sole surfaces; revisit only on concrete loader/clutter evidence) — `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md`, routed by Q11. Original: adopted only on concrete repo/tool evidence (§4.2).
 3. **Exact global-keep vs repo-local-move split** per snippet section — **Resolved (Track B): the binding split is `docs/architecture/instruction-surface/GLOBAL_SNIPPET_RELOCATION_AUDIT.md`** (routed by Q11), superseding the §9 non-binding first pass. §9 supplies the criteria + that first pass.
 4. **Vendor-neutral ToolRoot target** — **(open)** — separate decision surface (§13); not decided here.
-5. **Whether Track D absorbs Track F (Batch 3)** or they run separately — **Resolved (Track D): ran separately** — Track D landed (`docs/systems/skills/STATUS.md` SK-03) without absorbing Track F; Batch 3 (Brief/Chatlog removal) remains deferred (§14).
+5. **Whether Track D absorbs Track F (Batch 3)** or they run separately — **Resolved (Track D): ran separately** — Track D landed (`docs/systems/skills/STATUS.md` SK-03) without absorbing Track F; Batch 3 (Brief/Chatlog removal) **has since landed separately** (`docs/systems/skills/STATUS.md` SK-05; §14 Track F).
 
 ---
 
