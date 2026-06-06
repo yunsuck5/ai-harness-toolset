@@ -180,7 +180,7 @@ This is the substance a repo-local instruction surface would carry: for each tas
 
 ## 9. Remaining global-snippet section classification criteria
 
-The current always-loaded snippet (CLAUDE/AGENTS, near-identical) carries **11 H2 sections**: Adoption destination · Adoption rules · Role neutrality · Project layout · Review record · Result verdict vocabulary · Operator stance · Brief · Chatlog · Forbidden in this toolset · Other rules. (The fifth section was named *Review flow* when this list was written; Track D renamed it *Review record*.)
+When these classification criteria were written, the always-loaded snippet (CLAUDE/AGENTS, near-identical) carried **11 H2 sections**: Adoption destination · Adoption rules · Role neutrality · Project layout · Review record · Result verdict vocabulary · Operator stance · Brief · Chatlog · Forbidden in this toolset · Other rules. (The fifth section was named *Review flow* when this list was written; Track D renamed it *Review record*, and **GSF-B1** then folded it into *Project layout* — the **current** snippet is **10 H2 sections**; current-state authority `docs/systems/skills/STATUS.md` SK-04.)
 
 This plan does **not** edit the snippet (that is the later relocation/reduction batch). It defines the **classification criteria** the audit batch will apply to each remaining section. Each section/sentence is classified into exactly one disposition:
 

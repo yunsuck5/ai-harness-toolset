@@ -38,14 +38,10 @@ This payload is loaded regardless of the agent's current role. The same agent ma
 Runtime artifact paths under `<ProjectRoot>`:
 
 - `<ProjectRoot>/log/` — runtime output root. `log/` must not be committed; ensure the target project's `.gitignore` includes it.
-- `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` — canonical review record. Inspect `input.md` + `result.md` and report the verdict.
+- `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` — canonical review record: the two-file pair `input.md` + `result.md` only — no sidecar JSON, hash-binding, or external staging file is part of the record. Inspect `input.md` + `result.md` and report the verdict; the artifact / verdict / `result.md`-section shape is owned by the canonical review contract (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 - Keep `log/review/`, `log/evidence/`, and `log/chatlog/` separate.
 
 Reviewer config lives at `<ToolRoot>/config/reviewer.json`.
-
-## Review record
-
-- Canonical review artifacts live only under `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` (see *Project layout*) as the two-file pair `input.md` + `result.md` — no sidecar JSON, hash-binding, or external staging file is part of the record. The artifact / verdict / `result.md`-section shape is owned by the canonical review contract (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 
 ## Result verdict vocabulary
 
