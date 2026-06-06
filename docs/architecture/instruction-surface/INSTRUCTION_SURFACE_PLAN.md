@@ -141,7 +141,7 @@ Track one tool-specific root file first; defer the other until evidence shows it
 - **Pro:** smallest, simplest.
 - **Risk:** conflicts with the vendor-neutral goal; one tool is left without a repo-local trigger map.
 
-**Drift vs solo-maintainability trade-off.** This repo is solo-maintained, so the real cost of Option A is the manual two-file sweep on every policy change; the real cost of Option B is owning a sync mechanism; Option C trades vendor-neutrality for the least near-term work. The recommendation deferred to implementation is **A or B** (C conflicts with vendor-neutral operation); choosing between A and B turns on whether the shared body is large enough that manual two-file drift risk outweighs the cost of a sync mechanism. **Open decision — not resolved in this batch** (§ Open decisions).
+**Drift vs solo-maintainability trade-off.** This repo is solo-maintained, so the real cost of Option A is the manual two-file sweep on every policy change; the real cost of Option B is owning a sync mechanism; Option C trades vendor-neutrality for the least near-term work. The Track-A recommendation was **A or B** (C conflicts with vendor-neutral operation), with the A-vs-B choice turning on whether the shared body is large enough that manual two-file drift risk outweighs the cost of a sync mechanism. **Resolved (Track C): Option A** (parallel tracked files) — see the Open decisions list and `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md`, routed by Q11.
 
 ---
 
@@ -262,7 +262,7 @@ The instruction-surface direction reorders the remaining toolset work into the f
 |---|---|---|
 | **A — Instruction surface / trigger-tier planning** | this document | new; sits above skill plan §8 |
 | **B — Global snippet residual relocation audit** | apply §9 classification to all 11 sections; decide global-keep / repo-local / skill / contract / install-docs / delete / Batch-3-defer per sentence | overlaps skill plan §8 Batch 3 scope; §8 stays authoritative for the Chatlog/BF-lv3 deletions |
-| **C — Repo-local instruction implementation** | create the approved §4/§6 repo-local surface(s) with the §8 trigger map; public-safe verify (§7) | new; depends on A (and the §6 open decision) |
+| **C — Repo-local instruction implementation** | create the approved §4/§6 repo-local surface(s) with the §8 trigger map; public-safe verify (§7) | new; depends on A; the §6 relationship + `.claude/*` sub-decisions are **resolved** (Track C: Option A; `.claude/*` out of scope) |
 | **D — Global snippet aggressive reduction** | remove what B relocated; resolve the Review-flow title/content mismatch (skill plan SK-02) | executes B's decisions; may absorb Track F |
 | **E — Vendor-neutral ToolRoot decision** | evaluate current vs neutral roots; migration / backward-compat / uninstall plan (§13) | separate decision surface; independent of A–D ordering |
 | **F — Batch 3** | remove snippet `## Chatlog` + BF-lv3 non-claim | **= skill plan §8 Batch 3** (authority there); may be absorbed by Track D |
@@ -272,13 +272,15 @@ Track ordering is a recommendation, not an approval; each track is a separate sc
 
 ---
 
-## Open decisions (not resolved in this batch)
+## Open decisions
 
-1. **`CLAUDE.md` / `AGENTS.md` relationship** — Option A (parallel) vs B (one source + sync) vs C (one first). C is dispreferred (conflicts with vendor-neutral). A-vs-B turns on shared-body size and drift-vs-sync-mechanism cost (§6).
-2. **`.claude/*` as a secondary location** — adopted only on concrete repo/tool evidence (§4.2); not decided here.
-3. **Exact global-keep vs repo-local-move split** per snippet section — §9 gives the criteria and a non-binding first pass; the binding split is Track B.
-4. **Vendor-neutral ToolRoot target** — separate decision surface (§13); not decided here.
-5. **Whether Track D absorbs Track F (Batch 3)** or they run separately (§14).
+Items are annotated inline as later, separately-approved tracks resolve them; a resolved item's binding home is the named track, routed via `docs/current/SOURCE_OF_TRUTH.md` Q11. Unannotated `(open)` items remain open. These annotations are status pointers — the decision rationale below is unchanged.
+
+1. **`CLAUDE.md` / `AGENTS.md` relationship** — **Resolved (Track C): Option A — parallel tracked files** (`docs/architecture/instruction-surface/REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md`, routed by Q11). Original framing: A (parallel) vs B (one source + sync) vs C (one first); C dispreferred (conflicts with vendor-neutral), A-vs-B turning on shared-body size vs sync-mechanism cost (§6).
+2. **`.claude/*` as a secondary location** — **Resolved (Track C): out of scope** for the instruction surface (root files are the sole surfaces; revisit only on concrete loader/clutter evidence) — `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md`, routed by Q11. Original: adopted only on concrete repo/tool evidence (§4.2).
+3. **Exact global-keep vs repo-local-move split** per snippet section — **Resolved (Track B): the binding split is `docs/architecture/instruction-surface/GLOBAL_SNIPPET_RELOCATION_AUDIT.md`** (routed by Q11), superseding the §9 non-binding first pass. §9 supplies the criteria + that first pass.
+4. **Vendor-neutral ToolRoot target** — **(open)** — separate decision surface (§13); not decided here.
+5. **Whether Track D absorbs Track F (Batch 3)** or they run separately — **(open)** (§14).
 
 ---
 
