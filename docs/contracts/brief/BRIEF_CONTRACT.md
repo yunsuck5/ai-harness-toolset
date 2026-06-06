@@ -17,7 +17,7 @@
 | Level | 의미 | 현재 상태 |
 |---|---|---|
 | BF Level 1 | manual save / restore discipline. operator 는 BF 저장 / 복원 / 폐기의 **trigger / approve / reject / discard** 주체이며 BRIEF 본문을 손으로 편집하지 않는다. BRIEF 본문의 생성 / 갱신은 명시적 AI-assisted command flow (operator 의 trigger 시 agent 가 본문을 작성) 또는 deterministic tooling 이 담당하고, **사용자가 명시적으로 복원을 요청하면** 그 자리를 다시 읽어 작업을 복원한다 (무요청 session-start 자동 읽기 / 제안은 없다). 자동화 없음. | 운영 중. operator trigger + agent (또는 tooling) 가 본문 작성. |
-| BF Level 2 | 같은 manual save / restore discipline 을, snippet protocol 또는 합의된 자연어 trigger 로 더 일관되게 적용하는 단계. operator 의 책임은 여전히 trigger / approve / reject / discard 이며, BRIEF 본문은 agent 가 protocol 을 따라 작성한다. 자동 detect / 자동 갱신 은 없다. | 운영 중. snippet / protocol 채택 시 활성. |
+| BF Level 2 | 같은 manual save / restore discipline 을, `ai-harness-brief` skill protocol 또는 합의된 자연어 trigger 로 더 일관되게 적용하는 단계. operator 의 책임은 여전히 trigger / approve / reject / discard 이며, BRIEF 본문은 agent 가 그 protocol 을 따라 작성한다. 자동 detect / 자동 갱신 은 없다. | 운영 중. `ai-harness-brief` skill / 합의된 trigger 채택 시 활성. |
 | BF Level 3 | **deterministic Brief maintenance / validation / stale warning / session-start guidance** 의 자동화. deterministic writer 또는 명시적 AI-assisted command flow 가 BRIEF 의 갱신 / 점검 / 경고 를 일관되게 수행하며, operator 가 BRIEF 본문을 손편집하지 않는 점은 BF Level 1/2 와 동일하다. | **현재 미구현.** future scoped work. (무요청 session-start restore-offer 의 source-side automation 은 BF Level 3 component 가 아니다 — retire 됨; `docs/systems/brief/DEFERRED.md` BR-D-02.) |
 
 핵심:

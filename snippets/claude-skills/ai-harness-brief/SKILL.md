@@ -1,35 +1,67 @@
 ---
 name: ai-harness-brief
-description: Reserved on-demand skill (Batch 2C-1 skeleton) for the ai-harness-toolset manual Brief workflow — save / checkpoint / user-requested restore / update of the canonical Brief (<ProjectRoot>/log/brief/BRIEF.md). It is the designated future home for those explicit-prompt intents (e.g. "BF 저장해", "복구 지점 저장해", "현재 진행 지점을 복구 시점으로 저장해", "handoff 지점 만들어줘", "다음 세션에서 이어갈 수 있게 정리해", "현재 phase checkpoint 남겨줘", "브리프로 세션 복원해", "save a recovery point", "restore from the brief"), but it carries NO procedure yet. Until Batch 2C-2 extracts the steps and routes the snippet to it, the always-loaded snippet still owns and handles the Brief workflow and this skeleton only points back to it. Explicit-prompt only — never an unsolicited session-start restore-offer (discarded) — and operator-mode only (never reviewer mode).
+description: Owns the ai-harness-toolset manual Brief workflow (BF Level 1/2) — explicit-prompt save / checkpoint / user-requested restore / update of the canonical Brief (<ProjectRoot>/log/brief/BRIEF.md). Trigger on explicit user intents to save or checkpoint a recovery point (e.g. "BF 저장해", "복구 지점 저장해", "현재 진행 지점을 복구 시점으로 저장해", "handoff 지점 만들어줘", "다음 세션에서 이어갈 수 있게 정리해", "현재 phase checkpoint 남겨줘"), to restore from the Brief (e.g. "브리프로 세션 복원해", "이 복구 지점에서 이어서 진행할까"), or to update the Brief. Explicit-prompt only — NOT an unsolicited session-start restore-offer (discarded) — and operator-mode only (never reviewer mode). The agent writes the Brief body; the operator triggers / approves / rejects / discards and does not hand-edit it.
 ---
 
 # ai-harness-brief
 
-This skill is the **reserved** on-demand home (a Batch 2C-1 skeleton — see the Status section below) for the ai-harness-toolset **manual Brief workflow** — save / checkpoint / **user-requested** restore / update of the project's canonical Brief. That workflow covers the current BF Level 1/2 manual-discipline capabilities: the operator triggers / approves / rejects / discards, the agent writes the Brief body, and the operator does **not** hand-edit it. BF Level 3 automation (deterministic writer, stale warning, session-start guidance) is **deferred and out of scope** here — `docs/systems/brief/DEFERRED.md` (BR-D-01 / BR-D-03).
+This skill owns the ai-harness-toolset **manual Brief workflow** — explicit-prompt **save / checkpoint**, **user-requested restore**, and **update** of the project's canonical Brief. It is the procedure home for the current BF Level 1/2 manual-discipline capabilities; the always-loaded snippet only routes to it and carries the Brief invariants, it does not restate this procedure.
 
-The canonical Brief is the single path `<ProjectRoot>/log/brief/BRIEF.md` — a project-local, operator-local, gitignored runtime artifact under `log/`, **not** a commit / push target and **not** a shared handoff document. Root `<ProjectRoot>/brief/` and any user-home operator-local runtime root are **rejected** locations.
+Operating model: the **operator** is the trigger / approve / reject / discard owner and does **not** hand-edit the Brief; the **agent** (you) writes the Brief body on the operator's trigger. BF Level 3 automation (deterministic writer, stale warning, session-start guidance) is **deferred and out of scope** — `docs/systems/brief/DEFERRED.md` (BR-D-01 / BR-D-03).
 
-## Status — Batch 2C-1 skeleton (procedure not yet extracted)
+Canonical Brief = the single path `<ProjectRoot>/log/brief/BRIEF.md` — a project-local, operator-local, gitignored runtime artifact under `log/`, **never** a commit / push target and **not** a shared handoff document. Root `<ProjectRoot>/brief/` and any user-home operator-local runtime root are **rejected** locations; there is no fallback location. The canonical heading set, BF Level definitions, and shape contract live in `docs/contracts/brief/BRIEF_CONTRACT.md` (and the seed template `templates/brief/BRIEF.md`) — this skill does not restate them.
 
-This file is the **minimal deployed skill surface** created in Batch 2C-1. It reserves the `ai-harness-brief` skill so the install / update / uninstall lifecycle force-mirrors and finally verifies it at its runtime destination (`<ClaudeHome>/skills/ai-harness-brief/SKILL.md`), per the generic deployed-extension activation-surface model that landed in Batch 2C-0 (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §8A).
+## When this skill applies
 
-The detailed step-by-step save / checkpoint / restore / update procedure is **not yet here**. Extracting it from the always-loaded snippet into this skill is **Batch 2C-2** — a separate scoped goal + Codex review + explicit approval. Until 2C-2 lands:
+- **Explicit-prompt only.** Trigger only on an explicit user save / checkpoint / restore / update intent (the `description` lists the canonical phrases). There is **no** situation trigger and **no** unsolicited session-start restore-offer — that auto-offer is discarded (`docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §3; `docs/systems/brief/DEFERRED.md` BR-D-02 retired). Do not read or offer to restore the Brief on your own initiative at session start.
+- **Operator-mode only — reviewer-mode exclusion.** Never run this workflow in reviewer mode. A reviewer invoked with a prepared `log/review/<review-task-id>/<perspective>/pass-NN/input.md` does **not** read or require `BRIEF.md`, does not pause for a missing Brief, and does not ask a restore / session / clarification question — it produces the canonical review `result.md` verdict instead.
+- **Not a gate.** The Brief is neither input nor output of the review subsystem and does not gate commit / push / merge / release. `brief-check.ps1` PASS/FAIL is a shape result, not a verdict and not a commit approval.
 
-- The authoritative procedure remains in the **always-loaded snippet** — its `## Brief` and `## BF save / checkpoint protocol` sections (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`). Follow that procedure; this skeleton does **not** restate or replace it.
-- The snippet's explicit-prompt trigger routing is unchanged. Creating this source skill adds **no** new runtime behavior on its own (it is inert until installed, and 2C-2 is what routes the snippet to it).
+## Save / checkpoint
 
-## Scope and boundaries
+Triggered by an explicit save / checkpoint intent (e.g. `BF 저장해`, `복구 지점 저장해`, `현재 진행 지점을 복구 시점으로 저장해`, `handoff 지점 만들어줘`, `다음 세션에서 이어갈 수 있게 정리해`, `현재 phase checkpoint 남겨줘`).
 
-- **Explicit-prompt only.** The capabilities are the manual save / checkpoint phrases, an explicit user-requested restore, and an explicit update. There is **no** situation trigger and **no** unsolicited session-start restore-offer — that auto-offer is discarded (`docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §3; `docs/systems/brief/DEFERRED.md` BR-D-02 retired).
-- **Operator-mode only.** This skill is never invoked in reviewer mode.
-- **No hand-edited Brief, no automation.** No daemon / watcher / scheduler / hook, no `.gitignore` mutation, no `BF_STATE.json`-style state file, no BF Level 3 writer (deferred).
-- **Not a review / commit / push gate.** The Brief is neither input nor output of the review subsystem and does not gate commit / push / release.
+1. Inspect repo state (e.g. `git status`, the current `/goal` / task, open risks).
+2. Write the canonical Brief at `<ProjectRoot>/log/brief/BRIEF.md`, filling the canonical required headings (the heading set is owned by `docs/contracts/brief/BRIEF_CONTRACT.md` / `templates/brief/BRIEF.md` — at minimum: current state, last completed action, next single action, do-not-do, pending user decision). If the Brief does not exist yet, seed it first with `scripts/brief-init.ps1` (which writes the template to the canonical path; it refuses to overwrite an existing Brief), then fill the sections. The agent writes the file directly; the operator does not hand-edit it. Do **not** create `<ProjectRoot>/brief/` — that root location is rejected.
+3. Keep the Brief **compact**: reference review / evidence / Chatlog details by **path only** — do not inline review payloads, evidence bodies, or cumulative Chatlog content.
+4. Report the updated file path and any remaining risks.
+
+A save is a **manual** discipline only: it invokes no deterministic writer, daemon, watcher, scheduler, or BF Level 3 automation.
+
+## User-requested restore
+
+Triggered only when the user **explicitly** asks to restore (e.g. `브리프로 세션 복원해`, `이 복구 지점에서 이어서 진행할까`). Never an unsolicited session-start offer.
+
+1. Confirm the canonical Brief exists at `<ProjectRoot>/log/brief/BRIEF.md` (single location; no fallback). `scripts/brief-status.ps1` is an optional read-only deterministic input — it reports file presence + shape (delegated to `brief-check.ps1`) + the first non-empty line of each required heading with a Korean label. Reading the Brief body directly and summarizing it is equally valid; the helper is not mandatory, and call-timing / confirm UX / staleness judgment remain yours, not the helper's.
+2. Summarize the restore point in **Korean**: current state, next single action, do-not-do, and pending user decision.
+3. Ask the user `이 복구 지점에서 이어서 진행할까요?`.
+4. Proceed **only after** the user confirms.
+
+**Missing-file handling.** If `<ProjectRoot>/log/brief/BRIEF.md` is missing, do **not** default-restore from Chatlog. Report the absence and ask how to proceed. Only if the user explicitly asks for reconstruction from Chatlog, treat Chatlog (`<ProjectRoot>/log/chatlog/`) as **evidence** and produce a **draft** Brief for the user's review — do not author a fresh Brief or restore blindly. Chatlog is never promoted into Brief's seat.
+
+## Update
+
+Triggered by an explicit update intent. Update the existing canonical Brief in place using the same write discipline as save (agent writes; operator does not hand-edit; compact; path-only references; canonical headings). Do not relocate the Brief or change its shape contract — the shape is owned by `BRIEF_CONTRACT.md`.
+
+## Source-side primitives
+
+- `scripts/brief-init.ps1` — seed the canonical Brief once from `templates/brief/BRIEF.md`; refuses to overwrite an existing Brief. Use before the first save when no Brief exists.
+- `scripts/brief-check.ps1` — read-only shape check (8 canonical headings present, no duplicate / empty required section, no leftover `{{TOKEN}}` / sentinel). PASS/FAIL is a shape result only — not a verdict, not a commit gate.
+- `scripts/brief-status.ps1` — read-only restore-summary input (presence + delegated shape + per-heading first line with Korean labels). Optional deterministic input for restore; it does not automate call-timing or confirm UX.
+
+This skill does not change the behavior of these primitives.
+
+## Boundaries
+
+- No hand-edited Brief; the operator triggers / approves / rejects / discards and the agent writes the body.
+- No daemon / watcher / scheduler / hook / background task; no `BF_STATE.json`-style state file; no `.gitignore` mutation; no BF Level 3 writer (deferred).
+- No unsolicited session-start restore-offer (discarded — situation triggers are out of scope).
+- No commit / push / publish / merge / release — those are separate explicit user decisions; this skill never runs them.
+- No automatic Brief↔Chatlog mirror.
 
 ## Authoritative references (single homes — not restated here)
 
-- **Brief contract** (responsibilities, canonical path, BF Levels, heading set): `docs/contracts/brief/BRIEF_CONTRACT.md`.
+- **Brief contract** (responsibilities, canonical path, BF Levels, heading set, primitive contracts): `docs/contracts/brief/BRIEF_CONTRACT.md`.
 - **Brief template** (canonical heading set + per-section guidance): `templates/brief/BRIEF.md`.
 - **Brief system status + deferred BF Level 3 items:** `docs/systems/brief/STATUS.md`, `docs/systems/brief/DEFERRED.md`.
-- **Source-side primitives:** `scripts/brief-init.ps1` (seed), `scripts/brief-check.ps1` (shape check), `scripts/brief-status.ps1` (restore-summary input).
-
-This skeleton intentionally does **not** re-describe the Brief heading set or the BF Level definitions — those live in the references above (single-home-plus-pointers).
+- **Chatlog boundary** (Brief↔Chatlog separation, reconstruction-evidence role): `docs/contracts/chatlog/CHATLOG_CONTRACT.md`.

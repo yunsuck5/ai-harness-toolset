@@ -186,55 +186,29 @@ raw 명령을 그대로 외워서 매번 입력하는 것은 권장하지 않는
 
 ---
 
-## 7b. BF save / explicit Brief restore 자연어 UX (현재 snippet protocol)
+## 7b. BF save / explicit Brief restore 자연어 UX (ai-harness-brief skill)
 
-> **Note — source snippet alignment.** 본 절의 BF save / explicit Brief restore protocol description 과 source `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 본문은 모두 `docs/contracts/brief/BRIEF_CONTRACT.md` / `docs/contracts/chatlog/CHATLOG_CONTRACT.md` 의 현행 (3차 reconciliation) framing 을 따른다 — canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` 한 자리이고 root `<ProjectRoot>/brief/` 는 rejected, user-home operator-local runtime root 도 rejected, target persistent footprint 는 `<ProjectRoot>/log/` only 다. 운영자가 이전 라운드에 destination `CLAUDE.md` / `AGENTS.md` 의 managed block 에 적용한 본문은 그 시점의 snippet 본문을 그대로 가지고 있으며, source snippet 본문이 갱신된 뒤에도 자동으로 refresh 되지 않는다 — destination managed-block refresh 는 사용자 명시 승인을 요구하는 별도 managed-block replacement step 이다 (`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §6). 본 가이드 / contract docs / source snippet 본문과 destination managed block 의 framing 이 충돌하면, refresh 가 적용될 때까지 **현행 contract docs (`docs/contracts/brief/BRIEF_CONTRACT.md`, `docs/contracts/chatlog/CHATLOG_CONTRACT.md`) 의 framing 이 우선** 한다.
+> **Note — procedure home + source snippet alignment.** Batch 2C-2 이후 BF save / explicit Brief restore **절차 자체** 는 `snippets/claude-skills/ai-harness-brief/SKILL.md` (ai-harness-brief skill) 가 소유한다; source `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 의 `## Brief` 섹션은 그 skill 로의 routing pointer + canonical-Brief invariant 만 남기고 `## BF save / checkpoint protocol` 섹션은 제거되었다. 본 절의 description, 그 skill 본문, 그리고 snippet 의 Brief invariant 는 모두 `docs/contracts/brief/BRIEF_CONTRACT.md` / `docs/contracts/chatlog/CHATLOG_CONTRACT.md` 의 현행 (3차 reconciliation) framing 을 따른다 — canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` 한 자리이고 root `<ProjectRoot>/brief/` 는 rejected, user-home operator-local runtime root 도 rejected, target persistent footprint 는 `<ProjectRoot>/log/` only 다. 운영자가 이전 라운드에 destination `CLAUDE.md` / `AGENTS.md` 의 managed block 에 적용한 본문은 그 시점의 snippet 본문을 그대로 가지고 있으며, source snippet 본문이 갱신된 뒤에도 자동으로 refresh 되지 않는다 — destination managed-block refresh 는 사용자 명시 승인을 요구하는 별도 managed-block replacement step 이다 (`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §6). 본 가이드 / contract docs / source snippet 본문과 destination managed block 의 framing 이 충돌하면, refresh 가 적용될 때까지 **현행 contract docs (`docs/contracts/brief/BRIEF_CONTRACT.md`, `docs/contracts/chatlog/CHATLOG_CONTRACT.md`) 의 framing 이 우선** 한다.
 
-`ai-harness-toolset` 의 일상 운용에서 사용자는 raw PowerShell 명령을 직접 입력하지 않고, Claude Code 안에서 자연어 의도를 표현한다. 채택된 snippet 이 활성화되어 있으면 Claude Code 는 그 protocol 에 따라 Brief artifact 를 갱신한다.
+`ai-harness-toolset` 의 일상 운용에서 사용자는 raw PowerShell 명령을 직접 입력하지 않고, Claude Code 안에서 자연어 의도를 표현한다. 채택된 `ai-harness-brief` skill 이 활성화되어 있으면 Claude Code 는 그 skill 의 절차에 따라 Brief artifact 를 갱신한다. 이 자연어 UX 의 명세는 `snippets/claude-skills/ai-harness-brief/SKILL.md` 가 소유하며, 아래는 그 운용 요약이다.
 
-### BF 저장 (사용자 발화)
+### BF 저장 / Brief 복원 / 갱신 (사용자 발화)
 
-다음 형태의 사용자 발화는 모두 BF 저장 / checkpoint 의도로 해석된다.
+BF 저장 / checkpoint, **명시적** Brief 복원, Brief 갱신은 모두 explicit-prompt 의도이며, 그 절차는 `snippets/claude-skills/ai-harness-brief/SKILL.md` (`ai-harness-brief` skill) 가 **단일 home** 으로 소유한다 — trigger phrase 목록, save / restore / update step, `이 복구 지점에서 이어서 진행할까요?` 확인 흐름과 Brief 부재 시 처리를 모두 포함한다. 본 가이드는 그 절차를 재서술하지 않는다; 정확한 명세는 그 skill 을 따른다 (review 가 `ai-harness-review` skill 을 따르는 것과 동일한 single-home-plus-pointers 패턴).
 
-```text
-현재 진행 지점을 복구 시점으로 저장해
-BF 저장해
-복구 지점 저장해
-handoff 지점 만들어줘
-다음 세션에서 이어갈 수 있게 정리해
-현재 phase checkpoint 남겨줘
-```
+운용 요지 (skill 이 강제하는, 본 가이드가 가리키는 invariant):
 
-이 의도가 감지되면 Claude Code 는 현재 source snippet protocol (BF Level 1/2 manual save discipline) 에 따라 다음 절차를 수행한다.
-
-1. repo 상태 확인 (`pwd`, git top-level, branch, HEAD, origin/main, status).
-2. 현재 상태 / 마지막 완료 action / 다음 단일 action / do-not-do / pending user decision 을 정리.
-3. `<project-root>/log/brief/BRIEF.md` (canonical Brief — project-local runtime artifact, gitignored under `log/`) 를 manual save 로 직접 갱신. `docs/contracts/brief/BRIEF_CONTRACT.md` 의 canonical heading set 을 그대로 사용. root `<project-root>/brief/` 는 만들지 않는다 (rejected).
-4. 관련 review / evidence / Chatlog artifact 는 path / link 로만 참조 — 본문 인라인 금지.
-5. Brief 는 짧게 유지. 상세 내용이 필요하면 path 만 가리킨다.
-6. `log/chatlog/current/resume.md` / `summary.md` 자리는 **갱신하지 않는다** (legacy / deprecation candidate; `docs/contracts/chatlog/CHATLOG_CONTRACT.md`).
-7. 갱신된 파일과 남은 risk 를 사용자에게 보고.
-
-이 절차에서 Claude Code 는 사용자가 어떤 raw PowerShell 명령도 직접 입력하지 않도록 한다. 사용자가 명시적으로 "직접 PowerShell 로 갱신하겠다" 라고 의사를 밝히지 않는 한 자연어 발화 한 줄로 BF 저장이 완료되어야 한다.
-
-### Brief 복원 — 사용자 명시 요청 시 (manual discipline)
-
-사용자가 **명시적으로** Brief 복원을 요청하면 (예: 새 세션에서 `브리프로 복원해` / `이어서 진행할까`) manual restore discipline 은 다음과 같다. 무요청 session-start 자동 restore-offer 는 더 이상 current behavior 가 아니다 (discarded — `docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §3); deterministic restore automation (BF Level 3) 도 미구현이다. 본 흐름은 채택된 snippet 에 의존한다.
-
-1. Claude Code 가 canonical Brief 의 존재 여부를 확인한다.
-   - 자리: `<project-root>/log/brief/BRIEF.md` (canonical Brief; `docs/contracts/brief/BRIEF_CONTRACT.md`). project-local runtime artifact, gitignored under `log/`. 단일 자리이며 fallback 자리를 두지 않는다. root `<project-root>/brief/` 와 user-home operator-local runtime root 는 자리가 아니다.
-2. 어떤 자리에서든 Brief 가 읽히면 그 파일을 기준으로 한국어로 현재 상태 / 다음 단일 action / do-not-do / pending user decision 을 요약 보고.
-   - read-only helper `scripts/brief-status.ps1` 가 manual discipline 의 deterministic input 으로 사용 가능하다 (`docs/contracts/brief/BRIEF_CONTRACT.md` §"source-side primitive 책임" 의 `brief-status.ps1`). file presence + shape 결과 (delegated to `brief-check.ps1`) + required heading 별 첫 비어있지 않은 본문 줄을 Korean label 과 함께 stdout 으로 출력한다. 호출 시점, confirm UX, stale 판단은 여전히 agent / 사용자의 책임이며 helper 가 자동화하지 않는다. helper 호출은 강제가 아니다 — Brief 본문을 직접 읽어 요약하는 manual 흐름도 그대로 유효하다.
-3. 사용자에게 `이 복구 지점에서 이어서 진행할까요?` 라고 묻는다.
-4. 사용자 확인 전에는 의미 있는 작업을 실행하지 않는다.
-
-canonical Brief 가 없으면 **Chatlog 로 default-restore 하지 않는다.** raw transcript / 누적 Chatlog 본문을 읽어 Brief 를 임의로 재구성하지 않고, Brief 부재를 사용자에게 보고한 뒤 다음 행동을 묻는다. 사용자가 명시적으로 Chatlog 로부터의 reconstruction 을 요청한 경우에 한해, Chatlog 를 evidence 로 다루고 사용자가 검토할 Brief draft 를 만들어 제출한다 — Brief 자리를 단정적으로 채우지 않는다.
+- 사용자는 raw PowerShell 을 직접 입력하지 않는다 — 자연어 발화 한 줄로 BF 저장 / 복원이 수행된다 (사용자가 명시적으로 직접 실행을 원할 때는 예외).
+- canonical Brief 는 한 자리 `<project-root>/log/brief/BRIEF.md` (project-local runtime artifact, gitignored under `log/`; commit / push 대상이 아님). 단일 자리이며 fallback 을 두지 않는다 — root `<project-root>/brief/` 와 user-home operator-local runtime root 는 rejected. canonical heading set 은 `docs/contracts/brief/BRIEF_CONTRACT.md`.
+- 무요청 session-start 자동 restore-offer 는 current behavior 가 아니다 (discarded — `docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §3); deterministic restore automation (BF Level 3) 도 미구현이다.
+- 명시적 복원 요청 시 canonical Brief 가 없으면 **Chatlog 로 default-restore 하지 않는다** — 부재를 보고하고 다음 행동을 묻는다 (사용자가 명시적으로 요청할 때만 Chatlog 를 evidence 로 Brief draft 를 제시). `log/chatlog/current/resume.md` / `summary.md` 자리는 복원 / 갱신 대상이 아니다 (legacy / deprecation candidate; `docs/contracts/chatlog/CHATLOG_CONTRACT.md`).
+- read-only helper `scripts/brief-status.ps1` 는 복원 요약의 optional deterministic input 일 뿐이며, 호출 시점 / confirm UX / stale 판단을 자동화하지 않는다.
 
 ### BF Level 의 의미와 자동화 경계
 
 BF Level 은 path 가 아니라 **save / restore capability maturity** 다 (`docs/contracts/brief/BRIEF_CONTRACT.md`).
 
-- BF Level 1/2 — manual save / restore discipline. Operator 는 BF 저장 / 복원 시점의 **trigger / approve / reject / discard** 주체이며, BRIEF 본문을 손으로 편집하지 않는다. BRIEF 본문의 생성 / 갱신은 명시적 AI-assisted command flow (snippet protocol 을 따르는 agent 의 직접 작성) 또는 deterministic tooling 이 담당하고, **사용자가 명시적으로 복원을 요청하면** 그 자리를 다시 읽어 작업을 복원한다 (무요청 session-start 자동 읽기 / 제안은 없다). snippet protocol 의 BF save / explicit Brief restore 흐름이 그 한 형태다.
+- BF Level 1/2 — manual save / restore discipline. Operator 는 BF 저장 / 복원 시점의 **trigger / approve / reject / discard** 주체이며, BRIEF 본문을 손으로 편집하지 않는다. BRIEF 본문의 생성 / 갱신은 명시적 AI-assisted command flow (`ai-harness-brief` skill 을 따르는 agent 의 직접 작성) 또는 deterministic tooling 이 담당하고, **사용자가 명시적으로 복원을 요청하면** 그 자리를 다시 읽어 작업을 복원한다 (무요청 session-start 자동 읽기 / 제안은 없다). `ai-harness-brief` skill 의 BF save / explicit Brief restore 흐름이 그 한 형태다.
 - BF Level 3 — deterministic Brief maintenance / validation / stale warning / session-start guidance 의 자동화. **현재 미구현** 이며 future scoped work 다. 본 가이드 범위 밖이다. (무요청 session-start restore-offer automation 은 retire 됨 — `docs/systems/brief/DEFERRED.md` BR-D-02.)
 
 본 가이드 / 본 MVP 가 도입하지 않는 것:
@@ -243,7 +217,7 @@ BF Level 은 path 가 아니라 **save / restore capability maturity** 다 (`doc
 - 사용자 prompt 자동 capture, assistant 응답 자동 capture, transcript JSONL parser, `BF_STATE.json` 같은 별도 state machine.
 - `~/.claude/settings.json` 또는 글로벌 `CLAUDE.md` / `AGENTS.md` 의 implicit / automatic mutation. 모든 snippet payload 는 사용자가 명시적으로 채택한 경우에만 활성화된다.
 - Chatlog fuller implementation — 누적 work history 자동화, 자체 schema, retention, browse UI, RND-style heavy workflow — 는 본 가이드 범위 밖이며 later track 이다 (`docs/contracts/chatlog/CHATLOG_CONTRACT.md`).
-- snippet protocol 의 writer destination 정합화는 더 이상 future scoped work 항목이 아니다. canonical Brief 자리 (`<project-root>/log/brief/BRIEF.md`) 와 primitive / contract 의 destination 이 이미 일치한다. (이전 라운드의 "target canonical (`brief/BRIEF.md`) 로 routing" 항목은 2차 reconciliation 의 잔재였으며, 3차 reconciliation 으로 자연 해소되었다 — `docs/contracts/brief/BRIEF_CONTRACT.md` §"canonical Brief 자리" Historical lineage 참조.)
+- Brief workflow 의 writer destination 정합화는 더 이상 future scoped work 항목이 아니다. canonical Brief 자리 (`<project-root>/log/brief/BRIEF.md`) 와 primitive / contract 의 destination 이 이미 일치한다. (이전 라운드의 "target canonical (`brief/BRIEF.md`) 로 routing" 항목은 2차 reconciliation 의 잔재였으며, 3차 reconciliation 으로 자연 해소되었다 — `docs/contracts/brief/BRIEF_CONTRACT.md` §"canonical Brief 자리" Historical lineage 참조.)
 
 위 7b 본문의 UX 는 현행 (3차 reconciliation) contract docs (`docs/contracts/brief/BRIEF_CONTRACT.md`, `docs/contracts/chatlog/CHATLOG_CONTRACT.md`) 의 framing 을 따르고, source `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 본문도 같은 3차 framing 으로 정합화되어 있다. 운영자가 이전 라운드에 destination `CLAUDE.md` / `AGENTS.md` 의 managed block 에 적용한 본문은 그 시점의 snippet 을 가지고 있으며, source snippet 본문이 갱신된 뒤에도 자동으로 refresh 되지 않는다 — destination managed-block refresh 는 사용자 명시 승인이 필요한 별도 managed-block replacement step 이다 (위 절두 note 참조). framing 충돌 시 현행 contract docs 가 우선이다.
 

@@ -25,7 +25,7 @@ The forbidden destination is `%USERPROFILE%\.claude\AGENTS.md`. That path is not
 This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-prepare.ps1` / `review-run.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
 
 - When acting as **reviewer** or **auditor**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form any verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict. In reviewer mode do not run the operator-side Brief / session-restore protocols, do not pause for a missing `BRIEF.md`, and do not ask a restore / session / clarification question — produce the canonical review `result.md` verdict instead (the review-result contract takes precedence).
-- The operator-side protocols described below — BF save triggers and the `review-prepare` / `review-run` review flow — apply only when acting as **operator**.
+- The operator-side protocols — the Brief save / checkpoint / restore / update workflow (owned by the `ai-harness-brief` skill) and the `review-prepare` / `review-run` review flow (owned by the `ai-harness-review` skill) — apply only when acting as **operator**.
 - Nothing in this payload forces accept / approve. Nothing in it weakens reviewer independence. Nothing in it permits whole-file overwrite of a global instruction file.
 
 ## Project layout
@@ -63,39 +63,15 @@ Stay within the user-approved review / `/goal` scope. If a finding or fix would 
 
 ## Brief
 
-- **Brief** is a project's durable restore source-of-truth. The current operator — or a new AI agent session — reads it as the local restore entrypoint **when an explicit Brief restore is requested**, not as an unsolicited session-start auto-read. It is not a shared project handoff document.
-- **Canonical Brief** = `<ProjectRoot>/log/brief/BRIEF.md`. That single path is the canonical reading position when restoring. It is a project-local, operator-local runtime artifact under `<ProjectRoot>/log/` (gitignored by default and not a commit / push target).
-- **Rejected locations**: root `<ProjectRoot>/brief/BRIEF.md` is not the canonical Brief. Any user-home operator-local runtime root is also not the canonical Brief.
-- The operator is the trigger / approve / reject / discard owner and does not hand-edit the Brief. Brief content is written or updated by the agent (an explicit AI-assisted command flow on operator trigger) or by deterministic tooling.
+- Brief save / checkpoint / user-requested restore / update is an explicit-prompt capability owned end to end by the on-demand `ai-harness-brief` skill (operator-mode only). This always-loaded payload routes to that skill — it does not restate the trigger phrases, the save / restore / update steps, or the BF Level definitions. A public adopter installs the `ai-harness-brief` skill alongside this snippet.
+- **Canonical Brief** = `<ProjectRoot>/log/brief/BRIEF.md` — a project-local, operator-local runtime artifact under `<ProjectRoot>/log/` (gitignored by default; **never** a commit / push target and not a shared handoff document). Root `<ProjectRoot>/brief/BRIEF.md` and any user-home operator-local runtime root are **rejected** locations. The Brief shape / heading contract and the BF Level definitions live in `docs/contracts/brief/BRIEF_CONTRACT.md`.
 - BF Level 3 — automated Brief management — is not implemented in this toolset. Do not claim that capability.
-- Brief shape validation is a narrow primitive only. It is not a reviewer verdict and does not approve or block commit, push, merge, release, or adoption.
-- The toolset does not automatically mutate the project's `.gitignore`. Treating the canonical Brief as untracked under `<ProjectRoot>/log/` is the standing assumption.
 
 ## Chatlog
 
 - **Chatlog ≠ Brief.** Chatlog is the history / decision rationale / Brief reconstruction evidence area at `<ProjectRoot>/log/chatlog/`. It is **not** the current restore source and is **not** the default-restore target for a new session.
 - The current restore source is **Brief** (`<ProjectRoot>/log/brief/BRIEF.md`).
 - Chatlog may be consulted when Brief is missing, corrupted, or stale, as **reconstruction evidence only**. Chatlog is never promoted into Brief's seat.
-
-## BF save / checkpoint protocol
-
-Treat any of the following user phrases as manual save intent (Korean, verbatim):
-
-- `현재 진행 지점을 복구 시점으로 저장해`
-- `BF 저장해`
-- `복구 지점 저장해`
-- `handoff 지점 만들어줘`
-- `다음 세션에서 이어갈 수 있게 정리해`
-- `현재 phase checkpoint 남겨줘`
-
-When detected:
-
-1. Inspect repo state.
-2. Update `<ProjectRoot>/log/brief/BRIEF.md` (canonical Brief — project-local runtime artifact, gitignored under `log/`) with current state, last completed action, next single action, do-not-do, pending user decision. The operator triggers and approves; the agent writes the file directly; the operator does not hand-edit it. Do not create `<ProjectRoot>/brief/` — that root location is rejected.
-3. Keep Brief compact and reference review / evidence / Chatlog details by path only — do not inline review payloads, evidence body, or cumulative Chatlog content into Brief.
-4. Report the updated file and any remaining risks.
-
-These triggers exercise manual save discipline only. They do not invoke any deterministic writer, daemon, watcher, scheduler, or BF Level 3 automation.
 
 ## Forbidden in this toolset
 
