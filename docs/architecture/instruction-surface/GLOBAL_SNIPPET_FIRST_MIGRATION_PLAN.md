@@ -37,6 +37,7 @@ Ordered lowest-coupling-first. Each batch is sequential where a later batch assu
 - **Review gate.** Spec first (approved). Then full `Invoke-Pester -Path .\tests`; `scripts/verify-ps1.ps1` if any `.ps1` changed; the repo-local parity guard if root files change; Codex **local-correctness + system-coherence**; plus the snippet-invariant check (no dropped hard boundary / adoption / path-topology / role-binding / verdict invariant — only owned-elsewhere content moved). `review-verify -RequireResult`.
 
 ### GSF-B2 — docs legacy policy-warehouse audit (classification only)
+- **Status: classification record landed** — `docs/architecture/instruction-surface/GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md` (classification only; no docs deleted/compressed/rewritten; 10 findings B2-F01…B2-F10, all with owner surfaces, feeding GSF-B4). The bullets below remain the batch's standing charter.
 - **Goal.** Audit `docs/**` for content acting as **active instruction / runtime policy / skill fallback / global-snippet-rationale warehouse** that should be narrowed to **reference / contract / decision-record / rationale** (design §1–§2). Produce a per-section classification (migrate / absorb / compress / delete / retire candidate) with the owner surface each live fact maps to — the docs analogue of the Track B snippet audit.
 - **Hard boundaries.** **Classification + owner-mapping only — no docs deletion, compression, or body rewrite in this batch.** A contract keeps its artifact authority (design §4 note); the audit only re-judges *role and authority weight*, not the artifact definition.
 - **Review gate.** Codex **system-coherence** (the question is cross-surface role coherence, not local correctness); `review-verify -RequireResult`. A docs-classification round does not require the full Pester suite (no code/test/snippet/template change) — state the change class in the review input.
@@ -52,7 +53,7 @@ Ordered lowest-coupling-first. Each batch is sequential where a later batch assu
 - **Hard boundaries.** No deletion without owner-migration evidence; a four-class reference sweep (path / token / folder-bucket / semantic) for dangling references before the review; inbound references updated.
 - **Review gate.** Codex **local-correctness** (dangling-reference / deletion sweep is the primary review surface) **+ system-coherence**; `review-verify -RequireResult`.
 
-**Stage flow.** design (committed, `4f31cd9`) → **this plan** → spec for GSF-B1 (next) → GSF-B1 implementation → (GSF-B2, then GSF-B3, then GSF-B4, each with its own scoped goal + spec-where-it-mutates + review + approval).
+**Stage flow.** design (committed, `4f31cd9`) → **this plan** → spec for GSF-B1 → GSF-B1 implementation (landed) → **GSF-B2 docs policy-warehouse audit (landed — classification-only record `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`)** → (GSF-B3, then GSF-B4, each with its own scoped goal + spec-where-it-mutates + review + approval).
 
 ---
 
