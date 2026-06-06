@@ -177,7 +177,7 @@ phase 자체가 자동으로 effort 를 강제하지 않는다. 본 표는 safe-
 - review-verify 의 `-RequireResult` mode 가 PASS 한 result 만 다음 결정의 input 으로 사용한다. default mode PASS 만으로는 reviewer 판단이 완료되었다는 의미가 아니다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 - `<ProjectRoot>/log/brief/BRIEF.md` artifact, `brief-check.ps1` PASS / FAIL, `<ProjectRoot>/log/chatlog/` artifact 는 reviewer verdict 가 아니다. verdict 의 source-of-truth 는 같은 review task 의 final pass 의 `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/result.md` 의 `## Verdict` 다.
 - verdict parser 는 strict 하다. `Verdict: yes`, `Final verdict: yes` 같은 inline 형식은 거부된다. parsing 실패한 pass directory 는 디스크에 보존되고, 보완은 같은 `<review-task-id>/<perspective>/` 아래에 새 `pass-NN/` 로 다시 시작한다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 의 `## Verdict` shape). V2 부터 `review-verify.ps1 -RequireResult` 는 4 required disclosure H2 (`## Blocking findings` / `## Non-blocking concerns` / `## Review limitations` / `## Assumptions relied on`) 가 각각 정확히 1 회 존재함도 함께 검증한다 — 부재 또는 중복도 같은 shape-fail 경로다.
-- `no` 후의 corrective pass 는 자동으로 진행하지 않는다. 사용자 명시 승인 하에서만 1 회 시도하고, 사후 보고한다. 2 회 이상 필요해 보이면 재승인을 받는다. 이 절차는 `H:\Work\CLAUDE.md` 의 "Codex review 후 corrective pass 규칙" 과 정합한다.
+- `no` 후의 corrective pass 는 자동으로 진행하지 않는다. 사용자 명시 승인 하에서만 1 회 시도하고, 사후 보고한다. 2 회 이상 필요해 보이면 재승인을 받는다. 이 절차는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a (verdict → next-action mapping 의 `no` 항목 — 자동 corrective pass 금지, scoped 승인 하 corrected-state re-review) 및 그 operator-facing mirror 인 `snippets/claude-skills/ai-harness-review/SKILL.md` step 7 (verdict → next-action mapping 의 `no` handling) 과 정합한다.
 
 ---
 

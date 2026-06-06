@@ -37,11 +37,11 @@ No finding is an `active instruction that docs must stop owning and an executabl
 - **current role:** stale external/user-machine durable pointer used as corrective-pass guidance — the line asserts the no-auto-corrective-pass procedure "is consistent with the 'Codex review 후 corrective pass 규칙' in `H:\Work\CLAUDE.md`".
 - **why a defect (triple):** (1) **machine-specific absolute path** in a public-safe tracked doc (violates the repo-local *Public-safe boundary*, `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md` §7); (2) **invalid durable pointer to a non-source-of-truth user/global file** (`DOCS_OPERATING_MODEL.md` §4 — durable pointers resolve only to git-tracked files or git history); (3) **dangling** — the target does not exist (file-existence checked). Before this record was written it was the **only occurrence of `H:\Work\CLAUDE.md` in pre-existing repo source** (grep at `HEAD == 2400bd0`); this GSF-B2 record now necessarily quotes the string when describing the finding, so the "only occurrence" property holds for *pre-existing docs outside this record*, not the current tree verbatim.
 - **classification:** `delete candidate` (the pointer) + redirect to a tracked authority.
-- **proposed owner:** a tracked review authority — `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a (Verdict → next-action mapping) and/or the `snippets/claude-skills/ai-harness-review/SKILL.md` retry discipline.
+- **proposed owner:** a tracked review authority — `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a (Verdict → next-action mapping, the `no` subsection) + its operator mirror `snippets/claude-skills/ai-harness-review/SKILL.md` step 7 (verdict → next-action `no` handling). (Note: the skill's *retry discipline* — one-invocation / no-retry-on-failure — is runner-failure retry, a different concept from corrective-pass-after-a-`no`-verdict; the corrective-pass owner is §6a `no` + skill step 7.)
 - **owner evidence:** the same corrective-pass discipline is already owned by the review contract §6a + the review skill; `REVIEW_EFFORT_GUIDE.md` §9 itself routes verdict handling there. The owner is git-tracked and deployed-reachable.
-- **owner-migration status:** **owner exists; replacement not yet applied.**
-- **proposed future action:** a separate quick-fix batch **or** GSF-B4 fix pass replacing the dangling `H:\Work\CLAUDE.md` reference with the tracked authority.
-- **GSF-B4 eligibility:** **yes**, after explicit fix/delete batch approval.
+- **owner-migration status:** **owner-migration applied (GSF-B4-A).** The `H:\Work\CLAUDE.md` pointer at `REVIEW_EFFORT_GUIDE.md:180` was replaced with the tracked authority — `REVIEW_RESULT_CONTRACT.md` §6a (`no` → corrective-pass next-action: no auto-progress, scoped approval, corrected-state re-review) and its operator-facing mirror `snippets/claude-skills/ai-harness-review/SKILL.md` step 7 (verdict → next-action `no` handling).
+- **proposed future action:** **done (GSF-B4-A)** — the narrow fix batch replaced the dangling reference; no further action for B2-F01.
+- **GSF-B4 eligibility:** **resolved (GSF-B4-A)** — was eligible; the fix landed as the narrow GSF-B4-A batch ahead of the full GSF-B4 cleanup.
 - **risk/boundary:** user-confirmed **classification-only** for GSF-B2 — **do not edit `REVIEW_EFFORT_GUIDE.md` in this batch.** Surfaced to the user this session; option 1 (record only) selected.
 
 ### B2-F02 — machine-specific `H:\Work\...` example-path cluster  **[priority: LOW]**
@@ -171,7 +171,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 
 | ID | Source | Classification | Priority | Owner-migration | GSF-B4 |
 |---|---|---|---|---|---|
-| B2-F01 | `REVIEW_EFFORT_GUIDE.md:180` | delete candidate + redirect | **HIGH** | owner exists, not applied | yes (after approval) |
+| B2-F01 | `REVIEW_EFFORT_GUIDE.md:180` | delete candidate + redirect | **HIGH** | **applied (GSF-B4-A)** | **done (GSF-B4-A)** |
 | B2-F02 | `H:\Work\...` example cluster (5 docs) | compress candidate (normalize) | low | convention exists, not applied | yes (public-safe pass) |
 | B2-F03 | `REVIEW_ARTIFACT_PERSPECTIVE_LAYOUT_PLAN.md:184` | delete/compress candidate | medium | self-fix | yes (reference sweep) |
 | B2-F04 | `REVIEW_EFFORT_GUIDE.md` §9/§12 | compress candidate | medium | owner exists (contract §6a + skill) | yes |
@@ -186,7 +186,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 
 ## Major migration / delete / compress / retire candidates (for GSF-B4)
 
-- **delete/redirect:** B2-F01 (`H:\Work\CLAUDE.md` dangling pointer → contract §6a / skill) — **highest priority**; B2-F03 (`log/**` durable pointer).
+- **delete/redirect:** B2-F01 (`H:\Work\CLAUDE.md` dangling pointer → contract §6a / skill) — **highest priority; RESOLVED by GSF-B4-A** (replaced with `REVIEW_RESULT_CONTRACT.md` §6a + `ai-harness-review` skill step 7); B2-F03 (`log/**` durable pointer) remains.
 - **compress:** B2-F04 (effort-guide verdict restatement → contract pointer); B2-F02 (machine-path examples → placeholder convention); B2-F08/F09 (isolated stale wording, under LTS / contract-authority care).
 - **retire:** none (no doc section is wholly obsolete with no live content).
 - **migrate to executable surface:** none required (owners already exist).
