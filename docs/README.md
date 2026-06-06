@@ -18,7 +18,7 @@ Markdown in the same folder must be interpretable, when read together, under **o
 
 The primary placement criterion is **how a document is read**, not how many topics it touches.
 
-- **Always-on / priming** — rules read regardless of task → **consolidate**. Splitting them creates cross-reference chains, and that coupling causes drift. The bar to be "always-on" is high: it must apply to *every* task, with no conditional content. In this repo the genuine always-on payload lives in `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` (the adopted `CLAUDE.md` / `AGENTS.md` managed block) and global instructions — **not** under `docs/`. There is therefore no `docs/priming/` folder.
+- **Always-on / priming** — rules read regardless of task → **consolidate**. Splitting them creates cross-reference chains, and that coupling causes drift. The bar to be "always-on" is high: it must apply to *every* task, with no conditional content. In this repo the genuine always-on payload lives outside `docs/`: the global adopter-universal invariants in `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` (the managed block adopted into the operator's global `CLAUDE.md` / `AGENTS.md`) plus global instructions, and the repo-development-only **repo-local instruction surface** — the tracked root `CLAUDE.md` / `AGENTS.md` (`docs/architecture/instruction-surface/REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md`). None of these is under `docs/`; there is therefore no `docs/priming/` folder.
 - **Task-scoped / lookup** — read selectively per task → **partition**, so opening one task's folder does not drag in unrelated scope.
 - **anti-mixing** — unrelated scopes must not share a lookup context.
 - **anti-fragmentation** — always-read or tightly-coupled material must not be scattered into a dense reference web. Splitting succeeds only if each piece has one access pattern, one purpose, is readable standalone, and does not require a dense reference chain.
@@ -42,7 +42,7 @@ The primary placement criterion is **how a document is read**, not how many topi
 
 ## 6. Where new documents belong
 
-Ask, in order: (1) Is this *always-on for every task*? If yes, it belongs in the snippet/global payload, not `docs/`. (2) Otherwise, which single access pattern / scope does it serve? Place it in that layer. (3) Would co-locating it pull unrelated scope into a task search? If yes, partition. (4) Would splitting it create a dense reference chain? If yes, keep it consolidated. Never create an empty folder in advance.
+Ask, in order: (1) Is this *always-on for every task*? If yes, it belongs in an always-on surface outside `docs/` — the snippet/global payload, or the repo-local root `CLAUDE.md` / `AGENTS.md` for repo-only rules — not `docs/`. (2) Otherwise, which single access pattern / scope does it serve? Place it in that layer. (3) Would co-locating it pull unrelated scope into a task search? If yes, partition. (4) Would splitting it create a dense reference chain? If yes, keep it consolidated. Never create an empty folder in advance.
 
 ## 7. How AI/operator should navigate docs
 

@@ -19,4 +19,4 @@ It also differs from `docs/decisions/` (discrete settled decision records) by be
 
 ## What does not belong here
 
-Per-subsystem current status (→ `docs/systems/<system>/STATUS.md`), artifact/protocol contracts (→ `docs/contracts/`), execution policy (→ `docs/policies/`), and settled decision records (→ `docs/decisions/`). An architecture doc **routes to** these as the authority; it does not replace them. Always-on rules still belong in an always-on instruction surface — the global snippet/payload, or (for repo-only always-on rules) a planned repo-local instruction surface — **never** under `docs/` (`docs/README.md` §4).
+Per-subsystem current status (→ `docs/systems/<system>/STATUS.md`), artifact/protocol contracts (→ `docs/contracts/`), execution policy (→ `docs/policies/`), and settled decision records (→ `docs/decisions/`). An architecture doc **routes to** these as the authority; it does not replace them. Always-on rules still belong in an always-on instruction surface — the global snippet/payload, or (for repo-only always-on rules) the repo-local instruction surface (root `CLAUDE.md` / `AGENTS.md`) — **never** under `docs/` (`docs/README.md` §4).

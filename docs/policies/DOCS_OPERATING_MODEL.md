@@ -16,7 +16,7 @@ When this file disagrees with `docs/README.md` on *placement*, `docs/README.md` 
 
 Docs authority flows **top-down**. A docs change is decided from the top-level structure downward, never bottom-up from whichever file the work happened to touch:
 
-1. **Structure first.** Before adding or moving content, confirm the placement against `docs/README.md` §5–§6 (access-pattern layers). New always-on rules do not go in `docs/`; they go in `snippets/**` / the managed block.
+1. **Structure first.** Before adding or moving content, confirm the placement against `docs/README.md` §5–§6 (access-pattern layers). New always-on rules do not go in `docs/`; they go in `snippets/**` / the managed block, or the repo-local root `CLAUDE.md` / `AGENTS.md` for repo-only rules.
 2. **Authority next.** Confirm which layer *owns* the fact you are changing (the "single home" — see §3). Every fact has exactly one authoritative home; all other mentions are pointers to it, never copies.
 3. **Down into current + per-system.** Propagate the change into the layers whose role (§3) is affected — `docs/current/` for question→authority routing (`SOURCE_OF_TRUTH.md`), and the relevant `docs/systems/<system>/` files for subsystem state. Project-current *state* is no longer mirrored in a committed file; it is answered on demand (§6).
 4. **Closeout gate last.** When the change closes out work, run the two-level closeout reconciliation (§7) before declaring the docs closeout complete.

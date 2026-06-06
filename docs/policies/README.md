@@ -1,6 +1,6 @@
 # docs/policies/ — Task-Scoped Execution Policies
 
-This folder holds **task-scoped AI/operator execution policies**: rules an agent follows *while doing a task in that policy's domain*. They are not always-on priming (the always-on payload lives in `snippets/**` / the adopted managed block, not here) and not artifact contracts (→ `docs/contracts/`).
+This folder holds **task-scoped AI/operator execution policies**: rules an agent follows *while doing a task in that policy's domain*. They are not always-on priming (the always-on payload lives in `snippets/**` / the adopted managed block and the repo-local root `CLAUDE.md` / `AGENTS.md`, not here) and not artifact contracts (→ `docs/contracts/`).
 
 ## Access pattern
 
@@ -16,4 +16,4 @@ Read a policy when your task touches its domain — each is **conditional**, not
 
 ## What does not belong here
 
-Always-on cross-cutting rules (those live in `snippets/**` / global managed block, not `docs/`), artifact/protocol contracts (→ `docs/contracts/`), release-facing user guides (→ `docs/user_guide/`), and project philosophy (→ `docs/project/`).
+Always-on cross-cutting rules (those live in `snippets/**` / the global managed block or the repo-local root `CLAUDE.md` / `AGENTS.md`, not `docs/`), artifact/protocol contracts (→ `docs/contracts/`), release-facing user guides (→ `docs/user_guide/`), and project philosophy (→ `docs/project/`).
