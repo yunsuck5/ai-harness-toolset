@@ -31,11 +31,14 @@ The primary placement criterion is **how a document is read**, not how many topi
 | `docs/policies/` | task-scoped AI/operator execution policies (PowerShell, CLI/runtime assumptions, reviewer config, review effort) | when a task touches that policy's domain |
 | `docs/contracts/` | artifact/protocol contracts (`review/`, `brief/`, `chatlog/`, `evidence/`, `global-invocation/`) | when producing/validating that artifact |
 | `docs/systems/` | per-subsystem STATUS / BACKLOG / DEFERRED + the install/update operating model; routes to contracts/policies, does not replace them | when checking a subsystem's state |
+| `docs/architecture/` | cross-cutting architecture decisions/audits spanning multiple subsystems/surfaces, deciding a structural target **before** implementation (e.g. `architecture/instruction-surface/INSTRUCTION_SURFACE_PLAN.md`); routes to `docs/systems/**` for current state, does not own it | when planning/auditing how a concern is divided across surfaces |
 | `docs/project/` | project identity, scope, positioning, philosophy | when scoping "what this project is/isn't" |
 | `docs/decisions/` | active decision records (incl. post-MVP decision record + numbered-order authority) | when checking "what was decided" |
 | `docs/user_guide/` | human-facing operation / evaluation / adoption guides | when a human learns or evaluates the tool |
 | `docs/roadmap/` | roadmap/milestone routing only (INDEX, current milestones) | when checking remaining order |
 | `docs/backlog/` | backlog index/routing only | when looking up open work |
+
+**`docs/architecture/` vs `docs/systems/`.** `docs/systems/<system>/` describes *one implemented subsystem's current operational posture* (per-subsystem, existing state). `docs/architecture/<concern>/` decides *the target structure for a concern that spans several subsystems/surfaces, before implementation* (cross-cutting, design-stage); it owns no subsystem's current state and points at `docs/systems/**` for it. It also differs from `docs/decisions/` (settled decision records) by being multi-surface planning/audit with classification criteria and option analysis. The layer's own scope/contrast lives in `docs/architecture/README.md`.
 
 ## 6. Where new documents belong
 

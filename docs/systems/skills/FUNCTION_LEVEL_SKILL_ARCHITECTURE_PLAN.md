@@ -6,6 +6,8 @@
 
 **Authorities this plan obeys (does not redefine).** Docs placement → `docs/README.md`; docs change/closeout flow + single-home-plus-pointers → `docs/policies/DOCS_OPERATING_MODEL.md`; review artifact/verdict contract → `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`; Brief primitive → `docs/contracts/brief/BRIEF_CONTRACT.md`; Chatlog boundary → `docs/contracts/chatlog/CHATLOG_CONTRACT.md`.
 
+**Broader instruction-surface context (upward pointer).** This plan governs the snippet↔skill responsibility split for *this* deployed-surface subsystem and remains the **authority for the Batch 3/4 skill-subsystem order** (§8). The wider instruction-surface architecture it sits inside — the full tier set (global instruction / repo-local always-on instruction / skill `description` / `SKILL.md` / `docs/contracts` / memory / hooks; Codex Rules excluded) — is `docs/architecture/instruction-surface/INSTRUCTION_SURFACE_PLAN.md`, routed by `docs/current/SOURCE_OF_TRUTH.md` Q11. That plan **re-situates** Batch 3/4 as its Tracks F/G for context but does **not** renumber, re-own, or approve them; this §8 ordering stays authoritative for the skill subsystem.
+
 ---
 
 ## 1. Problem statement
