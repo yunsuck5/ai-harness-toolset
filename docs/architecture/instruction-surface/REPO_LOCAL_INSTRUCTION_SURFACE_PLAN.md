@@ -97,6 +97,8 @@ The two rules Track B classified repo-local (`GLOBAL_SNIPPET_RELOCATION_AUDIT.md
 
 ## 9. Decision 9 — Track C → Track D handoff (sequencing invariant)
 
+> **Status: both tracks have landed — handoff complete.** Track C created the root files carrying the rules; **Track D then removed the two rules from both snippets**, so the sequence below executed as specified and the transient both-surfaces period is closed (the rules now live only in the root files). Current status of record: `docs/systems/skills/STATUS.md` SK-03. The sequencing spec below is preserved as the rationale.
+
 1. **Track C (this plan, then the implementation batch)** creates the root `CLAUDE.md` / `AGENTS.md` carrying the two PowerShell rules (§8) plus the trigger map (§7).
 2. **Only after** those files exist and carry the rules does **Track D** remove the two rules from the global snippet — **symmetrically** from both `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md`. That removal is a **snippet edit = Track D**, a separate scoped goal with its own Codex review and explicit approval.
 3. **Sequencing invariant (hard):** never remove the rules from the snippet before the repo-local home exists (`GLOBAL_SNIPPET_RELOCATION_AUDIT.md` "do not remove early"). Until Track D runs, the rules **stay** in the global snippet — so there is a deliberate, temporary period where the rules live in **both** the global snippet and the new repo-local files; that transient duplication is acceptable and is resolved the moment Track D lands.

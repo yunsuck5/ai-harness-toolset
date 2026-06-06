@@ -49,6 +49,6 @@ These files are **tracked** (public to any contributor), so they carry only publ
 - No hooks, no Codex Rules, no daemon / watcher / scheduler.
 - **Memory is not a delivery surface** — nothing here depends on memory; all of it is tracked.
 - No ToolRoot move (vendor-neutral ToolRoot is a separate decision surface — `docs/architecture/instruction-surface/INSTRUCTION_SURFACE_PLAN.md` §13).
-- This file does **not** edit the global snippets. The two PowerShell rules **remain** in the global snippet until **Track D** removes them (only after these repo-local files exist — the Track C→D handoff, `docs/architecture/instruction-surface/REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md` §9). No Batch 3 / Batch 4 implementation here.
+- This file does **not** edit the global snippets. The two PowerShell rules now live **only here** (the repo-local root files): **Track D removed them** from the global snippet `## Other rules`, completing the Track C→D handoff (`docs/architecture/instruction-surface/REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md` §9; `docs/systems/skills/STATUS.md` SK-03). No Batch 3 / Batch 4 implementation here.
 
 <!-- END SHARED BODY -->

@@ -25,7 +25,7 @@ The forbidden destination is `%USERPROFILE%\.claude\AGENTS.md`. That path is not
 
 This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-prepare.ps1` / `review-run.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
 
-- When acting as **reviewer**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form the verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict. In reviewer mode do not run the operator-side Brief / session-restore protocols, do not pause for a missing `BRIEF.md`, and do not ask a restore / session / clarification question — produce the canonical review `result.md` verdict instead (the review-result contract takes precedence).
+- When acting as **reviewer** or **auditor**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form any verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict. In reviewer mode do not run the operator-side Brief / session-restore protocols, do not pause for a missing `BRIEF.md`, and do not ask a restore / session / clarification question — produce the canonical review `result.md` verdict instead (the review-result contract takes precedence).
 - The operator-side protocols — the Brief save / checkpoint / restore / update workflow, and the `review-prepare` / `review-run` review flow — apply only when acting as **operator**.
 - Nothing in this payload forces accept / approve. Nothing in it weakens reviewer independence. Nothing in it permits whole-file overwrite of a global instruction file.
 
@@ -43,7 +43,7 @@ Runtime artifact paths under `<ProjectRoot>`:
 
 Reviewer config lives at `<ToolRoot>/config/reviewer.json`.
 
-## Review flow
+## Review record
 
 - Canonical review artifacts live only under `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` (see *Project layout*) as the two-file pair `input.md` + `result.md` — no sidecar JSON, hash-binding, or external staging file is part of the record. The artifact / verdict / `result.md`-section shape is owned by the canonical review contract (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 
@@ -84,7 +84,5 @@ Stay within the user-approved review / `/goal` scope. If a finding or fix would 
 ## Other rules
 
 - Commit and push require explicit user approval.
-- `.ps1` files must be UTF-8 with BOM + CRLF.
-- When capturing a native executable's output for correctness checks (e.g. `powershell.exe`, `git`, `codex`), keep stdout, stderr, and exit code separate. `2>&1`, `Out-String`, `Out-Null`, and other merged-stream captures collapse the signal — under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'` they also abort the call before the exit code is read.
 - Temporary files created solely for command execution should be cleaned up by the operator before closeout. Evidence, snapshots, logs, source changes, or user-requested artifacts are not temporary files.
 <!-- END AI_HARNESS_TOOLSET_GLOBAL -->

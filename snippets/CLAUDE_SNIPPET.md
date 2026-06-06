@@ -42,7 +42,7 @@ Runtime artifact paths under `<ProjectRoot>`:
 
 Reviewer config lives at `<ToolRoot>/config/reviewer.json`.
 
-## Review flow
+## Review record
 
 - Canonical review artifacts live only under `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` (see *Project layout*) as the two-file pair `input.md` + `result.md` — no sidecar JSON, hash-binding, or external staging file is part of the record. The artifact / verdict / `result.md`-section shape is owned by the canonical review contract (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 
@@ -83,7 +83,5 @@ Stay within the user-approved review / `/goal` scope. If a finding or fix would 
 ## Other rules
 
 - Commit and push require explicit user approval.
-- `.ps1` files must be UTF-8 with BOM + CRLF.
-- When capturing a native executable's output for correctness checks (e.g. `powershell.exe`, `git`, `codex`), keep stdout, stderr, and exit code separate. `2>&1`, `Out-String`, `Out-Null`, and other merged-stream captures collapse the signal — under Windows PowerShell 5.1 with `$ErrorActionPreference = 'Stop'` they also abort the call before the exit code is read.
 - Temporary files created solely for command execution should be cleaned up by the operator before closeout. Evidence, snapshots, logs, source changes, or user-requested artifacts are not temporary files.
 <!-- END AI_HARNESS_TOOLSET_GLOBAL -->
