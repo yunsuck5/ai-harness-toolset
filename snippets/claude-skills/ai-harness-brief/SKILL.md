@@ -5,7 +5,7 @@ description: Owns the ai-harness-toolset manual Brief workflow (BF Level 1/2) �
 
 # ai-harness-brief
 
-This skill owns the ai-harness-toolset **manual Brief workflow** — explicit-prompt **save / checkpoint**, **user-requested restore**, and **update** of the project's canonical Brief. It is the procedure home for the current BF Level 1/2 manual-discipline capabilities; the always-loaded snippet only routes to it and carries the Brief invariants, it does not restate this procedure.
+This skill owns the ai-harness-toolset **manual Brief workflow** — explicit-prompt **save / checkpoint**, **user-requested restore**, and **update** of the project's canonical Brief. It is the procedure home for the current BF Level 1/2 manual-discipline capabilities. **Discovery / trigger is owned by this skill's `description`** (Claude Code matches skills by their description) — the always-loaded snippet does **not** carry a routing pointer to this skill and is not required for it to fire.
 
 Operating model: the **operator** is the trigger / approve / reject / discard owner and does **not** hand-edit the Brief; the **agent** (you) writes the Brief body on the operator's trigger. BF Level 3 automation (deterministic writer, stale warning, session-start guidance) is **deferred and out of scope** — `docs/systems/brief/DEFERRED.md` (BR-D-01 / BR-D-03).
 

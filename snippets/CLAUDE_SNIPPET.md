@@ -25,7 +25,7 @@ The forbidden destination is `%USERPROFILE%\.claude\AGENTS.md`. That path is not
 This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-prepare.ps1` / `review-run.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
 
 - When acting as **reviewer** or **auditor**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`), verdict vocabulary, BRIEF semantics, the no-overwrite contract for global files, and the source-of-truth priority. Form any verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict. In reviewer mode do not run the operator-side Brief / session-restore protocols, do not pause for a missing `BRIEF.md`, and do not ask a restore / session / clarification question — produce the canonical review `result.md` verdict instead (the review-result contract takes precedence).
-- The operator-side protocols — the Brief save / checkpoint / restore / update workflow (owned by the `ai-harness-brief` skill) and the `review-prepare` / `review-run` review flow (owned by the `ai-harness-review` skill) — apply only when acting as **operator**.
+- The operator-side protocols — the Brief save / checkpoint / restore / update workflow, and the `review-prepare` / `review-run` review flow — apply only when acting as **operator**.
 - Nothing in this payload forces accept / approve. Nothing in it weakens reviewer independence. Nothing in it permits whole-file overwrite of a global instruction file.
 
 ## Project layout
@@ -44,8 +44,7 @@ Reviewer config lives at `<ToolRoot>/config/reviewer.json`.
 
 ## Review flow
 
-- A Codex review of in-progress work is an **explicit-prompt-triggered** capability owned end to end by the on-demand `ai-harness-review` skill. When the user asks for a Codex / 코덱스 review of the current work, that skill owns the full lifecycle — `review-prepare.ps1` → `review-run.ps1` → `review-verify.ps1`, `-Perspective` selection (e.g. `local-correctness` / `system-coherence`, required), `input.md` / `result.md` authoring, validation-evidence and known-concerns handling, and the corrective loop. This always-loaded payload only routes to the skill; it does not restate that procedure. A public adopter installs the `ai-harness-review` skill alongside this snippet.
-- Canonical review artifacts live only under `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` (see *Project layout*) as the two-file pair `input.md` + `result.md` — no sidecar JSON, hash-binding, or external staging file is part of the record. The artifact, verdict, and `result.md`-section shape is owned by the canonical review contract, which the skill mirrors.
+- Canonical review artifacts live only under `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` (see *Project layout*) as the two-file pair `input.md` + `result.md` — no sidecar JSON, hash-binding, or external staging file is part of the record. The artifact / verdict / `result.md`-section shape is owned by the canonical review contract (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
 
 ## Result verdict vocabulary
 
@@ -63,8 +62,6 @@ Stay within the user-approved review / `/goal` scope. If a finding or fix would 
 
 ## Brief
 
-- Brief save / checkpoint / user-requested restore / update is an explicit-prompt capability owned end to end by the on-demand `ai-harness-brief` skill (operator-mode only). This always-loaded payload routes to that skill — it does not restate the trigger phrases, the save / restore / update steps, or the BF Level definitions. A public adopter installs the `ai-harness-brief` skill alongside this snippet.
-- **Canonical Brief** = `<ProjectRoot>/log/brief/BRIEF.md` — a project-local, operator-local runtime artifact under `<ProjectRoot>/log/` (gitignored by default; **never** a commit / push target and not a shared handoff document). Root `<ProjectRoot>/brief/BRIEF.md` and any user-home operator-local runtime root are **rejected** locations. The Brief shape / heading contract and the BF Level definitions live in `docs/contracts/brief/BRIEF_CONTRACT.md`.
 - BF Level 3 — automated Brief management — is not implemented in this toolset. Do not claim that capability.
 
 ## Chatlog
