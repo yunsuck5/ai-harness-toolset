@@ -21,5 +21,5 @@ The snippet (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) is the
 ## Rules in this tier
 
 - [global-file-mutation-boundary.md](global-file-mutation-boundary.md) — global / user instruction file mutation boundary and the managed-block adoption contract.
-- [no-background-or-hidden-state.md](no-background-or-hidden-state.md) — no daemon / watcher / scheduler / hook / background task; no sidecar state file; no per-user log partitioning or ownership metadata.
+- [no-background-or-hidden-state.md](no-background-or-hidden-state.md) — no autonomous / hidden execution (no daemon / watcher / scheduler / hook / self-triggering task; explicit-prompt-only triggers), with supervised, read-only, output-isolated, fully-joined background / parallel work allowed; no sidecar state file; no per-user log partitioning or ownership metadata.
 - [repository-change-safety.md](repository-change-safety.md) — commit / push need explicit approval; a verdict approves nothing; no automatic `.gitignore` mutation; temporary-file hygiene.
