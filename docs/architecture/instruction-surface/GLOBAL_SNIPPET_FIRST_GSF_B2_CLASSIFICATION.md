@@ -125,8 +125,8 @@ No finding is an `active instruction that docs must stop owning and an executabl
 - **why stale:** the doc's own supersede note + `SOURCE_OF_TRUTH.md` Q2 "Do not use" mark `review-cycle.ps1` / `meta.json` / `result.json` / `<run-id>` flat layout as removed-legacy.
 - **classification:** `remain` (design/decision record; stale-but-isolated) + `compress candidate` for GSF-B4.
 - **proposed owner:** current review record/flow → `REVIEW_RESULT_CONTRACT.md` + `review-*.ps1`; the contract remains the D1–D9 invocation-design authority (ToolRoot resolution topology the snippet `## Project layout` points to).
-- **owner-migration status:** owner exists; superseded wording isolated, not yet trimmed.
-- **GSF-B4 eligibility:** **yes** (compress superseded review-cycle wording; D1–D9 decisions and the live ToolRoot-resolution contract stay). Note: this is a **contract** — GSF-B4 may compress *role/wording* but must not alter the D1–D9 artifact/decision authority (design §4 note).
+- **owner-migration status:** **minimally applied (GSF-B4-E).** The one safely-compressible spot — the §2 inputs list that presented `scripts/review-cycle.ps1` as a current lifecycle script — was reframed to mark it **removed-legacy** (design-time input; pointing to the top supersede note). The rest of the review-cycle / sidecar wording is **D1–D9-decision-integral** (D1 channel-3 entrypoint-completeness check, D6 `meta.json` ToolRoot binding, D7 `review-cycle.ps1` untracked detection, the §5/§6 formal specs) and was **deliberately left unchanged** — compressing it would alter the D-decision / contract authority (forbidden); it stays isolated by the top "Review-cycle wording supersede note".
+- **GSF-B4 eligibility:** **minimally resolved (GSF-B4-E)** — the §2 inputs reframe applied under the contract boundary; the D1–D9-integral review-cycle wording remains (must not alter the D-decisions), isolated by the top note + preserved in git history.
 - **risk/boundary:** medium-care — the doc is the ToolRoot-topology authority referenced by the snippet; trim only the superseded review-cycle prose, never the D-decisions.
 
 ### B2-F10 — design/plan docs accumulating "since landed" current-state annotations  **[priority: LOW]**
@@ -179,7 +179,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 | B2-F06 | `REVIEWER_CONFIG_POLICY.md` diagnostic ref | remain / opt. compress | low | owner exists (script) | optional |
 | B2-F07 | `CLI_ENVIRONMENT_ASSUMPTIONS.md` Tier 3 | remain (reference) | low | owner exists (skill) | no |
 | B2-F08 | `GLOBAL_INSTALL_UPDATE_MODEL.md` stale framing | remain + compress (LTS) | low | **partially applied (GSF-B4-D)** | **partial (GSF-B4-D); residual isolated remains** |
-| B2-F09 | `SHARED_GLOBAL_INVOCATION_CONTRACT.md` review-cycle wording | remain + compress | low | owner exists (contract/scripts) | yes (keep D1–D9) |
+| B2-F09 | `SHARED_GLOBAL_INVOCATION_CONTRACT.md` review-cycle wording | remain + compress | low | **minimally applied (GSF-B4-E)** | **minimal (GSF-B4-E); D1–D9-integral remainder remains** |
 | B2-F10 | design/plan "since landed" annotations | remain + weak compress | low | owner exists (STATUS) | optional (high re-stale risk) |
 
 **By disposition:** `delete candidate` 2 (B2-F01, B2-F03) · `compress candidate` 5 (B2-F02, B2-F04, B2-F05, F08/F09 as compress-within-remain) · `remain` (dominant — all of §6 + B2-F06/F07 + the remain half of F08/F09/F10) · `migrate` 0 · `retire candidate` 0 · `future AI-native rule candidate` 0 · `stop/report boundary` raised for LTS (B2-F08) and contract-authority (B2-F09) edits. **No `docs/**` content was found that an executable surface must newly own** — every duplication/staleness finding already has a tracked/deployed owner; the fixes are compression/redirection, not behavior migration.
@@ -187,7 +187,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 ## Major migration / delete / compress / retire candidates (for GSF-B4)
 
 - **delete/redirect:** B2-F01 (`H:\Work\CLAUDE.md` dangling pointer → contract §6a / skill) — **highest priority; RESOLVED by GSF-B4-A** (replaced with `REVIEW_RESULT_CONTRACT.md` §6a + `ai-harness-review` skill step 7); B2-F03 (`log/**` durable pointer) **RESOLVED by GSF-B4-B** (removed the durable path; S6 origin reframed as a gitignored runtime artifact, durable record → `STATUS.md` RV-B-08 + git history).
-- **compress:** B2-F04 (effort-guide verdict restatement → contract pointer); B2-F02 (machine-path examples → placeholder convention) **— RESOLVED by GSF-B4-C**; B2-F08 (install-update brief-lineage duplication **— partially compressed by GSF-B4-D**: §6/§9 re-statements → §1/§9.3 single-home; residual source-cache + per-line asides remain isolated, LTS); B2-F09 (contract isolated stale wording, contract-authority care) remains.
+- **compress:** B2-F04 (effort-guide verdict restatement → contract pointer); B2-F02 (machine-path examples → placeholder convention) **— RESOLVED by GSF-B4-C**; B2-F08 (install-update brief-lineage duplication **— partially compressed by GSF-B4-D**: §6/§9 re-statements → §1/§9.3 single-home; residual source-cache + per-line asides remain isolated, LTS); B2-F09 (contract review-cycle wording **— minimally compressed by GSF-B4-E**: §2 inputs reframed to removed-legacy; D1–D9-decision-integral remainder remains isolated, contract-authority boundary).
 - **retire:** none (no doc section is wholly obsolete with no live content).
 - **migrate to executable surface:** none required (owners already exist).
 
