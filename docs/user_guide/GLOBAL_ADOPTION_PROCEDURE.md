@@ -57,7 +57,7 @@
 
 본 절은 절차에서 참조하는 경로의 conceptual split 을 기록한다. 본 split 은 `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §8 의 ToolRoot / ProjectRoot 모델과 정합되며, 본 문서가 새 path 모델을 도입하지 않는다.
 
-- `ToolRoot` — `ai-harness-toolset` source repo root (예: `H:/Work/ai-harness-toolset/ai-harness-toolset`).
+- `ToolRoot` — `ai-harness-toolset` source repo root (예: `<canonical-local-toolroot>`).
 - `SkillSourceRoot` — `<ToolRoot>/snippets/claude-skills`.
 - `GlobalSkillRoot` — 사용자 글로벌 Claude environment 의 skill 디렉터리 (예: `~/.claude/skills`).
 - `GlobalSkillDir(name)` — `<GlobalSkillRoot>/<skill-name>`.

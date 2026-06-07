@@ -411,7 +411,7 @@ legacy project-local copy mode (channel 5) 를 평가하는 경우에만 본 부
 
 추천 흐름 (shared / global 모드):
 
-1. 임시 git repo 1개를 만든다 (예: `H:/tmp/ai-harness-trial/`).
+1. 임시 git repo 1개를 만든다 (예: `<temp-project>` — 새로 만들 임시 trial repo).
 2. channel 3 global stable install 이 `%USERPROFILE%\.claude\ai-harness-toolset\current` 에 materialize 되어 있는지 확인한다 (없으면 `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` 의 install 모델에 따라 준비).
 3. test repo 의 `.gitignore` 에 `log/` 한 줄을 추가한다.
 4. test repo 안에서 channel 3 의 `log-init.ps1` 을 실행한다 (§9 의 shared / global 예시).

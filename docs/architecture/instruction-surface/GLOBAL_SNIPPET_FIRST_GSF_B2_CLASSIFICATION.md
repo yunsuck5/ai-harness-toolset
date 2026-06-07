@@ -45,7 +45,7 @@ No finding is an `active instruction that docs must stop owning and an executabl
 - **risk/boundary:** user-confirmed **classification-only** for GSF-B2 — **do not edit `REVIEW_EFFORT_GUIDE.md` in this batch.** Surfaced to the user this session; option 1 (record only) selected.
 
 ### B2-F02 — machine-specific `H:\Work\...` example-path cluster  **[priority: LOW]**
-- **source / sections** (complete docs/root-tracked set; basis: repo-wide grep `H:[\\/]{1,2}(Work|tmp)` — the `{1,2}` catches both `H:\Work` and the JSON-escaped `H:\\Work` forms — excluding this record's own quotations and `tests/**` test-data, see *out of scope* below):
+- **source / sections** (the historical finding locations — **all normalized in GSF-B4-C**, see owner-migration status below; basis: repo-wide grep `H:[\\/]{1,2}(Work|tmp)` — the `{1,2}` catches both `H:\Work` and the JSON-escaped `H:\\Work` forms — excluding this record's own quotations and `tests/**` test-data, see *out of scope* below):
   - `INSTALL.md:103, 168` — `H:\Work\ai-harness-toolset\ai-harness-toolset` (example `local-clone` source path, "예:").
   - `docs/user_guide/OPERATOR_GUIDE_KR.md:414` — `H:/tmp/ai-harness-trial/` (illustrative *to-be-created* temp-repo example, "예:").
   - `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md:60` — `H:/Work/ai-harness-toolset/ai-harness-toolset` (example ToolRoot, "예:").
@@ -55,8 +55,8 @@ No finding is an `active instruction that docs must stop owning and an executabl
 - **why legacy/cleanliness:** machine-specific paths in public-safe tracked docs are a public-readiness wart (an open-source adopter sees the maintainer's drive layout). **Distinct from B2-F01:** these are labeled *examples*, not authority pointers — the repo-root example paths exist on the author's machine, **except** `OPERATOR_GUIDE_KR.md:414`'s `H:/tmp/ai-harness-trial/`, which is an illustrative *to-be-created* temp path (does **not** exist on disk, by design — the step tells the reader to create it). None is a dangling *durable authority pointer* the way B2-F01 is. And `GLOBAL_INSTALL_UPDATE_MODEL.md:32–33` already establishes the generalized convention (`<canonical-local-toolroot>` placeholder + `%USERPROFILE%` / `C:\Users\<USER>` form, "실제 Windows 사용자 폴더명은 본 문서에 쓰지 않는다") — so the concrete `H:\Work\...` examples are a *consistency* gap against the doc's own stated convention, not a §4 durable-pointer violation.
 - **classification:** `compress candidate` (normalize concrete examples to the existing `<canonical-local-toolroot>` / `<ToolRoot>` placeholder convention).
 - **proposed owner:** the docs themselves (self-normalization to the install-model's placeholder convention) — no migration to another surface.
-- **owner-migration status:** owner = same doc; convention already defined (install-model §33). Not yet uniformly applied.
-- **GSF-B4 eligibility:** **yes** (public-safe normalization pass) — but a public-safe cleanup is arguably a separate concern from GSF-B4's docs-removal scope; may be folded into the same fix batch as B2-F01.
+- **owner-migration status:** **applied (GSF-B4-C).** All B2-F02 concrete maintainer-local example paths (`H:\Work\...` / `H:/tmp/...`, incl. the JSON-escaped `H:\\Work` forms) across the 5 docs were normalized to the public-safe placeholder convention (`<canonical-local-toolroot>` / `<local-clone>` / `<temp-project>` / `<sibling-test-projectroot>`), and the install-model path-notation convention now mirrors its own username rule (실제 경로는 본 문서에 쓰지 않는다). **LTS: example notation only — no install/update/uninstall/ToolRoot-resolution semantics changed.**
+- **GSF-B4 eligibility:** **resolved (GSF-B4-C)** — the public-safe normalization landed as the narrow GSF-B4-C batch (a separate concern from GSF-B4's docs-removal scope, handled as its own mutation batch).
 - **risk/boundary:** low; cosmetic/public-safe. Some maintainers intentionally keep a concrete "현재 system example" for clarity — confirm intent before normalizing.
 
 ### B2-F03 — `log/**` durable pointer in a tracked plan doc  **[priority: MEDIUM]**
@@ -172,7 +172,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 | ID | Source | Classification | Priority | Owner-migration | GSF-B4 |
 |---|---|---|---|---|---|
 | B2-F01 | `REVIEW_EFFORT_GUIDE.md:180` | delete candidate + redirect | **HIGH** | **applied (GSF-B4-A)** | **done (GSF-B4-A)** |
-| B2-F02 | `H:\Work\...` example cluster (5 docs) | compress candidate (normalize) | low | convention exists, not applied | yes (public-safe pass) |
+| B2-F02 | `H:\Work\...` example cluster (5 docs) | compress candidate (normalize) | low | **applied (GSF-B4-C)** | **done (GSF-B4-C)** |
 | B2-F03 | `REVIEW_ARTIFACT_PERSPECTIVE_LAYOUT_PLAN.md:184` | delete/compress candidate | medium | **applied (GSF-B4-B)** | **done (GSF-B4-B)** |
 | B2-F04 | `REVIEW_EFFORT_GUIDE.md` §9/§12 | compress candidate | medium | owner exists (contract §6a + skill) | yes |
 | B2-F05 | `OPERATOR_GUIDE_KR.md` §5/§6/§11 | compress candidate (soft) | low | owner exists | partial |
@@ -187,7 +187,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 ## Major migration / delete / compress / retire candidates (for GSF-B4)
 
 - **delete/redirect:** B2-F01 (`H:\Work\CLAUDE.md` dangling pointer → contract §6a / skill) — **highest priority; RESOLVED by GSF-B4-A** (replaced with `REVIEW_RESULT_CONTRACT.md` §6a + `ai-harness-review` skill step 7); B2-F03 (`log/**` durable pointer) **RESOLVED by GSF-B4-B** (removed the durable path; S6 origin reframed as a gitignored runtime artifact, durable record → `STATUS.md` RV-B-08 + git history).
-- **compress:** B2-F04 (effort-guide verdict restatement → contract pointer); B2-F02 (machine-path examples → placeholder convention); B2-F08/F09 (isolated stale wording, under LTS / contract-authority care).
+- **compress:** B2-F04 (effort-guide verdict restatement → contract pointer); B2-F02 (machine-path examples → placeholder convention) **— RESOLVED by GSF-B4-C**; B2-F08/F09 (isolated stale wording, under LTS / contract-authority care) remain.
 - **retire:** none (no doc section is wholly obsolete with no live content).
 - **migrate to executable surface:** none required (owners already exist).
 

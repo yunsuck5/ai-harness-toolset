@@ -100,7 +100,7 @@ operational install 은 서로 다른 세 mutation 영역을 명확히 구분한
 install 의 source 입력은 두 가지 형태를 동등하게 지원한다. 어느 쪽을 쓰더라도 (5) destination, (6) install identity, (7) flow, (8) failure handling 의 model 은 같다.
 
 - **GitHub repo URL.** 예: `https://github.com/yunsuck5/ai-harness-toolset`. operator 가 URL 만 가지고 있을 때 사용한다. install 시 Claude Code 가 그 URL 을 source 로 `git clone` 한다.
-- **Local clone path.** 예: `H:\Work\ai-harness-toolset\ai-harness-toolset`. operator 가 이미 clone 한 source repo 위에서 시작할 때 사용한다. clone 단계 없이 그 path 를 source 로 사용한다.
+- **Local clone path.** 예: `<local-clone>` (이미 clone 해 둔 `ai-harness-toolset` source repo 의 local path). operator 가 이미 clone 한 source repo 위에서 시작할 때 사용한다. clone 단계 없이 그 path 를 source 로 사용한다.
 
 두 source input 의 유일한 차이는 source acquisition 단계 — `git clone` 이 필요한가, 아니면 기존 clone 을 그대로 사용하는가 — 뿐이다.
 
@@ -165,7 +165,7 @@ install / update / reinstall 후 검증의 판정 근거는 위 §5 verify (base
 
 1. operator 는 Claude Code 안에서 의도를 사용자에게 표시한다. 이때 mode 는 §3.1 대로 **사용자가 제공한 source input 의 형태가 결정** 하며, operator 가 두 mode 를 양자택일로 제시하지 않는다.
    - 사용자가 GitHub URL 을 제공한 경우 → `git-url`: 예 — "이 URL 로 ai-harness-toolset 을 설치한다 (`git-url` mode): `https://github.com/yunsuck5/ai-harness-toolset`." (URL 만 주어졌을 때 `local-clone` 을 함께 묻지 않는다.)
-   - 사용자가 local clone path 를 명시적으로 source 로 제공한 경우 → `local-clone`: 예 — "이 local clone 을 source 로 설치한다 (`local-clone` mode): `H:\Work\ai-harness-toolset\ai-harness-toolset`."
+   - 사용자가 local clone path 를 명시적으로 source 로 제공한 경우 → `local-clone`: 예 — "이 local clone 을 source 로 설치한다 (`local-clone` mode): `<local-clone>`."
 2. operator 는 §5 inspect 를 수행한다. prerequisites 점검 + destination 부재 확인 + source 의 현재 HEAD SHA resolve.
 3. operator 는 §5 propose 를 수행한다. propose 에는 다음이 포함된다.
    - source input 종류 (URL / local path) 와 값.

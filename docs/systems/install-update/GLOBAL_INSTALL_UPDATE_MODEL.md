@@ -30,7 +30,7 @@ Step 3-specific install / update implementation planning 은 본 문서의 **sub
 ### Path notation
 
 - global Claude install layer 경로는 항상 `%USERPROFILE%\.claude` 로 표기한다. expanded example 이 필요하면 `C:\Users\<USER>\.claude` 처럼 placeholder 를 쓴다. 실제 Windows 사용자 폴더명은 본 문서에 쓰지 않는다.
-- canonical local ToolRoot 의 generalized 표현은 `<canonical-local-toolroot>` 다. 현재 system example 은 `H:\Work\ai-harness-toolset\ai-harness-toolset` 이며, example 일 뿐 강제 경로가 아니다. 본 경로는 source / build input (development repo) 이며, shared / global mode 의 default runtime ToolRoot 가 **아니다** — 아래 materialized runtime ToolRoot 항목 참조.
+- canonical local ToolRoot 의 generalized 표현은 `<canonical-local-toolroot>` 다. 실제 maintainer dev-repo 경로는 본 문서에 쓰지 않는다 (위 username 표기 규약과 동일); 본 문서는 generalized placeholder 로만 표기한다. `<canonical-local-toolroot>` 는 source / build input (development repo) 이며, shared / global mode 의 default runtime ToolRoot 가 **아니다** — 아래 materialized runtime ToolRoot 항목 참조.
 - shared / global mode 의 **materialized runtime ToolRoot** 경로는 `%USERPROFILE%\.claude\ai-harness-toolset\current` 다. 이는 `Get-ToolRoot` 의 channel 3 이 resolve 하는 default 연결 경로이며 (`docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1, D1), Layer 2 (`%USERPROFILE%\.claude`) 아래에 위치한다. development repo (`<canonical-local-toolroot>`) 가 이 경로로 materialize 되는 source/build input 이고, `current` 가 lifecycle script 가 실제 실행되는 runtime ToolRoot 다.
 - target project root 의 generalized 표현은 `<ProjectRoot>` 다.
 
@@ -80,7 +80,7 @@ implications:
 ### 2.2 install-from-local-clone
 
 - 사용자가 이미 clone 한 repo root 에서 Claude Code 를 열고 "현재 프로젝트를 global tool 로 설치해" 라고 지시한다.
-- 현재 system example: `H:\Work\ai-harness-toolset\ai-harness-toolset`.
+- 예: `<canonical-local-toolroot>` (이미 clone 된 source repo 의 canonical local ToolRoot).
 - Claude Code 가 현재 repo 를 검증 (올바른 `ai-harness-toolset` source repo 인지 확인) 하고 canonical local ToolRoot 로 등록한다.
 - 이후 그 ToolRoot 를 기준으로 global Claude layer 를 install 한다.
 
@@ -191,8 +191,8 @@ generated payload (global Claude install layer 의 `current/` runtime payload + 
   "tool": "ai-harness-toolset",
   "installMode": "local-clone",
   "repoUrl": "https://github.com/yunsuck5/ai-harness-toolset",
-  "sourcePath": "H:\\Work\\ai-harness-toolset\\ai-harness-toolset",
-  "toolRoot": "H:\\Work\\ai-harness-toolset\\ai-harness-toolset",
+  "sourcePath": "<local-clone>",
+  "toolRoot": "<canonical-local-toolroot>",
   "branch": "main",
   "remote": "origin",
   "installedHead": "<commit-sha>",
@@ -219,7 +219,7 @@ generated payload (global Claude install layer 의 `current/` runtime payload + 
 
 ### Layer 1 — Canonical local ToolRoot
 
-- generalized: `<canonical-local-toolroot>`. 현재 system example: `H:\Work\ai-harness-toolset\ai-harness-toolset`.
+- generalized: `<canonical-local-toolroot>` (실제 maintainer dev-repo 경로는 표기하지 않는다).
 - Layer 0 GitHub repo 의 local clone (install-from-git-url) 이거나, 사용자가 이미 가지고 있던 local clone (install-from-local-clone) 이다.
 - **source / build input 이다** — global install layer (Layer 2) 의 materialized runtime ToolRoot 를 만드는 원천이며, 그 자체가 shared / global mode 의 default runtime ToolRoot 는 아니다.
 - `ai-harness-toolset` 자체의 source repo 이기도 하다.
@@ -239,10 +239,10 @@ generated payload (global Claude install layer 의 `current/` runtime payload + 
 
 ### Layer 3 — ProjectRoot
 
-실제 작업 대상 repo 다. 본 모델에서 다루는 ProjectRoot 예시는 다음 둘이다 (현재 system example).
+실제 작업 대상 repo 다. 본 모델에서 다루는 ProjectRoot 예시는 다음 둘이다 (generalized placeholder; 실제 경로는 표기하지 않는다).
 
-- `H:\Work\ai-harness-toolset\ai-harness-toolset` (self-dogfooding ProjectRoot — §9 참조)
-- `H:\Work\ai-harness-toolset\ai-harness-toolset-mvp-test-acceptance`
+- `<canonical-local-toolroot>` (self-dogfooding ProjectRoot — §9 참조)
+- `<sibling-test-projectroot>` (canonical local ToolRoot 의 형제 디렉터리 형태의 별도 test-acceptance ProjectRoot)
 
 ProjectRoot 는 `ai-harness-toolset` payload 를 설치받는 위치가 **아니다.** global Claude layer (Layer 2) 가 실행될 때의 작업 대상일 뿐이다.
 
@@ -408,7 +408,7 @@ hook 이 나중에 도입되면 본 정책을 동일하게 따른다.
 
 ### 9.1 fact
 
-- `<canonical-local-toolroot>` (현재 system example `H:\Work\ai-harness-toolset\ai-harness-toolset`) 는 canonical ToolRoot source repo (Layer 1) 이면서 동시에 self-dogfooding ProjectRoot (Layer 3) 다.
+- `<canonical-local-toolroot>` 는 canonical ToolRoot source repo (Layer 1) 이면서 동시에 self-dogfooding ProjectRoot (Layer 3) 다.
 - 이 repo 안에 `scripts/` `config/` `snippets/` `templates/` `docs/` 가 존재하는 것은 source repo 이기 때문에 정상이다.
 - self-dogfooding ProjectRoot 로 동작할 때, `log/` 가 project-local state 로 존재해도 된다 (3차 reconciliation 기준; BRIEF / Chatlog / Evidence / Review 모두 `<ProjectRoot>/log/` 아래). 위 §9 BRIEF wording note 참조 — 본 줄의 1차 / 2차 framing 잔재 wording 은 superseded. root `<ProjectRoot>/brief/` 는 self-dogfooding 에서도 만들지 않는다 (rejected).
 
