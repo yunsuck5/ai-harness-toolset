@@ -60,13 +60,13 @@ No finding is an `active instruction that docs must stop owning and an executabl
 - **risk/boundary:** low; cosmetic/public-safe. Some maintainers intentionally keep a concrete "현재 system example" for clarity — confirm intent before normalizing.
 
 ### B2-F03 — `log/**` durable pointer in a tracked plan doc  **[priority: MEDIUM]**
-- **source:** `docs/systems/review/REVIEW_ARTIFACT_PERSPECTIVE_LAYOUT_PLAN.md:184` — table row pointing at `log/review_polishing/deferred/revpolish-plan-local-2026-06-02/pass-01.md` as an "S6 origin 신호(read-only)".
+- **source:** `docs/systems/review/REVIEW_ARTIFACT_PERSPECTIVE_LAYOUT_PLAN.md:184` — table row that **pointed at** `log/review_polishing/deferred/revpolish-plan-local-2026-06-02/pass-01.md` as an "S6 origin 신호(read-only)" (historical defect description; the pointer has since been removed — GSF-B4-B; see owner-migration status below).
 - **current role:** provenance pointer (where a planning signal originated) inside a design plan's impact table.
 - **why a defect:** durable pointer to a **gitignored `log/**` runtime path** in a tracked doc — `DOCS_OPERATING_MODEL.md` §4 forbids durable pointers to `log/**` / scratch / runtime paths (resolve only to git-tracked files or git history). The same rule is restated in `INSTRUCTION_SURFACE_PLAN.md:160`.
 - **classification:** `delete candidate` / `compress candidate` (remove the live `log/**` path or describe the provenance without a durable runtime pointer).
 - **proposed owner:** the plan doc itself (self-fix) — state the origin in prose / git-history terms rather than a live `log/**` path.
-- **owner-migration status:** owner = same doc; no external owner needed.
-- **GSF-B4 eligibility:** **yes** (reference-sweep / dangling-pointer cleanup is GSF-B4's primary surface). Note: this is a **review-system** plan doc, adjacent to the core instruction-surface focus — fold into GSF-B4's four-class reference sweep or the B2-F01 fix batch.
+- **owner-migration status:** **applied (GSF-B4-B).** Both `log/**` durable pointers to the same gitignored review-polishing artifact in this plan were removed — `REVIEW_ARTIFACT_PERSPECTIVE_LAYOUT_PLAN.md:184` (impact-table row) and `:24` (the friction-origin evidence bullet). The GSF-B2 audit cited only `:184`; `:24` is the same defect (the same `log/**` durable pointer in the same doc) and was found + fixed in GSF-B4-B. Both now describe the S6 origin as a gitignored / ephemeral review-polishing runtime artifact (not a durable source-of-truth), and the durable S6 record is redirected to the tracked owner `docs/systems/review/STATUS.md` RV-B-08 (commit `460ee3e`) + git history.
+- **GSF-B4 eligibility:** **resolved (GSF-B4-B)** — was eligible; the fix landed as the narrow GSF-B4-B batch (a review-system plan doc, adjacent to the core instruction-surface focus).
 - **risk/boundary:** medium; a tracked→`log/**` durable pointer is exactly the §4 staleness/portability failure mode.
 
 ### B2-F04 — `REVIEW_EFFORT_GUIDE.md` §9/§12 verdict-handling restatement  **[priority: MEDIUM]**
@@ -150,7 +150,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 - **Skill-subsystem plan/status — remain.** `FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` (design plan), `docs/systems/skills/STATUS.md` (current-state authority, SK-00…SK-05). STATUS is the correct single-home for "since landed" status.
 - **Task-scoped process/policy authorities — remain.** `DOCS_OPERATING_MODEL.md` (docs change/closeout process), `POWERSHELL_POLICY.md` (PowerShell authority — its deterministic encoding/EOL rules are **co-owned by the `scripts/verify-ps1.ps1` verifier**, so the *guard* aspect is already test/verifier-owned; the doc remains the rationale authority the repo-local root files point to), `REVIEWER_CONFIG_POLICY.md` (config reference + enforcement-status record; dead-config notes `fallbackModel`/`outputFormat`/`resultFile` are config-cleanup candidates, not docs content), `docs/policies/README.md` / `docs/contracts/README.md` / `docs/architecture/README.md` (folder access-pattern indexes that enforce the "what does not belong here" boundaries — a structural defense against policy-warehousing, keep).
 - **Decision records / project identity / routing — remain.** `docs/decisions/**` (POST_MVP_PLAN, DECISIONS, GLOBAL_ADOPTION_DECISION — settled decision records; GLOBAL_ADOPTION_DECISION carries the B2-F02 example paths), `docs/project/**` (scope/philosophy), `docs/roadmap/**` + `docs/backlog/**` (routing-only per `DOCS_OPERATING_MODEL.md` §3), per-system `STATUS.md` / `BACKLOG.md` / `DEFERRED.md`, `docs/current/SOURCE_OF_TRUTH.md` (per-question routing; its "Do not use" rows are the mechanism that already isolates B2-F08/F09 stale framing).
-- **Review-system plan/spec bodies — remain (Batch-4 / RV-B decision records).** `docs/systems/review/REVIEW_POLISHING_*`, `REVIEW_*_PLAN.md`, `STATUS.md`. (One carries the B2-F03 `log/**` pointer.)
+- **Review-system plan/spec bodies — remain (Batch-4 / RV-B decision records).** `docs/systems/review/REVIEW_POLISHING_*`, `REVIEW_*_PLAN.md`, `STATUS.md`. (One carried the B2-F03 `log/**` pointer — **resolved by GSF-B4-B**.)
 
 ---
 
@@ -173,7 +173,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 |---|---|---|---|---|---|
 | B2-F01 | `REVIEW_EFFORT_GUIDE.md:180` | delete candidate + redirect | **HIGH** | **applied (GSF-B4-A)** | **done (GSF-B4-A)** |
 | B2-F02 | `H:\Work\...` example cluster (5 docs) | compress candidate (normalize) | low | convention exists, not applied | yes (public-safe pass) |
-| B2-F03 | `REVIEW_ARTIFACT_PERSPECTIVE_LAYOUT_PLAN.md:184` | delete/compress candidate | medium | self-fix | yes (reference sweep) |
+| B2-F03 | `REVIEW_ARTIFACT_PERSPECTIVE_LAYOUT_PLAN.md:184` | delete/compress candidate | medium | **applied (GSF-B4-B)** | **done (GSF-B4-B)** |
 | B2-F04 | `REVIEW_EFFORT_GUIDE.md` §9/§12 | compress candidate | medium | owner exists (contract §6a + skill) | yes |
 | B2-F05 | `OPERATOR_GUIDE_KR.md` §5/§6/§11 | compress candidate (soft) | low | owner exists | partial |
 | B2-F06 | `REVIEWER_CONFIG_POLICY.md` diagnostic ref | remain / opt. compress | low | owner exists (script) | optional |
@@ -186,7 +186,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 
 ## Major migration / delete / compress / retire candidates (for GSF-B4)
 
-- **delete/redirect:** B2-F01 (`H:\Work\CLAUDE.md` dangling pointer → contract §6a / skill) — **highest priority; RESOLVED by GSF-B4-A** (replaced with `REVIEW_RESULT_CONTRACT.md` §6a + `ai-harness-review` skill step 7); B2-F03 (`log/**` durable pointer) remains.
+- **delete/redirect:** B2-F01 (`H:\Work\CLAUDE.md` dangling pointer → contract §6a / skill) — **highest priority; RESOLVED by GSF-B4-A** (replaced with `REVIEW_RESULT_CONTRACT.md` §6a + `ai-harness-review` skill step 7); B2-F03 (`log/**` durable pointer) **RESOLVED by GSF-B4-B** (removed the durable path; S6 origin reframed as a gitignored runtime artifact, durable record → `STATUS.md` RV-B-08 + git history).
 - **compress:** B2-F04 (effort-guide verdict restatement → contract pointer); B2-F02 (machine-path examples → placeholder convention); B2-F08/F09 (isolated stale wording, under LTS / contract-authority care).
 - **retire:** none (no doc section is wholly obsolete with no live content).
 - **migrate to executable surface:** none required (owners already exist).
