@@ -1,8 +1,8 @@
 # Review Input
 
-이 파일은 `log/review/<review-task-id>/<perspective>/pass-NN/input.md` 의 형식 기준이다. Claude Code (operator-role AI) 가 본 template 을 기반으로 한 pass directory 의 `input.md` 본문을 직접 작성한다. Codex reviewer 는 결과로 같은 pass directory 의 `result.md` 한 파일만 생성한다.
+이 파일은 `log/review/<review-task-id>/<perspective>/pass-NN/input.md` 의 형식 기준이다. operator-role AI 가 본 template 을 기반으로 한 pass directory 의 `input.md` 본문을 직접 작성한다. reviewer 는 결과로 같은 pass directory 의 `result.md` 한 파일만 생성한다.
 
-`<review-task-id>` 는 하나의 Claude Code `/goal` 작업 또는 하나의 review gate 단위다. Claude Code chat / session id 가 아니다. 한 세션 안에서 서로 다른 주제의 `/goal` 이 여러 개 진행되면 각각 별도의 `<review-task-id>` 디렉터리를 사용한다. `pass-NN` (예: `pass-01`, `pass-02`) 는 같은 review task·perspective 안에서의 corrective loop 의 각 Codex review attempt 다 (pass 번호는 per-perspective). 각 pass directory 는 write-once 다 — input / result 가 stale 또는 부적절하면 새 pass 를 만들고, 기존 pass 의 파일을 손으로 보정해 review 를 닫지 않는다.
+`<review-task-id>` 는 하나의 calling agent 의 `/goal` 작업 또는 하나의 review gate 단위다. agent chat / session id 가 아니다. 한 세션 안에서 서로 다른 주제의 `/goal` 이 여러 개 진행되면 각각 별도의 `<review-task-id>` 디렉터리를 사용한다. `pass-NN` (예: `pass-01`, `pass-02`) 는 같은 review task·perspective 안에서의 corrective loop 의 각 review attempt 다 (pass 번호는 per-perspective). 각 pass directory 는 write-once 다 — input / result 가 stale 또는 부적절하면 새 pass 를 만들고, 기존 pass 의 파일을 손으로 보정해 review 를 닫지 않는다.
 
 review artifact layout 은 **three-level** 이 canonical 이다: `log/review/<review-task-id>/<perspective>/pass-NN/` — 작업 식별자 / perspective / corrective attempt 가 각각 별도 path segment 다. `<perspective>` (review viewpoint — 예: `local-correctness` / `system-coherence`) 는 **필수** 이며, `review-prepare.ps1` / `review-run.ps1` / `review-verify.ps1` 호출 시 `-Perspective <viewpoint>` 로 명시한다 — 미지정 / 빈 값이면 fail-fast (two-level fallback 없음). perspective 는 operator 가 명시하며 자동 추론하지 않고, single path segment (`..` / `/` / `\` / `pass-NN` 형태 금지, safe charset/length) 여야 한다. `pass-NN` 은 그 perspective 안의 corrective attempt 다 (perspective 마다 자기 pass 시퀀스). 본 `-Perspective` 는 effort / model / category 와 마찬가지로 **review-run invocation 선택이지 input.md 의 required section 이 아니다** — 다만 artifact 안에 viewpoint 를 같이 기록하고 싶으면 아래 `## Review perspective` informational section 에 적을 수 있다 (parser 강제 없음). strict C1 이전의 legacy two-level artifact 는 tool 이 발급/검증하지 않으며, 필요하면 사람이 직접 읽는 manual-readable record 다. 이 layout 규칙은 본 template 과 `ai-harness-review` skill 이 함께 정의한다.
 
@@ -74,7 +74,7 @@ informational sections (`## Stage` / `## Purpose` / `## Target files` / `## Vali
 
 ## Final verdict
 
-reviewer (Codex) 는 같은 pass directory 의 `result.md` 한 파일로만 응답한다. `result.md` 는 다음 contract 를 정확히 따른다.
+reviewer 는 같은 pass directory 의 `result.md` 한 파일로만 응답한다. `result.md` 는 다음 contract 를 정확히 따른다.
 
 - 정확히 1 개의 top-level `## Verdict` heading 이 있다.
 - `## Verdict` heading 다음의 첫 비어있지 않은 줄 (앞뒤 whitespace trim 후) 이 다음 셋 중 하나다:

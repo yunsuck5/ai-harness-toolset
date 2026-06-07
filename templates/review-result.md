@@ -1,8 +1,8 @@
 # Review Result
 
-이 파일은 `log/review/<review-task-id>/<perspective>/pass-NN/result.md` 의 형식 기준이다. active reviewer adapter (현재 MVP adapter = codex) 가 `--output-last-message` 로 같은 pass directory 에 result.md 의 verdict/disclosure **body** 를 작성하고, `scripts/review-run.ps1` 가 그 뒤에 `## Reviewer run provenance` 블록을 append 한다 (result.md 는 dual-authored — 아래 note 참조). operator-role AI (Claude Code) 가 `result.md` 본문을 읽고 finding / risk / required change 의 의미를 판단한다.
+이 파일은 `log/review/<review-task-id>/<perspective>/pass-NN/result.md` 의 형식 기준이다. active reviewer adapter (현재 MVP adapter = codex) 가 `--output-last-message` 로 같은 pass directory 에 result.md 의 verdict/disclosure **body** 를 작성하고, `scripts/review-run.ps1` 가 그 뒤에 `## Reviewer run provenance` 블록을 append 한다 (result.md 는 dual-authored — 아래 note 참조). operator-role AI 가 `result.md` 본문을 읽고 finding / risk / required change 의 의미를 판단한다.
 
-`<review-task-id>` 는 하나의 Claude Code `/goal` 작업 또는 하나의 review gate 단위이며 Claude Code chat / session id 가 아니다. `<perspective>` 는 review viewpoint 를 나타내는 별도 path segment 로 canonical three-level layout 의 **필수** 요소다 (operator-named, 자동 추론 없음). `pass-NN` 는 같은 review task·perspective 의 corrective loop 안에서의 각 Codex review attempt 다. (strict C1 이전의 perspective 없는 two-level result.md 는 legacy manual-readable record 일 뿐 tool 이 발급/검증하지 않는다.)
+`<review-task-id>` 는 하나의 calling agent 의 `/goal` 작업 또는 하나의 review gate 단위이며 agent chat / session id 가 아니다. `<perspective>` 는 review viewpoint 를 나타내는 별도 path segment 로 canonical three-level layout 의 **필수** 요소다 (operator-named, 자동 추론 없음). `pass-NN` 는 같은 review task·perspective 의 corrective loop 안에서의 각 review attempt 다. (strict C1 이전의 perspective 없는 two-level result.md 는 legacy manual-readable record 일 뿐 tool 이 발급/검증하지 않는다.)
 
 결과는 본 한 파일로 닫힌다. 다른 sidecar 파일은 canonical contract 의 일부가 아니다.
 
@@ -14,7 +14,7 @@ verdict 어휘의 의미 narrowing — `yes` = no blocking finding (commit / pus
 
 reviewer 는 verdict 외에 다음 4 required disclosure section 을 본문에 정확히 1 회씩 채워 finding 의 분류 와 reviewer-side limitation / assumption 을 명시 surface 한다 — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`. 4 section 은 **required** (parser-enforced) 다 — `scripts/review-verify.ps1 -RequireResult` 가 본 4 H2 의 존재 (각 1 회) 를 parser-required 로 검증한다. 본 section 에 surface 할 substance 가 없을 때는 본문을 `none` 한 줄로 둔다. 본 enforcement 는 mechanical presence/count check 이며, 각 section 본문의 sub-shape (예: `## Known concerns` 의 sub-categories) lint 는 본 enforcement 의 범위가 아니다.
 
-operator-role AI (Claude Code) 가 본 file 을 읽을 때는 verdict line 만이 아니라 위 4 disclosure section 본문 (그리고 아래 선택 section) 을 함께 읽어 next-action 을 결정한다. 그 mapping 은 `ai-harness-review` skill 의 step 7 (Verdict → next-action mapping) 이 정의한다. **Precedence rule**: blocking 여부의 source-of-truth 는 `## Blocking findings` section 의 내용이며, 선택 `## Findings` 와 충돌 시 `## Blocking findings` 가 우선한다.
+operator-role AI 가 본 file 을 읽을 때는 verdict line 만이 아니라 위 4 disclosure section 본문 (그리고 아래 선택 section) 을 함께 읽어 next-action 을 결정한다. 그 mapping 은 `ai-harness-review` skill 의 step 7 (Verdict → next-action mapping) 이 정의한다. **Precedence rule**: blocking 여부의 source-of-truth 는 `## Blocking findings` section 의 내용이며, 선택 `## Findings` 와 충돌 시 `## Blocking findings` 가 우선한다.
 
 ## Verdict
 
