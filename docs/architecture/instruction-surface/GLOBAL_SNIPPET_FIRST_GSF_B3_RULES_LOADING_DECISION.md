@@ -10,6 +10,8 @@
 
 ## 1. Decision (one line)
 
+> **Superseded — decision reversed by the hard-minimization corrective (loading model retained).** The decision below — "create no rules surface now" — has been **superseded**. Under explicit user direction, the hard-minimization corrective (`GLOBAL_SNIPPET_HARD_MINIMIZATION_CORRECTIVE.md`) created a **two-tier rules architecture**: global-distribution `snippets/rules/*.md` (shipped because it sits under the `snippets/` payload root, so it installs to `<ToolRoot>/snippets/rules/` — it is **distributed**, not the non-distributed repo-root `/rules/` this decision worried about) and repo-only `<repo-root>/rules/*.md`, one rule group per file. GSF-B3's **loading model** (§2–§3: `rules/*.md` is not auto-loaded — instructed-read; a truly-always-on rule stays in the bootstrap) and its **vendor-specific boundary** (§4: no `.claude/rules/`, `.codex/rules/`, or `@import`) are **retained and followed**. Read §2–§4 and §6 as the still-valid model; read §1 / §5 "create nothing now" as superseded.
+
 **Create no rules surface and no rules files in GSF-B3.** Keep the only always-loaded surfaces as today (the deployed snippet/managed-block + the repo-local root `CLAUDE.md` / `AGENTS.md` bootstrap); record the vendor-neutral rules loading model and the future adoption conditions; defer any `/rules/*.md`, `.claude/rules/`, or `.codex/rules/` to a separately-approved future batch that meets those conditions.
 
 This is consistent with GSF-B2's result: **GSF-B2 found zero future AI-native rule candidates requiring immediate rule extraction**, so there is nothing to extract. GSF-B3 fixes the *model* (so a future "yes" is built correctly) without building anything.

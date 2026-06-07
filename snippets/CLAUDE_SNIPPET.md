@@ -1,72 +1,16 @@
 <!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->
 # ai-harness-toolset instructions for CLAUDE.md-compatible agents
 
-This is a manually adopted AI instruction payload for Claude Code and other CLAUDE.md-compatible agent assistants. The user has copied it into the destination `CLAUDE.md` inside a managed block delimited by `<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->` and `<!-- END AI_HARNESS_TOOLSET_GLOBAL -->`. Treat its content as authoritative for ai-harness workflows in this project.
+This is a manually adopted ai-harness-toolset bootstrap for Claude Code and other CLAUDE.md-compatible agents. The user copied it into a `CLAUDE.md` inside the managed block delimited by `<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->` and `<!-- END AI_HARNESS_TOOLSET_GLOBAL -->`; only that block is ai-harness-owned. It is the always-loaded **bootstrap** layer: it carries the critical safety floor inline and points to the distributed rules tier for the full operating rules. It loads regardless of the agent's role (operator / reviewer / auditor / supervisor); role-specific behavior is set by `/goal`, the review input, or a skill, never assumed here. Review and Brief capabilities are on-demand skills the agent discovers via each skill's own `description` — this bootstrap neither indexes nor routes to them.
 
-## Adoption destination
+## Safety floor
 
-The valid destinations for this payload are exactly:
+- **Managed-block only.** Never implicitly or whole-file overwrite a global / user instruction file; edit only inside the marker pair and preserve everything outside it verbatim. A missing / incomplete / duplicated / malformed marker pair is a stop-and-manual-review condition, not an edit.
+- **Explicit approval gates.** Adopting / updating this payload, committing, pushing, and any other global / user file mutation each require explicit user approval; a review verdict (`yes` / `no` / `yes with risk`) approves none of them.
+- **Destination.** Claude: `<ProjectRoot>/CLAUDE.md` or `%USERPROFILE%\.claude\CLAUDE.md`. (Codex destinations are in `AGENTS_SNIPPET.md`.) `%USERPROFILE%\.claude\AGENTS.md` is never a destination and must never be created; no file is auto-created under `~/.claude/` or `~/.codex/`.
 
-- **Project-root `CLAUDE.md`** — `<ProjectRoot>/CLAUDE.md`.
-- **User-global Claude `CLAUDE.md`** — `%USERPROFILE%\.claude\CLAUDE.md`.
+## Operating rules and topology
 
-The forbidden destination is `%USERPROFILE%\.claude\AGENTS.md`. That path is not a recognized global instruction location for any agent, and ai-harness must never create it. The Codex user-global instruction path is `%USERPROFILE%\.codex\AGENTS.md` by default, or `%CODEX_HOME%\AGENTS.md` if `CODEX_HOME` is set, and is the destination for `AGENTS_SNIPPET.md` — it is not under `.claude\`.
-
-## Adoption rules
-
-- This payload lives only inside the `AI_HARNESS_TOOLSET_GLOBAL` managed block of one of the destinations above. Replacing the content inside that managed block is the standard, allowed way to adopt or update it.
-- Whole-file overwrite of either destination is forbidden. Content outside the managed block — project-specific or user instructions — must be preserved verbatim.
-- Adopting or updating this payload in any destination above is an explicit, user-approved global / user config mutation, never an implicit or automatic action.
-- If the marker pair is already present, only the block between the markers may be replaced. Inserting the block into an existing file that has no marker, and creating a missing destination file, are each separate explicit-approval boundaries.
-- An incomplete marker pair, duplicated markers, or a malformed block is a fail-fast / manual-review condition: stop and do not edit the file.
-
-## Role neutrality
-
-This payload is loaded regardless of the agent's current role. The same agent may operate as **operator** (making changes, running `review-prepare.ps1` / `review-run.ps1`), **reviewer** (reading a prepared packet and emitting a verdict), **auditor**, or **supervisor**. Role-specific behavior is decided by `/goal`, the review input, the skill prompt, or the command invocation — not by this global payload.
-
-- When acting as **reviewer** or **auditor**, treat only the role-neutral parts of this payload as binding: ToolRoot / ProjectRoot path concepts, reviewer artifact location (`<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`), verdict vocabulary, the no-overwrite contract for global files, and the source-of-truth priority. Form any verdict from the artifact evidence in the prepared packet itself; do not treat operator-supplied summaries as a substitute for that evidence, and do not infer commit / push approval from a verdict. In reviewer mode do not run the operator-side Brief / session-restore protocols, do not pause for a missing `BRIEF.md`, and do not ask a restore / session / clarification question — produce the canonical review `result.md` verdict instead (the review-result contract takes precedence).
-- The operator-side protocols — the Brief save / checkpoint / restore / update workflow, and the `review-prepare` / `review-run` review flow — apply only when acting as **operator**.
-- Nothing in this payload forces accept / approve. Nothing in it weakens reviewer independence. Nothing in it permits whole-file overwrite of a global instruction file.
-
-## Project layout
-
-`<ToolRoot>` is where the toolset's own `scripts/`, `config/`, `templates/`, and `snippets/` live. `<ProjectRoot>` is the target project repo root. Toolset-owned files live under `<ToolRoot>`; target-owned project files and runtime artifacts live under `<ProjectRoot>`.
-
-`<ToolRoot>` is resolved per invocation in this channel order: explicit `-ToolRoot` argument → `AI_HARNESS_TOOL_ROOT` env var (override) → global stable install `%USERPROFILE%\.claude\ai-harness-toolset\current` (absent skips to the next channel; present but incomplete fails fast) → `<ProjectRoot>/.ai-harness/` fallback → explicit error.
-
-Runtime artifact paths under `<ProjectRoot>`:
-
-- `<ProjectRoot>/log/` — runtime output root. `log/` must not be committed; ensure the target project's `.gitignore` includes it.
-- `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` — canonical review record: the two-file pair `input.md` + `result.md` only — no sidecar JSON, hash-binding, or external staging file is part of the record. Inspect `input.md` + `result.md` and report the verdict; the artifact / verdict / `result.md`-section shape is owned by the canonical review contract (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
-- Keep `log/review/`, `log/evidence/`, and `log/chatlog/` separate.
-
-Reviewer config lives at `<ToolRoot>/config/reviewer.json`.
-
-## Result verdict vocabulary
-
-The only valid final verdict values for this toolset are exactly:
-
-- `yes`
-- `no`
-- `yes with risk`
-
-A reviewer verdict does not approve commit, push, publish, merge, release, upload, or adoption. `yes` means no blocking finding in the reviewed scope and the user still decides the next step; `no` means a blocking finding exists and a corrective action is needed (classify whether the fix is within or outside the approved scope before acting); `yes with risk` means no blocking finding but disclosed risks require explicit user / supervisor risk acceptance before commit / push — it is not the automatic equivalent of `yes`. Detailed verdict → next-action mapping and result-consumption guidance live in the ai-harness-review skill (steps 6–7) and the canonical review contract — they are intentionally not duplicated here.
-
-## Operator stance
-
-Stay within the user-approved review / `/goal` scope. If a finding or fix would cross a source / runtime / sibling-report / user-global / global-install / commit-push boundary, stop and report instead of silently absorbing it. If you discover an earlier judgment of yours was wrong, retract it explicitly rather than overwriting it. The full operator stance (target-file accuracy, off-repo material handling, stop/report vs self-correct, retraction protocol, scope discipline) lives in the ai-harness-review skill and the canonical review contract — not duplicated here.
-
-## Forbidden in this toolset
-
-- No per-user / per-operator log partitioning, operator-id, machine-id, or ownership metadata.
-- No `BF_STATE.json` or sidecar state-machine file.
-- No daemon, watcher, scheduler, hook, or background task.
-- No implicit, automatic, or whole-file mutation of a global instruction file. Specifically: `%USERPROFILE%\.claude\CLAUDE.md` (Claude), `%USERPROFILE%\.codex\AGENTS.md` (Codex default), `%CODEX_HOME%\AGENTS.md` (Codex with `CODEX_HOME` set), `AGENTS.override.md` at the Codex user-global scope, and any project-root `CLAUDE.md` / `AGENTS.md`. Explicit user-approved managed-block insert / replace per `Adoption rules` is the one governed exception. No file is auto-created under `~/.claude/` or `~/.codex/`.
-- No creation of `%USERPROFILE%\.claude\AGENTS.md`. That path is not a recognized global instruction location for any agent; ai-harness never writes to it.
-- No automatic target `.gitignore` mutation.
-
-## Other rules
-
-- Commit and push require explicit user approval.
-- Temporary files created solely for command execution should be cleaned up by the operator before closeout. Evidence, snapshots, logs, source changes, or user-requested artifacts are not temporary files.
+- **Operating rules tier.** The full operating rules ship with the toolset (not in `docs/`) at `<ToolRoot>/snippets/rules/*.md`, one rule group per file — `global-file-mutation-boundary.md`, `no-background-or-hidden-state.md`, `repository-change-safety.md`. Read the relevant file when its area applies.
+- **Topology.** `<ToolRoot>` holds the installed `config` / `scripts` / `templates` / `snippets`, resolved in channel order: `-ToolRoot` → `AI_HARNESS_TOOL_ROOT` → `%USERPROFILE%\.claude\ai-harness-toolset\current` → `<ProjectRoot>/.ai-harness/` → stop. `<ProjectRoot>` is the target repo; all runtime artifacts go under `<ProjectRoot>/log/` (`log/review/`, `log/evidence/`, `log/chatlog/`, `log/brief/`).
 <!-- END AI_HARNESS_TOOLSET_GLOBAL -->

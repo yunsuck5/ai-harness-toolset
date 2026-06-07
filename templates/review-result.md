@@ -6,7 +6,7 @@
 
 결과는 본 한 파일로 닫힌다. 다른 sidecar 파일은 canonical contract 의 일부가 아니다.
 
-> **Runner-appended provenance block (reviewer 가 작성하지 않음).** review 성공 시 `scripts/review-run.ps1` 가 result.md 끝에 `## Reviewer run provenance` 블록을 **자동 append** 한다 — runtime-observed run facts (reviewer adapter kind/version, model, effort, reviewer-safe posture, engine identity) 의 machine 기록이다. 이 블록은 **runner 가 emit** 하며 reviewer 또는 operator 가 손으로 작성하지 않는다. reviewer 는 본 template 의 `## Verdict` + disclosure section 본문만 작성하고 provenance 블록은 건드리지 않는다. 본 블록은 informational 이며 `scripts/review-verify.ps1 -RequireResult` 의 gate 대상이 아니다 (`## Verdict` + 4 disclosure H2 의 count 와 무관). 상세는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3 (result.md dual-authorship).
+> **Runner-appended provenance block (reviewer 가 작성하지 않음).** review 성공 시 `scripts/review-run.ps1` 가 result.md 끝에 `## Reviewer run provenance` 블록을 **자동 append** 한다 — runtime-observed run facts (reviewer adapter kind/version, model, effort, reviewer-safe posture, engine identity) 의 machine 기록이다. 이 블록은 **runner 가 emit** 하며 reviewer 또는 operator 가 손으로 작성하지 않는다. reviewer 는 본 template 의 `## Verdict` + disclosure section 본문만 작성하고 provenance 블록은 건드리지 않는다. 본 블록은 informational 이며 `scripts/review-verify.ps1 -RequireResult` 의 gate 대상이 아니다 (`## Verdict` + 4 disclosure H2 의 count 와 무관). result.md 는 dual-authored — reviewer 가 verdict/disclosure body 를, `scripts/review-run.ps1` 가 provenance 블록을 작성한다.
 
 `## Verdict` heading 직후 첫 비어있지 않은 줄은 lowercase 정확히 다음 셋 중 하나여야 한다 — `yes`, `no`, `yes with risk`. 다른 토큰, qualifier, inline 형태 (`Verdict: yes`, `Final verdict: yes`), prose 안 verdict 는 모두 거부된다. 따라서 본 template 의 `## Verdict` 본문은 그 contract 를 따르는 형태로 비워 두며, reviewer 는 이 첫 비어있지 않은 줄을 실제 verdict 값으로 교체하기만 한다. 본 contract 안내는 `## Verdict` heading 밖 (위 본문 또는 `## Notes`) 에 둔다.
 
@@ -14,7 +14,7 @@ verdict 어휘의 의미 narrowing — `yes` = no blocking finding (commit / pus
 
 reviewer 는 verdict 외에 다음 4 required disclosure section 을 본문에 정확히 1 회씩 채워 finding 의 분류 와 reviewer-side limitation / assumption 을 명시 surface 한다 — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`. 4 section 은 **required** (parser-enforced) 다 — `scripts/review-verify.ps1 -RequireResult` 가 본 4 H2 의 존재 (각 1 회) 를 parser-required 로 검증한다. 본 section 에 surface 할 substance 가 없을 때는 본문을 `none` 한 줄로 둔다. 본 enforcement 는 mechanical presence/count check 이며, 각 section 본문의 sub-shape (예: `## Known concerns` 의 sub-categories) lint 는 본 enforcement 의 범위가 아니다.
 
-operator-role AI (Claude Code) 가 본 file 을 읽을 때는 verdict line 만이 아니라 위 4 disclosure section 본문 (그리고 아래 선택 section) 을 함께 읽어 next-action 을 결정한다. 그 mapping 의 source-of-truth 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6a (Verdict → next-action mapping) 다. **Precedence rule**: blocking 여부의 source-of-truth 는 `## Blocking findings` section 의 내용이며, 선택 `## Findings` 와 충돌 시 `## Blocking findings` 가 우선한다.
+operator-role AI (Claude Code) 가 본 file 을 읽을 때는 verdict line 만이 아니라 위 4 disclosure section 본문 (그리고 아래 선택 section) 을 함께 읽어 next-action 을 결정한다. 그 mapping 은 `ai-harness-review` skill 의 step 7 (Verdict → next-action mapping) 이 정의한다. **Precedence rule**: blocking 여부의 source-of-truth 는 `## Blocking findings` section 의 내용이며, 선택 `## Findings` 와 충돌 시 `## Blocking findings` 가 우선한다.
 
 ## Verdict
 
@@ -46,7 +46,7 @@ reviewer 가 발견한 사항을 한 항목씩 나열한다. 본문이 길어도
 
 ## Counter-argument
 
-(선택, strongly-recommended; non-parser) verdict 에 대한 가장 강한 반대 사례 (strongest case AGAINST the reviewer's own verdict) 를 dedicated position 으로 articulate 한다. verdict 가 `yes` 또는 `yes with risk` 인 round 에서 reviewer 는 substantive 한 본문을 작성한다. deliberate pressure-test 후 material counter-argument 가 발견되지 않으면 본문은 짧은 literal — `none` 또는 `no material counter-argument identified` — 로 두며 ceremonial boilerplate ("the alternative interpretation is X, but I dismiss it because Y" 의 substance 없는 일반적 pattern) 는 회피한다. verdict 가 `no` 인 round 에서는 본 section 을 생략해도 무방하다 — `## Blocking findings` 의 corrective scope 자체가 case-against-yes 의 articulation 이다. 본 section 은 parser-required 가 아니며 `scripts/review-verify.ps1 -RequireResult` 의 4-H2 disclosure gate 와 무관하다. `## Notes` 와의 substance boundary (본 section = verdict pressure-test 의 dedicated position; `## Notes` = freeform reviewer-narrative bucket) 와 boilerplate-degeneration mitigation 의 자세한 안내는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §3c 참조.
+(선택, strongly-recommended; non-parser) verdict 에 대한 가장 강한 반대 사례 (strongest case AGAINST the reviewer's own verdict) 를 dedicated position 으로 articulate 한다. verdict 가 `yes` 또는 `yes with risk` 인 round 에서 reviewer 는 substantive 한 본문을 작성한다. deliberate pressure-test 후 material counter-argument 가 발견되지 않으면 본문은 짧은 literal — `none` 또는 `no material counter-argument identified` — 로 두며 ceremonial boilerplate ("the alternative interpretation is X, but I dismiss it because Y" 의 substance 없는 일반적 pattern) 는 회피한다. verdict 가 `no` 인 round 에서는 본 section 을 생략해도 무방하다 — `## Blocking findings` 의 corrective scope 자체가 case-against-yes 의 articulation 이다. 본 section 은 parser-required 가 아니며 `scripts/review-verify.ps1 -RequireResult` 의 4-H2 disclosure gate 와 무관하다. `## Notes` 와의 substance boundary: 본 section = verdict pressure-test 의 dedicated position; `## Notes` = freeform reviewer-narrative bucket. boilerplate-degeneration 는 위 안내(짧은 literal 사용, ceremonial boilerplate 회피)를 따른다.
 
 ## Notes
 

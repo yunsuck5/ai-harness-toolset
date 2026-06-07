@@ -379,7 +379,7 @@ hook 이 나중에 도입되면 본 정책을 동일하게 따른다.
 
 - hook source 파일이 payload staging area (`current/` 등) 에 존재한다는 사실만으로 "설치되었다" 고 간주하지 않는다.
 - hook 의 runtime destination, final verification, uninstall cleanup 은 **같은 approved scope** 의 일부여야 한다.
-- 본 정책은 hook 을 lifecycle 에서 어떻게 다루는지를 정의할 뿐, hook **도입 자체를 승인하지 않는다.** daemon / watcher / scheduler / background hook 의 도입은 별개의 hard-boundary 결정이며, snippet 의 "Forbidden" no-hook 불변은 유지된다.
+- 본 정책은 hook 을 lifecycle 에서 어떻게 다루는지를 정의할 뿐, hook **도입 자체를 승인하지 않는다.** daemon / watcher / scheduler / background hook 의 도입은 별개의 hard-boundary 결정이며, no-hook 불변은 유지된다 (snippet minimization 후 이 불변은 global-distribution rules tier `snippets/rules/no-background-or-hidden-state.md` 가 소유; `docs/architecture/instruction-surface/INSTRUCTION_SURFACE_PLAN.md` §11; `docs/architecture/instruction-surface/GLOBAL_SNIPPET_HARD_MINIMIZATION_CORRECTIVE.md`).
 
 ### 현재 instantiation (사실 — 변경 아님)
 

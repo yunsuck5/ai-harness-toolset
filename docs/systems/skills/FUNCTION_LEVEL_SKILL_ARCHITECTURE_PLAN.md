@@ -12,7 +12,7 @@
 
 ## 1. Problem statement
 
-The global install adopts the snippet payload (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) into a `CLAUDE.md` / `AGENTS.md` managed block. That payload is **always loaded** into every session of every project, regardless of the task. When this plan was written the payload carried far more than always-on invariants: it embedded full review-flow mechanics, the BF save/checkpoint step procedure, the new-session restore-offer step procedure, execution discipline, and verdict-meaning detail — procedure also owned by the on-demand `ai-harness-review` skill and by non-deployed contracts. **Batches 1–3 + GSF-B1 have since extracted or removed all of it; the snippet is now minimized to 8 H2 sections (§2; `docs/systems/skills/STATUS.md` SK-01–SK-05).**
+The global install adopts the snippet payload (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) into a `CLAUDE.md` / `AGENTS.md` managed block. That payload is **always loaded** into every session of every project, regardless of the task. When this plan was written the payload carried far more than always-on invariants: it embedded full review-flow mechanics, the BF save/checkpoint step procedure, the new-session restore-offer step procedure, execution discipline, and verdict-meaning detail — procedure also owned by the on-demand `ai-harness-review` skill and by non-deployed contracts. **Batches 1–3 + GSF-B1 extracted or removed all of it; the hard-minimization corrective has since reduced the snippet to a 2-H2 bootstrap + a two-tier rules architecture — the "8 H2" in §2 below is the pre-corrective state (see §4 and `docs/architecture/instruction-surface/GLOBAL_SNIPPET_HARD_MINIMIZATION_CORRECTIVE.md`; `docs/systems/skills/STATUS.md` SK-01–SK-06).**
 
 Three consequences followed (the motivation for the minimization, since addressed):
 
@@ -24,6 +24,8 @@ Three consequences followed (the motivation for the minimization, since addresse
 The fix direction: the snippet keeps only what every session must always know **for current, implemented capabilities** (rules / policy / hard boundaries / routing invariants); every **explicit-prompt-triggered** feature procedure moves into a **function-level skill** loaded on demand; and any non-current / unimplemented item is **removed** from the snippet rather than reframed as future/deferred.
 
 ## 2. Current deployed snippet/skill surface (summary)
+
+> **Pre-corrective summary (historical).** The snippet is now a **2-H2** always-loaded bootstrap (`## Safety floor` + `## Operating rules and topology`) backed by the two-tier rules architecture (global-distribution `snippets/rules/*.md` + repo-only `<repo-root>/rules/*.md`). The 8-H2 / section-name enumeration below is the **pre-corrective** state, retained as history. Current authority: `docs/architecture/instruction-surface/GLOBAL_SNIPPET_HARD_MINIMIZATION_CORRECTIVE.md` (and `docs/systems/skills/STATUS.md` SK-06).
 
 Deployed payload = `config/` + `scripts/` + `snippets/` + `templates/` (mirrored to `%USERPROFILE%\.claude\ai-harness-toolset\current\`). `docs/`, `tests/`, `log/` are **not** deployed.
 
@@ -62,6 +64,8 @@ scripts                →  deterministic lifecycle implementation              
 ```
 
 ## 4. Snippet responsibility (what STAYS always-on)
+
+> **Superseded by the hard-minimization corrective (current).** This section's "what stays always-on" enumeration described the pre-corrective snippet (~8 H2 sections of active policy). The global snippet has since been reduced to a **2-H2 always-loaded bootstrap** (`## Safety floor` + `## Operating rules and topology`) backed by a **two-tier rules architecture**: global-distribution `snippets/rules/*.md` (shipped under the `snippets/` payload root) and repo-only `<repo-root>/rules/*.md`. The reusable always-on rules not absorbed into a skill/template/script live in those rules tiers (one group per file); the review / Brief *procedures* stay in the deployed skills (discovered by description, not named/routed from the bootstrap); and the whole distribution is `docs/`-free. This supersedes GSF-B3's "create no rules surface" decision (loading model retained). The per-section "(snippet: *…*)" attributions below are **historical**; the current dispositions are in `docs/architecture/instruction-surface/GLOBAL_SNIPPET_HARD_MINIMIZATION_CORRECTIVE.md` (and `docs/systems/skills/STATUS.md` SK-06). The *principle* this section states — only adopter-universal, no-conditional-body content survives in the always-loaded payload — is unchanged and is exactly what drove the corrective.
 
 Keep only content that applies to *every* task with no conditional body (the high always-on bar of `docs/README.md` §4):
 
