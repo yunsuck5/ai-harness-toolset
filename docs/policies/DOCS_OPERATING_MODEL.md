@@ -8,7 +8,7 @@ It is a **task-scoped execution policy** (read it when your task changes docs or
 - `docs/current/SOURCE_OF_TRUTH.md` — **per-question authority routing** (which document answers which question). This file does not re-route questions.
 - **This file** — the **change/closeout flow** authority (how an edit moves down the tree; the shape contract for STATUS/BACKLOG; the on-demand status-briefing model that replaces committed project-current mirror files; the closeout reconciliation gate).
 
-When this file disagrees with `docs/README.md` on *placement*, `docs/README.md` wins. When it disagrees with a `docs/contracts/**` contract on an *artifact's shape*, that contract wins. This file is authoritative only for the docs change/closeout *process*.
+When this file disagrees with `docs/README.md` on *placement*, `docs/README.md` wins (doc-vs-doc). On an *artifact's shape*, a `docs/contracts/**` contract is the **specification of record** — the operative authority for the shape is the **active surface** (the verifier scripts / templates / skill the contract records), so this file does not redefine an artifact's shape and neither doc outranks the active surface. This file is authoritative only for the docs change/closeout *process*.
 
 ---
 
