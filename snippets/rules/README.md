@@ -4,7 +4,7 @@ This folder is the **global-distribution rules tier**. It ships with the toolset
 
 ## Relationship to the snippet
 
-The snippet (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) is the always-loaded **bootstrap** that the user adopts into a `CLAUDE.md` / `AGENTS.md` managed block. It carries only the critical safety floor inline and points here for the full operating rules — the same relationship a Claude Code `CLAUDE.md` has to its rules tier. These rule files are **not auto-loaded**; the agent reads the relevant file (at `<ToolRoot>/snippets/rules/<name>.md`) when its area applies.
+The snippet (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) is the always-loaded **bootstrap** that the user adopts into a `CLAUDE.md` / `AGENTS.md` managed block. It carries only the critical safety floor inline and points here for the full operating rules — the same relationship a Claude Code `CLAUDE.md` has to its rules tier. These rule files are **not auto-loaded**; the snippet's **rule trigger gate** (an action-class → rule-file map in `## Operating rules and topology`) requires the agent to read the matched rule file (at `<ToolRoot>/snippets/rules/<name>.md`) *before* answering or acting on that area — not an optional "when it seems relevant" read.
 
 ## What belongs here
 

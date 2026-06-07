@@ -36,7 +36,7 @@ The prior "Global Snippet First" sequence (GSF-B1…B4) declared itself "**compl
 | Skill mention | named/routed indirectly | none — skills are discovered by their own `description`; the bootstrap neither names nor routes to them |
 | Symmetry | parallel, vendor-specific differences | parallel; only H1, intro tool-name, and the Destination bullet differ |
 
-After: H1 (test-bound) + intro + `## Safety floor` (managed-block-only, approval gates, destinations — 3 bullets) + `## Operating rules and topology` (pointer to `<ToolRoot>/snippets/rules/*.md` + ToolRoot channel order + `log/` partitioning).
+After: H1 (test-bound) + intro + `## Safety floor` (managed-block-only, approval gates, destinations — 3 bullets) + `## Operating rules and topology` (rules-tier index + a **rule trigger gate** routing action classes to `<ToolRoot>/snippets/rules/*.md` + ToolRoot channel order + `log/` partitioning). The trigger gate is a routing table (action class → rule file), not copied rule bodies — see §6.
 
 ---
 
@@ -91,5 +91,17 @@ Disposition: **bootstrap** (kept inline in the snippet safety floor) · **rules 
 - **Snippet + skills + templates:** reduced / made docs-free as above.
 - **Stale-corrected:** `GLOBAL_SNIPPET_FIRST_MIGRATION_PLAN.md` §2/Stage-flow; `GLOBAL_SNIPPET_FIRST_GSF_B3_RULES_LOADING_DECISION.md` (no-rules conclusion superseded; model retained); `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`; `docs/current/SOURCE_OF_TRUTH.md` Q10/Q11; `docs/systems/skills/STATUS.md` (SK-06); `docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §4; `docs/architecture/README.md`.
 - **Dangling-reference fixes:** `README.md`; `docs/decisions/GLOBAL_ADOPTION_DECISION.md`; `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`; root `CLAUDE.md` / `AGENTS.md` (Snippet trigger row + Track D note + Repo-execution-conventions + Non-goals, mirror-edited).
+
+## 6. Follow-up corrective — rules-tier trigger gate
+
+A later corrective strengthened `## Operating rules and topology` from a passive pointer ("Read the relevant file when its area applies") into an explicit **rule trigger gate**, motivated by a real trigger-compliance failure: asked "can I update the global `CLAUDE.md` managed block?", an agent read only the `CLAUDE.md` target file and never read `global-file-mutation-boundary.md`. The fix is a routing-table strengthening of the pointer, not new policy content.
+
+What changed (snippet `## Operating rules and topology`, both files mirror-edited, section byte-identical):
+
+- The rules tier is named as a **distributed index** recognized at task start, without reading every body by default.
+- A **trigger gate** requires reading the matched rule file *before* answering / judging / inspecting / acting, with two non-substitution clauses — the Safety floor summary is not a substitute for the rule file, and reading the *target* file (e.g. the `CLAUDE.md` / `AGENTS.md` itself) is not a substitute for reading the *matched rule* file — plus a fail-safe (`<ToolRoot>` / rule-file unresolvable → stop and ask).
+- An action-class → rule-file **routing map** for the three rules-tier files.
+
+Constraints honored: routing table only — **no rule body is copied into the snippet**; the snippet stays **2 H2** (still a minimal bootstrap, not a policy bundle); distribution stays `docs/`-free (points only to `<ToolRoot>/snippets/rules/`); both snippets stay symmetric (the trigger section is byte-identical). **No hook** was introduced — hook-based enforcement remains a future decision candidate only (`snippets/rules/no-background-or-hidden-state.md`). No runtime / install / update / uninstall / ToolRoot / skill-procedure / global-file change.
 
 A reviewer verdict on this corrective approves no commit/push — those remain explicit user decisions.

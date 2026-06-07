@@ -11,6 +11,10 @@ This is a manually adopted ai-harness-toolset bootstrap for Claude Code and othe
 
 ## Operating rules and topology
 
-- **Operating rules tier.** The full operating rules ship with the toolset (not in `docs/`) at `<ToolRoot>/snippets/rules/*.md`, one rule group per file — `global-file-mutation-boundary.md`, `no-background-or-hidden-state.md`, `repository-change-safety.md`. Read the relevant file when its area applies.
+- **Rules tier (index).** The full operating rules ship with the toolset (not in `docs/`) at `<ToolRoot>/snippets/rules/*.md`, one rule group per file. At task start, recognize this directory as the distributed rules index; do **not** read every rule body by default — load a body through the trigger gate below.
+- **Rule trigger gate — read BEFORE you answer, judge, inspect, or act.** When an action falls under a trigger below, read its rule file first and follow it. The Safety floor above is a summary, **not** a substitute for the rule file; and reading the *target* file (e.g. the `CLAUDE.md` / `AGENTS.md` itself) is **not** a substitute for reading the *matched rule* file. If `<ToolRoot>` or the rule file cannot be resolved, stop and ask.
+  - `global-file-mutation-boundary.md` — any global / user / project-root instruction file action: `CLAUDE.md` / `AGENTS.md`, managed-block adopt / update / create / overwrite, or a destination question.
+  - `repository-change-safety.md` — any state-changing git action (commit, push, rebase, reset, checkout, cherry-pick, merge, etc.), plus publish / release / deploy / upload, `.gitignore` mutation, temp-file cleanup, or turning a review verdict into an action.
+  - `no-background-or-hidden-state.md` — daemon, watcher, scheduler, hook, background task, sidecar / hidden state, `BF_STATE`, or operator-identity metadata.
 - **Topology.** `<ToolRoot>` holds the installed `config` / `scripts` / `templates` / `snippets`, resolved in channel order: `-ToolRoot` → `AI_HARNESS_TOOL_ROOT` → `%USERPROFILE%\.claude\ai-harness-toolset\current` → `<ProjectRoot>/.ai-harness/` → stop. `<ProjectRoot>` is the target repo; all runtime artifacts go under `<ProjectRoot>/log/` (`log/review/`, `log/evidence/`, `log/chatlog/`, `log/brief/`).
 <!-- END AI_HARNESS_TOOLSET_GLOBAL -->
