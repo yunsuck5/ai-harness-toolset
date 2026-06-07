@@ -115,8 +115,8 @@ No finding is an `active instruction that docs must stop owning and an executabl
 - **why stale:** `SOURCE_OF_TRUTH.md` Q1 + Q4 already flag these as **"Do not use"** (superseded, isolated by the top reconciliation note); current truth lives in `docs/systems/install-update/STATUS.md` + `BRIEF_CONTRACT.md` (3rd reconciliation).
 - **classification:** `remain` (decision/model record; stale-but-isolated) + `compress candidate` for GSF-B4.
 - **proposed owner:** current state → `install-update/STATUS.md`; brief framing → `BRIEF_CONTRACT.md`. The model doc remains the design/model authority for live install behavior.
-- **owner-migration status:** owner exists (STATUS + contract); stale framing already isolated, not yet trimmed.
-- **GSF-B4 eligibility:** **yes** (compress the isolated superseded wording; git history preserves it) — but install-update is **LTS**, so any edit is a stop/report / separate-approval boundary even in GSF-B4.
+- **owner-migration status:** **partially applied (GSF-B4-D, bounded compression under separate scoped approval).** The redundant full-lineage *re-statements* of the 1차/2차/3차 brief reconciliation in the §6 Layer 4 superseded note + the §9 BRIEF wording note were compressed to pointers to the single-home lineage record (§1 3rd-reconciliation note + §9.3 reconciliation list), preserving all current (3차) facts, the isolation marking, cross-references, and **all install/update/ToolRoot semantics**. **Kept by design (single-home):** the §1 authoritative supersede notes + the §9.3 reconciliation list. **Deliberately left isolated (out of this bounded batch — compressing them would risk LTS install/ToolRoot semantics):** the scattered source-cache / persistent-ToolRoot framing in the §4.2/§10.2 install-flow prose, and the already-minimal per-line "이전 라운드 … superseded" asides.
+- **GSF-B4 eligibility:** **partially resolved (GSF-B4-D)** — the safe brief-lineage duplication was compressed under separate scoped approval; the residual stale framing remains safely isolated (LTS, semantics-adjacent), preserved in git history + the §1/§9.3 single-home.
 - **risk/boundary:** **LTS subsystem** — do not edit install-update docs without separate scoped approval (plan §4 stop/report). Classification only here.
 
 ### B2-F09 — `SHARED_GLOBAL_INVOCATION_CONTRACT.md` superseded review-cycle wording (isolated)  **[priority: LOW]**
@@ -178,7 +178,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 | B2-F05 | `OPERATOR_GUIDE_KR.md` §5/§6/§11 | compress candidate (soft) | low | owner exists | partial |
 | B2-F06 | `REVIEWER_CONFIG_POLICY.md` diagnostic ref | remain / opt. compress | low | owner exists (script) | optional |
 | B2-F07 | `CLI_ENVIRONMENT_ASSUMPTIONS.md` Tier 3 | remain (reference) | low | owner exists (skill) | no |
-| B2-F08 | `GLOBAL_INSTALL_UPDATE_MODEL.md` stale framing | remain + compress (LTS) | low | owner exists (STATUS) | yes (LTS gate) |
+| B2-F08 | `GLOBAL_INSTALL_UPDATE_MODEL.md` stale framing | remain + compress (LTS) | low | **partially applied (GSF-B4-D)** | **partial (GSF-B4-D); residual isolated remains** |
 | B2-F09 | `SHARED_GLOBAL_INVOCATION_CONTRACT.md` review-cycle wording | remain + compress | low | owner exists (contract/scripts) | yes (keep D1–D9) |
 | B2-F10 | design/plan "since landed" annotations | remain + weak compress | low | owner exists (STATUS) | optional (high re-stale risk) |
 
@@ -187,7 +187,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 ## Major migration / delete / compress / retire candidates (for GSF-B4)
 
 - **delete/redirect:** B2-F01 (`H:\Work\CLAUDE.md` dangling pointer → contract §6a / skill) — **highest priority; RESOLVED by GSF-B4-A** (replaced with `REVIEW_RESULT_CONTRACT.md` §6a + `ai-harness-review` skill step 7); B2-F03 (`log/**` durable pointer) **RESOLVED by GSF-B4-B** (removed the durable path; S6 origin reframed as a gitignored runtime artifact, durable record → `STATUS.md` RV-B-08 + git history).
-- **compress:** B2-F04 (effort-guide verdict restatement → contract pointer); B2-F02 (machine-path examples → placeholder convention) **— RESOLVED by GSF-B4-C**; B2-F08/F09 (isolated stale wording, under LTS / contract-authority care) remain.
+- **compress:** B2-F04 (effort-guide verdict restatement → contract pointer); B2-F02 (machine-path examples → placeholder convention) **— RESOLVED by GSF-B4-C**; B2-F08 (install-update brief-lineage duplication **— partially compressed by GSF-B4-D**: §6/§9 re-statements → §1/§9.3 single-home; residual source-cache + per-line asides remain isolated, LTS); B2-F09 (contract isolated stale wording, contract-authority care) remains.
 - **retire:** none (no doc section is wholly obsolete with no live content).
 - **migrate to executable surface:** none required (owners already exist).
 
