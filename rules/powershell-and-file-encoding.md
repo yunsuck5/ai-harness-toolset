@@ -1,6 +1,6 @@
 # Rule: PowerShell and file-encoding discipline (repo-only)
 
-Applies to developing the `ai-harness-toolset` repository. **Authority:** `docs/policies/POWERSHELL_POLICY.md` (+ `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md` Tier 1) — the rules below are the concise operating form, not a restatement of that policy.
+Applies to developing the `ai-harness-toolset` repository. **Rationale / derivation:** `docs/policies/POWERSHELL_POLICY.md` (+ `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md` Tier 1) — the rules below are the binding active-surface form (per the root *Final hard rule*), not a restatement of that policy.
 
 ## `.ps1` encoding and line endings
 
