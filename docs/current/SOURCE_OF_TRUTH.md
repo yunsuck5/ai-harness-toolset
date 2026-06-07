@@ -1,20 +1,20 @@
 # Source of Truth
 
-This file routes a question to the document you read **first**, and gives the priority order when documents disagree. It is a current routing entrypoint, not a contract: it does not redefine any contract, and it never grants commit / push / release approval.
+This file routes a question to the document you read **first**, and gives the reading-priority order when documents disagree. It is a current routing / orientation entrypoint, not a contract and not an operative authority: it does not redefine any contract, it never grants commit / push / release approval, and it never overrides the active surface. The operative authority for active behavior (execution / validation / routing / approval / behavior contract) lives on the active surface — `scripts/**`, `templates/**`, `snippets/**`, `rules/**`, `snippets/claude-skills/**`, `config/**`, `tests/**`, and the root instructions; the documents routed below explain, record, and orient to that surface rather than outranking it.
 
 How to read each entry:
 
-- **Primary** — read this first; it is authoritative for the question.
+- **Primary** — read this first for the question; it is the read-first orientation home (routing, not operative authority over the active surface).
 - **Secondary** — supporting current context.
 - **Implementation** — the code / template / config that enforces or realizes the contract.
 - **Historical** — where the past framing lives; useful only for historical context.
 - **Do not use** — framing or identifiers that look current but are superseded / removed-legacy; do not treat as current guidance.
 
-> **Historical preservation.** Superseded / historical material is preserved in **git history**, not maintained as current docs (there is no separate archive docs tree). Current source-of-truth lives in the active docs — routed per question by this file (`docs/current/SOURCE_OF_TRUTH.md`); per-system current status lives in `docs/systems/<system>/STATUS.md`.
+> **Historical preservation.** Superseded / historical material is preserved in **git history**, not maintained as current docs (there is no separate archive docs tree). Current orientation / context lives in the active docs — routed per question by this file (`docs/current/SOURCE_OF_TRUTH.md`); per-system current status lives in `docs/systems/<system>/STATUS.md`. The operative authority for active behavior remains on the active surface, which these docs route to and describe.
 >
 > **The docs taxonomy / source-of-truth reset and the access-pattern restructure have been applied.** The Primary/Secondary pointers below point at the final access-pattern locations: artifact/protocol contracts under `docs/contracts/<area>/`, task-scoped policies under `docs/policies/`, project docs under `docs/project/`, active decisions under `docs/decisions/`, the human guide under `docs/user_guide/`, and per-system status under `docs/systems/**`. `docs/roadmap/` now holds milestone routing only (`INDEX.md`, `CURRENT_MILESTONES.md`); the operating-layer decision moved to `docs/decisions/GLOBAL_ADOPTION_DECISION.md` and the Step 3 implementation-planning guide to `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md`. This enumeration records that **restructure outcome**, not an exhaustive current docs-layer registry — the authoritative, up-to-date layer list (including layers added afterward, e.g. `docs/architecture/`) is `docs/README.md` §5.
 >
-> **Docs are organized by access pattern (supersedes "Policy A").** The earlier "Policy A" — keeping active contracts and policies directly under `docs/` root as a flat cross-system layer — is **superseded** by the placement policy in `docs/README.md`: `docs/` root holds only `README.md`, and each document belongs in the scope folder matching its access pattern (contracts → `docs/contracts/<area>/`, execution policies → `docs/policies/`, project identity → `docs/project/`, active decisions → `docs/decisions/`, human guide → `docs/user_guide/`). The per-system `STATUS.md` documents still **route to** these as the authoritative source rather than replacing them. The docs placement/structure policy authority is `docs/README.md`.
+> **Docs are organized by access pattern (supersedes "Policy A").** The earlier "Policy A" — keeping active contracts and policies directly under `docs/` root as a flat cross-system layer — is **superseded** by the placement policy in `docs/README.md`: `docs/` root holds only `README.md`, and each document belongs in the scope folder matching its access pattern (contracts → `docs/contracts/<area>/`, execution policies → `docs/policies/`, project identity → `docs/project/`, active decisions → `docs/decisions/`, human guide → `docs/user_guide/`). The per-system `STATUS.md` documents still **route to** these as the read-first home for their topic rather than replacing them. The docs placement/structure policy home is `docs/README.md`.
 
 ---
 
@@ -89,7 +89,7 @@ Answered **on demand**, not from a committed project-current mirror (see `docs/p
 For "how should a docs change or a feature/system closeout propagate top-down through the docs tree, and what is the closeout reconciliation gate?"
 
 - **Primary:** `docs/policies/DOCS_OPERATING_MODEL.md` (docs change/closeout flow; per-system `STATUS.md` shape/altitude contract; `BACKLOG.md` closed-row tombstone rule; the on-demand status-briefing model that replaces committed project-current mirrors; two-level closeout reconciliation gate).
-- **Secondary:** `docs/README.md` (folder placement / structure authority); this file (per-question authority routing).
+- **Secondary:** `docs/README.md` (folder placement / structure home); this file (per-question routing).
 - **Implementation:** n/a (an operating-model / process document; no code implementation).
 - **Historical:** n/a.
 - **Do not use:** `docs/policies/DOCS_OPERATING_MODEL.md` as a placement authority (placement → `docs/README.md`) or as commit / push approval (a review verdict approves neither).
