@@ -108,7 +108,7 @@ A rule that is useful to both tools is vendor-neutral (§6.1), not a reason to c
 Per the two-level closeout gate (`DOCS_OPERATING_MODEL.md` §7), inspect-all / report-each. GSF-B3 is decision-only (one new record + pointer registrations; no rules surface, no body edit, no snippet/skill/code change):
 
 **Level 1 (top-down orientation):**
-- `docs/current/SOURCE_OF_TRUTH.md` — **updated** (Q11): registers this decision record as landed (decision-only) and reconciles the Q11 lines so GSF-B3 is no longer listed among the *remaining* implementing tracks (only GSF-B4 + Track E remain).
+- `docs/current/REPO_READING_GUIDE.md` — **updated** (Q11): registers this decision record as landed (decision-only) and reconciles the Q11 lines so GSF-B3 is no longer listed among the *remaining* implementing tracks (only GSF-B4 + Track E remain).
 - `docs/roadmap/CURRENT_MILESTONES.md` — *checked: no change required* (no numbered-milestone status changed; `GSF-Bn` is the migration's own namespace).
 - `docs/decisions/POST_MVP_PLAN.md` — *checked: no change required* (numbered-order authority unchanged).
 

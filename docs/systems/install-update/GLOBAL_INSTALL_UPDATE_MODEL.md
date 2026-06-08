@@ -1,6 +1,6 @@
 # Global Install / Update / Validation / Self-Adoption Operating Model
 
-> **현행 status routing.** 본 문서는 install/update/global-adoption 의 design/model/record source 다. **current 상태 / completed-ledger / deferred** 의 authoritative 자리는 `docs/systems/install-update/STATUS.md` + `docs/systems/install-update/DEFERRED.md` 다 (전체 routing 진입점: `docs/current/SOURCE_OF_TRUTH.md`; roadmap index: `docs/roadmap/INDEX.md`). 본 문서 본문과 system STATUS 가 충돌하면 current 판단은 STATUS 를 따른다.
+> **현행 status routing.** 본 문서는 install/update/global-adoption 의 design/model/record source 다. **current 상태 / completed-ledger / deferred** 의 authoritative 자리는 `docs/systems/install-update/STATUS.md` + `docs/systems/install-update/DEFERRED.md` 다 (전체 routing 진입점: `docs/current/REPO_READING_GUIDE.md`; roadmap index: `docs/roadmap/INDEX.md`). 본 문서 본문과 system STATUS 가 충돌하면 current 판단은 STATUS 를 따른다.
 
 본 문서는 `ai-harness-toolset` 의 설치 / 업데이트 / 검증 / self-adoption 운영 모델을 기록하는 **current source-of-truth** 다. 앞으로 Claude Code, ChatGPT Web, 사용자는 global install / update / self-adoption 판단 시 본 문서를 기준으로 한다. **모델의 기록이며, implementation 승인이 아니다.**
 

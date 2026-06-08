@@ -2,7 +2,7 @@
 
 Current state board for the install / update / global-adoption system: current posture + compact completed ledger + accepted residual risks + pointers. The **install execution** contract is `INSTALL.md`; the operating **model/design** is `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`; the uninstall design + as-built reference is `docs/systems/install-update/UNINSTALL_LIFECYCLE_DESIGN.md`.
 
-- Routing for "which doc answers which question": `docs/current/SOURCE_OF_TRUTH.md` (Q1).
+- Routing for "which doc answers which question": `docs/current/REPO_READING_GUIDE.md` (Q1).
 - Open work: `docs/systems/install-update/BACKLOG.md`. Deferred (with reopen conditions): `docs/systems/install-update/DEFERRED.md`.
 - Remaining roadmap order (steps 1–6): `docs/roadmap/CURRENT_MILESTONES.md`.
 - Decision-rationale record: `docs/decisions/POST_MVP_PLAN.md` (§1–§9). Detailed phase / dogfood / incident / closeout narrative and full per-commit completed text are preserved in **git history** (commit pointers in the ledger below).

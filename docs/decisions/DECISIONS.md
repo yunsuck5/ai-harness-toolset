@@ -1,6 +1,6 @@
 # Decisions
 
-This is the **active** decision record. Bootstrap-era / historical decisions were extracted out of this file and are preserved in git history (historical context only — not current guidance). For question→authority routing see `docs/current/SOURCE_OF_TRUTH.md`.
+This is the **active** decision record. Bootstrap-era / historical decisions were extracted out of this file and are preserved in git history (historical context only — not current guidance). For question→read-first routing see `docs/current/REPO_READING_GUIDE.md`.
 
 ## Active policy decisions
 

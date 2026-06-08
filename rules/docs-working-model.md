@@ -1,36 +1,47 @@
 # Rule: Documentation working model (repo-only)
 
-Applies to developing the `ai-harness-toolset` repository — the binding rules for *how a docs change flows through the `docs/` tree* and *what makes a feature/system closeout "done" in the docs*. **Rationale / derivation:** `docs/policies/DOCS_OPERATING_MODEL.md` (the why + the record + the role-of-layers orientation) — the rules below are the binding active-surface form (per the root *Final hard rule*), not a restatement of that record. Placement (`docs/README.md`) and per-question routing (`docs/current/SOURCE_OF_TRUTH.md`) are separate docs surfaces this rule does not redefine.
+Applies to developing the `ai-harness-toolset` repository — the binding rules for *where a doc belongs in the `docs/` tree (placement)*, *how a docs change flows through it*, and *what makes a feature/system closeout "done" in the docs*. **Rationale / derivation:** `docs/policies/DOCS_OPERATING_MODEL.md` (change/closeout why + record) and `docs/README.md` (docs-tree orientation / placement map + rationale) — the rules below are the binding active-surface form (per the root *Final hard rule*), not a restatement of those records. Per-question routing (`docs/current/REPO_READING_GUIDE.md`) is a separate orientation surface this rule does not redefine.
 
 Read this rule **before** changing `docs/` content or closing out work; the root `CLAUDE.md` / `AGENTS.md` *Docs trigger map* (`Source / docs` row) wires that trigger. The file existing is not what makes it apply — it applies because the root instruction files trigger it.
 
 ## When this rule applies
 
-- Any task that **changes `docs/` content** or **closes out work in the docs**.
-- It governs the docs change/closeout **process only**. It does not re-decide placement (→ `docs/README.md`) or question-routing (→ `docs/current/SOURCE_OF_TRUTH.md`).
+- Any task that **places, moves, changes, or closes out** `docs/` content.
+- It governs docs **placement and the change/closeout process**. It does not re-decide per-question routing (→ `docs/current/REPO_READING_GUIDE.md`, an orientation surface).
 
 ## Top-down operating model
 
 A docs change is decided from the top-level structure downward, never bottom-up from whichever file the work happened to touch:
 
-1. **Structure first.** Before adding or moving content, confirm placement against `docs/README.md` §5–§6 (access-pattern layers). New always-on rules do not go in `docs/`; they go in `snippets/**` / the managed block, or — for repo-only rules — the repo-local root `CLAUDE.md` / `AGENTS.md` and the `rules/**` they point to.
+1. **Structure first.** Before adding or moving content, confirm placement (see *Docs placement* below; the folder map is `docs/README.md` §5). New always-on rules do not go in `docs/`; they go in `snippets/**` / the managed block, or — for repo-only rules — the repo-local root `CLAUDE.md` / `AGENTS.md` and the `rules/**` they point to.
 2. **Authority next.** Confirm which layer *owns* the fact you are changing (its single home — see *single-home-plus-pointers*).
-3. **Down into current + per-system.** Propagate the change into the layers whose role is affected — `docs/current/` for question→authority routing, and the relevant `docs/systems/<system>/` files for subsystem state. Project-current *state* is answered on demand (see *On-demand status-briefing model*), not mirrored in a committed file.
+3. **Down into current + per-system.** Propagate the change into the layers whose role is affected — `docs/current/` for question→read-first routing, and the relevant `docs/systems/<system>/` files for subsystem state. Project-current *state* is answered on demand (see *On-demand status-briefing model*), not mirrored in a committed file.
 4. **Closeout gate last.** When the change closes out work, run the two-level closeout reconciliation (below) before declaring the docs closeout complete.
 
 **single-home-plus-pointers.** Every fact has exactly one authoritative home; all other mentions are pointers to it, never copies. Prefer one authoritative statement plus pointers over repeated prose. (Why duplication is the staleness engine: `docs/policies/DOCS_OPERATING_MODEL.md` §1.)
 
 ## Doc-vs-doc precedence
 
-- On a **placement** disagreement, `docs/README.md` wins.
+- On **placement**, this rule's *Docs placement* section is the operative home; `docs/README.md` is its orientation map / rationale, not a competing authority.
 - On an **artifact's shape**, the relevant `docs/contracts/**` contract is the specification of record and the operative authority is the **active surface** (the verifier scripts / templates / skill the contract records) — neither doc outranks the active surface.
 - On the docs **change/closeout process**, this rule is the home.
+
+## Docs placement
+
+Where a doc belongs in the `docs/` tree (the orientation map / rationale for these rules is `docs/README.md`):
+
+- **docs root holds only `README.md`.** No other markdown lives at `docs/` root (this applies to the `docs/` folder only — not the repo-root `README.md` or `INSTALL.md`).
+- **A folder is a scope boundary, not a storage bucket.** Markdown in one folder must be interpretable, read together, under one purpose. Create a new folder only to narrow scope — not to mix unrelated scope, and not merely because the taxonomy looks complete.
+- **Structure follows access pattern** (how a doc is read, not how many topics it touches): always-on/priming rules that apply to *every* task consolidate **outside** `docs/` (the snippet / managed block, or the repo-local root `CLAUDE.md` / `AGENTS.md` + the `rules/**` they point to) — there is no `docs/priming/`; task-scoped/lookup docs partition so opening one task's folder does not drag in unrelated scope (anti-mixing); always-read or tightly-coupled material is not scattered into a dense reference web (anti-fragmentation).
+- **Where a new doc belongs** — ask in order: (1) always-on for every task? → an always-on surface outside `docs/`. (2) otherwise, which single access pattern / scope does it serve? → that layer (`docs/README.md` §5). (3) would co-locating it pull unrelated scope into a task search? → partition. (4) would splitting it create a dense reference chain? → keep consolidated. Never create an empty folder in advance.
+- **What not to do:** do not place execution policy under `user_guide/`; do not place artifact contracts under `policies/`; do not put task-scoped / conditional policy into always-on priming; do not leave any markdown at `docs/` root except `README.md`; do not preserve a location merely because it was recently committed or heavily referenced.
+- **Reference-update-on-move:** moving or splitting a doc requires updating every inbound reference (in `docs/**`, `README.md`, and — path-only — protected root files when they reference the moved path); a document's section anchors referenced elsewhere must be preserved or explicitly remapped.
 
 ## Layer shape constraints (must-not-absorb)
 
 A closeout must not let a layer absorb what it must not become:
 
-- `docs/current/` — `SOURCE_OF_TRUTH.md` only (question→authority routing). Must not become a second status ledger, a roadmap, a closeout diary, an incident log, or a committed active-action / project-state mirror.
+- `docs/current/` — `REPO_READING_GUIDE.md` only (question→read-first routing). Must not become a second status ledger, a roadmap, a closeout diary, an incident log, or a committed active-action / project-state mirror.
 - `docs/systems/*/STATUS.md` — must not become an incident-narrative / dogfood-transcript / build-diary store, a full closeout report, an implementation plan, or a design contract (those are pointed to, not inlined).
 - `docs/systems/*/BACKLOG.md` — must not become a second status/archive surface (see the tombstone rule).
 - `docs/systems/*/DEFERRED.md` — an item without a reopen condition is not deferred (it is backlog, archive, or delete-candidate). Must not duplicate BACKLOG or store closed items.
@@ -88,7 +99,7 @@ The single home of "what remains" is the per-system STATUS/BACKLOG/DEFERRED + ro
 A feature/system closeout is **not "done" in the docs** until **both** levels below pass. Both are mandatory; the listing order is the verification order (orient from the top first), not a priority ranking — the system-local edits are usually written first, then verified upward.
 
 **Level 1 — project-current / upward impact check (top-down).** Check, and reconcile if affected, the top-level orientation surfaces a new reader hits first — only when their authority / routing / order actually changes:
-- `docs/current/SOURCE_OF_TRUTH.md` — did any question's authoritative home change (including how "current progress / next action" routes)?
+- `docs/current/REPO_READING_GUIDE.md` — did any question's authoritative home change (including how "current progress / next action" routes)?
 - `docs/roadmap/CURRENT_MILESTONES.md` — did a numbered-milestone status change?
 - `docs/decisions/POST_MVP_PLAN.md` — only if the numbered-order authority itself changed.
 

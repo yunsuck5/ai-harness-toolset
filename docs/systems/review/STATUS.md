@@ -1,6 +1,6 @@
 # review — system status
 
-Current status for the Codex review subsystem. The **canonical artifact contract** is `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`; reviewer **config** is `docs/policies/REVIEWER_CONFIG_POLICY.md`; effort/cost operating guidance is `docs/policies/REVIEW_EFFORT_GUIDE.md`. Routing: `docs/current/SOURCE_OF_TRUTH.md` (Q2, Q3).
+Current status for the Codex review subsystem. The **canonical artifact contract** is `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`; reviewer **config** is `docs/policies/REVIEWER_CONFIG_POLICY.md`; effort/cost operating guidance is `docs/policies/REVIEW_EFFORT_GUIDE.md`. Routing: `docs/current/REPO_READING_GUIDE.md` (Q2, Q3).
 
 ## Current state
 

@@ -2,7 +2,7 @@
 
 **Status: non-authority record / rationale / orientation — not the operative rule.** This file no longer carries the binding docs change/closeout rules. The operative rules — top-down flow, single-home-plus-pointers, the per-system `STATUS.md` shape, the `BACKLOG.md` tombstone form, the on-demand status-briefing model, and the two-level closeout reconciliation gate — now live on the **active surface** at **`rules/docs-working-model.md`** (the repo-only rules tier, triggered before a docs change/closeout by the root `CLAUDE.md` / `AGENTS.md` *Docs trigger map*). Per the root *Final hard rule*, a binding rule must not live only in `docs/**`; this file keeps the **why** and the **record**, the rule keeps the **what**.
 
-This file is one of three complementary docs surfaces — `docs/README.md` (placement orientation) and `docs/current/SOURCE_OF_TRUTH.md` (question routing) are the other two (each pending its own scoped reframe). The section numbers below are preserved so existing `§N` references resolve; each section now holds rationale/record/orientation and points to the operative rule.
+This file is one of several complementary docs surfaces — `docs/README.md` (placement orientation map) and `docs/current/REPO_READING_GUIDE.md` (question read-first routing) are two others, and the binding placement + change/closeout rules live on the active surface at `rules/docs-working-model.md`. The section numbers below are preserved so existing `§N` references resolve; each section now holds rationale/record/orientation and points to the operative rule.
 
 ---
 
@@ -24,7 +24,7 @@ Placement scope for each folder is defined in `docs/README.md` §5; the map belo
 
 | Layer | What it is for (orientation) |
 |---|---|
-| `docs/current/` | `SOURCE_OF_TRUTH.md` only — question→authority routing. Project-current *state* is answered on demand (§6), not mirrored here. |
+| `docs/current/` | `REPO_READING_GUIDE.md` only — question→read-first routing. Project-current *state* is answered on demand (§6), not mirrored here. |
 | `docs/systems/*/STATUS.md` | The authoritative "what is true inside this subsystem now" — current posture, compact completed ledger, accepted residual risks, pointers. |
 | `docs/systems/*/BACKLOG.md` | Open-work entrypoint: triage-level rows for not-yet-started work. |
 | `docs/systems/*/DEFERRED.md` | Consciously-postponed work (carried with reopen conditions). |
@@ -46,7 +46,7 @@ The tombstone exists so a reader scanning `BACKLOG.md` sees only open work plus 
 
 ## 6. Project-current state — the on-demand model (record + rationale)
 
-**Record.** The former committed project-current mirrors `docs/current/NEXT_ACTIONS.md` (committed active queue) and `docs/current/PROJECT_STATE.md` (committed project-current summary) **have been removed** from the repo — deleted, not kept as stubs or path-preserving placeholders. `docs/current/` now holds `SOURCE_OF_TRUTH.md` only.
+**Record.** The former committed project-current mirrors `docs/current/NEXT_ACTIONS.md` (committed active queue) and `docs/current/PROJECT_STATE.md` (committed project-current summary) **have been removed** from the repo — deleted, not kept as stubs or path-preserving placeholders. `docs/current/` now holds `REPO_READING_GUIDE.md` only.
 
 **Rationale.** A committed "active now" / project-state file mirrors a conversational decision and the live system surfaces, and goes stale the moment they move on — so "what is done / what remains / what next" is answered on demand instead, and the currently selected action lives in the conversation and, across sessions, in the canonical Brief (`<ProjectRoot>/log/brief/BRIEF.md`).
 
@@ -64,10 +64,10 @@ Applying this model to any specific surface is its own scoped batch. The project
 
 → Operative scope + Codex-review-gate rule: `rules/docs-working-model.md` (*Scope of an application + review gate*).
 
-## 9. Three complementary docs surfaces (orientation)
+## 9. The complementary docs surfaces (orientation)
 
-- Placement / structure → `docs/README.md`.
-- Per-question authority routing → `docs/current/SOURCE_OF_TRUTH.md`.
+- Placement — orientation map `docs/README.md`; binding rule `rules/docs-working-model.md` (*Docs placement*).
+- Per-question read-first routing → `docs/current/REPO_READING_GUIDE.md`.
 - Docs change/closeout process (operative rule) → `rules/docs-working-model.md`; this file holds its rationale and record.
 
-On overlap, placement defers to `docs/README.md`, question-routing to `SOURCE_OF_TRUTH.md`, and the change/closeout process to `rules/docs-working-model.md`.
+On overlap, the placement orientation map is `docs/README.md` (its binding rule and the change/closeout process live in `rules/docs-working-model.md`), and read-first routing is `REPO_READING_GUIDE.md`.

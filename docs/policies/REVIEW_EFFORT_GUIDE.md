@@ -1,6 +1,6 @@
 # Review Effort Guide
 
-> **현행 status routing.** 본 문서는 review effort/cost 운영 권고 (active reference) 다. review subsystem 의 current 상태는 `docs/systems/review/STATUS.md`, contract 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 가 authoritative 다 (전체 routing: `docs/current/SOURCE_OF_TRUTH.md`).
+> **현행 status routing.** 본 문서는 review effort/cost 운영 권고 (active reference) 다. review subsystem 의 current 상태는 `docs/systems/review/STATUS.md`, contract 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 가 authoritative 다 (전체 routing: `docs/current/REPO_READING_GUIDE.md`).
 
 > **Wired safe-default vs. cost guidance (reconciliation, Batch B).** review subsystem 의 *wired* safe-default reasoning effort 는 이제 `xhigh` 다 — 채택된 `docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md` (default = latest model + xhigh) 에 따라 `scripts/review-run.ps1` 가 `-c model_reasoning_effort=<value>` 로 전달한다 (`docs/systems/review/REVIEW_POLISHING_BATCH_A_SPEC.md` Batch B). 본 가이드의 cost-control 권고는 그 safe-default 로부터 *언제 downgrade 할지* 를 다루는 운영 가이드로 읽는다: 명확히 단순한 `local correctness review` packet 만 `-Effort` 로 downgrade 하고, cross-subsystem / contract / boundary / ambiguous 변경은 high/xhigh 를 유지한다. 따라서 아래 §6 / §8 의 표·checklist·examples 에서 말하는 "downgrade 여지" 는 *safe-default(xhigh)에서 명확히 단순한 packet 을 의식적으로 낮추는* 판단을 뜻하며, low/medium 은 그 downgrade target 이지 baseline 이 아니다. effort ⟂ coverage 는 불변이다 (effort 로 coverage 를 줄이지 않는다). 이 wiring 자체는 `U9 operational` 을 성립시키지 않는다 (Batch C reviewer-safety 검증이 함께 필요).
 

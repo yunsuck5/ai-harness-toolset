@@ -10,4 +10,4 @@ This folder holds **active decision records** — read when checking "what was d
 
 ## What does not belong here
 
-Current status (→ `docs/systems/**`; question→authority routing → `docs/current/SOURCE_OF_TRUTH.md`), contracts (→ `docs/contracts/`), execution policy (→ `docs/policies/`), and superseded/historical decisions (→ git history).
+Current status (→ `docs/systems/**`; question→read-first routing → `docs/current/REPO_READING_GUIDE.md`), contracts (→ `docs/contracts/`), execution policy (→ `docs/policies/`), and superseded/historical decisions (→ git history).

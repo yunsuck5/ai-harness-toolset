@@ -577,7 +577,7 @@ validation scope 용어의 정의 home 은 testing convention home 인 `tests/RE
 
 | change class | 대표 예 | 기대 validation (최소) | full suite 기대 |
 |---|---|---|---|
-| planning/design doc only | `docs/systems/**` plan/spec, `docs/architecture/**` cross-cutting plan/audit (+ the directly-necessary `docs/README.md` / `docs/current/SOURCE_OF_TRUTH.md` placement·routing registration such a doc requires) | `git diff --check` (신규 파일은 §6c.4); 신규 `.md` LF/no-BOM 확인 | 아니오 |
+| planning/design doc only | `docs/systems/**` plan/spec, `docs/architecture/**` cross-cutting plan/audit (+ the directly-necessary `docs/README.md` / `docs/current/REPO_READING_GUIDE.md` placement·routing registration such a doc requires) | `git diff --check` (신규 파일은 §6c.4); 신규 `.md` LF/no-BOM 확인 | 아니오 |
 | docs-only STATUS/BACKLOG/policy wording | `STATUS.md` / `BACKLOG.md` / `docs/policies/**` | `git diff --check`; 인용 citation / count 의 mechanical 확인 | 아니오 |
 | contract/template/SKILL wording | `REVIEW_RESULT_CONTRACT.md` / `templates/` / `SKILL.md` (의미보존) | `git diff --check`; review-system suite (parser-gated heading/placeholder 또는 input-verify / verify / run shape 영향 시); sibling-reconciliation 시 anti-pattern grep sweep | 아니오 (parser-gated heading/placeholder 에 닿으면 review-system suite 기대) |
 | script/runtime behavior | `scripts/*.ps1` 동작, `scripts/lib/**` | affected tests + full suite; `verify-ps1`; `git diff --check` | 예 |

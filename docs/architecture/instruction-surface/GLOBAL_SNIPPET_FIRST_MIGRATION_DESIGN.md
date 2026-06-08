@@ -4,9 +4,9 @@
 
 **Why this is an authority, not a reference.** A normal `docs/architecture/` doc *records* a structural target and routes to the subsystem surfaces that own current state. This document does that, but it also asserts a **precedence claim during the migration**: where an existing doc conflicts with the Global Snippet First model, the existing doc is treated as **evidence, not as automatically blocking source-of-truth** — it becomes a legacy candidate for migration, absorption, compression, deletion, or retirement, not a reason to stop. That precedence claim is the substance of this document and the reason it exists as its own surface rather than as another note inside the existing plan.
 
-**Placement.** Co-located with the existing instruction-surface architecture docs in `docs/architecture/instruction-surface/` — it is a cross-cutting structural decision spanning the same surfaces those docs already span (global snippet, repo-local instruction, skills, contracts, scripts, tests, future rules), so it belongs in that subfolder, not under any single `docs/systems/<system>/`. Routing entry: `docs/current/SOURCE_OF_TRUTH.md` Q11. Layer registration: `docs/architecture/README.md`.
+**Placement.** Co-located with the existing instruction-surface architecture docs in `docs/architecture/instruction-surface/` — it is a cross-cutting structural decision spanning the same surfaces those docs already span (global snippet, repo-local instruction, skills, contracts, scripts, tests, future rules), so it belongs in that subfolder, not under any single `docs/systems/<system>/`. Routing entry: `docs/current/REPO_READING_GUIDE.md` Q11. Layer registration: `docs/architecture/README.md`.
 
-**Authorities this design obeys (does not redefine).** Docs placement → `docs/README.md`; docs change/closeout flow + single-home-plus-pointers + the durable-pointer rule → `docs/policies/DOCS_OPERATING_MODEL.md`; per-question routing → `docs/current/SOURCE_OF_TRUTH.md`; review artifact/verdict contract → `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`. It states its own decisions directly rather than pointing at the out-of-repo direction note that seeded it (`DOCS_OPERATING_MODEL.md` §4 forbids a committed doc from durable-pointing at a gitignored/scratch path).
+**Authorities this design obeys (does not redefine).** Docs placement → `docs/README.md`; docs change/closeout flow + single-home-plus-pointers + the durable-pointer rule → `docs/policies/DOCS_OPERATING_MODEL.md`; per-question routing → `docs/current/REPO_READING_GUIDE.md`; review artifact/verdict contract → `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`. It states its own decisions directly rather than pointing at the out-of-repo direction note that seeded it (`DOCS_OPERATING_MODEL.md` §4 forbids a committed doc from durable-pointing at a gitignored/scratch path).
 
 ---
 
@@ -262,7 +262,7 @@ This is the **design** stage of a four-stage sequence. Each stage is a separate 
 Only two kinds of change accompany this document, both minimal-coherence registrations (§13), never content relocation:
 
 1. **This design document** is created under `docs/architecture/instruction-surface/`.
-2. **Routing/placement registration** so the new authority is discoverable from the entrypoints an operator actually starts from: `docs/current/SOURCE_OF_TRUTH.md` Q11 and `docs/architecture/README.md`.
+2. **Routing/placement registration** so the new authority is discoverable from the entrypoints an operator actually starts from: `docs/current/REPO_READING_GUIDE.md` Q11 and `docs/architecture/README.md`.
 
 No snippet, skill, script, test, contract body, or existing architecture-doc body is edited. In particular, the existing Track A/B/C/skill-plan docs are **left intact as prior evidence** — their relationship to this authority is declared here (§3) and surfaced via Q11, rather than by editing their bodies (which would be plan-stage re-judgment or scope creep). The repo-local root `CLAUDE.md` / `AGENTS.md` trigger-map wiring (so snippet-task operators inspect this authority) is **deferred to the plan/implementation stage** — until the plan/spec make the migration operative, the existing audit remains the operative guidance for any snippet work, and wiring an inactive authority into the always-on repo-local surface would be premature (and would touch the mirror-edited surface under the parity guard).
 
@@ -287,7 +287,7 @@ No snippet, skill, script, test, contract body, or existing architecture-doc bod
 Per the two-level closeout gate (`DOCS_OPERATING_MODEL.md` §7), inspect-all / report-each:
 
 **Level 1 (top-down orientation):**
-- `docs/current/SOURCE_OF_TRUTH.md` — **updated** (Q11): registers this design as the migration authority and states its relationship to the existing Track A/B/C plan/audit (evidence, snapshot-pinned; default re-opened).
+- `docs/current/REPO_READING_GUIDE.md` — **updated** (Q11): registers this design as the migration authority and states its relationship to the existing Track A/B/C plan/audit (evidence, snapshot-pinned; default re-opened).
 - `docs/roadmap/CURRENT_MILESTONES.md` — *checked: no change required* (the numbered post-MVP order is unchanged; this is a design-stage architecture doc, not a numbered milestone).
 - `docs/decisions/POST_MVP_PLAN.md` — *checked: no change required* (the numbered-order authority is unchanged; this design explicitly does not rewrite it).
 

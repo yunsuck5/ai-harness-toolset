@@ -18,7 +18,7 @@ The global distribution = `config` / `scripts` / `snippets` / `templates`. **`do
 
 ## What it supersedes (objective-completion framing only)
 
-The prior "Global Snippet First" sequence (GSF-B1…B4) declared itself "**complete with intentional residuals**" but left an 8-section compact policy bundle that still routed to `docs/`. That was a *procedural* closeout, not the objective. Those GSF records remain valid **as evidence / history**; their objective-completion claim is superseded here (`GLOBAL_SNIPPET_FIRST_MIGRATION_PLAN.md` §2 / Stage flow; `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`; `docs/current/SOURCE_OF_TRUTH.md` Q10/Q11).
+The prior "Global Snippet First" sequence (GSF-B1…B4) declared itself "**complete with intentional residuals**" but left an 8-section compact policy bundle that still routed to `docs/`. That was a *procedural* closeout, not the objective. Those GSF records remain valid **as evidence / history**; their objective-completion claim is superseded here (`GLOBAL_SNIPPET_FIRST_MIGRATION_PLAN.md` §2 / Stage flow; `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`; `docs/current/REPO_READING_GUIDE.md` Q10/Q11).
 
 **Authority basis.** The corrective direction note + the user `/goal` + the user's two follow-up constraints: (1) the global distribution cannot reference `docs/`; absorb skill content into skills; compose snippet / scripts / templates around the distribution; (2) the rules tiers are `snippets/rules/` (global, distributed) and `<repo-root>/rules/` (repo-only), holding what is not absorbed into skill / template / script, one rule group per file.
 
@@ -89,7 +89,7 @@ Disposition: **bootstrap** (kept inline in the snippet safety floor) · **rules 
 
 - **Created:** `snippets/rules/` (4 files); `<repo-root>/rules/` (2 files); this record.
 - **Snippet + skills + templates:** reduced / made docs-free as above.
-- **Stale-corrected:** `GLOBAL_SNIPPET_FIRST_MIGRATION_PLAN.md` §2/Stage-flow; `GLOBAL_SNIPPET_FIRST_GSF_B3_RULES_LOADING_DECISION.md` (no-rules conclusion superseded; model retained); `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`; `docs/current/SOURCE_OF_TRUTH.md` Q10/Q11; `docs/systems/skills/STATUS.md` (SK-06); `docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §4; `docs/architecture/README.md`.
+- **Stale-corrected:** `GLOBAL_SNIPPET_FIRST_MIGRATION_PLAN.md` §2/Stage-flow; `GLOBAL_SNIPPET_FIRST_GSF_B3_RULES_LOADING_DECISION.md` (no-rules conclusion superseded; model retained); `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`; `docs/current/REPO_READING_GUIDE.md` Q10/Q11; `docs/systems/skills/STATUS.md` (SK-06); `docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §4; `docs/architecture/README.md`.
 - **Dangling-reference fixes:** `README.md`; `docs/decisions/GLOBAL_ADOPTION_DECISION.md`; `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`; root `CLAUDE.md` / `AGENTS.md` (Snippet trigger row + Track D note + Repo-execution-conventions + Non-goals, mirror-edited).
 
 ## 6. Follow-up corrective — rules-tier trigger gate

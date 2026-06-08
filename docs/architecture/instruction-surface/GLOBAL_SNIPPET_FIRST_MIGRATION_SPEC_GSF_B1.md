@@ -5,9 +5,9 @@
 **Controlling authorities (obeyed, not redefined).**
 - **Migration authority (design):** `GLOBAL_SNIPPET_FIRST_MIGRATION_DESIGN.md` — keep-by-proof default (design §7), deployment-boundary constraint (§6), owner-surface order (§8), source-of-truth conflict order (§4), `rules/` deferral (§9), stage model (§10). Where this spec and the design appear to differ, the **design governs** and this spec is the stale surface to fix.
 - **Batch sequence (plan):** `GLOBAL_SNIPPET_FIRST_MIGRATION_PLAN.md` — GSF-B1 is the first implementation batch (plan §2); the no-renumber/no-re-own boundary (plan §1) and per-batch stop/report boundaries (plan §4) bind here.
-- **Stage reconciliation.** The design §10 and plan §2/§8 refer to this spec as the "spec stage" / "still-unwritten spec." This document now fulfils that stage **as an unapproved draft acceptance contract** — the design/plan phrasings were authoring-moment statements; their *requirement that the spec be written and approved before GSF-B1 runs* is unchanged. Live routing status is reconciled in `docs/current/SOURCE_OF_TRUTH.md` Q11; the design/plan bodies are left intact (their stage tables are authoring-moment snapshots, not a live ledger).
+- **Stage reconciliation.** The design §10 and plan §2/§8 refer to this spec as the "spec stage" / "still-unwritten spec." This document now fulfils that stage **as an unapproved draft acceptance contract** — the design/plan phrasings were authoring-moment statements; their *requirement that the spec be written and approved before GSF-B1 runs* is unchanged. Live routing status is reconciled in `docs/current/REPO_READING_GUIDE.md` Q11; the design/plan bodies are left intact (their stage tables are authoring-moment snapshots, not a live ledger).
 
-**Placement / routing.** Co-located with the design + plan + Track A/B/C under `docs/architecture/instruction-surface/`. Routing: `SOURCE_OF_TRUTH.md` Q11. Layer registration: `docs/architecture/README.md`. Authorities also obeyed: `docs/README.md` (placement; §4 always-on bar), `docs/policies/DOCS_OPERATING_MODEL.md` (single-home-plus-pointers; durable-pointer rule; two-level closeout), `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`. States decisions directly; no durable pointer to the out-of-repo direction note.
+**Placement / routing.** Co-located with the design + plan + Track A/B/C under `docs/architecture/instruction-surface/`. Routing: `REPO_READING_GUIDE.md` Q11. Layer registration: `docs/architecture/README.md`. Authorities also obeyed: `docs/README.md` (placement; §4 always-on bar), `docs/policies/DOCS_OPERATING_MODEL.md` (single-home-plus-pointers; durable-pointer rule; two-level closeout), `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`. States decisions directly; no durable pointer to the out-of-repo direction note.
 
 ---
 
@@ -255,7 +255,7 @@ GSF-B1 implementation closeout must run, and the review input must report:
 Per the two-level closeout gate (`DOCS_OPERATING_MODEL.md` §7), inspect-all / report-each:
 
 **Level 1:**
-- `docs/current/SOURCE_OF_TRUTH.md` — **updated** (Q11): registers this spec as the GSF-B1 acceptance contract and reconciles the "still-unwritten spec" wording (the spec now exists, pending approval).
+- `docs/current/REPO_READING_GUIDE.md` — **updated** (Q11): registers this spec as the GSF-B1 acceptance contract and reconciles the "still-unwritten spec" wording (the spec now exists, pending approval).
 - `docs/roadmap/CURRENT_MILESTONES.md` — *checked: no change required* (numbered post-MVP order unchanged; `GSF-Bn` is its own namespace).
 - `docs/decisions/POST_MVP_PLAN.md` — *checked: no change required* (numbered-order authority unchanged).
 

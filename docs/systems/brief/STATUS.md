@@ -1,6 +1,6 @@
 # brief — system status
 
-Current status for the Brief primitive. The **contract** is `docs/contracts/brief/BRIEF_CONTRACT.md`; the Brief↔Chatlog boundary is `docs/contracts/chatlog/CHATLOG_CONTRACT.md`. Routing: `docs/current/SOURCE_OF_TRUTH.md` (Q4). Deferred (BF Level 3): `docs/systems/brief/DEFERRED.md`.
+Current status for the Brief primitive. The **contract** is `docs/contracts/brief/BRIEF_CONTRACT.md`; the Brief↔Chatlog boundary is `docs/contracts/chatlog/CHATLOG_CONTRACT.md`. Routing: `docs/current/REPO_READING_GUIDE.md` (Q4). Deferred (BF Level 3): `docs/systems/brief/DEFERRED.md`.
 
 ## Current state
 
