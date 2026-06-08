@@ -36,28 +36,9 @@ Rules (legacy mode):
 - The `.ai-harness/` payload lives entirely inside the target project root and can be removed by deleting that directory.
 - After copying, `<project-root>/.ai-harness/scripts/` becomes the script root (channel 5 ToolRoot) for that project.
 
-## Initialize runtime log layout
+## Runtime log layout
 
-Create the runtime log tree once. This creates `<project-root>/log/`, `log/chatlog/`, `log/evidence/`, `log/review/`. `log/` is a runtime artifact root and must not be committed; ensure the target project's `.gitignore` includes `log/`.
-
-Shared / global mode (channel 3) — run from inside the target project root:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass `
-    -File "$env:USERPROFILE\.claude\ai-harness-toolset\current\scripts\log-init.ps1"
-```
-
-Source-repo dogfooding — run from the source repo root:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File scripts/log-init.ps1
-```
-
-Legacy project-local copy mode (channel 5) — run from a target project root:
-
-```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .ai-harness/scripts/log-init.ps1
-```
+The runtime log tree lives at `<project-root>/log/`; its subdirectories — `log/brief/`, `log/evidence/`, `log/review/` — are created on demand by the primitives that write into them (`scripts/brief-init.ps1` seeds `log/brief/BRIEF.md`, `scripts/review-prepare.ps1` creates `log/review/<review-task-id>/<perspective>/pass-NN/`, and evidence files are written under `log/evidence/`). No separate initialization step is required. `log/` is a runtime artifact root and must not be committed; ensure the target project's `.gitignore` includes `log/`.
 
 Review record retention is human-managed at `<review-task-id>/` directory (or per-`pass-NN/`) granularity. Full contract: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.
 
@@ -97,15 +78,14 @@ When reading `result.md`, Claude Code treats it as a structured artifact — the
 
 Full contract: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`. Day-to-day natural-language UX, modes A/B, and the acceptance checklist: `docs/user_guide/OPERATOR_GUIDE_KR.md` §7, §10, §13. CLI / runtime dependency boundary: `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md`.
 
-## Evidence and chatlog
+## Evidence and Brief
 
 - `log/evidence/<scope>/<case>/` captures command, test, and execution facts. Contract: `docs/contracts/evidence/EVIDENCE_CONTRACT.md`.
-- The current restore source for any project is **Brief**, not Chatlog. Brief lives at `<ProjectRoot>/log/brief/BRIEF.md` — a project-local, operator-local, source-control-excluded runtime artifact under `<ProjectRoot>/log/`, gitignored by default and never a commit/push target (`docs/contracts/brief/BRIEF_CONTRACT.md`). `<ProjectRoot>/brief/BRIEF.md` (root `brief/`) is **rejected**, and so is any user-home operator-local runtime root (e.g. `%USERPROFILE%\.ai-harness\projects\...`). "Project-local" here means inside each operator's local checkout of the target repo (because `log/` is gitignored); it does not mean repo-tracked. `log/chatlog/current/resume.md` and `log/chatlog/current/summary.md` are **not** canonical artifacts — they are failed intermediate / legacy migration source / deprecation candidate, kept only as wording legacy until a separately approved migration step (`docs/contracts/chatlog/CHATLOG_CONTRACT.md`).
+- The current restore source for any project is **Brief** — it is the only restore source. Brief lives at `<ProjectRoot>/log/brief/BRIEF.md` — a project-local, operator-local, source-control-excluded runtime artifact under `<ProjectRoot>/log/`, gitignored by default and never a commit/push target (`docs/contracts/brief/BRIEF_CONTRACT.md`). `<ProjectRoot>/brief/BRIEF.md` (root `brief/`) is **rejected**, and so is any user-home operator-local runtime root (e.g. `%USERPROFILE%\.ai-harness\projects\...`). "Project-local" here means inside each operator's local checkout of the target repo (because `log/` is gitignored); it does not mean repo-tracked.
 - BF Level is save/restore capability maturity, not a path. BF Level 1/2 is manual save/restore discipline. BF Level 3 (deterministic Brief maintenance, validation, stale warning, session-start guidance) is future scoped work; `scripts/brief-init.ps1` / `scripts/brief-check.ps1` are narrow source-side primitives, not the full BF Level 3 implementation. The unsolicited session-start restore-offer source-side automation is **retired**, not a deferred BF Level 3 component (`docs/systems/brief/DEFERRED.md` BR-D-02); only an explicit, user-requested Brief restore remains.
-- Chatlog is history / decision rationale / Brief reconstruction evidence. Chatlog is not the current restore source. If Brief is corrupted / missing / stale, Chatlog can be used as evidence to reconstruct it, but Chatlog itself never gets promoted into Brief's seat.
-- Brief stays compact and references Chatlog / review / evidence artifacts by path only. Do not inline full review results, evidence payloads, or cumulative chat content into Brief.
+- Brief stays compact and references review / evidence artifacts by path only. Do not inline full review results, evidence payloads, or cumulative session content into Brief.
 - Snippet protocols in `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` activate only when the user has manually adopted those snippets into a destination `CLAUDE.md` / `AGENTS.md`. There is no automatic global install, no hook, no auto-injection, no automatic transcript or prompt capture, no transcript JSONL parser, no Claude JSONL parser, and no `BF_STATE.json` or other separate state-machine file.
-- **Source snippet alignment.** The source `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` no longer carry Brief / Chatlog framing — the `## Brief` and `## Chatlog` sections were removed by the Batch 3 / Track F snippet minimization (`docs/systems/skills/STATUS.md` SK-05). The current (3rd-reconciliation) Brief / Chatlog framing — BF Level is save/restore capability maturity (not a path), canonical Brief is the project-local runtime artifact at `<ProjectRoot>/log/brief/BRIEF.md` (gitignored under `log/`, seeded by `scripts/brief-init.ps1` and validated by `scripts/brief-check.ps1`), root `<ProjectRoot>/brief/` is rejected, and `log/chatlog/current/resume.md` / `summary.md` are failed intermediate / legacy migration source / deprecation candidate — is recorded in the docs contracts (`docs/contracts/brief/BRIEF_CONTRACT.md`, `docs/contracts/chatlog/CHATLOG_CONTRACT.md`) and realized by the active Brief surface (the `ai-harness-brief` skill, `scripts/brief-init.ps1` / `scripts/brief-check.ps1`, and `templates/brief/BRIEF.md`). **Previously-applied managed blocks** in any destination `CLAUDE.md` / `AGENTS.md` (project-root or user-global) still contain whichever snippet body was last applied at that destination, until the operator explicitly refreshes them; that refresh is a separate user-approved managed-block replacement step (`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §6), and ai-harness does not perform it automatically. When a previously-applied managed block disagrees with the current framing, the applied block is the stale one — the current Brief / Chatlog framing lives in the active brief skill / `brief-*.ps1` / `templates/brief/BRIEF.md` (recorded in the docs contracts), not in the old managed block.
+- **Source snippet alignment.** The source `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` no longer carry the legacy Brief framing — the `## Brief` section was removed by the Batch 3 / Track F snippet minimization (`docs/systems/skills/STATUS.md` SK-05). The current (3rd-reconciliation) Brief framing — BF Level is save/restore capability maturity (not a path), canonical Brief is the project-local runtime artifact at `<ProjectRoot>/log/brief/BRIEF.md` (gitignored under `log/`, seeded by `scripts/brief-init.ps1` and validated by `scripts/brief-check.ps1`), root `<ProjectRoot>/brief/` is rejected, and Brief is the only restore source — is recorded in `docs/contracts/brief/BRIEF_CONTRACT.md` and realized by the active Brief surface (the `ai-harness-brief` skill, `scripts/brief-init.ps1` / `scripts/brief-check.ps1`, and `templates/brief/BRIEF.md`). **Previously-applied managed blocks** in any destination `CLAUDE.md` / `AGENTS.md` (project-root or user-global) still contain whichever snippet body was last applied at that destination, until the operator explicitly refreshes them; that refresh is a separate user-approved managed-block replacement step (`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §6), and ai-harness does not perform it automatically. When a previously-applied managed block disagrees with the current framing, the applied block is the stale one — the current Brief framing lives in the active brief skill / `brief-*.ps1` / `templates/brief/BRIEF.md` (recorded in `docs/contracts/brief/BRIEF_CONTRACT.md`), not in the old managed block.
 
 ## Snippets for CLAUDE.md / AGENTS.md
 
@@ -154,8 +134,7 @@ Tags: `active operational` (current, actively-maintained docs), `active referenc
 | File | Role | One-line role |
 |---|---|---|
 | `docs/project/AI_HARNESS_TOOLSET_SCOPE.md` | active operational | Project nature, in/out of scope, source-vs-target payload mapping. |
-| `docs/contracts/brief/BRIEF_CONTRACT.md` | active operational | Brief contract: BF Level as save/restore capability maturity, project-local runtime Brief at `<ProjectRoot>/log/brief/BRIEF.md` (gitignored under `log/`, not a commit/push target), root `<ProjectRoot>/brief/` rejected, and the `brief-init.ps1` / `brief-check.ps1` source-side primitive responsibility boundary. |
-| `docs/contracts/chatlog/CHATLOG_CONTRACT.md` | active operational | Chatlog responsibility (history / decision rationale / Brief reconstruction evidence) and the demotion of `log/chatlog/current/resume.md` / `summary.md` to failed intermediate / legacy migration source / deprecation candidate. |
+| `docs/contracts/brief/BRIEF_CONTRACT.md` | active operational | Brief contract: BF Level as save/restore capability maturity, project-local runtime Brief at `<ProjectRoot>/log/brief/BRIEF.md` (gitignored under `log/`, not a commit/push target), root `<ProjectRoot>/brief/` rejected, Brief is the only restore source, and the `brief-init.ps1` / `brief-check.ps1` source-side primitive responsibility boundary. |
 | `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md` | active operational | Canonical CLI/runtime dependency boundary. |
 | `docs/decisions/DECISIONS.md` | active operational | Active policy decisions + MVP-closeout pointer (bootstrap/historical decisions preserved in git history). |
 | `docs/contracts/evidence/EVIDENCE_CONTRACT.md` | active operational | `log/evidence/<scope>/<case>/` minimal capture contract. |

@@ -4,7 +4,7 @@ This folder holds **human-facing operation, evaluation, and adoption guides** â€
 
 | File | Scope |
 |---|---|
-| `OPERATOR_GUIDE_KR.md` | Korean operator guide: ToolRoot/ProjectRoot modes, the natural-language review UX, BF save / explicit Brief restore UX, optional skill adoption, the operator command quickstart (fallback/debug), and the acceptance checklist. Sections that restate a contract (review artifact/verdict semantics, BF/brief/chatlog semantics) are kept as short pointers to the authoritative `docs/contracts/**`; the authoritative spec for the natural-language UX is `snippets/claude-skills/ai-harness-review/SKILL.md`. |
+| `OPERATOR_GUIDE_KR.md` | Korean operator guide: ToolRoot/ProjectRoot modes, the natural-language review UX, BF save / explicit Brief restore UX, optional skill adoption, the operator command quickstart (fallback/debug), and the acceptance checklist. Sections that restate a contract (review artifact/verdict semantics, BF / brief semantics) are kept as short pointers to the authoritative `docs/contracts/**`; the authoritative spec for the natural-language UX is `snippets/claude-skills/ai-harness-review/SKILL.md`. |
 | `GLOBAL_ADOPTION_PROCEDURE.md` | Claude-skill global adopt / update / remove procedure. |
 
 ## Access pattern and boundary

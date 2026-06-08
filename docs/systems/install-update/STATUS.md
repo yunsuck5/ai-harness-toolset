@@ -54,7 +54,7 @@ Closed operational-quality items that originated in the operations backlog. Full
 | IU-OPS-04 | Channel 3 smoke validation closeout (CH3-A/B/C) | — | CH3 observations recorded at closeout; CH3-D still deferred | git history |
 | IU-OPS-05 | Activation managed-block apply tooling hardening | — | reinstall-first activation tooling closeout | git history |
 
-(Aggregate digest reproducibility closeout is ledgered as IU-11. "Brief / Chatlog location reconciliation" is a brief-system closeout — `docs/systems/brief/STATUS.md`.)
+(Aggregate digest reproducibility closeout is ledgered as IU-11. "Brief location reconciliation" is a brief-system closeout — `docs/systems/brief/STATUS.md`.)
 
 ## Accepted residual risks (LTS maintenance)
 

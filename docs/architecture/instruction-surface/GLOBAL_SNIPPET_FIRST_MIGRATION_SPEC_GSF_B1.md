@@ -33,8 +33,7 @@ Both `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` carry the man
 | 6 | `## Result verdict vocabulary` | the three values; "verdict approves nothing"; per-value meaning; next-action mapping pointer |
 | 7 | `## Operator stance` | stay in approved scope; stop/report at boundaries; explicit retraction; full stance pointer-referenced |
 | 8 | `## Brief` | the BF Level 3 non-claim line only |
-| 9 | `## Chatlog` | Chatlog ≠ Brief; Chatlog area path; current restore source = Brief; reconstruction-evidence-only |
-| 10 | `## Forbidden in this toolset` | 7 bullets: no per-user log partitioning; no `BF_STATE.json`; no daemon/watcher/scheduler/hook; no implicit/whole-file global-instruction mutation; no creation of `.claude\AGENTS.md`; no auto Brief↔Chatlog mirror; no auto `.gitignore` mutation |
+| 10 | `## Forbidden in this toolset` | 7 bullets: no per-user log partitioning; no `BF_STATE.json`; no daemon/watcher/scheduler/hook; no implicit/whole-file global-instruction mutation; no creation of `.claude\AGENTS.md`; no auto Brief-mirror; no auto `.gitignore` mutation |
 | 11 | `## Other rules` | commit/push needs explicit approval; temp-file cleanup before closeout |
 
 **Symmetry baseline.** The two snippets are byte-identical except the **intended tool-specific loci**: the intro tool-name/destination line, `## Adoption destination` (tool-specific destinations), and the `## Adoption rules` "either"/"any of those" phrase. GSF-B1 must preserve this symmetry (§11).
@@ -97,13 +96,12 @@ Acceptance targets the implementation must achieve **or** justify a reviewed dev
 | 6 Result verdict vocabulary | "approves nothing" is reviewer-critical; next-action detail already pointer-referenced | `keep` core invariant; `compress` any residual detail | snippet / skill (impl-determined) |
 | 7 Operator stance | already compact + pointer-referenced | `compress` or `keep`; **impl-determined** | snippet / skill |
 | 8 Brief (BF-lv3 non-claim) | non-current capability note | **`defer` → skill-plan Batch 3 / Track F** (§8) | n/a (GSF-B1 does not touch) |
-| 9 Chatlog | non-current capability section | **`defer` → skill-plan Batch 3 / Track F** (§8) | n/a (GSF-B1 does not touch) |
 | 10 Forbidden — 6 safety bullets | hard boundaries; KP3 strong | `keep` (per-bullet) | snippet (rule-candidate tagging allowed, §6) |
-| 10 Forbidden — Brief↔Chatlog-mirror bullet | references a Batch-3 concept | **`defer` → skill-plan Batch 3 / Track F** (§8) | n/a |
+| 10 Forbidden — no-auto-mirror bullet | references a Batch-3 concept | **`defer` → skill-plan Batch 3 / Track F** (§8) | n/a |
 | 11 Other rules — commit/push approval | hard boundary; KP3 strong | `keep` | snippet |
 | 11 Other rules — temp-file cleanup | generic operator hygiene | `keep` | snippet |
 
-No row here removes a section by itself — these are targets the reviewed implementation must satisfy. Items 8/9 and the mirror bullet are **defer-only** for GSF-B1 (§8).
+No row here removes a section by itself — these are targets the reviewed implementation must satisfy. Item 8 and the mirror bullet are **defer-only** for GSF-B1 (§8).
 
 ---
 
@@ -155,10 +153,10 @@ The design §5 names the only content that may remain always-on as the **minimal
 
 ## 8. Coordination with skill-plan Batch 3 / Track F (no re-own, no renumber)
 
-Items 8 (`## Brief` BF-lv3 non-claim), 9 (`## Chatlog`), and the `## Forbidden` Brief↔Chatlog-mirror bullet are **owned by skill-plan Batch 3 (= instruction-surface Track F)** (design §3; plan §1; audit §3.8–§3.10, §5). GSF-B1 acceptance:
+Item 8 (`## Brief` BF-lv3 non-claim), another non-current section, and the no-auto-mirror `## Forbidden` bullet are **owned by skill-plan Batch 3 (= instruction-surface Track F)** (design §3; plan §1; audit §3.8–§3.10, §5). GSF-B1 acceptance:
 
 - GSF-B1 classifies these as **`defer`** and does **not** delete, edit, or renumber them. It does not absorb Track F into GSF-B1.
-- If GSF-B1's snippet edit is sequenced to run together with skill-plan Batch 3 (the plan allows an interleave), the Chatlog/BF-lv3 deletions remain **attributed to skill-plan Batch 3** in the classification record and the closeout (skill plan §8 stays authoritative; `STATUS.md` SK ledger records them as Batch 3).
+- If GSF-B1's snippet edit is sequenced to run together with skill-plan Batch 3 (the plan allows an interleave), those non-current-section deletions remain **attributed to skill-plan Batch 3** in the classification record and the closeout (skill plan §8 stays authoritative; `STATUS.md` SK ledger records them as Batch 3).
 - The Batch-3 reconciliation dependencies (preserve "current restore source = Brief" elsewhere if still wanted; decide the mirror bullet's generic-vs-drop fate) are **Batch 3's**, not GSF-B1's — GSF-B1 must not pre-empt them.
 
 ---
@@ -278,4 +276,4 @@ Per the two-level closeout gate (`DOCS_OPERATING_MODEL.md` §7), inspect-all / r
 
 ## 18. One-line summary
 
-Fix the GSF-B1 acceptance criteria — inventory the 11 snippet sections + header, run section/sentence keep-by-proof (default delete/absorb, keep-by-proof exception, honoring the deployment boundary and reviewer-mode reachability), emit a per-item classification record (`keep`/`absorb`/`move`/`compress`/`delete`/`defer`/`stop-report`) with owner-surface assignment and rule-candidate loading-class **tagging only** (no rules folders/hooks/catalog; strategy deferred to GSF-B3), defer Chatlog/BF-lv3 to skill-plan Batch 3 / Track F (no re-own), absorb directly into deployed owners (docs never the fallback owner), and pass the six-point snippet-invariant check under full validation + dual-perspective Codex review — while implementing nothing here.
+Fix the GSF-B1 acceptance criteria — inventory the 11 snippet sections + header, run section/sentence keep-by-proof (default delete/absorb, keep-by-proof exception, honoring the deployment boundary and reviewer-mode reachability), emit a per-item classification record (`keep`/`absorb`/`move`/`compress`/`delete`/`defer`/`stop-report`) with owner-surface assignment and rule-candidate loading-class **tagging only** (no rules folders/hooks/catalog; strategy deferred to GSF-B3), defer the non-current sections to skill-plan Batch 3 / Track F (no re-own), absorb directly into deployed owners (docs never the fallback owner), and pass the six-point snippet-invariant check under full validation + dual-perspective Codex review — while implementing nothing here.

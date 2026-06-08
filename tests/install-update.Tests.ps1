@@ -317,7 +317,7 @@ BeforeAll {
     )
     $script:TierB = @(
         '\b\d{8}T\d{6}Z',
-        'log[\\/](review|evidence|chatlog|review_polishing|install-update)[\\/][A-Za-z0-9._\\/-]+\.(md|json|ps1|txt|log)',
+        'log[\\/](review|evidence|review_polishing|install-update)[\\/][A-Za-z0-9._\\/-]+\.(md|json|ps1|txt|log)',
         '\btests[\\/][A-Za-z0-9._\\/-]+\.(Tests\.ps1|ps1)\b',
         '\bdocs[\\/](systems|contracts|policies|decisions|roadmap|current|user_guide|project|archive)[\\/][A-Za-z0-9._\\/-]+\.md'
     )

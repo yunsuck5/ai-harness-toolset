@@ -34,7 +34,7 @@
 - Step 3 implementation 의 승인. 본 문서는 plan / direction guide 일 뿐, scoped implementation approval 은 별도로 받는다.
 - `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다.
 
-**Root-level parent docs remain authoritative where they define source-of-truth responsibilities.** 본 문서의 wording 이 부모 root-level docs (`GLOBAL_INSTALL_UPDATE_MODEL.md`, `POST_MVP_PLAN.md`, `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md`) 의 contract / decision 과 충돌하면 root-level docs 가 우선한다. 또한 본 문서는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`, `docs/contracts/brief/BRIEF_CONTRACT.md`, `docs/contracts/chatlog/CHATLOG_CONTRACT.md` 등 repo contract docs 의 source-of-truth 지위를 격하하지 않는다.
+**Root-level parent docs remain authoritative where they define source-of-truth responsibilities.** 본 문서의 wording 이 부모 root-level docs (`GLOBAL_INSTALL_UPDATE_MODEL.md`, `POST_MVP_PLAN.md`, `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md`) 의 contract / decision 과 충돌하면 root-level docs 가 우선한다. 또한 본 문서는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`, `docs/contracts/brief/BRIEF_CONTRACT.md` 등 repo contract docs 의 source-of-truth 지위를 격하하지 않는다.
 
 본 문서는 parent `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` 의 **subordinate** 다 — parent 의 source-of-truth 지위를 silently replace 하지 않고 그 결정을 silently override 하지 않으며, parent 결정 변경이 필요하면 parent 문서 자체의 별도 scoped 수정으로 처리한다. (본 문서는 이전 `docs/roadmap/global-install-update/` topic namespace 에 있었으나 access-pattern 재배치로 `docs/systems/install-update/` 로 이동했고 그 namespace 는 해소되었다 — `docs/roadmap/INDEX.md` §4.)
 
@@ -118,7 +118,6 @@ scope drift:
 - Step 4 (install / update validation) 동작의 Step 3 안 수행.
 - self-adoption (`ai-harness-toolset` 자체의 self-target 운영) 의 Step 3 안 수행.
 - BF Level 3 (deterministic Brief maintenance / validation / stale warning / session-start guidance) 의 Step 3 안 implementation. (무요청 session-start restore-offer automation 은 retire 됨 — `docs/systems/brief/DEFERRED.md` BR-D-02.)
-- Chatlog system 의 fuller implementation.
 - 실제 `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` global / user filesystem mutation 의 수행.
 - commit / push / publish / merge / release / adoption 의 승인.
 
@@ -143,7 +142,7 @@ Step 3 구현물은 다음 5 개 layer 를 명확히 분리한다.
 - install metadata 는 `current/` **안에** 두지 않는다. global install area 의 sibling 위치에 둔다 (예: `%USERPROFILE%\.claude\ai-harness-toolset\install.json`).
 - **target project 에 installer files 를 설치하지 않는다.**
 - **target project 에 install metadata 를 두지 않는다.**
-- target project 의 persistent footprint 는 `<ProjectRoot>/log/` only 다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §8 — 3차 reconciliation 기준; BRIEF / Chatlog / Evidence / Review 모두 `log/` 아래).
+- target project 의 persistent footprint 는 `<ProjectRoot>/log/` only 다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §8 — 3차 reconciliation 기준; BRIEF / Evidence / Review 모두 `log/` 아래).
 - repo runtime payload roots 는 `config/`, `scripts/`, `snippets/`, `templates/` 로 유지된다. 본 문서는 그 root set 을 변경하지 않는다. 향후 변경이 필요하다면 **별도 scoped decision** (예: 3-0 layer layout 결정의 결과로서) 이다.
 - installer / control-plane root 의 정확한 경로 (예: repo 안 `installer/`, global install area 안 `installer/`, `source-cache/` 등) 와 global install area 의 새 directory 도입 여부는 **본 가이드에서 finalize 하지 않는다**. 이는 3-0 / 3-1 의 scoped decision 항목이다 (§7 carry-forward caveats 참조).
 
@@ -261,7 +260,7 @@ target project 에 대한 footprint 결정은 다음을 보존한다 (`GLOBAL_IN
 
 - target project 는 install control-plane / installer source 를 **받지 않는다**.
 - target project 는 install metadata instance 를 **받지 않는다**.
-- target project 의 persistent footprint 는 `<ProjectRoot>/log/` only (3차 reconciliation 기준; BRIEF / Chatlog / Evidence / Review 모두 `log/` 아래).
+- target project 의 persistent footprint 는 `<ProjectRoot>/log/` only (3차 reconciliation 기준; BRIEF / Evidence / Review 모두 `log/` 아래).
 - forbidden target path: `.ai-harness/`, target 안의 `scripts/` / `config/` / `templates/` / `snippets/` 사본, ai-harness 전용 `CLAUDE.md` / `AGENTS.md`, root `<ProjectRoot>/brief/`, user-home operator-local runtime root.
 
 ### 10.4 Install metadata 위치 (boundary level only)
@@ -1168,7 +1167,7 @@ dogfooding mode 의 semantic 정합을 위해 다음 5 tree 가 서로 다른 pa
 - **global current** (`<InstallArea>/current/`) — materialization 의 destination. as-built pipeline 의 destination 은 항상 본 path 다. 본 path 가 source repo working tree subtree 안에 있게 되는 경우 (InstallArea 가 source repo subtree 에 위치한 경우) 는 본 anchor 의 semantic invariant 가 invariant 로 권고하는 분리 상태가 아니다 — 그 경우에도 destination 의 write 는 untracked path 에 일어나므로 git-tracked ref content 는 변하지 않으나, 5 tree 의 path 분리는 깨진다 (full enforcement 는 §18.6 의 deferred 범위).
 - **InstallArea** — `current/` + `install.json` + `payload-manifest.json` + `payload-marker.json` 의 parent directory. (git-url action 동안에는 transient sibling `source-cache/` work area 가 추가로 존재하며 action 종료 시 cleanup; persistent canonical sibling 은 아니다 — §16.2.) as-built guard 는 `tests/support/install-pipeline-fixture.ps1` 의 `Assert-NotForbiddenInstallArea` 함수 — 본 함수는 (a) `%USERPROFILE%\.claude` 와 (b) `%USERPROFILE%\.codex` 와 (c) global stable install scope (`<%USERPROFILE%>\.claude\ai-harness-toolset` 와 그 parent) descendant 만 reject 한다. **source repo working tree subtree 안에 InstallArea 를 두는 placement 는 본 함수가 자동 거부하지 않는다** — Pester `$TestDrive` fixture 는 `$TestDrive` 자체가 source repo 외부이므로 본 invariant 와 충돌하지 않으나, 사용자가 직접 InstallArea 를 source repo 안에 두는 경우 (예: 운영자 오류) 의 자동 거부는 별도 scoped goal (§18.6) 의 대상이다.
 - **source acquisition work area** (`<InstallArea>/source-cache/`, git-url only, action 동안 transient sibling-of-`current/`) — git-url mode 가 매 action 마다 fresh `git clone` 으로 만들고 action 종료 시 제거하는 run-scoped temporary work area (§16.2 와 정합). local-clone mode 에서는 work area 가 만들어지지 않으며, 따라서 dogfooding mode 와도 무관하다. git-url mode 가 dogfooding 과 만나는 경우는 구조적으로 발생하지 않는다 (§18.1 의 strict mode confinement 와 정합).
-- **ProjectRoot.log** (`<ProjectRoot>/log/`) — runtime artifact tree (BRIEF / Chatlog / Evidence / Review). source repo 의 `.gitignore` 가 `log/` 를 ignore 하므로 source-managed file 과 섞이지 않는다 (`.gitignore` 의 `log/` 규칙과 정합; 상세 path-handling audit 은 git history). install-pipeline 의 어느 action 도 `<ProjectRoot>/log/` 에 write 하지 않는다 — pipeline 의 destination 은 InstallArea 의 `current/` 뿐이며 ProjectRoot 의 runtime artifact 와 분리된다.
+- **ProjectRoot.log** (`<ProjectRoot>/log/`) — runtime artifact tree (BRIEF / Evidence / Review). source repo 의 `.gitignore` 가 `log/` 를 ignore 하므로 source-managed file 과 섞이지 않는다 (`.gitignore` 의 `log/` 규칙과 정합; 상세 path-handling audit 은 git history). install-pipeline 의 어느 action 도 `<ProjectRoot>/log/` 에 write 하지 않는다 — pipeline 의 destination 은 InstallArea 의 `current/` 뿐이며 ProjectRoot 의 runtime artifact 와 분리된다.
 
 ### 18.4 Action × mode × dogfooding boundary
 

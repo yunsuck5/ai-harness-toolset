@@ -25,4 +25,4 @@ The per-flow mechanics — canary-first for a new run shape, the concrete concur
 
 ## No per-user partitioning or ownership metadata
 
-- No per-user / per-operator log partitioning, operator-id, machine-id, or ownership metadata. Runtime artifacts are partitioned by **purpose** under `<ProjectRoot>/log/` (`log/review/`, `log/evidence/`, `log/chatlog/`, `log/brief/`), never by operator identity.
+- No per-user / per-operator log partitioning, operator-id, machine-id, or ownership metadata. Runtime artifacts are partitioned by **purpose** under `<ProjectRoot>/log/` (`log/review/`, `log/evidence/`, `log/brief/`), never by operator identity.

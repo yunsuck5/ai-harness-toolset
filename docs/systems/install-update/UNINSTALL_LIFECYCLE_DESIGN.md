@@ -100,7 +100,7 @@ Delete the OWNED skill directories `%USERPROFILE%\.claude\skills\<name>\` — on
 
 Uninstall is a **global/user** teardown of the ai-harness footprint and explicitly does **not** touch:
 
-- **Project-local `<ProjectRoot>/log/`** — Brief (`log/brief/`), Chatlog (`log/chatlog/`), review records (`log/review/`), evidence (`log/evidence/`). These are user runtime work products, not install footprint. Global uninstall never operates on any project root.
+- **Project-local `<ProjectRoot>/log/`** — Brief (`log/brief/`), review records (`log/review/`), evidence (`log/evidence/`). These are user runtime work products, not install footprint. Global uninstall never operates on any project root.
 - **Source repo / ToolRoot clone** — the repository the user installed from (and any `-ToolRoot` / `AI_HARNESS_TOOL_ROOT` clone). Uninstall removes the *installed* footprint, not the source.
 - **Sibling skills** under `%USERPROFILE%\.claude\skills\` that are not owned by this install (i.e. not in the installed payload's `current/snippets/claude-skills/*`).
 - **Marker-outside instruction content** in `CLAUDE.md` / `AGENTS.md`, and the instruction files themselves (§4).

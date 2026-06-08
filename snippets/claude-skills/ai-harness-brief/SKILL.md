@@ -23,7 +23,7 @@ Triggered by an explicit save / checkpoint intent (e.g. `BF 저장해`, `복구 
 
 1. Inspect repo state (e.g. `git status`, the current `/goal` / task, open risks).
 2. Write the canonical Brief at `<ProjectRoot>/log/brief/BRIEF.md`, filling the canonical required headings (seeded by `templates/brief/BRIEF.md`, enforced by `scripts/brief-check.ps1` — at minimum: current state, last completed action, next single action, do-not-do, pending user decision). If the Brief does not exist yet, seed it first with `scripts/brief-init.ps1` (which writes the template to the canonical path; it refuses to overwrite an existing Brief), then fill the sections. The agent writes the file directly; the operator does not hand-edit it. Do **not** create `<ProjectRoot>/brief/` — that root location is rejected.
-3. Keep the Brief **compact**: reference review / evidence / Chatlog details by **path only** — do not inline review payloads, evidence bodies, or cumulative Chatlog content.
+3. Keep the Brief **compact**: reference review / evidence details by **path only** — do not inline review payloads or evidence bodies.
 4. Report the updated file path and any remaining risks.
 
 A save is a **manual** discipline only: it invokes no deterministic writer, daemon, watcher, scheduler, or BF Level 3 automation.
@@ -37,7 +37,7 @@ Triggered only when the user **explicitly** asks to restore (e.g. `브리프로 
 3. Ask the user `이 복구 지점에서 이어서 진행할까요?`.
 4. Proceed **only after** the user confirms.
 
-**Missing-file handling.** If `<ProjectRoot>/log/brief/BRIEF.md` is missing, do **not** default-restore from Chatlog. Report the absence and ask how to proceed. Only if the user explicitly asks for reconstruction from Chatlog, treat Chatlog (`<ProjectRoot>/log/chatlog/`) as **evidence** and produce a **draft** Brief for the user's review — do not author a fresh Brief or restore blindly. Chatlog is never promoted into Brief's seat.
+**Missing-file handling.** If `<ProjectRoot>/log/brief/BRIEF.md` is missing, report the absence and ask how to proceed. Brief is the only restore source; do not point to another reconstruction source and do not author a fresh Brief or restore blindly.
 
 ## Update
 
@@ -57,12 +57,10 @@ This skill does not change the behavior of these primitives.
 - No daemon / watcher / scheduler / hook / background task; no `BF_STATE.json`-style state file; no `.gitignore` mutation; no BF Level 3 writer (deferred).
 - No unsolicited session-start restore-offer (discarded — situation triggers are out of scope).
 - No commit / push / publish / merge / release — those are separate explicit user decisions; this skill never runs them.
-- No automatic Brief↔Chatlog mirror.
 
 ## Distributed source-side surfaces (single homes)
 
 - **Brief template** (canonical heading set + per-section guidance): `templates/brief/BRIEF.md`.
 - **Brief primitives** (seed / shape-check / restore-summary): `scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `scripts/brief-status.ps1`.
-- **Chatlog boundary:** Brief is the restore source; Chatlog (`<ProjectRoot>/log/chatlog/`) is reconstruction-evidence only and is never promoted into Brief's seat — see this skill's *User-requested restore* and *Boundaries* sections.
 
-(Design rationale and the full Brief / Chatlog contracts live in the source repo and are not part of the distribution; they are not required to operate this skill.)
+(Design rationale and the full Brief contract live in the source repo and are not part of the distribution; they are not required to operate this skill.)

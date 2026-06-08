@@ -4,11 +4,10 @@
 
 본 문서는 **manual convention first** 문서다. hook, parser, daemon, watcher, scheduler, retention automation 은 포함하지 않는다.
 
-## 핵심 정의 — Brief vs Chatlog
+## 핵심 정의 — Brief 가 유일한 restore source
 
 - **Brief** 는 한 project 의 **durable restore source-of-truth** 다. 사용자가 명시적으로 복원을 요청할 때 읽는 한 자리이며 (무요청 session-start 자동 읽기는 없다), 여러 session 에 걸쳐 의미가 유지된다.
-- **Chatlog** 는 Brief 가 아니다. Chatlog 는 history / decision rationale / Brief reconstruction evidence 다. 현재 restore source 가 아니다 (`docs/contracts/chatlog/CHATLOG_CONTRACT.md`).
-- 두 책임은 분리되어 있고 한쪽이 다른 쪽을 대체하지 않는다. Brief 가 오염 / 삭제 / stale 인 경우 Chatlog 가 Brief 재구성의 evidence 가 될 수 있으나, 그 자체가 Brief 의 자리는 아니다.
+- Brief 는 compact durable project state artifact 다. session transcript / 누적 대화 / review 결과 본문 / evidence payload 를 본문에 inline 하지 않으며, 큰 artifact 는 경로로만 참조한다. session-level chatter 나 transient 논의는 Brief 에 넣지 않는다.
 
 ## BF Level — save/restore capability maturity
 
@@ -104,12 +103,9 @@ BRIEF 는 짧고 자족적이어야 한다. 누적 history, 자세한 review pay
 
 operator 가 명시적으로 결정해 `<ProjectRoot>/log/` 의 `.gitignore` 규칙을 깨고 BRIEF 를 tracked 로 두는 것은 본 contract 가 정의하지 않는 운영 결정이다. 본 contract 의 default 기대는 untracked 이며, ai-harness 는 그 default 위에서 동작한다.
 
-## Chatlog 와의 관계
+## restore source — Brief only
 
-- Chatlog (`<ProjectRoot>/log/chatlog/`) 는 Brief 가 아니다. 본 contract 는 Chatlog 의 자리를 정의하지 않는다 — Chatlog 의 contract 는 `docs/contracts/chatlog/CHATLOG_CONTRACT.md` 다.
-- 과거 docs 가 `log/chatlog/current/resume.md` / `summary.md` 를 "canonical BF Level 1/2 artifact" 로 묶어 부르던 형태는 본 contract 에서 더 이상 유효하지 않다. 두 파일은 **failed intermediate / legacy migration source / deprecation candidate** 다 (`docs/contracts/chatlog/CHATLOG_CONTRACT.md`).
-- Chatlog 는 Brief 가 오염 / 삭제 / stale 인 경우 Brief 재구성을 위한 evidence 로 사용될 수 있다. 그러나 Chatlog 자체가 현재 restore source 로 승격되지 않는다.
-- Brief 와 Chatlog 사이의 자동 mirror 는 본 contract 의 책임이 아니며, 어느 future scoped work 도 mirror 자동화를 자동 승인하지 않는다.
+- Brief 가 유일한 restore source 다. canonical restore source 는 `<ProjectRoot>/log/brief/BRIEF.md` 한 자리이며, session-level chatter 나 transient 논의는 Brief 에 넣지 않는다.
 
 ## BRIEF required / optional headings
 
@@ -195,7 +191,7 @@ forbidden behavior:
 
 - `yes` / `no` / `yes with risk` verdict 생성. BRIEF 검증은 review verdict 가 아니다.
 - commit / push / publish / merge / release 승인 또는 차단.
-- 다른 자리 (`log/chatlog/`, `log/review/`, `log/evidence/`) 의 정합성 검증.
+- 다른 자리 (`log/review/`, `log/evidence/`) 의 정합성 검증.
 - BRIEF 내용 자동 보정 (auto-fix loop 금지).
 - daemon / watcher / scheduler / hook / background process.
 - 글로벌 파일 변경.
@@ -243,7 +239,6 @@ forbidden behavior:
 ## non-goals (본 contract 가 다루지 않는 것)
 
 - BRIEF 자동 retention / prune / rotate / expire / delete.
-- BRIEF 자동 mirror to/from Chatlog artifact.
 - BRIEF schema validator (heading shape 외).
 - BRIEF 자동 생성 또는 자동 보정 (auto-fill / auto-fix loop).
 - BRIEF-driven commit / push / merge / release 게이트.
@@ -253,7 +248,7 @@ forbidden behavior:
 - per-user log partitioning. operator-id / machine-id / ownership metadata / team sharing semantics.
 - transcript JSONL parser, 사용자 prompt / assistant 응답 자동 capture.
 - review history DB 또는 cross-run aggregation 과의 통합.
-- BRIEF 와 evidence / review / Chatlog artifact 간 cross-tree enforcement.
+- BRIEF 와 evidence / review artifact 간 cross-tree enforcement.
 - BRIEF 의 한 줄 요약을 commit message / PR body 에 자동 삽입.
 - multi-Brief orchestration (한 project 안의 복수 BRIEF 파일).
 - public release packaging.
@@ -266,5 +261,5 @@ forbidden behavior:
 
 - 새 wrapper 또는 새 CLI 가 도입되어도 본 contract 의 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`), heading set, 세 primitive 의 책임 경계는 default 로 유지한다.
 - 새 schema 가 도입되어도 본 manual convention 과 모순되지 않도록 한다.
-- BRIEF 가 review / evidence / Chatlog artifact 를 inline 으로 옮겨 적기 시작하면 본 contract 의 compact 원칙 위반이다. 그 경우 새 wrapper 가 아니라 BRIEF 본문이 잘못 작성된 것으로 본다.
+- BRIEF 가 review / evidence artifact 를 inline 으로 옮겨 적기 시작하면 본 contract 의 compact 원칙 위반이다. 그 경우 새 wrapper 가 아니라 BRIEF 본문이 잘못 작성된 것으로 본다.
 - 위 §"Future scoped work" 항목이 별도 scoped 승인을 받아 implementation 되는 시점에는 본 contract 도 그에 맞춰 갱신된다. 갱신 자체가 본 contract 의 존재만으로 자동 승인되지 않는다.

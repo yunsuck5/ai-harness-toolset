@@ -366,7 +366,7 @@ AI 가 이전 turn 의 판단 / input wording / validation execution claim / rev
 AI 는 다음 4 boundary 를 구분하여 mutation / referencing 한다:
 
 - **Source repo file** — `templates/`, `docs/`, `snippets/`, `config/`, `scripts/`, `tests/`, `README.md` 같은 source-managed 파일. source mutation batch 의 정상 mutation target.
-- **Runtime artifact** — `<ProjectRoot>/log/review/`, `log/evidence/`, `log/chatlog/`, `log/brief/`. gitignored runtime tree (§8). source-of-truth 로 승격하지 않으며 source mutation batch 의 mutation target 도 아니다. 본 batch 의 wording / contract / template 변경에 runtime artifact 의 내용을 source-of-truth 로 inline 하지 않는다 (필요 시 evidence path referencing 으로만 사용 — §3a).
+- **Runtime artifact** — `<ProjectRoot>/log/review/`, `log/evidence/`, `log/brief/`. gitignored runtime tree (§8). source-of-truth 로 승격하지 않으며 source mutation batch 의 mutation target 도 아니다. 본 batch 의 wording / contract / template 변경에 runtime artifact 의 내용을 source-of-truth 로 inline 하지 않는다 (필요 시 evidence path referencing 으로만 사용 — §3a).
 - **Sibling report / planning reference** — `polishing/`, `repo_snapshot/`, snapshot, manifest 같은 repo-outside material. advisory / planning material. source-of-truth 가 아니며 source mutation batch 의 mutation target 도 아니다 (§5a.2 inline 규칙 따라 reviewer 가 sandbox 안에서 read 가능하도록 `## Context` 에 verbatim inline).
 - **User / global filesystem** — `%USERPROFILE%\.claude\` / `%USERPROFILE%\.codex\` 등 user-global file, `%USERPROFILE%\.claude\ai-harness-toolset\current\` channel 3 install payload, user-global `CLAUDE.md` / `AGENTS.md` (managed block 포함). source mutation batch 안에서 mutation 하지 않으며 각각 별도 explicit user approval boundary 다.
 
@@ -654,7 +654,7 @@ failed / incomplete pass (예: Codex 실패 또는 verdict parsing 실패로 `re
 - review verdict 를 read 하여 commit / push / publish / merge / release / deployment 를 트리거하는 wrapper.
 - target project 의 `CLAUDE.md` / `AGENTS.md` / `.gitignore` / global filesystem 자동 변경.
 - daemon, watcher, scheduler, CI integration.
-- evidence / chatlog / brief subsystem 과의 cross-tree 보장.
+- evidence / brief subsystem 과의 cross-tree 보장.
 - `## Validation evidence` informational section 의 required 강제, sub-shape lint, conditional 강제 자동화. R1 first batch 는 convention-by-docs 만 도입하고 script enforcement 는 Review input governance 후속 작업으로 분리된다.
 - `## Known concerns` informational section 의 sub-shape lint (recommended sub-categories — convention deviation / skipped alternatives / validation limitations / baseline failures / direct verification not performed / operator assumptions — 의 본문 deterministic check). 본 lint 는 deterministic-lint scope 로 도입하지 않는다. operator 의 정직성 invariant + §7 stale-by-omission rule + supervisor 판단이 currently effective handling path 이며, sub-category 본문의 regex / string lint 는 semantic judgment 없이 brittle / high false-positive 한 surface 로 판단된다. reopen 은 informational disclosure omission 또는 misformatting 이 unsound verdict 를 유발한 concrete evidence 에 한정한다.
 - evidence file 의 freshness / hash / mtime binding, source-state staleness 의 자동 검증.

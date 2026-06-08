@@ -55,7 +55,7 @@ earlier ToolRoot/ProjectRoot path-handling audit work (preserved in git history)
 - `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §1 의 layer decision, §4 의 adoption direction, §6 의 marker policy, §7 의 explicit-trigger discipline, §8 의 ToolRoot / ProjectRoot conceptual split, §10 의 non-goals.
 - `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md` §4–§7 의 Claude skill global / update / removal 절차.
 - `scripts/lib/path.ps1` 의 현재 path 모델 (read-only inspection).
-- 본 audit 가 design 시점에 식별한 lifecycle script 들의 `-ProjectRoot` / `-ToolRoot` 사용 (`scripts/review-cycle.ps1` — **removed-legacy**, 현행 review entry 는 `review-prepare` / `review-run` / `review-verify`, 상단 Review-cycle wording supersede note 참조; `scripts/review-prepare.ps1`, `scripts/review-run.ps1`, `scripts/review-verify.ps1`, `scripts/log-init.ps1`, `scripts/brief-init.ps1`, `scripts/brief-check.ps1`).
+- 본 audit 가 design 시점에 식별한 lifecycle script 들의 `-ProjectRoot` / `-ToolRoot` 사용 (`scripts/review-cycle.ps1` — **removed-legacy**, 현행 review entry 는 `review-prepare` / `review-run` / `review-verify`, 상단 Review-cycle wording supersede note 참조; `scripts/review-prepare.ps1`, `scripts/review-run.ps1`, `scripts/review-verify.ps1`, `scripts/brief-init.ps1`, `scripts/brief-check.ps1`).
 
 본 design 은 위 input 의 사실을 변경하지 않는다.
 

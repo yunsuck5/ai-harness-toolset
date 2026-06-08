@@ -31,7 +31,6 @@ In the legacy project-local copy mode (channel 5) — still supported for backwa
 
 The runtime output is partitioned by subsystem and is never mixed with payload:
 
-- `<project-root>/log/chatlog/` — session chat logs
 - `<project-root>/log/evidence/` — evidence captures
 - `<project-root>/log/review/` — review packets
 
