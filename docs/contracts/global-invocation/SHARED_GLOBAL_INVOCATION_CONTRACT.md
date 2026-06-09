@@ -18,7 +18,7 @@
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
-> **Review-cycle wording supersede note (3rd reconciliation, 문서 전체 적용).** 본 design doc 의 §2 inputs, §5 channel chain example, §6 implementation split, §8 D7 untracked-detection branch, §10 verification scenarios 의 wording 은 `scripts/review-cycle.ps1` 와 그 sidecar artifact (`meta.json`, `result.json`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` parameter contracts) 을 기준으로 작성된 design 시점의 record 다. 그 design 위에 이뤄진 implementation 은 canonical task/pass topology 채택 (POST_MVP_PLAN.md §10 Completed `c81fe45`) 으로 갱신되었으며, 현행 normal operator path 는 두 단계 entry (`scripts/review-prepare.ps1 -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>]` → `scripts/review-run.ps1 -ReviewTaskId <id> -Perspective <viewpoint> -Pass <pass-NN>`; `-Perspective` required) 와 canonical record `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/{input.md, result.md}` 두 파일이다 (strict C1 three-level; 이전 two-level 은 legacy manual-readable only). `scripts/review-cycle.ps1`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` 은 normal operator path 가 아니며 git history 의 historical reason 으로 보존된다. D1–D9 결정 자체 (channel chain 정의, mode-neutral snippet body, SKILL.md script root resolution, self-target enforcement, ProjectRoot CWD advisory 등) 는 본 supersede 와 무관하게 그대로 유효하다 — wording 안의 review-cycle / sidecar artifact 참조만 현행 contract 기준으로 읽는다. **단, D6 의 verifier `meta.json` `toolRoot` sidecar-binding 과 D7 의 untracked exclusion 은 wording 만이 아니라 그 mechanism 자체가 현행 active surface 에 없다 — 이 둘은 각 섹션 머리의 Superseded note (D6 / §5.4, D7 / §5.5) 와 §7 backward-compatibility 항목의 historical 표기를 따른다.**
+> **Review-cycle wording supersede note (3rd reconciliation, 문서 전체 적용).** 본 design doc 의 §2 inputs, §5 channel chain example, §6 implementation split, §5.5 untracked-exclusion branch (D7) 의 wording 은 `scripts/review-cycle.ps1` 와 그 sidecar artifact (`meta.json`, `result.json`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` parameter contracts) 을 기준으로 작성된 design 시점의 record 다. 그 design 위에 이뤄진 implementation 은 canonical task/pass topology 채택 (POST_MVP_PLAN.md §10 Completed `c81fe45`) 으로 갱신되었으며, 현행 normal operator path 는 두 단계 entry (`scripts/review-prepare.ps1 -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>]` → `scripts/review-run.ps1 -ReviewTaskId <id> -Perspective <viewpoint> -Pass <pass-NN>`; `-Perspective` required) 와 canonical record `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/{input.md, result.md}` 두 파일이다 (strict C1 three-level; 이전 two-level 은 legacy manual-readable only). `scripts/review-cycle.ps1`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` 은 normal operator path 가 아니며 git history 의 historical reason 으로 보존된다. D1–D9 결정 자체 (channel chain 정의, mode-neutral snippet body, SKILL.md script root resolution, self-target enforcement, ProjectRoot CWD advisory 등) 는 본 supersede 와 무관하게 그대로 유효하다 — wording 안의 review-cycle / sidecar artifact 참조만 현행 contract 기준으로 읽는다. **단, D6 의 verifier `meta.json` `toolRoot` sidecar-binding 과 D7 의 untracked exclusion 은 wording 만이 아니라 그 mechanism 자체가 현행 active surface 에 없다 — 이 둘은 각 섹션 머리의 Superseded note (D6 / §5.4, D7 / §5.5) 와 §7 backward-compatibility 항목의 historical 표기를 따른다.**
 
 ---
 
@@ -191,40 +191,7 @@ backward compat 영향. 기존 source repo 에서 만든 review packet 은 `tool
 
 ### D7 — untracked exclusion policy
 
-> **Superseded — D7 host-script removed (as-built reconciliation).** 본 결정의 host script `scripts/review-cycle.ps1` 는 removed-legacy 이며, 현행 review 진입 경로 (`review-prepare` / `review-run` / `review-verify`) 의 어떤 script 도 worktree untracked scan 을 수행하지 않는다. 따라서 아래의 untracked exclusion 분기 (`log/` · `.ai-harness/` 제외) 는 현행 active surface 에 존재하지 않는 historical design record 다. (아래 별도의 *Superseded — D7 rationale only* note 는 `brief/` 경로 rationale 의 BRIEF reconciliation 변천을 별개로 다룬다 — 본 note 는 그 mechanism 자체의 removal 을 가리킨다.)
-
-**Decision.** `review-cycle.ps1` 의 untracked detection 에 `.ai-harness/` 도 추가 제외 대상으로 포함한다. `brief/` 는 제외하지 않는다. (D7 의 `brief/` 관련 rationale 의 변천사는 아래 *Superseded — D7 rationale only* note 참조. **그 `brief/`-path 결정 논리 자체는 BRIEF reconciliation 변천에도 일관되나, 본 untracked-exclusion mechanism 의 host script `review-cycle.ps1` 는 removed-legacy 이고 현행 진입 경로에 untracked scan 이 없다 — 위 *Superseded — D7 host-script removed* note 참조.**)
-
-매칭 의미는 **exact-or-strict-child** 다. directory name 과 일치하거나 그 directory 의 child path 만 제외하며, sibling path (`log-old/`, `.ai-harness-backup/` 등) 는 제외 대상이 아니다.
-
-- `log` exclusion (현재 동작 유지).
-  - `$rest -eq 'log'` (exact)
-  - `$rest.StartsWith('log/')` (strict child, forward slash)
-  - `$rest.StartsWith('log\')` (strict child, back slash)
-- `.ai-harness` exclusion (신규).
-  - `$rest -eq '.ai-harness'` (exact)
-  - `$rest.StartsWith('.ai-harness/')` (strict child, forward slash)
-  - `$rest.StartsWith('.ai-harness\')` (strict child, back slash)
-- 그 외 untracked 는 fail 동작 유지.
-- 명시적으로 제외 대상이 **아닌** 예: `log-old`, `log_archive/`, `.ai-harness-backup`, `.ai-harness.zip`. 이들은 sibling path 로 간주되어 현재처럼 untracked fail 을 유지한다.
-
-`brief/` 는 BRIEF 가 의도적으로 tracked 인 source-of-truth 이므로 제외하지 않는다. BRIEF artifact 가 untracked 상태로 존재한다는 사실 자체가 운영 이슈 (commit 되지 않은 BRIEF) 이므로 그대로 fail 신호를 유지한다. (**이 문단은 historical rationale 이다** — 아래 **Superseded** note 의 three-step reconciliation 참조. 현행 기준 (3차 reconciliation): canonical Brief 는 `<ProjectRoot>/log/brief/BRIEF.md` 이며 root `<ProjectRoot>/brief/` 는 rejected. canonical Brief 가 `log/` 아래 있으므로 `log/` exclusion 으로 이미 untracked-fail 에서 자연 제외되고, root `brief/` 자체가 만들어지지 않는다.)
-
-**Rationale.** shared / global mode 전환기에는 target 에 `.ai-harness/` 가 untracked 로 잠시 남을 수 있다 (legacy copy 가 제거되기 전). 본 exclusion 은 그 전환기의 마찰을 줄인다. exact-or-strict-child 매칭은 prefix-only 매칭이 sibling path 까지 widening 하는 ambiguity 를 차단한다. BRIEF 는 정책적으로 tracked 이어야 하므로 동일 exclusion 을 적용하지 않는다.
-
-> **Superseded — D7 rationale only (three-step reconciliation).** 위 D7 의 "`brief/` 는 BRIEF 가
-> 의도적으로 tracked 인 source-of-truth 이므로 제외하지 않는다" 는 rationale 은 세 단계의 reconciliation 을
-> 거쳤다. (1) 1차 BRIEF posture reconciliation 에서 canonical 을 `<ProjectRoot>/log/brief/BRIEF.md` 로 옮기고
-> root `brief/` 를 forbidden 으로 둔 framing 이 채택되었다. (2) 그 framing 이 정정되어 target repo product canonical Brief 를
-> `<ProjectRoot>/brief/BRIEF.md` 로 두고 `<ProjectRoot>/log/brief/BRIEF.md` 를 not-canonical 한 seed destination
-> 으로 분류한 framing 이 채택되었다. **(3) 3차 reconciliation (현행 기준):** 2차 framing 도 정정되어
-> canonical Brief 는 다시 `<ProjectRoot>/log/brief/BRIEF.md` — project-local, operator-local,
-> source-control-excluded runtime artifact (gitignored under `log/`) — 이며 **root `<ProjectRoot>/brief/` 는
-> rejected**, user-home operator-local runtime root 도 rejected, target persistent footprint = `<ProjectRoot>/log/` only 다.
-> **(historical rationale — mechanism removed.)** 위 `brief/`-path 결정 논리 자체는 세 단계의 변천에도 일관됐다: 당시 `review-cycle.ps1` 의 untracked detection 이
-> `log/` 를 이미 제외했으므로 canonical Brief (`<ProjectRoot>/log/brief/BRIEF.md`) 가 자연히 제외됐고, root
-> `<ProjectRoot>/brief/` 는 어차피 만들어지지 않아 untracked-fail 에 걸릴 수 없었다. 그 결과 당시에도 `review-cycle.ps1` 를 바꿀 필요가 없었고, 현행에는
-> 그 host script 자체가 removed-legacy 라 어떤 untracked scan 도 없다 (위 *Superseded — D7 host-script removed* note). canonical source-of-truth 는 `docs/contracts/brief/BRIEF_CONTRACT.md` 다.
+> **Superseded — D7 mechanism removed (historical decision; git history).** D7 은 removed-legacy `scripts/review-cycle.ps1` 의 untracked-detection 분기에 관한 design 결정이었다 (`log/` 에 더해 `.ai-harness/` 를 exact-or-strict-child 로 제외하고 `brief/` 는 제외하지 않음). 그 host script 는 removed-legacy 이고 **현행 review 진입 경로 (`review-prepare` / `review-run` / `review-verify`) 의 어떤 script 도 worktree untracked scan 을 수행하지 않으므로** 본 mechanism 은 현행 active surface 에 적용 지점이 없다. 상세 matching 규칙 · 예시 · `brief/`-path 의 BRIEF reconciliation rationale 은 git history 에 보존된다 (Brief canonical 의 source-of-truth 는 `docs/contracts/brief/BRIEF_CONTRACT.md`). §5.5 는 같은 removed mechanism 의 pseudo-code 자리로 동일하게 historical 이다.
 
 ### D8 — self-target enforcement
 
@@ -393,32 +360,7 @@ if not equal (case-insensitive ordinal):
 
 ### 5.5 untracked exclusion
 
-> **Superseded — as-built reconciliation (D7 Superseded note 참조).** 아래 pseudo-code 의 host script `scripts/review-cycle.ps1` 는 removed-legacy 이며, 현행 review 진입 경로의 어떤 script 도 untracked detection 을 수행하지 않는다. 아래는 historical design record 다.
-
-D7 에 따라 `review-cycle.ps1` 의 untracked branch 가 다음과 같이 확장된다. 매칭은 exact-or-strict-child 다 — directory name 과 일치하거나 child path 만 제외, sibling path 는 제외하지 않는다.
-
-```
-foreach untracked path $rest:
-  # current: exclude log directory (exact or child)
-  if $rest -eq 'log' \
-     -or $rest.StartsWith('log/') \
-     -or $rest.StartsWith('log\'):
-    continue
-
-  # new (D7): exclude .ai-harness directory (exact or child)
-  if $rest -eq '.ai-harness' \
-     -or $rest.StartsWith('.ai-harness/') \
-     -or $rest.StartsWith('.ai-harness\'):
-    continue
-
-  add to untracked list
-
-# Examples of paths that are NOT excluded (intentionally):
-#   'log-old'              # sibling, not the 'log' directory
-#   'log_archive/file'     # different directory
-#   '.ai-harness-backup'   # sibling, not the '.ai-harness' directory
-#   '.ai-harness.zip'      # sibling file with '.ai-harness' prefix
-```
+> **Superseded — D7 mechanism removed (historical; git history).** 이 자리에는 removed-legacy `scripts/review-cycle.ps1` 의 untracked-exclusion 분기 pseudo-code (`log/` · `.ai-harness/` 를 exact-or-strict-child 로 제외) 가 있었다. host script 는 removed-legacy 이고 **현행 review 진입 경로 (`review-prepare` / `review-run` / `review-verify`) 는 어떤 untracked scan 도 수행하지 않으므로** 현행 active surface 에 적용 지점이 없다. 상세 pseudo-code 는 git history 에 보존된다 (D7 Superseded note 참조).
 
 ### 5.6 self-target enforcement check
 
