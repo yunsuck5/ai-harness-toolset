@@ -247,3 +247,82 @@ Describe 'Caller contract (callsite consumption)' {
         $result | Should -BeOfType [string]
     }
 }
+
+Describe 'Resolve-RunScript CallerLabel diagnostic attribution' {
+    BeforeEach { script:Clear-EnvToolRoot }
+
+    It 'AC-RS-LABEL-DEFAULT: default CallerLabel attributes the diagnostic to review-run (backward compat)' {
+        $tool  = script:New-CaseDir -Name 'label-default-tool'
+        $local = script:New-CaseDir -Name 'label-default-local'
+
+        $threw = $false
+        $msg = ''
+        try {
+            Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit' | Out-Null
+        }
+        catch {
+            $threw = $true
+            $msg = [string]$_.Exception.Message
+        }
+
+        $threw | Should -BeTrue
+        $msg | Should -Match 'review-run:'
+        $msg | Should -Not -Match 'review-verify'
+    }
+
+    It 'AC-RS-LABEL-VERIFY-EXPLICIT: CallerLabel review-verify attributes the explicit-source throw to review-verify, not review-run' {
+        $tool  = script:New-CaseDir -Name 'label-verify-exp-tool'
+        $local = script:New-CaseDir -Name 'label-verify-exp-local'
+
+        $threw = $false
+        $msg = ''
+        try {
+            Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'explicit' -CallerLabel 'review-verify' | Out-Null
+        }
+        catch {
+            $threw = $true
+            $msg = [string]$_.Exception.Message
+        }
+
+        $threw | Should -BeTrue
+        $msg | Should -Match 'review-verify:'
+        $msg | Should -Not -Match 'review-run:'
+        $msg | Should -Match 'explicit ToolRoot'
+    }
+
+    It 'AC-RS-LABEL-VERIFY-NOTFOUND: CallerLabel review-verify attributes the implicit not-found throw to review-verify' {
+        $tool  = script:New-CaseDir -Name 'label-verify-nf-tool'
+        $local = script:New-CaseDir -Name 'label-verify-nf-local'
+
+        $threw = $false
+        $msg = ''
+        try {
+            Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'implicit' -CallerLabel 'review-verify' | Out-Null
+        }
+        catch {
+            $threw = $true
+            $msg = [string]$_.Exception.Message
+        }
+
+        $threw | Should -BeTrue
+        $msg | Should -Match 'review-verify:'
+        $msg | Should -Not -Match 'review-run:'
+        $msg | Should -Match 'required script not found'
+    }
+
+    It 'AC-RS-LABEL-VERIFY-WARN: CallerLabel review-verify attributes the PSScriptRoot fallback WARN to review-verify' {
+        $tool  = script:New-CaseDir -Name 'label-verify-warn-tool'
+        $local = script:New-CaseDir -Name 'label-verify-warn-local'
+        $fallback = Join-Path $local 'foo.ps1'
+        script:Write-Utf8NoBomFile -Path $fallback -Content "# fallback`n"
+
+        $informational = (& {
+            Resolve-RunScript -Tool $tool -RelativePath 'scripts/foo.ps1' -LocalDir $local -ToolRootSource 'implicit' -CallerLabel 'review-verify' 6>&1
+        } | Out-String -Width 8192)
+
+        $flat = ($informational -replace "`r?`n", ' ')
+
+        $flat | Should -Match 'review-verify: WARN component script resolved via \$PSScriptRoot fallback'
+        $flat | Should -Not -Match 'review-run:'
+    }
+}

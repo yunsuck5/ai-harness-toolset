@@ -166,7 +166,7 @@ if (-not (Test-Path -LiteralPath $inputPath -PathType Leaf)) {
 }
 
 $toolRootSource = Get-ToolRootSource -ToolRoot $ToolRoot
-$verifyInputScript = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-input-verify.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
+$verifyInputScript = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-input-verify.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource -CallerLabel 'review-verify'
 
 $verifyInputArgs = @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass',

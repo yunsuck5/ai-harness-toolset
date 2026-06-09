@@ -82,7 +82,13 @@ function Resolve-RunScript {
         [Parameter(Mandatory = $true)]
         [string] $LocalDir,
         [ValidateSet('explicit', 'implicit')]
-        [string] $ToolRootSource = 'implicit'
+        [string] $ToolRootSource = 'implicit',
+        # Diagnostic attribution prefix for the resolver messages. Defaults to
+        # 'review-run' so existing callers keep their behavior; review-verify
+        # passes 'review-verify' so its diagnostics are not misattributed to
+        # review-run. This changes only the diagnostic prefix, not resolution
+        # semantics.
+        [string] $CallerLabel = 'review-run'
     )
-    return Resolve-ScriptUnderToolRoot -Tool $Tool -RelativePath $RelativePath -LocalDir $LocalDir -ToolRootSource $ToolRootSource -CallerLabel 'review-run'
+    return Resolve-ScriptUnderToolRoot -Tool $Tool -RelativePath $RelativePath -LocalDir $LocalDir -ToolRootSource $ToolRootSource -CallerLabel $CallerLabel
 }
