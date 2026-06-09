@@ -191,7 +191,7 @@ This plan does **not** edit the snippet (that is the later relocation/reduction 
 | **Skill `description` move** | Is trigger/discovery phrasing for a capability → owned by that skill's `description`. |
 | **`SKILL.md` move** | Is post-trigger procedure → owned by that skill's `SKILL.md`. |
 | **`docs/contracts` move** | Is an artifact/protocol fact whose single home is a contract; snippet keeps at most a pointer (or nothing). |
-| **Install-docs move** | Is adoption/installation guidance → `INSTALL.md` / `GLOBAL_ADOPTION_PROCEDURE.md`. |
+| **Install-docs move** | Is adoption/installation guidance → `INSTALL.md`. |
 | **Delete** | Is not a current implemented capability (no future/deferred placeholder retained). |
 | **Batch 3 defer** | Specifically the `## Brief` BF-Level-3 non-claim line and another non-current section — already owned by the skill plan §8 Batch 3; **not** reclassified or removed here. |
 
