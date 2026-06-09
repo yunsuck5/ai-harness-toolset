@@ -18,7 +18,7 @@
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
-> **Review-cycle wording supersede note (3rd reconciliation, 문서 전체 적용).** 본 design doc 의 §2 inputs, §5 channel chain example, §6 implementation split, §8 D7 untracked-detection branch, §10 verification scenarios 의 wording 은 `scripts/review-cycle.ps1` 와 그 sidecar artifact (`meta.json`, `result.json`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` parameter contracts) 을 기준으로 작성된 design 시점의 record 다. 그 design 위에 이뤄진 implementation 은 canonical task/pass topology 채택 (POST_MVP_PLAN.md §10 Completed `c81fe45`) 으로 갱신되었으며, 현행 normal operator path 는 두 단계 entry (`scripts/review-prepare.ps1 -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>]` → `scripts/review-run.ps1 -ReviewTaskId <id> -Perspective <viewpoint> -Pass <pass-NN>`; `-Perspective` required) 와 canonical record `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/{input.md, result.md}` 두 파일이다 (strict C1 three-level; 이전 two-level 은 legacy manual-readable only). `scripts/review-cycle.ps1`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` 은 normal operator path 가 아니며 git history 의 historical reason 으로 보존된다. D1–D9 결정 자체 (channel chain 정의, mode-neutral snippet body, SKILL.md script root resolution, verifier toolRoot binding, untracked exclusion, self-target enforcement, ProjectRoot CWD advisory 등) 는 본 supersede 와 무관하게 그대로 유효하다 — wording 안의 review-cycle / sidecar artifact 참조만 현행 contract 기준으로 읽는다.
+> **Review-cycle wording supersede note (3rd reconciliation, 문서 전체 적용).** 본 design doc 의 §2 inputs, §5 channel chain example, §6 implementation split, §8 D7 untracked-detection branch, §10 verification scenarios 의 wording 은 `scripts/review-cycle.ps1` 와 그 sidecar artifact (`meta.json`, `result.json`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` parameter contracts) 을 기준으로 작성된 design 시점의 record 다. 그 design 위에 이뤄진 implementation 은 canonical task/pass topology 채택 (POST_MVP_PLAN.md §10 Completed `c81fe45`) 으로 갱신되었으며, 현행 normal operator path 는 두 단계 entry (`scripts/review-prepare.ps1 -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>]` → `scripts/review-run.ps1 -ReviewTaskId <id> -Perspective <viewpoint> -Pass <pass-NN>`; `-Perspective` required) 와 canonical record `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/{input.md, result.md}` 두 파일이다 (strict C1 three-level; 이전 two-level 은 legacy manual-readable only). `scripts/review-cycle.ps1`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `log/review-targets/`, `log/review-requests/`, `-TargetFiles` / `-TargetFilesPath` / `-ReviewRequestPath` 은 normal operator path 가 아니며 git history 의 historical reason 으로 보존된다. D1–D9 결정 자체 (channel chain 정의, mode-neutral snippet body, SKILL.md script root resolution, self-target enforcement, ProjectRoot CWD advisory 등) 는 본 supersede 와 무관하게 그대로 유효하다 — wording 안의 review-cycle / sidecar artifact 참조만 현행 contract 기준으로 읽는다. **단, D6 의 verifier `meta.json` `toolRoot` sidecar-binding 과 D7 의 untracked exclusion 은 wording 만이 아니라 그 mechanism 자체가 현행 active surface 에 없다 — 이 둘은 각 섹션 머리의 Superseded note (D6 / §5.4, D7 / §5.5) 와 §7 backward-compatibility 항목의 historical 표기를 따른다.**
 
 ---
 
@@ -91,7 +91,7 @@ earlier ToolRoot/ProjectRoot path-handling audit work (preserved in git history)
 
 1. **channel 1 — CLI parameter `-ToolRoot <path>`** (lifecycle script 의 직접 invocation). 최우선. 디렉터리가 존재하지 않으면 throw.
 2. **channel 2 — env var `AI_HARNESS_TOOL_ROOT`** (override / debug / development validation 용). 디렉터리가 존재하지 않으면 throw.
-3. **channel 3 — global stable install `%USERPROFILE%\.claude\ai-harness-toolset\current`.** shared / global mode 의 default 연결 방식. 디렉터리가 **부재** 하면 다음 channel 로 skip 한다. 디렉터리는 존재하지만 **payload 가 불완전** 하면 (entrypoint `scripts/review-cycle.ps1` 부재) fail-fast throw 한다.
+3. **channel 3 — global stable install `%USERPROFILE%\.claude\ai-harness-toolset\current`.** shared / global mode 의 default 연결 방식. 디렉터리가 **부재** 하면 다음 channel 로 skip 한다. 디렉터리는 존재하지만 **payload 가 불완전** 하면 (canonical entrypoint `scripts/review-prepare.ps1` 부재) fail-fast throw 한다.
 4. **channel 4 — dogfooding detection** (D3 의 multi-marker 가 ProjectRoot 에서 모두 발견된 경우, `ToolRoot = ProjectRoot`). source repo 운영자 전용.
 5. **channel 5 — legacy `<ProjectRoot>/.ai-harness`** (해당 디렉터리가 실제 존재할 때만; project-local copy mode 의 backward compat).
 6. **channel 6 — 위 어느 것도 충족되지 않으면** 명시 error 후 exit non-zero. error message 는 시도된 channel 의 목록과 각 channel 이 왜 활성화되지 않았는지를 포함한다.
@@ -102,7 +102,7 @@ channel 3 의 absent-skip / present-but-incomplete-fail-fast 분기 의도: stab
 
 본 결정은 channel 의 도입이지, env var 의 자동 활성화나 user shell config 변경이 아니다. channel 3 의 실제 global materialization 은 본 문서 범위 밖이며 별도 scoped 작업이다 (`docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`).
 
-> **Design history note.** 본 문서의 초기 design 은 4-channel chain (`-ToolRoot` → env → dogfooding → legacy → fail) 이었고 global stable install channel 이 없었다. channel 3 (global stable install) 은 global stable ToolRoot 모델 결정에 따라 Batch 1 구현 단계에서 추가되었고, 본 D1 은 그 as-built 결과로 rewrite 되었다 (R1 decision). 이전 4-channel 서술은 git history 가 권한이다.
+> **Design history note.** 본 문서의 초기 design 은 4-channel chain (`-ToolRoot` → env → dogfooding → legacy → fail) 이었고 global stable install channel 이 없었다. channel 3 (global stable install) 은 global stable ToolRoot 모델 결정에 따라 Batch 1 구현 단계에서 추가되었고, 본 D1 은 그 as-built 결과로 rewrite 되었다 (R1 decision). 이전 4-channel 서술은 git history 가 권한이다. channel 3 의 payload-completeness 판정 entrypoint 는 as-built 기준 `scripts/review-prepare.ps1` 다 (`scripts/lib/path.ps1` 의 `Test-IsValidToolRootPayload`); 본 문서의 이전 revision 은 removed-legacy `scripts/review-cycle.ps1` 를 그 entrypoint 로 적었고, 본 reconciliation 에서 active surface 에 맞춰 정정했다.
 
 ### D2 — `Resolve-CycleScript` / `Resolve-RunScript` fallback 정책
 
@@ -164,6 +164,8 @@ channel 3 의 absent-skip / present-but-incomplete-fail-fast 분기 의도: stab
 
 ### D6 — ToolRoot binding in `review-verify`
 
+> **Superseded — D6 sidecar-binding mechanism (as-built reconciliation).** 아래 결정의 **meta.json `toolRoot` 일치 검증** 과 **call-site forward (cycle / run → verifier)** 는 removed-legacy `scripts/review-cycle.ps1` + sidecar (`meta.json`) 설계의 일부였다. 현행 canonical record 는 2-file (`input.md` + `result.md`) 이며 **sidecar 가 없다** (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §1 / §10; runtime provenance 는 `result.md` *안* 의 `## Reviewer run provenance` 블록으로 보존). 따라서 현행 `scripts/review-verify.ps1` 는 **meta.json 의 `toolRoot` 를 읽거나 비교하지 않으며 mismatch FAIL 도 없다.** 또한 `scripts/review-run.ps1` 은 `review-verify.ps1` 를 호출하지 않으므로 run→verify 의 `-ToolRoot` forward 도 존재하지 않는다. **as-built 로 살아남은 것은 `-ToolRoot` optional parameter 뿐이며**, 그 역할은 (a) D1 priority chain 으로 ToolRoot 를 runtime 재해소하여 payload 부재 / 불완전 시 fail-fast 하고, (b) component verifier (`scripts/review-input-verify.ps1`) 를 ToolRoot 아래에서 해소하는 것이다 (sidecar binding 아님). 아래 본문은 historical design record 다.
+
 **Decision.** `review-verify.ps1` 에 `toolRoot` 일치 검증을 추가하되, ToolRoot 의 runtime 재현을 위해 verifier 의 parameter / call-site contract 를 함께 확장한다.
 
 Parameter contract.
@@ -185,11 +187,13 @@ Call-site contract.
 
 **Rationale.** audit Gap G8 가 식별한 binding gap 을 닫는다. 단순히 verifier 안에서 `Get-ToolRoot` 만 재호출하면 D1 channel 1 (explicit `-ToolRoot`) 로 만든 packet 이 verifier 입장에서 channel 2/3/4/5 로 fallback 하여 false-fail 할 수 있다. 새 `-ToolRoot` parameter 와 cycle/run 단계의 forward 는 그 false-fail 을 차단한다.
 
-backward compat 영향. 기존 source repo 에서 만든 review packet 은 `toolRoot` 가 이미 meta.json 에 기록되어 있으므로 본 변경으로 retroactive 한 FAIL 이 발생하지 않는다 (`scripts/review-prepare.ps1:208` 의 `toolRoot = $tool` 라인 참조). cycle/run 단계의 forward 도 기존 호출 site 의 행위를 보존한다 (channel 2/3/4/5 가 동일 ToolRoot 로 resolve 되는 환경에서는 forward 여부와 무관하게 mismatch 가 발생하지 않는다). 단, 본 결정의 implementation 단계에서 기존 sample packet 의 회귀 test 를 한 번 더 확인한다.
+backward compat 영향. 기존 source repo 에서 만든 review packet 은 `toolRoot` 가 이미 meta.json 에 기록되어 있으므로 본 변경으로 retroactive 한 FAIL 이 발생하지 않는다 (당시 review-cycle 설계에서 review-prepare 가 `meta.json` 에 `toolRoot` 를 기록하던 라인을 가리키던 historical 참조 — 현행 `scripts/review-prepare.ps1` 에는 해당 라인이 없다; D6 머리 Superseded note 참조). cycle/run 단계의 forward 도 기존 호출 site 의 행위를 보존한다 (channel 2/3/4/5 가 동일 ToolRoot 로 resolve 되는 환경에서는 forward 여부와 무관하게 mismatch 가 발생하지 않는다). 단, 본 결정의 implementation 단계에서 기존 sample packet 의 회귀 test 를 한 번 더 확인한다.
 
 ### D7 — untracked exclusion policy
 
-**Decision.** `review-cycle.ps1` 의 untracked detection 에 `.ai-harness/` 도 추가 제외 대상으로 포함한다. `brief/` 는 제외하지 않는다. (D7 의 `brief/` 관련 rationale 의 변천사는 아래 **Superseded** note 참조. **D7 의 동작 결정 자체는 그대로 유효하다.**)
+> **Superseded — D7 host-script removed (as-built reconciliation).** 본 결정의 host script `scripts/review-cycle.ps1` 는 removed-legacy 이며, 현행 review 진입 경로 (`review-prepare` / `review-run` / `review-verify`) 의 어떤 script 도 worktree untracked scan 을 수행하지 않는다. 따라서 아래의 untracked exclusion 분기 (`log/` · `.ai-harness/` 제외) 는 현행 active surface 에 존재하지 않는 historical design record 다. (아래 별도의 *Superseded — D7 rationale only* note 는 `brief/` 경로 rationale 의 BRIEF reconciliation 변천을 별개로 다룬다 — 본 note 는 그 mechanism 자체의 removal 을 가리킨다.)
+
+**Decision.** `review-cycle.ps1` 의 untracked detection 에 `.ai-harness/` 도 추가 제외 대상으로 포함한다. `brief/` 는 제외하지 않는다. (D7 의 `brief/` 관련 rationale 의 변천사는 아래 *Superseded — D7 rationale only* note 참조. **그 `brief/`-path 결정 논리 자체는 BRIEF reconciliation 변천에도 일관되나, 본 untracked-exclusion mechanism 의 host script `review-cycle.ps1` 는 removed-legacy 이고 현행 진입 경로에 untracked scan 이 없다 — 위 *Superseded — D7 host-script removed* note 참조.**)
 
 매칭 의미는 **exact-or-strict-child** 다. directory name 과 일치하거나 그 directory 의 child path 만 제외하며, sibling path (`log-old/`, `.ai-harness-backup/` 등) 는 제외 대상이 아니다.
 
@@ -217,10 +221,10 @@ backward compat 영향. 기존 source repo 에서 만든 review packet 은 `tool
 > canonical Brief 는 다시 `<ProjectRoot>/log/brief/BRIEF.md` — project-local, operator-local,
 > source-control-excluded runtime artifact (gitignored under `log/`) — 이며 **root `<ProjectRoot>/brief/` 는
 > rejected**, user-home operator-local runtime root 도 rejected, target persistent footprint = `<ProjectRoot>/log/` only 다.
-> **D7 의 동작 결정 자체는 세 단계의 변천에도 그대로 유효하다**: `review-cycle.ps1` 의 untracked detection 은
-> `log/` 를 이미 제외하므로 canonical Brief (`<ProjectRoot>/log/brief/BRIEF.md`) 가 자연히 제외되고, root
-> `<ProjectRoot>/brief/` 는 어차피 만들어지지 않으므로 untracked-fail 에 걸릴 수 없다. 따라서
-> `review-cycle.ps1` 변경은 불필요하다. canonical source-of-truth 는 `docs/contracts/brief/BRIEF_CONTRACT.md` 다.
+> **(historical rationale — mechanism removed.)** 위 `brief/`-path 결정 논리 자체는 세 단계의 변천에도 일관됐다: 당시 `review-cycle.ps1` 의 untracked detection 이
+> `log/` 를 이미 제외했으므로 canonical Brief (`<ProjectRoot>/log/brief/BRIEF.md`) 가 자연히 제외됐고, root
+> `<ProjectRoot>/brief/` 는 어차피 만들어지지 않아 untracked-fail 에 걸릴 수 없었다. 그 결과 당시에도 `review-cycle.ps1` 를 바꿀 필요가 없었고, 현행에는
+> 그 host script 자체가 removed-legacy 라 어떤 untracked scan 도 없다 (위 *Superseded — D7 host-script removed* note). canonical source-of-truth 는 `docs/contracts/brief/BRIEF_CONTRACT.md` 다.
 
 ### D8 — self-target enforcement
 
@@ -275,7 +279,7 @@ Get-ToolRoot(-ToolRoot $p1, -ProjectRoot $project, -StableToolRoot $stable?)
   if $stable is empty: $stable = Get-StableToolRootCandidate()
   if $stable is non-empty:
     if Test-Path $stable -PathType Container:
-      # present but incomplete payload (entrypoint scripts/review-cycle.ps1 missing) -> fail fast
+      # present but incomplete payload (entrypoint scripts/review-prepare.ps1 missing) -> fail fast
       if -not Test-IsValidToolRootPayload($stable): throw
       return GetFullPath($stable)                              # channel 3
     # absent: fall through to channel 4
@@ -339,6 +343,8 @@ Get-ProjectRoot(-ProjectRoot $p)
 
 ### 5.4 review-verify ToolRoot binding
 
+> **Superseded — as-built reconciliation (D6 Superseded note 참조).** 아래 pseudo-code 의 **meta.json `toolRoot` 비교 (Verification body)** 와 **Call-site forward (cycle / run → verify)** 는 review-cycle / sidecar 설계의 historical design record 다. 현행 2-file record (무-sidecar) 에서 `scripts/review-verify.ps1` 는 sidecar `toolRoot` 를 비교하지 않고 `-ToolRoot` 를 D1 chain 재해소 (payload fail-fast) + component-script 해소에만 사용하며, `scripts/review-run.ps1` 은 `review-verify.ps1` 를 호출하지 않는다.
+
 D6 에 따라 `review-verify.ps1` 의 parameter contract, call-site forward, 검증 동작이 다음과 같이 정의된다.
 
 Parameter contract (verifier side).
@@ -386,6 +392,8 @@ if not equal (case-insensitive ordinal):
 본 검증은 `projectRoot`, `projectLogRoot` 검증과 동일한 절차 / 동일한 FAIL 출력 형식을 따른다.
 
 ### 5.5 untracked exclusion
+
+> **Superseded — as-built reconciliation (D7 Superseded note 참조).** 아래 pseudo-code 의 host script `scripts/review-cycle.ps1` 는 removed-legacy 이며, 현행 review 진입 경로의 어떤 script 도 untracked detection 을 수행하지 않는다. 아래는 historical design record 다.
 
 D7 에 따라 `review-cycle.ps1` 의 untracked branch 가 다음과 같이 확장된다. 매칭은 exact-or-strict-child 다 — directory name 과 일치하거나 child path 만 제외, sibling path 는 제외하지 않는다.
 
@@ -445,8 +453,8 @@ snippet body 와 SKILL.md 의 본문 정합화는 §6 의 분할 단위 (step 3,
 2. `Resolve-CycleScript` / `Resolve-RunScript` 의 fallback 정책 갱신 (D2).
 3. `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 의 mode-neutral body 재작성 (D4).
 4. `snippets/claude-skills/ai-harness-review/SKILL.md` 의 script root 분기 갱신 (D5).
-5. `scripts/review-verify.ps1` 의 toolRoot binding 검증 추가 (D6).
-6. `scripts/review-cycle.ps1` 의 untracked exclusion 확장 (D7).
+5. `scripts/review-verify.ps1` 의 toolRoot binding 검증 추가 (D6). **— superseded:** meta.json sidecar binding 은 미채택 (현행 2-file record 무-sidecar); 현행 `-ToolRoot` 는 payload fail-fast / component-script 해소용 (D6 / §5.4 Superseded note).
+6. ~~`scripts/review-cycle.ps1` 의 untracked exclusion 확장 (D7).~~ **— superseded:** host script `review-cycle.ps1` removed-legacy; 현행 review 진입 경로 (prepare / run / verify) 에 untracked scan 없음 (D7 / §5.5 Superseded note).
 7. self-target enforcement check 의 도입 (D8). `verify-ps1.ps1` 또는 별도 helper.
 8. `Get-ProjectRoot` 의 CWD advisory 추가 (D9).
 
@@ -474,8 +482,8 @@ step 간 ordering 권고.
 - D1 channel 3 (global stable install) 의 absent-skip 동작 — `%USERPROFILE%\.claude\ai-harness-toolset\current` 가 아직 materialize 되지 않은 환경에서는 channel 3 이 조용히 skip 되어 channel 4 (dogfooding) / channel 5 (legacy) fallback 이 종전과 동일하게 동작한다. 즉 stable install 도입 전 환경의 기존 운영이 깨지지 않는다.
 - D2 의 fallback 분기 — implicit ToolRoot (dogfooding / legacy) 에서는 fallback 이 그대로 동작한다. 사용자가 보는 message 만 추가된다 (warning).
 - D3 의 multi-marker — source repo 에 이미 세 marker 가 모두 존재한다 (`scripts/verify-ps1.ps1`, `templates/review-input.md`, `config/reviewer.json`). dogfooding 동작이 깨지지 않는다.
-- D6 의 review-verify 검증 — `meta.toolRoot` 는 `scripts/review-prepare.ps1` 가 이미 채워 넣고 있으므로 기존 packet 의 회귀 fail 은 예상되지 않는다. 단, implementation 단계에서 sample packet 한 개를 수동 검증한다.
-- D7 의 exclusion — `.ai-harness/` 의 추가 제외는 untracked 가 더 많이 통과한다는 의미일 뿐이고, 기존 통과 패턴이 fail 로 바뀌지는 않는다.
+- D6 의 review-verify 검증 — **(historical; superseded.)** 아래 backward-compat 논리는 `meta.toolRoot` sidecar 가 packet 에 기록되던 review-cycle 설계 전제 위에 쓰였다. 현행 2-file record (무-sidecar) 에는 `meta.json` 이 없고 `scripts/review-verify.ps1` 는 sidecar `toolRoot` 를 비교하지 않으므로 (D6 / §5.4 Superseded note) 본 항목이 가리키던 retroactive-fail risk 자체가 발생하지 않는다.
+- D7 의 exclusion — **(historical; superseded.)** host script `review-cycle.ps1` 가 removed-legacy 이고 현행 review 진입 경로 (prepare / run / verify) 에 untracked scan 이 없으므로 (D7 / §5.5 Superseded note) 본 exclusion 의 backward-compat 효과 (추가 제외) 도 현행 표면에는 적용 지점이 없다.
 - D9 의 CWD warning — strict fail 이 아니므로 기존 운영이 깨지지 않는다.
 
 design 이 깨는 시나리오 (intentional break).
@@ -490,7 +498,7 @@ design 단계에서 결정을 내렸지만, implementation / 운영 단계에서
 
 - O1. env var 의 이름. **resolved (as-built).** Batch 1 구현은 env var 이름을 `AI_HARNESS_TOOL_ROOT` 로 확정했고, 본 문서의 D1 / D2 / D5 / §5.1 도 그 이름으로 정합화되었다. 더 이상 implementation 전 미결 항목이 아니다. 향후 다른 이름 (`AI_HARNESS_TOOLSET_ROOT` 등) 으로의 rename 은 별도 scoped design / change 가 필요하며, 본 open question 으로 다루지 않는다.
 - O2. D5 의 SKILL.md 분기 우선순위. as-built 6-channel chain 에서 channel 2 (env var) 와 channel 3 (global stable install) 이 모두 channel 4 (dogfooding) 보다 우선한다. 따라서 운영자가 source repo 안에서 dogfooding 으로 작업하려는데 env var 가 set 되어 있거나 global stable install 이 존재하면 dogfooding 이 가려진다. 이 경우 운영자는 env var 를 unset 하거나 `-ToolRoot` 로 source repo 를 명시해야 한다. 이 효과가 실제 운영에서 마찰을 일으키는지 추가 확인이 필요하다.
-- O3. D6 의 normalize 정책. case-insensitive ordinal 비교는 Windows / non-Windows 모두에서 OK 인지 implementation 단계에서 한 번 더 확인한다.
+- O3. D6 의 normalize 정책. **moot (as-built).** 본 open question 이 가리킨 meta.json `toolRoot` ↔ runtime 정규화 비교 자체가 review-cycle / sidecar 설계의 일부였고, 현행 canonical 2-file record (무-sidecar) 에서 `scripts/review-verify.ps1` 는 sidecar `toolRoot` 를 비교하지 않으므로 (§5.4 / D6 Superseded note) 더 이상 미결 항목이 아니다.
 - O4. D8 의 check 가 새 helper 인지, `verify-ps1.ps1` 의 sub-check 인지. 본 design 은 둘 중 하나로 두고 implementation 시점에 결정한다.
 - O5. D9 의 advisory 가 추후 strict mode 로 격상될지의 기준 (예: 일정 기간 후 default 변경). 본 단계에서는 advisory 만 결정하고, 격상 시점은 미정.
 
