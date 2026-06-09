@@ -23,7 +23,7 @@ The former root-level roadmap docs now live in their access-pattern scope folder
 | Step 3 implementation planning guide | `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` |
 | shared/global invocation contract (D1–D9) | `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` |
 | review effort/cost guide | `docs/policies/REVIEW_EFFORT_GUIDE.md` |
-| skill global adopt/update/remove procedure | `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md` |
+| skill global adopt/update/remove procedure | `INSTALL.md` §10; `docs/systems/install-update/STATUS.md` IU-03 |
 
 ## 3. Remaining roadmap doc
 

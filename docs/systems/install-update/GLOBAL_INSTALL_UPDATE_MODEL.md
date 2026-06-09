@@ -17,7 +17,7 @@
 본 문서는 다음 source-of-truth 문서들의 방향을 구체화하며, 그것들과 충돌하지 않는다. 본 문서가 더 구체적인 영역에서는 본 문서가 current model 이고, 본 문서가 다루지 않는 영역에서는 아래 문서들이 우선한다.
 
 - 운영 계층 결정: `docs/decisions/GLOBAL_ADOPTION_DECISION.md`
-- Claude skill 채택 절차: `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md`
+- Claude skill 채택 절차 (install/update): `INSTALL.md` §10 + `scripts/activate-global.ps1`; removal: `scripts/uninstall-global.ps1`
 - shared / global mode invocation contract: `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md`
 - post-MVP 결정 기록: `docs/decisions/POST_MVP_PLAN.md`
 - clean target smoke criteria: preserved in git history
@@ -111,8 +111,8 @@ decision: 목표 방식은 세 번째 — **Claude-operated install/update + glo
 
 추가 구분:
 
-- **installer-first productization 은 현재 범위 밖이다.** `install.ps1` 같은 productized installer 를 서둘러 만들지 않는다 (`GLOBAL_ADOPTION_DECISION.md` §5, §10; `GLOBAL_ADOPTION_PROCEDURE.md` §9). legacy `ai-harness` 의 문제는 global install 아이디어 자체가 아니라, core functionality 검증 이전에 installer / rollback / global mutation 을 먼저 productize 하려 한 sequencing 이었다.
-- **단, Claude-operated explicit install/update procedure 는 장기적으로 필요하다.** 이는 installer-first productization 과 다르다 — 자동화된 제품형 installer 가 아니라, Claude Code 가 operator 로서 inspect → detect → propose → 사용자 승인 → apply → verify 의 단계를 따르는 절차다 (`GLOBAL_ADOPTION_DECISION.md` §5, `GLOBAL_ADOPTION_PROCEDURE.md` §5–§7).
+- **installer-first productization 은 현재 범위 밖이다.** `install.ps1` 같은 productized installer 를 서둘러 만들지 않는다 (`GLOBAL_ADOPTION_DECISION.md` §5, §10). legacy `ai-harness` 의 문제는 global install 아이디어 자체가 아니라, core functionality 검증 이전에 installer / rollback / global mutation 을 먼저 productize 하려 한 sequencing 이었다.
+- **단, Claude-operated explicit install/update procedure 는 장기적으로 필요하다.** 이는 installer-first productization 과 다르다 — 자동화된 제품형 installer 가 아니라, Claude Code 가 operator 로서 inspect → detect → propose → 사용자 승인 → apply → verify 의 단계를 따르는 절차다 (`GLOBAL_ADOPTION_DECISION.md` §5; 실행 절차는 `INSTALL.md`).
 
 ### 3.1 Recovery posture — generated payload 의 reinstall-first
 
@@ -151,7 +151,7 @@ generated payload (global Claude install layer 의 `current/` runtime payload + 
 - **"업데이트 받아"** — source update + global install update. 즉 ToolRoot 의 source 를 먼저 최신화 (fetch/pull) 한 뒤, 그 source 를 기준으로 global install layer 를 갱신한다.
 - **"현재 최신 버전 기준으로 update 설치해"** — current local HEAD 기준 global install update only. ToolRoot 의 source 는 건드리지 않고 (이미 원하는 HEAD 에 있다고 보고), 그 HEAD 를 기준으로 global install layer 만 갱신한다.
 
-어느 경우에도 global install layer 의 실제 변경은 inspect → diff propose → 사용자 명시 승인 → apply → verify 단계를 거친다 (`GLOBAL_ADOPTION_PROCEDURE.md` §6).
+어느 경우에도 global install layer 의 실제 변경은 inspect → diff propose → 사용자 명시 승인 → apply → verify 단계를 거친다 (`INSTALL.md` §5).
 
 ---
 
@@ -234,7 +234,7 @@ generated payload (global Claude install layer 의 `current/` runtime payload + 
 - **materialized runtime ToolRoot `%USERPROFILE%\.claude\ai-harness-toolset\current` 가 이 layer 아래에 위치한다.** 이는 `Get-ToolRoot` 의 channel 3 이 resolve 하는 shared / global mode 의 default 연결 경로이며 (`SHARED_GLOBAL_INVOCATION_CONTRACT.md` §5.1, D1), Layer 1 의 source/build input (`<canonical-local-toolroot>`) 으로부터 materialize 된다. 디렉터리가 부재하면 `Get-ToolRoot` 는 다음 channel 로 skip 하고, 존재하지만 payload 가 불완전하면 fail-fast 한다.
 - `AI_HARNESS_TOOL_ROOT` 환경변수 (`Get-ToolRoot` channel 2) 는 위 materialized runtime ToolRoot 를 가리는 **override / debug / development validation 용** 이며, default 연결 방식이 아니다. User / Machine scope 에 고정 설정하지 않고, 디버그·개발 repo 검증이 필요한 세션에서만 **process-scope** 로 set 하는 것을 권장한다 — User / Machine scope 고정은 channel 2 가 항상 channel 3 을 가려 stable default 모델을 무력화한다.
 - toolset payload 전체를 target project 에 복사하지 않고, 이 global layer 를 통해 기능을 노출한다.
-- Claude skill 자산의 경우 `GLOBAL_ADOPTION_PROCEDURE.md` §3 의 `GlobalSkillRoot` (`%USERPROFILE%\.claude\skills`) 가 이 layer 안에 위치한다.
+- Claude skill 자산의 경우 skill destination root (`%USERPROFILE%\.claude\skills`; `INSTALL.md` §10) 가 이 layer 안에 위치한다.
 - 이 layer 의 실제 변경은 항상 사용자 명시 승인을 요구한다 (`GLOBAL_ADOPTION_DECISION.md` §6, §7). materialized runtime ToolRoot (`...\ai-harness-toolset\current`) 의 실제 materialization 은 별도 scoped 작업이며 본 문서 작성 시점에 수행되지 않았다 (§13 참조).
 
 ### Layer 3 — ProjectRoot
@@ -390,7 +390,7 @@ hook 이 나중에 도입되면 본 정책을 동일하게 따른다.
 - install / update final status vocabulary (`verify_pass` / `verify_failed` / `activation_pending` / `complete` 등) 와 그 invariants 의 operative 계약: `INSTALL.md` §13.1 / §13.2. verify entry helper 는 §5.1, managed-block / canonical-overwrite mutation class 는 §9.1 / §10.
 - activation surface resolver (source→destination map + mutation class, single home): `scripts/lib/activation-surface.ps1`.
 - uninstall owned-surface 설계: `docs/systems/install-update/UNINSTALL_LIFECYCLE_DESIGN.md`.
-- skill 채택 manual 절차: `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md` — §2 가 추가 skill 에 동일 manual 절차를 적용하나, 그 manual 절차는 본 절의 lifecycle forced mirror + verify 를 **대체하지 않는다** (manual 절차는 사용자 편의 경로이고, lifecycle 보장이 source-of-truth 다).
+- skill 채택은 본 절의 lifecycle forced mirror + verify 가 source-of-truth 다 (`INSTALL.md` §10 + `scripts/activate-global.ps1`; removal `scripts/uninstall-global.ps1`).
 
 ---
 
@@ -585,7 +585,7 @@ graph TD
 - 이전 post-MVP decision guide 계열 문서 및 초기 운영 노트에는 **copy-only / project-local / global-install-forbidden posture** 가 있을 수 있다. 그것은 MVP 종료 직후 또는 global direction 확정 이전의 **historical MVP / post-MVP pre-global-decision context** 다. `GLOBAL_ADOPTION_DECISION.md` §1, §2 는 이미 "copy-only / project-local MVP 방식은 MVP 검증 단계에서는 유효했으나, 다중 프로젝트 운용에서는 본 방향이 아니다" 라고 기록하고 있으며, 본 문서는 그 결정을 구체적 layer / path / flow / metadata 로 풀어낸 current model 이다.
 - 현재 clarified model 은 **global-only target footprint (`<ProjectRoot>/log/` only — 3차 reconciliation 기준) + Claude-operated install/update + metadata-dispatched update** 다. (이전 라운드의 `log/` + `brief/` 표현은 §1 / §6 Layer 4 / §9 BRIEF wording note 의 3차 reconciliation 으로 superseded.)
 - `GLOBAL_INSTALL_UPDATE_MODEL.md` (본 문서) 는 이후 global install / update / self-adoption 의 **모델 / 설계 판단**에 대한 **current model source-of-truth (모델 / 설계 source record)** 다 — install / update **실행 authority 는 아니며**, 실행 operative contract 는 `INSTALL.md` 다 (header *Install-execution authority note*).
-- `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md` 는 그대로 source-of-truth 로 유지된다.
+- `GLOBAL_ADOPTION_DECISION.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md` 는 그대로 source-of-truth 로 유지된다.
 - `POST_MVP_PLAN.md` 는 본 문서를 current global install/update 의 **모델 / 설계 판단** 기준으로 참조하도록 정렬된다 (`POST_MVP_PLAN.md` §10, §11). §9.3 에서 언급한 `brief/` posture reconciliation (script + contract docs) 은 본 문서와 별개의 scoped work 로 수행되어 완료되었다 (§9.3 의 reconciliation 완료 note 참조).
 
 ---

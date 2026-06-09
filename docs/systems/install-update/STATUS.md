@@ -24,7 +24,7 @@ Compact ledger. "Detail" points to the authoritative source; full historical nar
 |---|---|---|---|---|
 | IU-01 | Global adoption operating-layer direction decided | — | shared/global operating layer is the preferred direction; `.ai-harness/` copy is not the default shape | `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §1, §4 |
 | IU-02 | Managed-block marker (`AI_HARNESS_TOOLSET_GLOBAL`) applied to snippets | — | canonical marker form governs CLAUDE.md/AGENTS.md managed-block apply | `GLOBAL_ADOPTION_DECISION.md` §6 |
-| IU-03 | Claude skill global adopt/update/removal procedure documented | — | procedure exists for skill lifecycle | `docs/user_guide/GLOBAL_ADOPTION_PROCEDURE.md` |
+| IU-03 | Claude skill global adopt/update/removal procedure documented | — | procedure exists for skill lifecycle | `INSTALL.md` §10; `scripts/activate-global.ps1` (install/update), `scripts/uninstall-global.ps1` (removal) |
 | IU-04 | ToolRoot/ProjectRoot path-handling audit documented | — | path resolution channels + self-target/dogfooding collision audited; decisions now carried in the invocation contract + path lib | `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md`, `scripts/lib/path.ps1` |
 | IU-05 | Shared/global invocation contract designed (D1–D9) | — | channel chain + as-built invocation contract | `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` |
 | IU-06 | Shared/global mode implemented (8 split units) | `bd0ac83`,`9130c68`,`8234bf1`,`df09bf5`,`dadff4d`,`67430c4`,`14ce6c9`,`bebe7ab`/`043b0e0` | source-side path/invocation behavior in place; NOT actual global activation | `SHARED_GLOBAL_INVOCATION_CONTRACT.md` §6 |
