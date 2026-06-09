@@ -2,9 +2,9 @@
 
 > **현행 status routing.** 본 문서는 install/update/global-adoption 의 design/model/record source 다. **current 상태 / completed-ledger / deferred** 의 authoritative 자리는 `docs/systems/install-update/STATUS.md` + `docs/systems/install-update/DEFERRED.md` 다 (전체 routing 진입점: `docs/current/REPO_READING_GUIDE.md`; roadmap index: `docs/roadmap/INDEX.md`). 본 문서 본문과 system STATUS 가 충돌하면 current 판단은 STATUS 를 따른다.
 
-본 문서는 `ai-harness-toolset` 의 설치 / 업데이트 / 검증 / self-adoption 운영 모델을 기록하는 **current source-of-truth** 다. 앞으로 Claude Code, ChatGPT Web, 사용자는 global install / update / self-adoption 판단 시 본 문서를 기준으로 한다. **모델의 기록이며, implementation 승인이 아니다.**
+본 문서는 `ai-harness-toolset` 의 설치 / 업데이트 / 검증 / self-adoption 운영 **모델 / 설계의 current model source-of-truth (= 모델 / 설계 source record)** 다 — install / update 의 **실행 authority 가 아니다** (실행 operative contract 는 repo root 의 `INSTALL.md` 하나; 아래 *Install-execution authority note*). 앞으로 Claude Code, ChatGPT Web, 사용자는 global install / update / self-adoption 의 **모델 / 설계 판단** 시 본 문서를 기준으로 하되, **install 실행 절차 / 동작 자체는 `INSTALL.md`** 가 결정한다. **모델의 기록이며, implementation 승인이 아니다.**
 
-> **Install-execution authority note.** install / update / reinstall / operational install 의 **실행** 시 operative contract 는 repo root 의 `INSTALL.md` 하나다. install 실행 중에는 본 문서를 포함한 어떤 `docs/` 파일도 읽을 필요가 없고, 읽어서 install 동작을 결정하지 않는다 (`INSTALL.md` 의 anti-coupling 절). 본 문서는 그 install model 의 design / history record (background) 이며 install-time input 이 아니다 — 본 문서가 stale / 수정 / 삭제되어도 install 동작은 `INSTALL.md` 가 전적으로 결정한다. 본문의 "current source-of-truth" 표현은 운영 **모델 문서들 사이**의 우선순위를 가리킬 뿐이며, install 실행 authority (= `INSTALL.md`) 를 override 하지 않는다. 위 "global install / update / self-adoption 판단 시 본 문서를 기준으로 한다" 는 모델 / 설계 판단에 대한 것이지, install 실행 절차를 본 문서에서 읽으라는 의미가 아니다.
+> **Install-execution authority note.** install / update / reinstall / operational install 의 **실행** 시 operative contract 는 repo root 의 `INSTALL.md` 하나다. install 실행 중에는 본 문서를 포함한 어떤 `docs/` 파일도 읽을 필요가 없고, 읽어서 install 동작을 결정하지 않는다 (`INSTALL.md` 의 anti-coupling 절). 본 문서는 그 install model 의 design / history record (background) 이며 install-time input 이 아니다 — 본 문서가 stale / 수정 / 삭제되어도 install 동작은 `INSTALL.md` 가 전적으로 결정한다. 본문이 본 문서를 'current model source-of-truth' / '모델 / 설계 source record' 로 칭하는 표현은 운영 **모델 문서들 사이**의 우선순위를 가리킬 뿐이며, install 실행 authority (= `INSTALL.md`) 를 override 하지 않는다. 본 문서를 install / update 의 **판단 기준** 으로 칭하는 표현 역시 모델 / 설계 판단에 대한 것이지, install 실행 절차 / 동작을 본 문서에서 읽으라는 의미가 아니다 (실행은 `INSTALL.md`).
 
 본 문서가 존재한다는 사실만으로 다음 어느 것도 자동 승인되지 않는다.
 
@@ -584,9 +584,9 @@ graph TD
 
 - 이전 post-MVP decision guide 계열 문서 및 초기 운영 노트에는 **copy-only / project-local / global-install-forbidden posture** 가 있을 수 있다. 그것은 MVP 종료 직후 또는 global direction 확정 이전의 **historical MVP / post-MVP pre-global-decision context** 다. `GLOBAL_ADOPTION_DECISION.md` §1, §2 는 이미 "copy-only / project-local MVP 방식은 MVP 검증 단계에서는 유효했으나, 다중 프로젝트 운용에서는 본 방향이 아니다" 라고 기록하고 있으며, 본 문서는 그 결정을 구체적 layer / path / flow / metadata 로 풀어낸 current model 이다.
 - 현재 clarified model 은 **global-only target footprint (`<ProjectRoot>/log/` only — 3차 reconciliation 기준) + Claude-operated install/update + metadata-dispatched update** 다. (이전 라운드의 `log/` + `brief/` 표현은 §1 / §6 Layer 4 / §9 BRIEF wording note 의 3차 reconciliation 으로 superseded.)
-- `GLOBAL_INSTALL_UPDATE_MODEL.md` (본 문서) 는 이후 global install / update / self-adoption 판단의 **current source-of-truth** 다.
+- `GLOBAL_INSTALL_UPDATE_MODEL.md` (본 문서) 는 이후 global install / update / self-adoption 의 **모델 / 설계 판단**에 대한 **current model source-of-truth (모델 / 설계 source record)** 다 — install / update **실행 authority 는 아니며**, 실행 operative contract 는 `INSTALL.md` 다 (header *Install-execution authority note*).
 - `GLOBAL_ADOPTION_DECISION.md`, `GLOBAL_ADOPTION_PROCEDURE.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md` 는 그대로 source-of-truth 로 유지된다.
-- `POST_MVP_PLAN.md` 는 본 문서를 current global install/update 판단 기준으로 참조하도록 정렬된다 (`POST_MVP_PLAN.md` §10, §11). §9.3 에서 언급한 `brief/` posture reconciliation (script + contract docs) 은 본 문서와 별개의 scoped work 로 수행되어 완료되었다 (§9.3 의 reconciliation 완료 note 참조).
+- `POST_MVP_PLAN.md` 는 본 문서를 current global install/update 의 **모델 / 설계 판단** 기준으로 참조하도록 정렬된다 (`POST_MVP_PLAN.md` §10, §11). §9.3 에서 언급한 `brief/` posture reconciliation (script + contract docs) 은 본 문서와 별개의 scoped work 로 수행되어 완료되었다 (§9.3 의 reconciliation 완료 note 참조).
 
 ---
 
