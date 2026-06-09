@@ -11,5 +11,5 @@
 
 ## Temporary-file hygiene
 
-- Temporary files created **solely** for command execution are cleaned up by the operator before closeout. If such clutter remains, report its path; delete it only after separate explicit user approval.
+- Temporary files created **solely** for command execution are cleaned up by the operator before closeout; on the success path this normal cleanup is automatic and needs no separate prompt or approval. A **distinct** boundary governs any leftover that *remains* after that cleanup (a delete that failed, or an artifact deliberately held for investigation): report its path and delete it only after separate explicit user approval.
 - Evidence, snapshots, logs, source changes, and user-requested artifacts are **not** temporary files and are never swept by this rule.
