@@ -104,7 +104,7 @@ channel 3 의 absent-skip / present-but-incomplete-fail-fast 분기 의도: stab
 
 > **Design history note.** 본 문서의 초기 design 은 4-channel chain (`-ToolRoot` → env → dogfooding → legacy → fail) 이었고 global stable install channel 이 없었다. channel 3 (global stable install) 은 global stable ToolRoot 모델 결정에 따라 Batch 1 구현 단계에서 추가되었고, 본 D1 은 그 as-built 결과로 rewrite 되었다 (R1 decision). 이전 4-channel 서술은 git history 가 권한이다. channel 3 의 payload-completeness 판정 entrypoint 는 as-built 기준 `scripts/review-prepare.ps1` 다 (`scripts/lib/path.ps1` 의 `Test-IsValidToolRootPayload`); 본 문서의 이전 revision 은 removed-legacy `scripts/review-cycle.ps1` 를 그 entrypoint 로 적었고, 본 reconciliation 에서 active surface 에 맞춰 정정했다.
 
-### D2 — `Resolve-CycleScript` / `Resolve-RunScript` fallback 정책
+### D2 — component-script resolver fallback 정책 (`Resolve-RunScript` → `Resolve-ScriptUnderToolRoot`)
 
 **Decision.** 후보 (c) — fallback 시 명시적 warning 출력 후 진행. 단, ToolRoot 가 explicit source (CLI param / env var / global stable install) 로 결정된 경우에는 fallback 없이 throw.
 
@@ -304,7 +304,7 @@ channel 6 의 throw message 는 다음을 포함한다.
 
 ### 5.2 Component script resolution
 
-`Resolve-CycleScript(-Tool $t, -RelativePath $r, -LocalDir $local, -ToolRootSource <explicit|implicit>)` 는 D2 결정을 따른다.
+`Resolve-ScriptUnderToolRoot(-Tool $t, -RelativePath $r, -LocalDir $local, -ToolRootSource <explicit|implicit>)` (review-run / review-verify 는 wrapper `Resolve-RunScript` 로 호출한다) 는 D2 결정을 따른다.
 
 ```
 $candidate = Join-Path $t $r
@@ -450,7 +450,7 @@ snippet body 와 SKILL.md 의 본문 정합화는 §6 의 분할 단위 (step 3,
 > **Batch 실행 현황 note.** step 1 (`Get-ToolRoot`) 과 step 2 (`Resolve-*Script` fallback) 는 Batch 1 (`commit f37c91c` — `Add stable global ToolRoot resolution channel`) 에서 구현·검증·push 되었다. Batch 1 은 그 과정에서 원래 design 의 4-channel chain 에 channel 3 (global stable install) 을 추가했고, 본 문서의 D1 / §5.1 / §5.2 는 그 as-built 결과로 rewrite 되었다 (R1 decision). step 3 (snippet body) 와 step 4 (SKILL.md) 는 Batch 3 에서 구현되었다 — `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 의 Project layout 과 `snippets/claude-skills/ai-harness-review/SKILL.md` 의 step 1 이 as-built 6-channel 모델로 정합화되었다. materialize 된 `~/.claude/skills/ai-harness-review/SKILL.md` 사본의 재동기화는 `GLOBAL_ADOPTION_PROCEDURE.md` §6 절차로 수행하는 별도 작업이다. 나머지 step (5–8) 의 현황은 본 문서 범위 밖이며 git history 가 권한이다.
 
 1. `scripts/lib/path.ps1` 의 `Get-ToolRoot` 갱신 (D1, D3 의 channel chain 적용).
-2. `Resolve-CycleScript` / `Resolve-RunScript` 의 fallback 정책 갱신 (D2).
+2. component-script resolver (`Resolve-RunScript` / `Resolve-ScriptUnderToolRoot`) 의 fallback 정책 갱신 (D2).
 3. `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 의 mode-neutral body 재작성 (D4).
 4. `snippets/claude-skills/ai-harness-review/SKILL.md` 의 script root 분기 갱신 (D5).
 5. `scripts/review-verify.ps1` 의 toolRoot binding 검증 추가 (D6). **— superseded:** meta.json sidecar binding 은 미채택 (현행 2-file record 무-sidecar); 현행 `-ToolRoot` 는 payload fail-fast / component-script 해소용 (D6 / §5.4 Superseded note).
