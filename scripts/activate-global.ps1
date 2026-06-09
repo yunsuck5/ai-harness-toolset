@@ -9,9 +9,11 @@ param(
     # with -Apply, and no effect on the canonical-overwrite (skill) surface.
     [switch] $ShowFullDiff,
     # Optional: require an interactive two-choice (Yes/No) confirmation before -Apply mutates
-    # (direct-terminal use). Default OFF — the explicit -Apply invocation is the command-implied
-    # approval. With -ConfirmInteractive set but no interactive terminal, the apply ABORTS (it does
-    # not silently fall through). It is strictly two-state; there is NO multi-choice menu.
+    # (direct-terminal use). Default OFF — the explicit -Apply invocation is itself this activation
+    # apply step's approval (no interactive selector forced). This is the activation step's own
+    # apply-time approval, distinct from update-source's "command-implied approval" namespace
+    # (INSTALL.md §13.8). With -ConfirmInteractive set but no interactive terminal, the apply ABORTS
+    # (it does not silently fall through). It is strictly two-state; there is NO multi-choice menu.
     [switch] $ConfirmInteractive
 )
 
@@ -340,7 +342,8 @@ if ($preflightFailed -gt 0) {
 }
 
 # Optional interactive two-choice confirmation (direct-terminal use). Default OFF: the explicit
-# -Apply invocation is the command-implied approval. NO multi-choice menu; NO auto-yes.
+# -Apply invocation is itself this activation step's approval — distinct from update-source's
+# "command-implied approval" namespace (INSTALL.md §13.8). NO multi-choice menu; NO auto-yes.
 if ($ConfirmInteractive) {
     if (-not (script:Test-ActivateApprovalInteractive)) {
         Write-Host 'activate-global: FAIL -ConfirmInteractive requested but no interactive terminal is available; no mutation performed'

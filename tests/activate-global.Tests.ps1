@@ -421,7 +421,7 @@ Describe 'activate-global Codex AGENTS.override.md precedence (Phase 4a)' {
 }
 
 Describe 'activate-global approval is two-state only, never multi-choice (Phase 4a)' {
-    It 'AC-AG-NO-MULTICHOICE: a default -Apply (command-implied) prints no menu and no interactive prompt' {
+    It 'AC-AG-NO-MULTICHOICE: a default -Apply (explicit invocation = approval, no selector) prints no menu and no interactive prompt' {
         $dir = script:New-CaseDir -CaseName 'nomenu'
         $ch  = Join-Path $dir '.claude'
         $cx  = Join-Path $dir '.codex'
@@ -433,7 +433,7 @@ Describe 'activate-global approval is two-state only, never multi-choice (Phase 
         $result.Output | Should -Not -Match 'Payload only'
         $result.Output | Should -Not -Match 'Chat about'
         $result.Output | Should -Not -Match 'Type something'
-        # No interactive selector is rendered on the default command-implied apply path.
+        # No interactive selector is rendered on the default -Apply path (explicit invocation = approval).
         $result.Output | Should -Not -Match 'Up/Down to move'
     }
 

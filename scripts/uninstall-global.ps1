@@ -4,7 +4,8 @@ param(
     [string] $ClaudeHome,
     [string] $CodexHome,
     # -Apply performs the DESTRUCTIVE uninstall (IU-B-08 batch 3). Without it the default run is a
-    # READ-ONLY dry-run. Approval is command-implied: the explicit -Apply invocation is the decision.
+    # READ-ONLY dry-run. Approval is the explicit -Apply invocation itself — this uninstall step's own
+    # apply-time decision, distinct from update-source's "command-implied approval" namespace (INSTALL.md §13.8).
     [switch] $Apply,
     # Root under which the temp finalizer run-id dir is created (default %TEMP%). Overridable so tests
     # keep all finalizer temp artifacts inside TestDrive and never touch the real %TEMP%.
