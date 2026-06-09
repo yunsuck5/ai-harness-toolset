@@ -38,7 +38,7 @@
 
 ### Historical lineage (preserved, not current)
 
-본 자리의 결정은 두 단계의 reconciliation 을 거쳐 왔다.
+본 자리의 결정은 세 단계의 reconciliation 을 거쳐 왔다.
 
 - **1차 reconciliation (historical, superseded)** — 한때 canonical 을 `<ProjectRoot>/log/brief/BRIEF.md` 로 두고 root `<ProjectRoot>/brief/` 를 forbidden 으로 표기한 framing.
 - **2차 reconciliation (historical, superseded)** — 그 framing 이 정정되어 target repo product canonical Brief 를 `<ProjectRoot>/brief/BRIEF.md` 로 두고, `<ProjectRoot>/log/brief/BRIEF.md` 를 narrow source-side primitive 의 seed destination (operator-local runtime artifact, not promoted to canonical) 으로 분류한 framing.
