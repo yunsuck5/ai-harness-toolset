@@ -164,30 +164,7 @@ channel 3 의 absent-skip / present-but-incomplete-fail-fast 분기 의도: stab
 
 ### D6 — ToolRoot binding in `review-verify`
 
-> **Superseded — D6 sidecar-binding mechanism (as-built reconciliation).** 아래 결정의 **meta.json `toolRoot` 일치 검증** 과 **call-site forward (cycle / run → verifier)** 는 removed-legacy `scripts/review-cycle.ps1` + sidecar (`meta.json`) 설계의 일부였다. 현행 canonical record 는 2-file (`input.md` + `result.md`) 이며 **sidecar 가 없다** (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §1 / §10; runtime provenance 는 `result.md` *안* 의 `## Reviewer run provenance` 블록으로 보존). 따라서 현행 `scripts/review-verify.ps1` 는 **meta.json 의 `toolRoot` 를 읽거나 비교하지 않으며 mismatch FAIL 도 없다.** 또한 `scripts/review-run.ps1` 은 `review-verify.ps1` 를 호출하지 않으므로 run→verify 의 `-ToolRoot` forward 도 존재하지 않는다. **as-built 로 살아남은 것은 `-ToolRoot` optional parameter 뿐이며**, 그 역할은 (a) D1 priority chain 으로 ToolRoot 를 runtime 재해소하여 payload 부재 / 불완전 시 fail-fast 하고, (b) component verifier (`scripts/review-input-verify.ps1`) 를 ToolRoot 아래에서 해소하는 것이다 (sidecar binding 아님). 아래 본문은 historical design record 다.
-
-**Decision.** `review-verify.ps1` 에 `toolRoot` 일치 검증을 추가하되, ToolRoot 의 runtime 재현을 위해 verifier 의 parameter / call-site contract 를 함께 확장한다.
-
-Parameter contract.
-
-- `scripts/review-verify.ps1` 가 새 optional parameter `-ToolRoot <path>` 를 받는다.
-- runtime 의 `Get-ToolRoot` 는 D1 의 priority chain 을 그대로 사용하되, verifier 안에서는 `-ToolRoot` 인자가 첫 번째 channel (channel 1) 의 입력이다. 즉, 호출자가 `-ToolRoot` 를 명시하면 그 값으로 channel 1 이 결정되고, 명시하지 않으면 channel 2 (env var) → channel 3 (global stable install) → channel 4 (dogfooding) → channel 5 (legacy `.ai-harness/`) 순으로 fallback 한다.
-
-Call-site contract.
-
-- `scripts/review-cycle.ps1` 와 `scripts/review-run.ps1` 가 verifier 를 호출할 때, 자신이 prepare/run 단계에서 resolve 한 ToolRoot 값을 `-ToolRoot $tool` 로 verifier 에 forward 한다. 본 forward 는 default 와 `-RequireResult` 두 호출 모두에 적용된다.
-- 이로써 D1 channel 1 (explicit `-ToolRoot`) 로 prepare/run 된 packet 이 동일 invocation 안에서 verify 될 때, verifier 가 동일 ToolRoot context 를 재현한다. channel 2 (env var), 3 (global stable install), 4 (dogfooding), 5 (legacy) 로 resolve 된 ToolRoot 도 동일하게 forward 된다.
-- 사용자가 packet 생성 이후 별도 invocation 으로 `review-verify.ps1` 만 직접 실행하는 경우, `-ToolRoot` 를 명시하지 않으면 verifier 안에서 channel 2/3/4/5 가 그대로 동작한다. meta.json 의 `toolRoot` 와 runtime resolution 이 mismatch 면 FAIL.
-
-검증 동작.
-
-- meta.json 의 `toolRoot` 와 runtime 에서 결정된 ToolRoot 를 normalize 한 뒤 case-insensitive ordinal 비교.
-- mismatch 면 FAIL.
-- meta.json 에 `toolRoot` 가 없으면 FAIL (이미 review-prepare 가 채워 넣고 있으므로 기존 packet 도 호환된다).
-
-**Rationale.** audit Gap G8 가 식별한 binding gap 을 닫는다. 단순히 verifier 안에서 `Get-ToolRoot` 만 재호출하면 D1 channel 1 (explicit `-ToolRoot`) 로 만든 packet 이 verifier 입장에서 channel 2/3/4/5 로 fallback 하여 false-fail 할 수 있다. 새 `-ToolRoot` parameter 와 cycle/run 단계의 forward 는 그 false-fail 을 차단한다.
-
-backward compat 영향. 기존 source repo 에서 만든 review packet 은 `toolRoot` 가 이미 meta.json 에 기록되어 있으므로 본 변경으로 retroactive 한 FAIL 이 발생하지 않는다 (당시 review-cycle 설계에서 review-prepare 가 `meta.json` 에 `toolRoot` 를 기록하던 라인을 가리키던 historical 참조 — 현행 `scripts/review-prepare.ps1` 에는 해당 라인이 없다; D6 머리 Superseded note 참조). cycle/run 단계의 forward 도 기존 호출 site 의 행위를 보존한다 (channel 2/3/4/5 가 동일 ToolRoot 로 resolve 되는 환경에서는 forward 여부와 무관하게 mismatch 가 발생하지 않는다). 단, 본 결정의 implementation 단계에서 기존 sample packet 의 회귀 test 를 한 번 더 확인한다.
+> **Superseded — D6 mechanism removed (historical decision; git history).** D6 은 removed-legacy `scripts/review-cycle.ps1` + sidecar (`meta.json`) 설계에서 `review-verify` 에 **meta.json `toolRoot` 일치 검증** 과 **call-site forward (cycle / run → verifier)** 를 더하려던 design 결정이었다. 현행 canonical record 는 2-file (`input.md` + `result.md`) 이며 **sidecar 가 없다** (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §1 / §10; runtime provenance 는 `result.md` *안* 의 `## Reviewer run provenance` 블록). 따라서 현행 `scripts/review-verify.ps1` 는 **meta.json / sidecar 의 `toolRoot` 를 읽거나 비교하지 않으며 mismatch FAIL 도 없고**, `scripts/review-run.ps1` 은 **`review-verify.ps1` 를 호출하지 않는다**. **as-built 로 살아남은 것은 `-ToolRoot` optional parameter 뿐이며**, 그 역할은 (a) D1 priority chain 으로 ToolRoot 를 runtime 재해소하여 payload 부재 / 불완전 시 fail-fast, (b) component verifier (`scripts/review-input-verify.ps1`) 를 ToolRoot 아래에서 해소하는 것이다 (sidecar binding 아님). 상세 parameter / call-site / verification mechanics (및 stale `-RunId` 기반 pseudo-code) 는 git history 에 보존된다. §5.4 는 같은 removed mechanism 의 pseudo-code 자리로 동일하게 historical 이다.
 
 ### D7 — untracked exclusion policy
 
@@ -310,53 +287,7 @@ Get-ProjectRoot(-ProjectRoot $p)
 
 ### 5.4 review-verify ToolRoot binding
 
-> **Superseded — as-built reconciliation (D6 Superseded note 참조).** 아래 pseudo-code 의 **meta.json `toolRoot` 비교 (Verification body)** 와 **Call-site forward (cycle / run → verify)** 는 review-cycle / sidecar 설계의 historical design record 다. 현행 2-file record (무-sidecar) 에서 `scripts/review-verify.ps1` 는 sidecar `toolRoot` 를 비교하지 않고 `-ToolRoot` 를 D1 chain 재해소 (payload fail-fast) + component-script 해소에만 사용하며, `scripts/review-run.ps1` 은 `review-verify.ps1` 를 호출하지 않는다.
-
-D6 에 따라 `review-verify.ps1` 의 parameter contract, call-site forward, 검증 동작이 다음과 같이 정의된다.
-
-Parameter contract (verifier side).
-
-```
-review-verify.ps1
-  -RunId <string>          (required, existing)
-  -ProjectRoot <path?>     (optional, existing)
-  -ToolRoot <path?>        (optional, new)
-  -RequireResult           (switch, existing)
-```
-
-verifier 내부의 ToolRoot resolution 은 §5.1 의 priority chain 을 따른다. `-ToolRoot` 가 verifier 에 forward 된 경우 channel 1 이 활성화된다.
-
-Call-site forward (cycle / run side).
-
-```
-review-cycle.ps1 invokes review-verify.ps1:
-  -RunId $RunId
-  -ProjectRoot $project
-  -ToolRoot $tool          # forwarded from cycle's resolved ToolRoot
-
-review-run.ps1 invokes review-verify.ps1:
-  -RunId $RunId
-  -ProjectRoot $project
-  -ToolRoot $tool          # forwarded from run's resolved ToolRoot
-
-(둘 다 default mode 와 -RequireResult 호출 모두에 적용)
-```
-
-Verification body.
-
-```
-$metaToolRoot = [string]$meta.toolRoot
-if empty: FAIL meta.toolRoot missing
-
-$runtimeTool = Get-ToolRoot(-ToolRoot $ToolRoot, -ProjectRoot $project)   # §5.1 chain
-
-$metaToolFull = GetFullPath($metaToolRoot).TrimEnd(sep)
-$runtimeToolFull = GetFullPath($runtimeTool).TrimEnd(sep)
-if not equal (case-insensitive ordinal):
-  FAIL toolRoot mismatch. meta=<metaToolFull> runtime=<runtimeToolFull>
-```
-
-본 검증은 `projectRoot`, `projectLogRoot` 검증과 동일한 절차 / 동일한 FAIL 출력 형식을 따른다.
+> **Superseded — D6 mechanism removed (historical; git history).** 이 자리에는 removed-legacy review-cycle / sidecar (`meta.json`) 설계의 review-verify ToolRoot-binding pseudo-code — Parameter contract (stale `-RunId` 기반), Call-site forward (`review-cycle.ps1` / `review-run.ps1` → `review-verify.ps1`), Verification body (`$meta.toolRoot` 비교 + mismatch FAIL) — 가 있었다. 현행 `scripts/review-verify.ps1` 는 sidecar `toolRoot` 를 비교하지 않고 `-ToolRoot` 를 D1 chain 재해소 (payload fail-fast) + component-script 해소에만 사용하며, `scripts/review-run.ps1` 은 `review-verify.ps1` 를 호출하지 않는다 (현행 review-verify 의 record-identifying parameter 는 `-ReviewTaskId` / `-Perspective` / `-Pass` 로 옛 단일 `-RunId` 를 대체한다 — `-RunId` 는 active surface 에 없다). 상세 pseudo-code 는 git history 에 보존된다 (D6 Superseded note 참조).
 
 ### 5.5 untracked exclusion
 
