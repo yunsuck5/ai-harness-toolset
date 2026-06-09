@@ -597,6 +597,8 @@ field 는 세 group 으로 나뉜다 — **core** (모든 mode 의 stdout + run.
 
 **Trust 모델 (정직한 disclosure).** command-implied approval 은 "operator 가 사용자의 명시 승인 후에만 update-source 를 호출한다" 는 정책 신뢰에 의존한다 — script 는 invoke 만으로 사람 승인 여부를 자체 검증하지 않는다 (이는 operator 가 어떤 사용자 명령이든 충실히 수행한다는 것과 동일한 신뢰 모델이다). 따라서 raw automation / CI 가 `-Mode update-source` 를 직접 호출하면 hard guards 를 통과하는 한 mutation 이 일어날 수 있다 — 이 entrypoint 는 사용자 승인 흐름 안에서만 호출되어야 한다. command-implied approval 은 **기존 install 의 update-source 에만** 적용되고 fresh install / 새 destination 생성 / activation apply / source-cut override 에는 적용되지 않는다 (§7.1.1).
 
+**용어 구분 (namespace) — update-source 의 command-implied approval ≠ activation/uninstall 의 `-Apply` 승인.** `scripts/activate-global.ps1` (activation apply) 와 `scripts/uninstall-global.ps1` (uninstall apply) 도 자신의 명시 `-Apply` 호출을 'command-implied' 승인으로 기술하지만, 그것은 본 §13.8 의 command-implied approval 과 **다른 scope** 의 같은 패턴이다. 본 §13.8 의 것은 **update-source 의 payload mutation** 승인(별도 terminal yes/no 불요)이고, activate-global / uninstall-global 의 것은 그 **별도 explicit step 안에서** 명시 `-Apply` invocation 자체가 그 step 의 승인이라는 뜻이다 (interactive selector 를 강제하지 않으며, activate-global 의 `-ConfirmInteractive` 같은 추가 confirm 은 opt-in). activation apply 는 update-source 승인에 **포함되지 않는 별도 step** 이며 (§7.2 matrix), §7.2 의 'command-implied 적용 안 됨' 은 update-source 의 command-implied approval 이 activation 으로 자동 확장되지 않는다는 뜻이다 (activation step 자체의 `-Apply` 승인을 부정하는 것이 아니다).
+
 **Optional interactive confirm (`-ConfirmInteractive`).** 직접 터미널 운영자가 추가 confirm 을 원하면 `-ConfirmInteractive` 로 **정확히 두 선택지 (Yes / No)** 의 terminal selector 를 켤 수 있다 (default OFF). 그 selector 는:
 
 - 선택지는 **정확히 Yes 와 No 둘뿐** — `Other` / `Custom` / `Type something` / `Chat about this` 같은 제3 선택지를 노출하지 않는다.
