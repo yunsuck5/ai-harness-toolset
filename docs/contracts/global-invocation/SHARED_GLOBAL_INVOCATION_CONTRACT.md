@@ -15,6 +15,7 @@
 - global install / update 운영 모델: `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`
 - subsystem scope: `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`
 - review record 계약: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`
+- Brief location / shape 계약: `docs/contracts/brief/BRIEF_CONTRACT.md`
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
