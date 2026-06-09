@@ -18,7 +18,7 @@
 
 `input.md` 는 operator-role AI (Claude Code) 가 작성한다. `result.md` 는 **dual-authored** 다 — verdict/disclosure body 는 active reviewer adapter (현재 MVP adapter = codex) 가 작성하고, 그 뒤에 `scripts/review-run.ps1` 가 machine-emitted `## Reviewer run provenance` 블록을 append 한다 (§3). script 는 두 파일에 대한 deterministic gate 를 담당하고 의미 판단은 하지 않으며, 추가로 그 runner-appended provenance 블록을 emit 한다 — 이 블록은 canonical result.md 안의 machine run-fact 이지 sidecar 파일도 의미 판단도 아니다 (§3 / §4).
 
-본 contract 는 review artifact 의 **specification of record** (의도된 protocol / shape 의 기록) 다 — operative authority 가 아니다. review 동작의 operative authority 는 **active surface** 에 있다: shape / verdict / disclosure 의 런타임 강제는 `scripts/review-verify.ps1` · `scripts/review-input-verify.ps1` (+ `scripts/review-run.ps1`), shape 정의는 `templates/review-input.md` · `templates/review-result.md`, operator 절차 / 보고는 `snippets/claude-skills/ai-harness-review/SKILL.md` 가 가진다. 따라서 **active mirror** (위 templates / skill / scripts) 와 본 contract 가 충돌하면 **active surface 가 우선하고, 본 contract 를 그 active 동작에 맞춰 reconcile 한다** (root *Final hard rule*). **doc mirror** (`docs/user_guide/OPERATOR_GUIDE_KR.md` · `README.md`) 는 본 contract 를 read-first record 로 따른다 (doc-vs-doc). 아래 per-section 의 mirror-precedence 도 이 model 을 따른다.
+본 contract 는 review artifact 의 **specification of record** (의도된 protocol / shape 의 기록) 다 — operative authority 가 아니다. review 동작의 operative authority 는 **active surface** 에 있다: shape / verdict / disclosure 의 런타임 강제는 `scripts/review-verify.ps1` · `scripts/review-input-verify.ps1` (+ `scripts/review-run.ps1`), shape 정의는 `templates/review-input.md` · `templates/review-result.md`, operator 절차 / 보고는 `snippets/claude-skills/ai-harness-review/SKILL.md` 가 가진다. 따라서 **active mirror** (위 templates / skill / scripts) 와 본 contract 가 충돌하면 **active surface 가 우선하고, 본 contract 를 그 active 동작에 맞춰 reconcile 한다** (root *Final hard rule*). **doc mirror** (`README.md`) 는 본 contract 를 read-first record 로 따른다 (doc-vs-doc). 아래 per-section 의 mirror-precedence 도 이 model 을 따른다.
 
 ## 1. Review task and pass directory
 
@@ -192,7 +192,7 @@ R1 first batch 의 scope 와 boundary:
 - `templates/review-input.md` `## Final verdict` section — reviewer 가 매 round 본 convention 을 적용하도록 operator 가 input.md 안에 instruction 을 전달.
 - `snippets/claude-skills/ai-harness-review/SKILL.md` step 4 (input authoring) + step 6 (verify-and-read) — operator workflow mirror.
 
-본 mirror set 외부의 surface (`docs/user_guide/OPERATOR_GUIDE_KR.md`, `README.md`, Tier D managed-block snippets `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) 로의 mirror 확장은 사용자가 명시 결정한 별도 batch 의 scope 영역이다 (본 §3c 의 도입 batch 와 분리). 그 batch 가 entry 되지 않거나 indefinite defer 되면 본 mirror set 만으로 운영되며 reviewer reception path 는 영향을 받지 않는다.
+본 mirror set 외부의 surface (`README.md`, Tier D managed-block snippets `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) 로의 mirror 확장은 사용자가 명시 결정한 별도 batch 의 scope 영역이다 (본 §3c 의 도입 batch 와 분리). 그 batch 가 entry 되지 않거나 indefinite defer 되면 본 mirror set 만으로 운영되며 reviewer reception path 는 영향을 받지 않는다.
 
 mirror surface 와 본 §3c 가 충돌하면 active mirror (template / skill / scripts) 는 active surface 가 operative authority 로 우선하고 (본 §3c 는 spec-of-record), doc mirror 는 본 §3c 를 record 로 따른다.
 
@@ -484,7 +484,6 @@ result.md 가 shape gate (`review-verify -RequireResult`) 를 통과하더라도
 - `templates/review-input.md` `## Final verdict` section — verdict vocabulary + 본 §6a 의 pointer.
 - `templates/review-result.md` — verdict / 4 H2 / 선택 section 의 작성 방법 + reader 가 §6a 의 next-action mapping 에 따라 sections 를 읽는다는 pointer.
 - `snippets/claude-skills/ai-harness-review/SKILL.md` step 6 (verify and read), step 7 (report) — practical operator behavior mirror.
-- `docs/user_guide/OPERATOR_GUIDE_KR.md` §11 (verdict handling), §17 Verdict 처리 (post-MVP 운용 관점) — operator-facing mirror.
 - `README.md` — public-facing 1-line pointer to §6a.
 - Tier D managed-block snippets (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) — minimal guard sentence + cross-reference (mapping table 자체는 포함하지 않음; long-term migration direction = skill / hooks / scripts / contracts).
 
