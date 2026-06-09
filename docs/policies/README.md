@@ -16,4 +16,4 @@ Read a policy when your task touches its domain — each is **conditional**, not
 
 ## What does not belong here
 
-Always-on cross-cutting rules (those live in `snippets/**` / the global managed block or the repo-local root `CLAUDE.md` / `AGENTS.md`, not `docs/`), artifact/protocol contracts (→ `docs/contracts/`), release-facing user guides (→ `docs/user_guide/`), and project philosophy (→ `docs/project/`).
+Always-on cross-cutting rules (those live in `snippets/**` / the global managed block or the repo-local root `CLAUDE.md` / `AGENTS.md`, not `docs/`), artifact/protocol contracts (→ `docs/contracts/`), and project philosophy (→ `docs/project/`).

@@ -42,7 +42,6 @@ The placement criterion is **how a document is read**, not how many topics it to
 | `docs/architecture/` | cross-cutting architecture decisions/audits spanning multiple subsystems/surfaces, deciding a structural target **before** implementation (e.g. `architecture/instruction-surface/INSTRUCTION_SURFACE_PLAN.md`); routes to `docs/systems/**` for current state, does not own it | when planning/auditing how a concern is divided across surfaces |
 | `docs/project/` | project identity, scope, positioning, philosophy | when scoping "what this project is/isn't" |
 | `docs/decisions/` | active decision records (incl. post-MVP decision record + numbered-order authority) | when checking "what was decided" |
-| `docs/user_guide/` | human-facing operation / evaluation / adoption guides | when a human learns or evaluates the tool |
 | `docs/roadmap/` | roadmap/milestone routing only (INDEX, current milestones) | when checking remaining order |
 | `docs/backlog/` | backlog index/routing only | when looking up open work |
 
@@ -56,15 +55,15 @@ Briefly: an always-on-for-every-task rule belongs on an always-on surface outsid
 
 ## 7. How AI/operator should navigate docs
 
-Start from `docs/current/REPO_READING_GUIDE.md` for "which document do I read first for this question" (read-first routing, not authority over the active surface). Open only the scope folder your task needs. Do not treat a `user_guide/` document as a policy/contract authority.
+Start from `docs/current/REPO_READING_GUIDE.md` for "which document do I read first for this question" (read-first routing, not authority over the active surface). Open only the scope folder your task needs.
 
 ## 8. How humans should navigate docs
 
-Start from `docs/user_guide/` for operating and evaluating the tool, and `README.md` (repo root) for the high-level overview. For "what is done / what remains / what to do next," ask the agent for an on-demand status briefing (`docs/policies/DOCS_OPERATING_MODEL.md` §6) or read per-system `docs/systems/*/STATUS.md` directly; there is no committed project-current summary file.
+Start from `README.md` (repo root) for the high-level overview and the day-to-day natural-language UX. For "what is done / what remains / what to do next," ask the agent for an on-demand status briefing (`docs/policies/DOCS_OPERATING_MODEL.md` §6) or read per-system `docs/systems/*/STATUS.md` directly; there is no committed project-current summary file.
 
 ## 9. What not to do (orientation)
 
-In short: do not place execution policy under `user_guide/`, artifact contracts under `policies/`, or task-scoped/conditional policy into always-on priming; do not leave any markdown at `docs/` root except this file; do not preserve a location merely because it was recently committed or heavily referenced.
+In short: do not place artifact contracts under `policies/`, or task-scoped/conditional policy into always-on priming; do not leave any markdown at `docs/` root except this file; do not preserve a location merely because it was recently committed or heavily referenced.
 
 → Operative rule (the binding placement prohibitions): `rules/docs-working-model.md` (*Docs placement*).
 

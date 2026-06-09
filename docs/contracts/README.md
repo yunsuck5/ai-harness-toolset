@@ -15,4 +15,4 @@ Read a contract when you are **producing or validating that specific artifact/pr
 
 ## What does not belong here
 
-Operator execution policy (→ `docs/policies/`), current system status (→ `docs/systems/<system>/STATUS.md`), roadmap/milestone routing (→ `docs/roadmap/`), and human-facing tutorials (→ `docs/user_guide/`). Per-subsystem `STATUS.md` documents route to these contracts as the read-first specification of record (the operative authority for active behavior is the active surface the contract records — scripts / templates / skills / config / tests); they do not replace them.
+Operator execution policy (→ `docs/policies/`), current system status (→ `docs/systems/<system>/STATUS.md`), and roadmap/milestone routing (→ `docs/roadmap/`). Per-subsystem `STATUS.md` documents route to these contracts as the read-first specification of record (the operative authority for active behavior is the active surface the contract records — scripts / templates / skills / config / tests); they do not replace them.

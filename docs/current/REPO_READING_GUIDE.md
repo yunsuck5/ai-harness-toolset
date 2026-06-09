@@ -12,9 +12,9 @@ How to read each entry:
 
 > **Historical preservation.** Superseded / historical material is preserved in **git history**, not maintained as current docs (there is no separate archive docs tree). Current orientation / context lives in the active docs — routed per question by this file (`docs/current/REPO_READING_GUIDE.md`); per-system current status lives in `docs/systems/<system>/STATUS.md`. The operative authority for active behavior remains on the active surface, which these docs route to and describe.
 >
-> **The docs taxonomy / source-of-truth reset and the access-pattern restructure have been applied.** The Primary/Secondary pointers below point at the final access-pattern locations: artifact/protocol contracts under `docs/contracts/<area>/`, task-scoped policies under `docs/policies/`, project docs under `docs/project/`, active decisions under `docs/decisions/`, the human guide under `docs/user_guide/`, and per-system status under `docs/systems/**`. `docs/roadmap/` now holds milestone routing only (`INDEX.md`, `CURRENT_MILESTONES.md`); the operating-layer decision moved to `docs/decisions/GLOBAL_ADOPTION_DECISION.md` and the Step 3 implementation-planning guide to `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md`. This enumeration records that **restructure outcome**, not an exhaustive current docs-layer registry — the authoritative, up-to-date layer list (including layers added afterward, e.g. `docs/architecture/`) is `docs/README.md` §5.
+> **The docs taxonomy / source-of-truth reset and the access-pattern restructure have been applied.** The Primary/Secondary pointers below point at the final access-pattern locations: artifact/protocol contracts under `docs/contracts/<area>/`, task-scoped policies under `docs/policies/`, project docs under `docs/project/`, active decisions under `docs/decisions/`, and per-system status under `docs/systems/**`. `docs/roadmap/` now holds milestone routing only (`INDEX.md`, `CURRENT_MILESTONES.md`); the operating-layer decision moved to `docs/decisions/GLOBAL_ADOPTION_DECISION.md` and the Step 3 implementation-planning guide to `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md`. This enumeration records that **restructure outcome**, not an exhaustive current docs-layer registry — the authoritative, up-to-date layer list (including layers added afterward, e.g. `docs/architecture/`) is `docs/README.md` §5.
 >
-> **Docs are organized by access pattern (supersedes "Policy A").** The earlier "Policy A" — keeping active contracts and policies directly under `docs/` root as a flat cross-system layer — is **superseded** by the placement policy in `docs/README.md`: `docs/` root holds only `README.md`, and each document belongs in the scope folder matching its access pattern (contracts → `docs/contracts/<area>/`, execution policies → `docs/policies/`, project identity → `docs/project/`, active decisions → `docs/decisions/`, human guide → `docs/user_guide/`). The per-system `STATUS.md` documents still **route to** these as the read-first home for their topic rather than replacing them. The docs placement orientation map is `docs/README.md`; the binding placement rules live on the active surface at `rules/docs-working-model.md` (*Docs placement*).
+> **Docs are organized by access pattern (supersedes "Policy A").** The earlier "Policy A" — keeping active contracts and policies directly under `docs/` root as a flat cross-system layer — is **superseded** by the placement policy in `docs/README.md`: `docs/` root holds only `README.md`, and each document belongs in the scope folder matching its access pattern (contracts → `docs/contracts/<area>/`, execution policies → `docs/policies/`, project identity → `docs/project/`, active decisions → `docs/decisions/`). The per-system `STATUS.md` documents still **route to** these as the read-first home for their topic rather than replacing them. The docs placement orientation map is `docs/README.md`; the binding placement rules live on the active surface at `rules/docs-working-model.md` (*Docs placement*).
 
 ---
 
@@ -28,7 +28,7 @@ How to read each entry:
 
 ## Q2. review workflow
 
-- **Primary:** `docs/user_guide/OPERATOR_GUIDE_KR.md` §7 (natural-language UX), `snippets/claude-skills/ai-harness-review/SKILL.md`.
+- **Primary:** `snippets/claude-skills/ai-harness-review/SKILL.md` (natural-language UX + run orchestration).
 - **Secondary:** `docs/systems/review/STATUS.md` (current review system status), `docs/policies/REVIEW_EFFORT_GUIDE.md`.
 - **Implementation:** `scripts/review-prepare.ps1` → `scripts/review-run.ps1` → `scripts/review-verify.ps1` (input gate: `scripts/review-input-verify.ps1`).
 - **Historical:** removed-legacy review-cycle / quoting-hardening / clean-target smoke-criteria detail is preserved in git history.
@@ -45,7 +45,7 @@ How to read each entry:
 ## Q4. Brief primitive
 
 - **Primary:** `docs/contracts/brief/BRIEF_CONTRACT.md` (3rd reconciliation; canonical Brief = `<ProjectRoot>/log/brief/BRIEF.md`).
-- **Secondary:** `docs/systems/brief/STATUS.md` + `DEFERRED.md` (current status + BF Level 3 deferred), `docs/user_guide/OPERATOR_GUIDE_KR.md` §7b.
+- **Secondary:** `docs/systems/brief/STATUS.md` + `DEFERRED.md` (current status + BF Level 3 deferred).
 - **Implementation:** `scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `scripts/brief-status.ps1`, `templates/brief/BRIEF.md`.
 - **Historical:** `docs/contracts/brief/BRIEF_CONTRACT.md` Historical lineage (1st·2nd), and the superseded brief wording inside `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` / `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` / `docs/decisions/GLOBAL_ADOPTION_DECISION.md`.
 - **Do not use:** root `<ProjectRoot>/brief/` (rejected), any user-home operator-local runtime root (rejected). Brief is the only restore source.
@@ -71,7 +71,7 @@ Answered **on demand**, not from a committed project-current mirror (see `docs/p
 ## Q7. self-adoption / Step 5
 
 - **Primary:** `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9 (self-adoption model), `docs/decisions/POST_MVP_PLAN.md` §11 step 5.
-- **Secondary:** `docs/systems/install-update/STATUS.md` completed-ledger IU-13 (self-adoption sub-topic; full narrative preserved in git history), `docs/user_guide/OPERATOR_GUIDE_KR.md` §17 (post-MVP CLI-only operating notes).
+- **Secondary:** `docs/systems/install-update/STATUS.md` completed-ledger IU-13 (self-adoption sub-topic; full narrative preserved in git history).
 - **Implementation:** **performed** at resolved HEAD `8293878d20465aba1132c1bca189fa4a53bc0d43` (apply 2026-05-25). Performed via `INSTALL.md` §2A AI-guided operational install — no productized installer / wrapper was adopted. Activation surfaces (Claude / Codex managed blocks + Claude `ai-harness-review` skill) were already in canonical steady-state at apply time and recorded as no-op. Closeout ledger: `docs/systems/install-update/STATUS.md` IU-13.
 - **Historical:** the 1st·2nd framing in `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` §9 BRIEF wording note; the previous "not implemented" status that pre-dates the 2026-05-25 closeout.
 - **Do not use:** the previous "not implemented" framing — self-adoption was performed as of 2026-05-25 (`docs/systems/install-update/STATUS.md` IU-13). Also do not read this closeout as auto-approval of commit / push / publish / release or of any further global mutation; each remains a separate explicit user-approved decision.

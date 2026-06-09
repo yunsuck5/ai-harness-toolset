@@ -12,7 +12,7 @@
 
 - review record 계약: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`
 - subsystem scope: `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`
-- operator 운용: `docs/user_guide/OPERATOR_GUIDE_KR.md`
+- operator 운용: `snippets/claude-skills/ai-harness-review/SKILL.md`
 - reviewer config: `docs/policies/REVIEWER_CONFIG_POLICY.md`
 - post-MVP 결정 기록: `docs/decisions/POST_MVP_PLAN.md`
 
@@ -208,7 +208,7 @@ review 호출 직전에 사용자가 한 번 훑어보는 checklist 다. 자동 
 
 ### Example 1 — docs-only wording clarification
 
-상황: `docs/user_guide/OPERATOR_GUIDE_KR.md` 의 한 문장을 더 명확하게 다듬는 변경. heading 변경 없음, contract 의미 변경 없음.
+상황: 한 docs/ rationale 문서의 한 문장을 더 명확하게 다듬는 변경. heading 변경 없음, contract 의미 변경 없음.
 
 - 권장 effort: no review, 또는 (review 시) 명확히 단순한 local correctness packet 이므로 `-Effort low` 로 downgrade 가능.
 - Target files: 해당 docs 파일 하나만.
