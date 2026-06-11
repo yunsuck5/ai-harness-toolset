@@ -15,7 +15,7 @@ Applies to developing the `ai-harness-toolset` repository — the binding rules 
 Every repo document artifact belongs to exactly one class; mixing roles across classes is a defect:
 
 1. **Planning artifacts** — Design / Plan / Spec (lifecycle below). Only the Spec stays live after closeout.
-2. **Temporary work artifacts (Work Packet)** — round-scoped execution aids (see *Work Packet*). Never committed to the repo.
+2. **Temporary work artifacts (Work Packet)** — round-scoped temporary work documents (see *Work Packet*). A **committed temporary document** carried by git until closeout; deleted at closeout (preservation = git history).
 3. **Operator reports / closeout evidence** — execution results, review results, validation evidence, point-in-time states. Live under `<ProjectRoot>/log/**` (runtime area), never in planning-artifact bodies.
 4. **Active implementation surfaces** — scripts, skills, snippets, templates, config, tests, root instruction files, `rules/**`. The active surface owns behavior; a doc describes it (root *Final hard rule*).
 5. **Future-work queue** — per-domain `<domain>_backlog.md` (see *Future-work queue*).
@@ -32,6 +32,7 @@ docs/
     <domain>_backlog.md          # compact future-work queue
     <domain>_design.md           # exists only during a change (retired at closeout)
     <domain>_plan.md             # exists only during a change (retired at closeout)
+    <domain>_work_packet.md      # exists only during a change (deleted at closeout)
 ```
 
 - **Execution is per-domain-batch only.** This declaration creates no immediate mutation; each legacy structure migrates in its own scoped batch with owner absorption proof + reference sweep + review gate.
@@ -55,7 +56,7 @@ live Spec + live Implementation → 변경 필요 → Design → Plan → live S
 ```
 
 - **Design** — why / what / owner-surface model / non-goals / which live Spec or implementation it modifies. Not permanently live.
-- **Plan** — **approval-target decisions only**: batch order / per-batch scope / hard boundaries / validation expectations / review focus / Work Packet declarations (purpose, absorption target, retire condition) / open-decision close points. A Plan is not a work memo — investigation results and execution sequences belong in a Work Packet.
+- **Plan** — **approval-target decisions only**: batch order / per-batch scope / hard boundaries / validation expectations / review focus / Work Packet declarations (purpose, absorption target, retire condition) / open-decision close points. A Plan is not a work memo — investigation results and round-scoped analysis belong in a Work Packet; execution sequences and execution records belong in operator reports under `log/**`.
 - **Spec** — the domain's **target-state specification** (identity below). Live after closeout.
 - **Implementation** — built from the **final Spec only** (no direct Design/Plan reference); it may consult a Work Packet, which never substitutes for the Spec. At closeout the Spec and the implementation are reconciled 1:1.
 
@@ -65,13 +66,14 @@ A Spec's meaning is time-phased: at writing completion it is the **blueprint of 
 
 A Spec carries (the spec template fixes these as its eight sections): **Header** (what this document is / chain outcome / what it is not — each within 3 lines) · **목표 상태** (what the domain is/must be, in normative sentences) · **Owner surface 지도** · **Durable boundary** (standing allow/forbid boundaries; rules and specs own the *class/invariant*, concrete path values are owned by the active surface / `INSTALL.md`) · **Cross-domain interface** (interfaces only, never another domain's semantics) · **Validation expectation** · **Review focus** · **Lifecycle state**.
 
-**A Spec must not contain:** round-scoped candidate-file lists, execution command sequences, staging procedures, review results, readiness judgments, or point-in-time work status (the lifecycle-state section's compact markers excepted). Those belong to the Work Packet or operator reports.
+**A Spec must not contain:** round-scoped candidate-file lists, execution command sequences, staging procedures, review results, readiness judgments, or point-in-time work status (the lifecycle-state section's compact markers excepted). Round-scoped **analysis** (candidate-file classification, investigation notes) belongs to the Work Packet; execution mechanics and records (command sequences, staging procedures, review / validation results, readiness judgments, point-in-time status) belong to operator reports under `log/**` (the *Work Packet* content boundary below).
 
 ## Work Packet (temporary work artifact)
 
-- **Role**: round-scoped execution aid — application order, investigation results, edge-case notes, reviewer questions, candidate-file worklists, execution checklists. **Not an approval target.**
-- **Location**: `<ProjectRoot>/log/work/<topic>/` (runtime area). **Never committed to the repo**; committed docs never durable-point into it.
-- **Lifecycle**: created only when needed (a Plan may declare its necessity, absorption target, and retire condition); at closeout its current-bearing content is absorbed into the Spec / the correct owner surface / the closeout report; then it is **deleted**.
+- **Role**: a round-scoped temporary work document — line-level reference classification, investigation notes, implementation notes, evidence proposals, reviewer-question preparation, edge-case notes. **Not an approval target, not a live domain document, never a substitute for the Spec.**
+- **Content boundary (forbidden in a Work Packet)**: execution command sequences, staging procedures, review results, validation results, readiness judgments — these are execution mechanics / records and belong to operator reports under `<ProjectRoot>/log/**` (or are not recorded at all).
+- **Location**: `docs/<domain>/<domain>_work_packet.md` — a **committed temporary document** in the domain folder, carried by git until closeout. No subfolder evasion (`docs/<domain>/work/` is forbidden; the *Stable filename rule* applies). Being tracked makes it transferable, not live or authoritative.
+- **Lifecycle**: created only when needed (a Plan may declare its necessity, absorption target, and retire condition); at closeout its current-bearing content is absorbed into the Spec / the correct owner surface / the closeout report; then the file is **deleted** — preservation is git history, like a Design/Plan retire.
 - Boundary aid (when the Spec/Work-Packet line wavers): "is it still true after this round ends?" — true → Spec; false → Work Packet.
 
 ## Future-work queue (`<domain>_backlog.md`)
@@ -123,7 +125,7 @@ A Design/Plan/Spec lifecycle closeout is not done until **all** hold:
 
 ## Stable filename rule
 
-- Domain documents use **domain-prefixed role filenames**: `<domain>_design.md` / `<domain>_plan.md` / `<domain>_spec.md` / `<domain>_backlog.md`. Re-creating after deletion reuses the same role filename. Forbidden: `<topic>_*.md` topic-named files, filename-evading subfolder splitting, per-feature design/plan/spec proliferation inside one domain.
+- Domain documents use **domain-prefixed role filenames**: `<domain>_design.md` / `<domain>_plan.md` / `<domain>_spec.md` / `<domain>_backlog.md` / `<domain>_work_packet.md` (the last is the class-2 temporary work document — a lifecycle role filename existing only during a change, deleted at closeout; not an auxiliary role doc). Re-creating after deletion reuses the same role filename. Forbidden: `<topic>_*.md` topic-named files, filename-evading subfolder splitting (e.g. `docs/<domain>/work/`), per-feature design/plan/spec proliferation inside one domain.
 - Auxiliary role docs (`_policy` / `_contract` / `_state` / `_status` / `_guide`) are **deferred** — not created by default; introduced only by an explicit Design/Plan decision.
 - **Package-local form vs domain form.** This package's `templates/` / `checklists/` files carry the package prefix `docs-working-model_` and a `_template` / `_checklist` role suffix: they are **forms that produce another domain's** documents, not a domain's own artifacts.
 

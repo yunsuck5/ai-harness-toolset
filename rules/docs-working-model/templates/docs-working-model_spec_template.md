@@ -1,6 +1,6 @@
 # {{DOMAIN}} Spec
 
-> 사용법: 이 형틀을 복제해 `<domain>_spec.md` 로 채운다. 모든 `{{...}}` 를 치환한다. Spec 은 **목표 상태 명세**다 — 작성 완료 시 = 구현할 목표 상태의 청사진, closeout 후 = 구현물과 1:1 동기화된 live 명세. **담으면 안 되는 것**: 회차 candidate-file 목록 · 실행 명령 시퀀스 · staging 절차 · review result · readiness 판정 · 시점성 작업 상태(→ Work Packet / operator report 소관). Spec 이 Plan 을 위반하면 stop → re-plan(rewind); 구현이 boundary 를 초과하면 stop → ask user. 승인 경계는 Header 에서 1회만 진술한다(절마다 반복 금지).
+> 사용법: 이 형틀을 복제해 `<domain>_spec.md` 로 채운다. 모든 `{{...}}` 를 치환한다. Spec 은 **목표 상태 명세**다 — 작성 완료 시 = 구현할 목표 상태의 청사진, closeout 후 = 구현물과 1:1 동기화된 live 명세. **담으면 안 되는 것**: 회차 candidate-file 목록 · 실행 명령 시퀀스 · staging 절차 · review result · readiness 판정 · 시점성 작업 상태(분석·분류 → Work Packet, 실행 메커닉·기록 → operator report `log/**` 소관). Spec 이 Plan 을 위반하면 stop → re-plan(rewind); 구현이 boundary 를 초과하면 stop → ask user. 승인 경계는 Header 에서 1회만 진술한다(절마다 반복 금지).
 
 ## Header
 

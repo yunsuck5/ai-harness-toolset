@@ -1,6 +1,6 @@
 # {{DOMAIN}} Plan
 
-> 사용법: 이 형틀을 복제해 `<domain>_plan.md` 로 채운다. 모든 `{{...}}` 를 치환한다. Plan 은 **승인 대상인 의사결정만** 담는다 — 작업 메모가 아니다. 조사 결과·실행 순서 세부·candidate-file 작업 목록은 Work Packet(`log/work/<topic>/`) 소관. Plan 이 Design 을 위반하면 stop → Design 재설계 후 재시작(rewind). Plan 은 영구 live 아님 — closeout 시 흡수 후 retire(삭제). 이 Plan 은 mutation/commit/push 승인이 아니다(1회 진술).
+> 사용법: 이 형틀을 복제해 `<domain>_plan.md` 로 채운다. 모든 `{{...}}` 를 치환한다. Plan 은 **승인 대상인 의사결정만** 담는다 — 작업 메모가 아니다. 조사 결과·line 분류·candidate-file 분석·구현 노트는 Work Packet(`docs/<domain>/<domain>_work_packet.md` — committed temporary, closeout 시 삭제) 소관이고, 실행 명령 시퀀스·staging 절차·실행 기록은 operator report(`log/**`) 소관. Plan 이 Design 을 위반하면 stop → Design 재설계 후 재시작(rewind). Plan 은 영구 live 아님 — closeout 시 흡수 후 retire(삭제). 이 Plan 은 mutation/commit/push 승인이 아니다(1회 진술).
 
 ## Header
 
