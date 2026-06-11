@@ -4,11 +4,12 @@ Applies to developing the `ai-harness-toolset` repository — the binding rules 
 
 Read this rule **before** changing `docs/` content or closing out work; the root `CLAUDE.md` / `AGENTS.md` *Docs trigger map* (`Source / docs` row) wires that trigger. The file existing is not what makes it apply — it applies because the root instruction files trigger it.
 
-> **Package note.** This file is the operative home of the `rules/docs-working-model` rule package (`rules/docs-working-model/`). The package is planned to gain a `templates/` set (Design / Plan / Spec) and a `checklists/` set (Design / Plan / Spec conformance + closeout) in a later **Batch B** — those files are **not** created yet, so this is a package *transition*, not a completed package. Package entry / routing is via `rules/README.md`.
+> **Package note.** This file is the operative home of the `rules/docs-working-model` rule package (`rules/docs-working-model/`). The package now carries a `templates/` set (Design / Plan / Spec — `templates/docs-working-model_design_template.md` / `_plan_template.md` / `_spec_template.md`) and a `checklists/` set (Design / Plan / Spec conformance + closeout — `checklists/docs-working-model_design_checklist.md` / `_plan_checklist.md` / `_spec_checklist.md` / `_closeout_checklist.md`), and the Design / Plan / Spec lifecycle rules are incorporated below. With this the package is **operationally complete (Batch A package transition + Batch B templates/checklists introduction)**. Package entry / routing is via `rules/README.md`; the package-internal templates / checklists are routed from *Template / checklist conformance gate* below. (Applying the model to a first domain, and any later residue cleanup, are separate follow-on work and are not implied by this completion.)
 
 ## When this rule applies
 
 - Any task that **places, moves, changes, or closes out** `docs/` content.
+- Any task that produces or revises a repo document / normative artifact through the **Design → Plan → Spec lifecycle** (below) — authoring a Design / Plan / Spec, closing one out, or retiring an absorbed Design / Plan.
 - It governs docs **placement and the change/closeout process**. It does not re-decide per-question routing (→ `docs/current/REPO_READING_GUIDE.md`, an orientation surface).
 
 ## Top-down operating model
@@ -122,6 +123,63 @@ Silently skipping a listed doc is a gate failure — a doc that was never mentio
 - This rule defines the docs change/closeout **process**; applying it to any specific surface is its own scoped batch. It does not restructure folders, move/archive existing narrative, or collapse routing layers — those need their own scoped decisions governed by `docs/README.md`.
 - It does **not** approve any commit / push / publish / merge / release, or any global/user filesystem mutation.
 - Any source/doc change governed by this model goes through the normal Codex review gate (`scripts/review-prepare.ps1` → `scripts/review-run.ps1` → `scripts/review-verify.ps1 -RequireResult`, or the equivalent `ai-harness-review` skill). A verdict (`yes` / `no` / `yes with risk`) does not auto-approve commit / push / publish / merge / release / adoption.
+
+## Design / Plan / Spec lifecycle
+
+A repo document / normative change is produced through a fixed lifecycle, not authored ad hoc:
+
+```text
+live Spec + live Implementation → 변경 필요 → Design → Plan → Spec
+  → Implementation (final Spec only) → closeout sync
+  → Design/Plan 의 current-bearing 내용 Spec 흡수 → Design/Plan retire
+  → Spec live · Implementation live
+```
+
+- **Design** — why / what / owner-surface model / non-goals / which live Spec or implementation it modifies. Not permanently live.
+- **Plan** — decomposes the Design into batches / scope / hard boundaries / validation / review gate.
+- **Spec** — implementation boundary / allowed-forbidden active-surface changes / validation + review criteria / reconstructibility. Live after closeout.
+- **Implementation** — built from the **final Spec only** (no direct Design/Plan reference, no separate document); at closeout the Spec and the implementation are reconciled 1:1.
+
+The package-local templates and checklists for these stages live under this package's `templates/` and `checklists/` (see *Template / checklist conformance gate*).
+
+## Stage rewind
+
+- **Plan violates the Design** → stop, redesign the Design, restart the Plan.
+- **Spec violates the Plan** → stop, re-plan, restart the Spec.
+- **Implementation exceeds the Spec boundary** → stop and ask the user; do not silently widen scope.
+
+## Lifecycle closeout — absorption and retire
+
+This is the lifecycle-artifact closeout. It is a different dimension from *Closeout reconciliation — two-level gate* (which reconciles a docs-tree change top-down across orientation and per-system surfaces); the two govern different closeout aspects and neither restates the other. A Design/Plan/Spec lifecycle closeout is not done until **all** hold:
+
+- Spec ↔ implementation reconciled 1:1.
+- Every current-bearing Design decision is expressed in the Spec (or the correct owner surface).
+- Every still-relevant Plan batch/boundary decision is expressed in the Spec (or owner).
+- No unique live meaning remains only in the Design or Plan.
+- Inbound references are updated / removed.
+- The Design and Plan can be **retired** — retire is **deletion** (repo lifecycle); non-current historical detail is preserved by **git history**, never by an archive / `consumed/` folder.
+
+## Stable filename rule
+
+- Design / Plan / Spec for a domain use **domain-prefixed role filenames**: `<domain>_design.md` / `<domain>_plan.md` / `<domain>_spec.md`. Re-creating after deletion reuses the same role filename. Forbidden: `<topic>_*.md` topic-named files, filename-evading subfolder splitting, per-feature design/plan/spec proliferation inside one domain.
+- Auxiliary role docs (`_policy` / `_contract` / `_state` / `_status` / `_guide`) are **deferred** — not created by default; introduced only by an explicit Design/Plan decision.
+- **Package-local form vs domain form.** This package's own `templates/` / `checklists/` files carry the package-name prefix `docs-working-model_` and the `_template` / `_checklist` role suffix, marking them as **forms used to produce another domain's** Design/Plan/Spec — they are not themselves a domain's Design/Plan/Spec. So `docs-working-model_spec_template.md` (a form) is a different kind from a future `<domain>_spec.md` (an actual Spec); the former produces the latter.
+
+## Domain-local closure and top-down reference
+
+- **Domain-local closure** — each domain document is understandable from its own folder + its own live Spec + its own active surface + the stable interfaces it explicitly depends on. If understanding it requires reading another domain's semantics, the Spec has failed.
+- **Top-down reference** — root `README.md` → `rules/README.md` → this rule package → a classification / domain index (when needed) → a domain Spec. A lower layer does not complete its meaning by holding a durable pointer up to a routing document (no backlink); it may identify its own scope/owner, but must close without its parent.
+
+## Cross-domain semantics restriction
+
+- Domain↔domain **semantics** references are forbidden by default. Narrowly allowed: a stable path / interface, schema, contract boundary, marker / payload-root / lifecycle boundary, or a domain whose essence is a cross-domain mechanism (install-update) — and even then only the **interface**, never a restatement of the other domain's semantics.
+- Test: "if the target domain's implementation changes, does this reference change too?" yes = semantics (forbidden); no = interface (allowed).
+
+## Template / checklist conformance gate
+
+- Each produced Design / Plan / Spec must pass its corresponding checklist, and a lifecycle closeout must pass the closeout checklist. Conformance is recorded as "present / absent + one-line evidence", not enforced prose.
+- This package's lifecycle forms live package-internally: templates at `templates/docs-working-model_design_template.md` / `_plan_template.md` / `_spec_template.md`, and checklists at `checklists/docs-working-model_design_checklist.md` / `_plan_checklist.md` / `_spec_checklist.md` / `_closeout_checklist.md`. `rules/README.md` routes to this package; this operative home routes to those forms.
+- A produced Spec is **not itself operative authority** over the active surface it specifies — the active surface owns behavior (root *Final hard rule*); the Spec specifies it and is reconciled against it.
 
 ## Tier note
 
