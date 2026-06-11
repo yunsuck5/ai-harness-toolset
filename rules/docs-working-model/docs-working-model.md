@@ -4,6 +4,8 @@ Applies to developing the `ai-harness-toolset` repository — the binding rules 
 
 Read this rule **before** changing `docs/` content or closing out work; the root `CLAUDE.md` / `AGENTS.md` *Docs trigger map* (`Source / docs` row) wires that trigger. The file existing is not what makes it apply — it applies because the root instruction files trigger it.
 
+> **Package note.** This file is the operative home of the `rules/docs-working-model` rule package (`rules/docs-working-model/`). The package is planned to gain a `templates/` set (Design / Plan / Spec) and a `checklists/` set (Design / Plan / Spec conformance + closeout) in a later **Batch B** — those files are **not** created yet, so this is a package *transition*, not a completed package. Package entry / routing is via `rules/README.md`.
+
 ## When this rule applies
 
 - Any task that **places, moves, changes, or closes out** `docs/` content.

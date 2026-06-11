@@ -1,6 +1,6 @@
 # docs/ — Docs Tree Orientation & Placement Map
 
-This file is the **docs tree orientation / placement map** — a reading aid for what each `docs/` layer is *for* and how AI/operator and humans navigate the tree. It is **not** an operative authority. The binding placement rules (docs-root-holds-only-`README.md`, folder-as-scope-boundary, where-a-new-doc-belongs, the reference-update-on-move rule) live on the active surface at **`rules/docs-working-model.md`** (*Docs placement*), per the root *Final hard rule*; this file keeps the **map** and the **why**. Question routing is `docs/current/REPO_READING_GUIDE.md` (§10); the docs change/closeout process rule is `rules/docs-working-model.md`.
+This file is the **docs tree orientation / placement map** — a reading aid for what each `docs/` layer is *for* and how AI/operator and humans navigate the tree. It is **not** an operative authority. The binding placement rules (docs-root-holds-only-`README.md`, folder-as-scope-boundary, where-a-new-doc-belongs, the reference-update-on-move rule) live on the active surface at **`rules/docs-working-model/docs-working-model.md`** (*Docs placement*), per the root *Final hard rule*; this file keeps the **map** and the **why**. Question routing is `docs/current/REPO_READING_GUIDE.md` (§10); the docs change/closeout process rule is `rules/docs-working-model/docs-working-model.md`.
 
 The section numbers below are preserved so existing `§N` references resolve; binding-rule sections now hold orientation + a pointer to the operative rule.
 
@@ -12,13 +12,13 @@ The folder structure under `docs/` is an **AI/operator scope-control surface**, 
 
 `docs/` root holds **only `README.md`** — no other markdown lives at `docs/` root (this applies to the `docs/` folder only, not the repo-root `README.md` or `INSTALL.md`).
 
-→ Operative rule: `rules/docs-working-model.md` (*Docs placement*).
+→ Operative rule: `rules/docs-working-model/docs-working-model.md` (*Docs placement*).
 
 ## 3. A folder is a scope boundary (orientation)
 
 Markdown in one folder is meant to be interpretable, read together, under one purpose — a folder narrows scope rather than collecting unrelated material.
 
-→ Operative rule (folder-as-scope-boundary constraint): `rules/docs-working-model.md` (*Docs placement*).
+→ Operative rule (folder-as-scope-boundary constraint): `rules/docs-working-model/docs-working-model.md` (*Docs placement*).
 
 ## 4. Structure follows access pattern (orientation)
 
@@ -29,7 +29,7 @@ The placement criterion is **how a document is read**, not how many topics it to
 - **anti-mixing** — unrelated scopes do not share a lookup context.
 - **anti-fragmentation** — always-read or tightly-coupled material is not scattered into a dense reference web.
 
-→ Operative rule (the binding consolidate / partition / anti-mixing / anti-fragmentation form): `rules/docs-working-model.md` (*Docs placement*).
+→ Operative rule (the binding consolidate / partition / anti-mixing / anti-fragmentation form): `rules/docs-working-model/docs-working-model.md` (*Docs placement*).
 
 ## 5. Folder layers (the map)
 
@@ -51,7 +51,7 @@ The placement criterion is **how a document is read**, not how many topics it to
 
 Briefly: an always-on-for-every-task rule belongs on an always-on surface outside `docs/`; otherwise a doc goes in the single layer (§5) matching its access pattern, partitioned to avoid pulling unrelated scope and kept consolidated to avoid a dense reference chain.
 
-→ Operative rule (the ordered where-a-new-doc-belongs procedure): `rules/docs-working-model.md` (*Docs placement*).
+→ Operative rule (the ordered where-a-new-doc-belongs procedure): `rules/docs-working-model/docs-working-model.md` (*Docs placement*).
 
 ## 7. How AI/operator should navigate docs
 
@@ -65,21 +65,21 @@ Start from `README.md` (repo root) for the high-level overview and the day-to-da
 
 In short: do not place artifact contracts under `policies/`, or task-scoped/conditional policy into always-on priming; do not leave any markdown at `docs/` root except this file; do not preserve a location merely because it was recently committed or heavily referenced.
 
-→ Operative rule (the binding placement prohibitions): `rules/docs-working-model.md` (*Docs placement*).
+→ Operative rule (the binding placement prohibitions): `rules/docs-working-model/docs-working-model.md` (*Docs placement*).
 
 ## 10. The three complementary docs surfaces (orientation)
 
-- `docs/README.md` (this file): the docs **structure/placement map** — what each layer is for. The binding placement rules are the operative rule `rules/docs-working-model.md` (*Docs placement*).
+- `docs/README.md` (this file): the docs **structure/placement map** — what each layer is for. The binding placement rules are the operative rule `rules/docs-working-model/docs-working-model.md` (*Docs placement*).
 - `docs/current/REPO_READING_GUIDE.md`: per-question **read-first routing** (which document answers which question, and the reading-priority order on conflict) — orientation, not authority over the active surface.
-- `rules/docs-working-model.md`: the docs **change/closeout process** operative rule (top-down flow, single-home, STATUS/BACKLOG shape, on-demand briefing, two-level closeout gate); its rationale/record is `docs/policies/DOCS_OPERATING_MODEL.md`.
+- `rules/docs-working-model/docs-working-model.md`: the docs **change/closeout process** operative rule (top-down flow, single-home, STATUS/BACKLOG shape, on-demand briefing, two-level closeout gate); its rationale/record is `docs/policies/DOCS_OPERATING_MODEL.md`.
 
-On overlap, placement orientation is this file, question-routing is `REPO_READING_GUIDE.md`, and the binding placement + change/closeout rules are `rules/docs-working-model.md`.
+On overlap, placement orientation is this file, question-routing is `REPO_READING_GUIDE.md`, and the binding placement + change/closeout rules are `rules/docs-working-model/docs-working-model.md`.
 
 ## 11. Reference update rule when moving docs (orientation)
 
 Moving or splitting a document requires updating every inbound reference and preserving / remapping any section anchors referenced elsewhere.
 
-→ Operative rule: `rules/docs-working-model.md` (*Docs placement*, reference-update-on-move).
+→ Operative rule: `rules/docs-working-model/docs-working-model.md` (*Docs placement*, reference-update-on-move).
 
 ## 12. Historical preservation (rationale)
 

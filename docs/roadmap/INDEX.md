@@ -1,6 +1,6 @@
 # docs/roadmap/ — Index & Milestone Routing
 
-`docs/roadmap/` is a **milestone routing layer only**. After the access-pattern restructure (2026-05-23) it contains exactly two files — this `INDEX.md` and `CURRENT_MILESTONES.md`. It holds no design, model, decision, contract, audit, or planning bodies; those were relocated to their access-pattern homes (see below). The docs placement orientation map is `docs/README.md` (binding placement rules → `rules/docs-working-model.md`); this INDEX is a routing note that follows it and does not redefine it.
+`docs/roadmap/` is a **milestone routing layer only**. After the access-pattern restructure (2026-05-23) it contains exactly two files — this `INDEX.md` and `CURRENT_MILESTONES.md`. It holds no design, model, decision, contract, audit, or planning bodies; those were relocated to their access-pattern homes (see below). The docs placement orientation map is `docs/README.md` (binding placement rules → `rules/docs-working-model/docs-working-model.md`); this INDEX is a routing note that follows it and does not redefine it.
 
 This INDEX's existence does not by itself approve any implementation, source/doc mutation, install/update/restore, global/user filesystem mutation, or commit/push/publish/merge/release/adoption.
 
@@ -39,5 +39,5 @@ Any source/doc change under `docs/roadmap/` goes through the normal Codex review
 
 ## 6. Source-of-truth relationship
 
-- The docs placement orientation map is `docs/README.md` (binding placement rules → `rules/docs-working-model.md`); question→read-first routing lives in `docs/current/REPO_READING_GUIDE.md`, and current status lives in the per-system `docs/systems/<system>/STATUS.md`.
+- The docs placement orientation map is `docs/README.md` (binding placement rules → `rules/docs-working-model/docs-working-model.md`); question→read-first routing lives in `docs/current/REPO_READING_GUIDE.md`, and current status lives in the per-system `docs/systems/<system>/STATUS.md`.
 - This INDEX is a routing note for `docs/roadmap/` only; it does not override any relocated doc's contract/decision.
