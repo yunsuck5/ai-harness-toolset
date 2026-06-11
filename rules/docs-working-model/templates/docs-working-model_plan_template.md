@@ -1,43 +1,25 @@
-# {{DOMAIN}} Plan — docs-working-model lifecycle
+# {{DOMAIN}} Plan
 
-> 사용법: 이 형틀을 복제해 `<domain>_plan.md` 로 채운다. 모든 `{{...}}` 를 치환/제거한다. Plan 이 Design 을 위반하면 stop → Design 재설계 후 Plan 재시작(rewind). Plan 은 영구 live 아님 — closeout 시 흡수 후 retire.
+> 사용법: 이 형틀을 복제해 `<domain>_plan.md` 로 채운다. 모든 `{{...}}` 를 치환한다. Plan 은 **승인 대상인 의사결정만** 담는다 — 작업 메모가 아니다. 조사 결과·실행 순서 세부·candidate-file 작업 목록은 Work Packet(`log/work/<topic>/`) 소관. Plan 이 Design 을 위반하면 stop → Design 재설계 후 재시작(rewind). Plan 은 영구 live 아님 — closeout 시 흡수 후 retire(삭제). 이 Plan 은 mutation/commit/push 승인이 아니다(1회 진술).
 
-## Batch decomposition
+## Header
 
-{{batch 표 + 통합/분리 근거. 각 batch 의 한 줄 goal·선행·upfront 약속과의 관계}}
+{{이 문서는 무엇의 Plan 인가 — 3줄 이내}}
+{{이 체인이 끝나면 무엇이 되는가 — 3줄 이내}}
+{{이 문서가 아닌 것 — 3줄 이내}}
 
-## Per-batch scope
+## Batch 순서와 의존
 
-{{각 batch 가 다루는 것 / 다루지 않는 것(후속 batch 로 미루는 것)}}
+{{batch 순서 + 순서 근거(의존 관계). 통합/분리 근거}}
 
-## Hard boundaries (per batch)
+## Batch 정의
 
-{{각 batch 의 불가침 경계 — not-touched 표면, INSTALL.md 불가침 등}}
+{{각 batch 마다: 목적(한 줄) / scope(다루는 것·다루지 않는 것) / hard boundary(불가침 표면) / validation expectation(무엇이 성립해야 하는가) / review focus / Work Packet 필요 여부(필요 시 목적·흡수 대상·retire 조건 3요소 선언)}}
 
-## Reference sweep requirement (4-class)
+## Open decision 의 close 지점
 
-{{각 mutation batch 전 4-class sweep(filename·path / bare-token·ID / folder-as-bucket / semantic-phrasing) 요구}}
+{{상위 Design 의 open decision 각각이 어느 batch 에서 닫히는지 배정. Plan 자신이 닫는 결정이 있으면 명시}}
 
-## Owner absorption proof requirement
+## Stage rewind 조건
 
-{{삭제/이동/retire 시 current-bearing 내용의 흡수처 증명 요구(흡수 없는 broad delete 금지)}}
-
-## Validation gate
-
-{{각 batch closeout 전 validation — 로컬 실행 가능한 것만}}
-
-## Codex review gate
-
-{{corrected working tree 기준 글로벌 stable Codex review(perspective; dual 권장)}}
-
-## Approval boundary
-
-분류/계획은 mutation 승인이 아니다. 실제 mutation 은 batch Spec + 명시 승인 후. commit/push 는 별개 명시 승인.
-
-## Rollback / rewind
-
-{{Plan 이 Design 위반 시 stop + Design rewind; batch shape 가 바뀌면 재검토}}
-
-## Readiness judgment
-
-- ready for Spec: {{yes | no | yes with risk}}
+{{이 Plan 이 Design 위반 시 / 하위 Spec 이 이 Plan 위반 시 / 구현이 Spec boundary 초과 시의 stop·rewind 경로}}

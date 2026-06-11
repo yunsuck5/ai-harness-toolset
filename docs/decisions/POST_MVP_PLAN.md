@@ -4,7 +4,7 @@
 
 post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 implementation, scoped work, scheduling, 또는 release 가 자동 승인되지 않는다. 각 항목은 별도 scoped 승인을 거친 뒤에만 작업이 시작된다.
 
-> **현행 routing (docs taxonomy reset).** 본 문서의 current status / next action / completed / deferred 판단은 이제 다음 자리가 authoritative 다 — `docs/current/REPO_READING_GUIDE.md` (question→read-first routing), system status (`docs/systems/install-update/STATUS.md` + `DEFERRED.md`, `docs/systems/review/STATUS.md`, `docs/systems/brief/STATUS.md` + `DEFERRED.md`), 그리고 §11 numbered order 의 1:1 routing view `docs/roadmap/CURRENT_MILESTONES.md`. "현재 진행 / 잔여 / 다음 할 일" 은 committed mirror 가 아니라 on-demand status-briefing 으로 답한다 (`docs/policies/DOCS_OPERATING_MODEL.md` §6); 기존 `docs/current/PROJECT_STATE.md` 와 `docs/current/NEXT_ACTIONS.md` (project-current mirror) 는 제거되었다. 본 POST_MVP_PLAN.md 는 post-MVP **decision record (§1–§9)** 와 numbered remaining order (§11) 의 authority 로 유지된다. §10 의 상세 commit-bound completed narrative 는 git history 에 보존된다. current 판단에는 위 SoT/system 자리를 먼저 본다.
+> **현행 routing (docs taxonomy reset).** 본 문서의 current status / next action / completed / deferred 판단은 이제 다음 자리가 authoritative 다 — `docs/current/REPO_READING_GUIDE.md` (question→read-first routing), system status (`docs/systems/install-update/STATUS.md` + `DEFERRED.md`, `docs/systems/review/STATUS.md`, `docs/systems/brief/STATUS.md` + `DEFERRED.md`), 그리고 §11 numbered order 의 1:1 routing view `docs/roadmap/CURRENT_MILESTONES.md`. "현재 진행 / 잔여 / 다음 할 일" 은 committed mirror 가 아니라 on-demand status-briefing 으로 답한다 (`rules/docs-working-model/docs-working-model.md` 의 *On-demand status-briefing model*); 기존 `docs/current/PROJECT_STATE.md` 와 `docs/current/NEXT_ACTIONS.md` (project-current mirror) 는 제거되었다. 본 POST_MVP_PLAN.md 는 post-MVP **decision record (§1–§9)** 와 numbered remaining order (§11) 의 authority 로 유지된다. §10 의 상세 commit-bound completed narrative 는 git history 에 보존된다. current 판단에는 위 SoT/system 자리를 먼저 본다.
 
 ---
 
@@ -143,7 +143,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 ## 10. Post-MVP status summary
 
-본 절은 post-MVP 결정 항목을 한 자리에서 가리키는 routing 요약이며, live 진행 상태판이 아니다. "무엇이 done / remains / next" 의 현행 판단은 per-system `docs/systems/*/STATUS.md` · `BACKLOG.md` · `DEFERRED.md` 와 `docs/roadmap/CURRENT_MILESTONES.md` 가 authoritative 하고 on-demand status-briefing 으로 답한다(`docs/policies/DOCS_OPERATING_MODEL.md` §6). 본 절은 그 자리를 가리킬 뿐 현재 상태를 다시 mirror 하지 않는다. 다른 절보다 자세하지 않으며, §1–§9 본문과 충돌하면 본문이 우선한다.
+본 절은 post-MVP 결정 항목을 한 자리에서 가리키는 routing 요약이며, live 진행 상태판이 아니다. "무엇이 done / remains / next" 의 현행 판단은 per-system `docs/systems/*/STATUS.md` · `BACKLOG.md` · `DEFERRED.md` 와 `docs/roadmap/CURRENT_MILESTONES.md` 가 authoritative 하고 on-demand status-briefing 으로 답한다(`rules/docs-working-model/docs-working-model.md` 의 *On-demand status-briefing model*). 본 절은 그 자리를 가리킬 뿐 현재 상태를 다시 mirror 하지 않는다. 다른 절보다 자세하지 않으며, §1–§9 본문과 충돌하면 본문이 우선한다.
 
 ### Completed (source repo side)
 

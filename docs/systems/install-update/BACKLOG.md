@@ -12,6 +12,7 @@ Open, not-yet-started install / update / operational candidates. **This file is 
 | IU-B-04 | Install validation report evidence hygiene | strongly-preserved polishing backlog; separate PASS verdict from anomalous wrapper signal in closeout reports | git history |
 | IU-B-05 | Snapshot auxiliary evidence exactness wording | wording-accuracy polishing for snapshot / evidence reports | git history |
 | IU-B-06 | Long-lived docs commit hash hygiene (cross-cutting) | low-priority doc hygiene; keep literal commit hashes out of long-lived docs; spans roadmap + install docs | git history |
+| IU-B-13 | `snippets/rules/` concrete-path audit (concrete-path value vs normative boundary) | separate scoped audit — start on explicit user instruction; recheck before the docs end-state project-level batch starts | `rules/terminology-glossary.md` pending entry (queue row fixed by docs-working-model batch M) |
 
 ## Closed / retired (tombstones)
 
@@ -23,7 +24,7 @@ One-line tombstones for ID continuity only. The authoritative closed record is t
 - **[CLOSED]** IU-B-10 — uninstall package-discovery docs hardening (installed-root README "Uninstalling this install" section; snippets untouched). See STATUS ledger IU-B-10; design §14; full narrative in git history.
 - **[CLOSED]** IU-B-12 — install bootstrap-clone cleanup enforcement (`INSTALL.md` §6.1 fresh-install cleanup rule; snippets untouched, no code change). See STATUS ledger IU-B-12; full narrative in git history.
 
-(There is no IU-B-11; the next free ID is IU-B-13.)
+(There is no IU-B-11; the next free ID is IU-B-14.)
 
 ## Where closed/operational items are recorded
 

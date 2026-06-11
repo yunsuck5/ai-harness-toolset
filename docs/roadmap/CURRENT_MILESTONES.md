@@ -1,6 +1,6 @@
 # Current Milestones
 
-The post-MVP **remaining-order** milestones, carried 1:1 from `docs/decisions/POST_MVP_PLAN.md` §11. This is the current routing view of the numbered order; the authority for the order itself (and the rule that reordering / adding / removing a step needs separate scoped approval) remains `docs/decisions/POST_MVP_PLAN.md` §11. Per-step status detail lives in `docs/systems/install-update/STATUS.md` and `docs/systems/install-update/DEFERRED.md`; "what to do next" is answered on demand (`docs/policies/DOCS_OPERATING_MODEL.md` §6), not from a committed active queue.
+The post-MVP **remaining-order** milestones, carried 1:1 from `docs/decisions/POST_MVP_PLAN.md` §11. This is the current routing view of the numbered order; the authority for the order itself (and the rule that reordering / adding / removing a step needs separate scoped approval) remains `docs/decisions/POST_MVP_PLAN.md` §11. Per-step status detail lives in `docs/systems/install-update/STATUS.md` and `docs/systems/install-update/DEFERRED.md`; "what to do next" is answered on demand (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*), not from a committed active queue.
 
 > The numbering below is preserved exactly as in `docs/decisions/POST_MVP_PLAN.md` §11. It is not reordered, extended, or trimmed here.
 
