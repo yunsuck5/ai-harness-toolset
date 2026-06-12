@@ -74,6 +74,6 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 
 ## Lifecycle state
 
-- lifecycle 문서: `brief_design.md` · `brief_plan.md` · `brief_work_packet.md` 존재(이번 변경 회차; closeout 시 retire/삭제).
-- spec ↔ implementation: **sync-required** — behavior 표면(scripts·template·skill·tests)은 이 spec 과 일치하나, 문서 수렴 구현(구계열 retire · `brief_backlog.md` 생성 · routing 이관 · inbound pointer 갱신)이 남아 있다. closeout 에서 1:1 재검증 후 **live** 로 복귀한다.
+- lifecycle 문서: 없음 — batch B closeout 에서 design / plan / work packet 은 retire(삭제)되었고 기록은 git history 가 보존한다.
+- spec ↔ implementation: **live** — behavior 표면(scripts·template·skill·tests)과 문서 표면(routing·backlog·inbound pointer)이 이 spec 과 1:1 동기화되어 있다. 이후의 변경은 live-Spec 갱신(sync-required 전이) 규칙을 따른다.
 - capability maturity: BF Level 1/2 운영 중(primitive 는 target 에서 operable); Level 3 후보는 `brief_backlog.md`(BR-D-01 · BR-D-03, next ID: BR-D-04).
