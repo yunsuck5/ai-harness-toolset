@@ -93,7 +93,7 @@ glossary 반영은 별도 mutation 승인(채택 결정과 분리).
 
 ## 6. Evidence proposal (closeout 시)
 
-- `log/evidence/brief-pilot/batch-b/validation-evidence.md` 에 기록 제안: spec↔구현 1:1 normative 문장 대응표(방향 1·2), 4-class sweep 결과(repo tracked 기준), brief Pester 3 suites 결과, 비례성 출구 사용 횟수.
+- closeout validation 근거는 **gitignored runtime 영역(`log/evidence/**`)의 operator 기록**으로 남긴다 — repo-tracked 근거로 승격하지 않는다. 기록 제안 내용: spec↔구현 1:1 normative 문장 대응표(방향 1·2), 4-class sweep 결과(repo tracked 기준), brief Pester 3 suites 결과, 비례성 출구 사용 횟수.
 - closeout report 에 §1 분류의 `checked/updated` 전수 보고(조용한 생략 0).
 
 ## 7. Reviewer question 준비 (Spec review 용 중립 후보)
