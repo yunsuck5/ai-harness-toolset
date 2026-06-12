@@ -130,7 +130,7 @@
 
 ## Lifecycle state
 
-- design/plan: `docs/install-update/install-update_design.md` · `install-update_plan.md` 존재(batch I lifecycle — closeout 시 retire).
-- spec↔implementation: **sync-required** — 본 spec 은 문서 수렴 mutation(구계열 retire·backlog 생성·routing 이관) 전의 청사진이다. closeout 에서 live 로 flip 한다.
+- lifecycle 문서: 없음 — batch I closeout 에서 design / plan 은 retire(삭제)되었고 work packet 은 삭제되었다; 기록은 git history 가 보존한다.
+- spec ↔ implementation: **live** — behavior 표면(lifecycle scripts·lib·tests·config·templates·snippets)과 문서 표면(routing·backlog·inbound pointer·배포 표면의 install-update-문서 self-containment)이 이 spec 과 1:1 동기화되어 있다. 이후의 변경은 live-Spec 갱신(sync-required 전이) 규칙을 따른다.
 - 도메인 성숙도: install/update/uninstall/activation lifecycle 구현·실호스트 검증·self-adoption 완료 — **LTS maintenance**(이력·ledger 는 git history). 현재 동봉 source skill 2종(ai-harness-review·ai-harness-brief — concrete activation surface 4).
-- 동반 live 문서: `install-update_backlog.md`(구현 라운드 생성 — open/deferred/idea rows; ID 연속성과 reopen 조건 보존).
+- future work: `install-update_backlog.md`(IU-B-01..06/13 이주 + IU-D-01/02/03/07/08 이주 + IU-D-09 신설 + idea-only [RETIRED] IU-B-07; next ID: IU-B-14 / IU-D-10)가 open·deferred·idea-only 항목을 보유한다.
