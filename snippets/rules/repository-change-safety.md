@@ -4,6 +4,12 @@
 
 - Commit, push, publish, merge, release, deploy, and upload each require **explicit user approval** per change set. A review verdict (`yes` / `no` / `yes with risk`) approves none of them — it is informational, and the next action is always a separate explicit user decision. `yes with risk` is not the automatic equivalent of `yes`.
 - Before any state-changing git action, confirm the repository root, branch, and status.
+- **Staging changes the index.** Any check that reads the index or the tracked-file set must be **re-run after staging and before commit** — a prior pass on the unstaged tree does not carry over.
+
+## Instruction vs machine-enforced invariant
+
+- When an instruction conflicts with a machine-enforced repository invariant (an enforcement script, a contract, a tracked-path rule), **stop and surface the conflict before executing** — never silently bypass with force flags such as `add -f`.
+- Force-adding an ignored runtime artifact is such an exception: it requires **explicit confirmation of the exception itself**, not just approval of the surrounding task.
 
 ## No automatic `.gitignore` mutation
 
