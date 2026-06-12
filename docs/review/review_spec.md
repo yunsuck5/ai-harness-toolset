@@ -95,6 +95,6 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 
 ## Lifecycle state
 
-- lifecycle 문서: `review_design.md` · `review_plan.md` · `review_work_packet.md` 가 이 회차 동안 존재한다(closeout 에서 design/plan retire·work packet 삭제).
-- spec ↔ implementation: **목표 상태 blueprint** — behavior 표면(scripts·templates·skill·config·tests)의 외부 관찰 가능 행동은 이 spec 의 명세와 일치하는 현행 구현이 있다(이 batch 는 behavior 변경 0). 미수렴 표면: ① 문서 표면(구계열 17파일·routing·glossary pending 2종) ② **active surface 의 비-behavior 참조** — scripts 주석·config schema description·tests 의 review 구문서 경로/의미 참조가 아직 구계열을 가리키며, 그 갱신(자기완결화 또는 이 spec 재지향)이 구현 단계 pending 이다(위 글로벌 배포 티어 invariant 의 성립 조건). 구현(문서 수렴 mutation)이 이 spec 을 기준으로 진행된 뒤 closeout 에서 1:1 재검증과 함께 **live** 로 전환된다.
-- future work: `review_backlog.md`(이 batch 에서 생성; next ID: RV-B-13)가 open 항목과 idea-only 항목을 보유한다.
+- lifecycle 문서: 없음 — batch R closeout 에서 design / plan 은 retire(삭제)되었고 work packet 은 삭제되었다; 기록은 git history 가 보존한다.
+- spec ↔ implementation: **live** — behavior 표면(scripts·templates·skill·config·tests)과 문서 표면(routing·backlog·inbound pointer·배포 표면의 review-문서 self-containment)이 이 spec 과 1:1 동기화되어 있다. 이후의 변경은 live-Spec 갱신(sync-required 전이) 규칙을 따른다.
+- future work: `review_backlog.md`(RV-B-01/03/04/05 이주 + RV-B-09~12 신설; next ID: RV-B-13)가 open 항목·수용된 잔여 위험·idea-only 항목을 보유한다.
