@@ -6,24 +6,23 @@ This INDEX's existence does not by itself approve any implementation, source/doc
 
 ## 1. Where current state lives
 
-- install/update/global-adoption current state → `docs/systems/install-update/STATUS.md` + `DEFERRED.md`
-- review → `docs/review/review_spec.md` + `docs/review/review_backlog.md`; brief → `docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md`
+- install-update → `docs/install-update/install-update_spec.md` + `docs/install-update/install-update_backlog.md` (execution SoT = root `INSTALL.md`); review → `docs/review/review_spec.md` + `docs/review/review_backlog.md`; brief → `docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md`
 - overall entrypoint → `docs/current/REPO_READING_GUIDE.md` (question→read-first routing); current progress / remaining work / next action is answered on demand (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*), not from a committed mirror (the former `docs/current/PROJECT_STATE.md` / `NEXT_ACTIONS.md` mirrors were removed)
 - post-MVP numbered remaining order routing view → `docs/roadmap/CURRENT_MILESTONES.md` (authority = `docs/decisions/POST_MVP_PLAN.md` §11)
 
 ## 2. Relocated docs (formerly in `docs/roadmap/`)
 
-The former root-level roadmap docs now live in their access-pattern scope folders. Each relocated design/model/record doc carries a top routing banner to its system STATUS; current status lives in the system STATUS docs, not in those design docs.
+The former root-level roadmap docs moved to their then access-pattern scope folders (several have since been absorbed/retired in the domain migrations — see the table). Current status lives in the per-domain spec/backlog files (remaining per-system board: `docs/systems/skills/STATUS.md`), not in design/record docs.
 
 | Doc | New location |
 |---|---|
 | post-MVP decision record + numbered-order authority (§11) | `docs/decisions/POST_MVP_PLAN.md` |
 | operating-layer / managed-block decision | `docs/decisions/GLOBAL_ADOPTION_DECISION.md` |
-| install/update operating model/design (execution SoT = `INSTALL.md`) | `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` |
-| Step 3 implementation planning guide | `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` |
-| shared/global invocation contract (D1–D9) | `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` |
+| install/update operating model/design (execution SoT = `INSTALL.md`) | absorbed into `docs/install-update/install-update_spec.md` (the then `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` is preserved in git history) |
+| Step 3 implementation planning guide | retired to git history (anchored decisions absorbed into `docs/install-update/install-update_spec.md`; the then `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md`) |
+| shared/global invocation contract (D1–D9) | absorbed into `docs/install-update/install-update_spec.md` (the then `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` is preserved in git history) |
 | review effort/cost guide | absorbed into `docs/review/review_spec.md` (the then `docs/policies/REVIEW_EFFORT_GUIDE.md` is preserved in git history) |
-| skill global adopt/update/remove procedure | `INSTALL.md` §10; `docs/systems/install-update/STATUS.md` IU-03 |
+| skill global adopt/update/remove procedure | `INSTALL.md` §10 (the then STATUS ledger row IU-03 is preserved in git history) |
 
 ## 3. Remaining roadmap doc
 
@@ -31,7 +30,7 @@ The former root-level roadmap docs now live in their access-pattern scope folder
 
 ## 4. Former topic namespace — `global-install-update/` (dissolved)
 
-`docs/roadmap/global-install-update/` was once a temporary topic namespace holding `STEP3_INSTALL_UPDATE_DECISION_GUIDE.md`. In the risk-resolution pass (2026-05-23) the STEP3 guide moved to `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md`, so the namespace was emptied and **dissolved**. `docs/roadmap/` now has no topic subfolders. If a future large, parent-subordinate planning guide ever needs a subfolder again, that is a separate scoped decision governed by `docs/README.md`'s placement policy — not auto-approved by this INDEX.
+`docs/roadmap/global-install-update/` was once a temporary topic namespace holding the STEP3 decision guide. In the risk-resolution pass (2026-05-23) the STEP3 guide moved to the then-current `docs/systems/install-update/` location (since retired to git history in the install-update domain migration), so the namespace was emptied and **dissolved**. `docs/roadmap/` now has no topic subfolders. If a future large, parent-subordinate planning guide ever needs a subfolder again, that is a separate scoped decision governed by `docs/README.md`'s placement policy — not auto-approved by this INDEX.
 
 ## 5. Codex review gate
 
@@ -39,5 +38,5 @@ Any source/doc change under `docs/roadmap/` goes through the normal Codex review
 
 ## 6. Source-of-truth relationship
 
-- The docs placement orientation map is `docs/README.md` (binding placement rules → `rules/docs-working-model/docs-working-model.md`); question→read-first routing lives in `docs/current/REPO_READING_GUIDE.md`, and current status lives in the per-system `docs/systems/<system>/STATUS.md`.
+- The docs placement orientation map is `docs/README.md` (binding placement rules → `rules/docs-working-model/docs-working-model.md`); question→read-first routing lives in `docs/current/REPO_READING_GUIDE.md`, and current status lives in the per-domain spec/backlog files (remaining per-system board: `docs/systems/skills/STATUS.md`).
 - This INDEX is a routing note for `docs/roadmap/` only; it does not override any relocated doc's contract/decision.

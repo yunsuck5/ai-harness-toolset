@@ -2,6 +2,8 @@
 
 > **당시-경로 주석 (review 도메인 이주, batch R).** 본 기록 안의 review 문서 경로·식별자(`docs/contracts/review/**` · `docs/contracts/evidence/**` · `docs/policies/REVIEWER_CONFIG_POLICY.md` · `docs/policies/REVIEW_EFFORT_GUIDE.md` · `docs/systems/review/**`)는 작성 시점 경로다 — review 도메인은 이후 `docs/review/`(spec-of-record `review_spec.md` · queue `review_backlog.md`)로 이주했고 구계열 본문은 git history 에 보존된다.
 
+> **당시-경로 주석 (install-update 도메인 이주, batch I).** 본 기록 안의 install-update 문서 경로·식별자(`docs/systems/install-update/**` — 구 operating model·STEP3 guide·uninstall design·STATUS/BACKLOG/DEFERRED/IDEAS — 와 `docs/contracts/global-invocation/**`)는 작성 시점 경로다 — install-update 도메인은 이후 `docs/install-update/`(spec-of-record `install-update_spec.md` · queue `install-update_backlog.md`)로 이주했고 구계열 본문은 git history 에 보존된다.
+
 **Status: binding GSF-B1 per-item classification record + implementation log.** This is the reviewable artifact the GSF-B1 spec (`GLOBAL_SNIPPET_FIRST_MIGRATION_SPEC_GSF_B1.md` §4) requires: a keep-by-proof disposition for every current snippet inventory item, plus the snippet-invariant check result. It is the decision record for the GSF-B1 snippet edit (a docs decision-record, sibling to the Track B `GLOBAL_SNIPPET_RELOCATION_AUDIT.md`; placed here rather than in gitignored `log/` so the rationale is durable and reviewable). Authorities obeyed: the design / plan / spec (controlling), `docs/policies/DOCS_OPERATING_MODEL.md` (single-home-plus-pointers).
 
 **Basis.** Snippet content as of `HEAD == 6ca0e63` (pre-GSF-B1): `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`, managed-block header + 11 H2 sections.

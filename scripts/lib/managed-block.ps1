@@ -229,8 +229,8 @@ function Remove-ManagedBlock {
     # leave an empty marker pair behind. This deletes the marker lines too, so a
     # successful removal leaves ZERO marker pairs.
     #
-    # Marker-count branch ordering (mirrors the uninstall design state machine in the
-    # install-update UNINSTALL_LIFECYCLE_DESIGN.md design doc, §4):
+    # Marker-count branch ordering (the uninstall marker-removal state machine; the
+    # design record is preserved in git history):
     #   - 0 markers (no BEGIN and no END)        -> idempotent no-op SUCCESS
     #                                               (Removed = $false; Content unchanged).
     #   - exactly 1 BEGIN + 1 END, in order      -> excise BEGIN..END inclusive

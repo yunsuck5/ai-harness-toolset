@@ -2,6 +2,8 @@
 
 > **당시-경로 주석 (review 도메인 이주, batch R).** 본 기록 안의 review 문서 경로·식별자(`docs/contracts/review/**` · `docs/contracts/evidence/**` · `docs/policies/REVIEWER_CONFIG_POLICY.md` · `docs/policies/REVIEW_EFFORT_GUIDE.md` · `docs/systems/review/**`)는 작성 시점 경로다 — review 도메인은 이후 `docs/review/`(spec-of-record `review_spec.md` · queue `review_backlog.md`)로 이주했고 구계열 본문은 git history 에 보존된다.
 
+> **당시-경로 주석 (install-update 도메인 이주, batch I).** 본 기록 안의 install-update 문서 경로·식별자(`docs/systems/install-update/**` — 구 operating model·STEP3 guide·uninstall design·STATUS/BACKLOG/DEFERRED/IDEAS — 와 `docs/contracts/global-invocation/**`)는 작성 시점 경로다 — install-update 도메인은 이후 `docs/install-update/`(spec-of-record `install-update_spec.md` · queue `install-update_backlog.md`)로 이주했고 구계열 본문은 git history 에 보존된다.
+
 **Status: spec stage for batch GSF-B1. NOT an implementation, NOT a snippet edit, and NOT an approval to run GSF-B1.** This is the **spec** layer of the design → plan → spec → implementation sequence. It fixes the **acceptance criteria** the future GSF-B1 implementation must meet; it edits no global snippet payload, removes no section, and changes no behavior. GSF-B1 implementation is a separate scoped goal + Codex review gate + explicit user approval; **this spec approves none of it.**
 
 **Controlling authorities (obeyed, not redefined).**

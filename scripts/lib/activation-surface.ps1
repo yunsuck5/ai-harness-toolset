@@ -7,9 +7,9 @@ $ErrorActionPreference = 'Stop'
 # mapping + mutation class. The surfaces are: two always-present managed-block surfaces (Claude
 # CLAUDE.md, Codex effective AGENTS.md/.override.md) plus ONE canonical-overwrite skill mirror per
 # source skill under snippets/claude-skills/<name>/SKILL.md (generic, deterministic, local-first
-# directory enumeration — no per-skill hardcoding, no registry; Batch 2C-0; decision record /
-# rationale docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md §8A — this resolver, not
-# that doc, is the operative authority). The install-global / install-update
+# directory enumeration — no per-skill hardcoding, no registry; Batch 2C-0; the activation-surface
+# policy decision record / rationale is preserved in git history — this resolver, not
+# any doc, is the operative authority). The install-global / install-update
 # VERIFY path (byte-identity check), the activate-global APPLY path, and the uninstall owned-surface
 # resolver all resolve surfaces through this helper, so coverage cannot drift on WHICH files are the
 # surfaces (e.g. the Codex AGENTS.override.md precedence is decided here, once).

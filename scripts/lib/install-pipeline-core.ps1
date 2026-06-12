@@ -36,9 +36,9 @@ function Invoke-InstallPipelineNativeGit {
 # entry; moved from the former scripts/install-pipeline.ps1 path to make the role explicit)
 # and from tests/install-pipeline.Tests.ps1 (Pester suite).
 #
-# Runtime pipeline grouping (§12). The operative contract is this library plus its
-#   Pester suite; docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md §12
-#   is the decision record / rationale for the grouping, not the operative authority:
+# Runtime pipeline grouping (Step 3 3-2~3-5). The operative contract is this library plus its
+#   Pester suite; the grouping's decision record / rationale is preserved in git history
+#   (not an operative authority):
 #   - 3-2 source / ref resolver (resolved tuple shape).
 #   - 3-3 overwrite materialization core (deterministic copy into current/).
 #   - 3-4 dispatcher (4 action labels routed through one pipeline shape).
