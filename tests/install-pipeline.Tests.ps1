@@ -40,7 +40,7 @@ BeforeAll {
                 $marker = Join-Path $root ("$r/marker.txt")
                 [System.IO.File]::WriteAllText($marker, "marker-$r-$MarkerSuffix", $utf8NoBom)
             }
-            # D3 source-repo multi-marker: parent §2.2 / SHARED D3 — required for
+            # Source-repo multi-marker (Test-IsSourceRepoRoot, 3-marker AND) — required for
             # local-clone validation. Tests can opt out via -WithoutSourceRepoMarkers
             # to exercise the install-pipeline dispatcher's rejection path.
             if (-not $WithoutSourceRepoMarkers) {
@@ -149,7 +149,8 @@ BeforeAll {
         [System.IO.File]::WriteAllText($path, ($Metadata | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding($false)))
     }
 
-    # STEP3 guide §16.7: git-url tests use a local bare repo as the "remote URL". The bare
+    # Test fixture boundary (no external network / credential dependency):
+    # git-url tests use a local bare repo as the "remote URL". The bare
     # path is passed to -RepoUrl; git treats local paths as implicit file:// URLs.
     function script:New-FixtureBareRepo {
         param(
@@ -543,7 +544,7 @@ Describe 'install-pipeline entry — forbidden InstallArea / required inputs' {
     }
 }
 
-Describe 'install-pipeline 3-7 dry-run coverage extension' {
+Describe 'install-pipeline dry-run coverage extension' {
     It 'AC-IP-FLOW-1: install -> update-current -> restore sequential flow + per-step metadata + content' {
         $src  = script:New-FixtureSourceRepo -CaseName 'flow-1' -MarkerSuffix 'v1'
         $area = script:New-InstallArea -CaseName 'flow-1'
@@ -579,7 +580,7 @@ Describe 'install-pipeline 3-7 dry-run coverage extension' {
         $md2.installedHead   | Should -Be $src.Head             # install root preserved
         $md2.installedAt     | Should -Be $installedAt1         # install timestamp preserved
         $md2.lastUpdatedHead | Should -Be $headV2               # head advanced
-        # §11.5: update refreshes lastUpdatedAt. ISO 8601 UTC stamps compare correctly as strings.
+        # Metadata lifecycle: update refreshes lastUpdatedAt. ISO 8601 UTC stamps compare correctly as strings.
         $md2.lastUpdatedAt | Should -Not -Be $lastUpdatedAt1
         ($md2.lastUpdatedAt -gt $lastUpdatedAt1) | Should -BeTrue -Because 'update-current must advance lastUpdatedAt forward'
         $lastUpdatedAt2 = $md2.lastUpdatedAt
@@ -596,7 +597,7 @@ Describe 'install-pipeline 3-7 dry-run coverage extension' {
         $md3.installedHead   | Should -Be $src.Head             # still preserved
         $md3.installedAt     | Should -Be $installedAt1         # still preserved
         $md3.lastUpdatedHead | Should -Be $src.Head             # rolled back to v1
-        # §11.5: restore (option b) refreshes lastUpdatedAt after successful re-materialization.
+        # Metadata lifecycle: restore (user-specified ref-only) refreshes lastUpdatedAt after successful re-materialization.
         $md3.lastUpdatedAt | Should -Not -Be $lastUpdatedAt2
         ($md3.lastUpdatedAt -gt $lastUpdatedAt2) | Should -BeTrue -Because 'restore must advance lastUpdatedAt forward even when rolling content back'
         [System.IO.File]::ReadAllText($markerPath, $utf8NoBom) | Should -Be 'marker-config-v1'
@@ -748,7 +749,7 @@ Describe 'install-pipeline 3-7 dry-run coverage extension' {
     }
 }
 
-Describe 'install-pipeline §15 payload-manifest + payload-marker contract' {
+Describe 'install-pipeline payload-manifest + payload-marker contract' {
     It 'AC-IP-MANIFEST-1: install writes payload-manifest.json + payload-marker.json with correct shape' {
         $src  = script:New-FixtureSourceRepo -CaseName 'manifest-1' -MarkerSuffix 'v1'
         $area = script:New-InstallArea -CaseName 'manifest-1'
@@ -967,7 +968,7 @@ Describe 'install-pipeline §15 payload-manifest + payload-marker contract' {
         $vr.ok | Should -BeTrue -Because (($vr.errors) -join '; ')
     }
 
-    It 'AC-IP-MANIFEST-10: verify hook reports marker.payloadRoots mismatch (§15.3 / §15.4 contract)' {
+    It 'AC-IP-MANIFEST-10: verify hook reports marker.payloadRoots mismatch (manifest/marker contract)' {
         $src  = script:New-FixtureSourceRepo -CaseName 'manifest-10' -MarkerSuffix 'v1'
         $area = script:New-InstallArea -CaseName 'manifest-10'
         $proj = script:New-ProjectRoot -CaseName 'manifest-10'
@@ -1010,7 +1011,7 @@ Describe 'install-pipeline §15 payload-manifest + payload-marker contract' {
     }
 }
 
-Describe 'install-pipeline §16 git-url mode minimum source acquisition' {
+Describe 'install-pipeline git-url mode minimum source acquisition' {
     It 'AC-IP-GITURL-INSTALL-1: fresh install with git-url clones into run-scoped work area, materializes payload, writes install.json + manifest + marker, then removes the work area' {
         $bare = script:New-FixtureBareRepo -CaseName 'giturl-install-1' -MarkerSuffix 'v1'
         $area = script:New-InstallArea -CaseName 'giturl-install-1'

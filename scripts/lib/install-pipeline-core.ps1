@@ -31,25 +31,25 @@ function Invoke-InstallPipelineNativeGit {
     return [pscustomobject]@{ ExitCode = $code; Stdout = $stdout }
 }
 
-# install-pipeline-core library — Step 3 3-2~3-5 runtime pipeline (temp-only skeleton).
+# install-pipeline-core library — install/update/restore runtime pipeline (temp-only skeleton).
 # Dot-sourced from tests/support/install-pipeline-fixture.ps1 (fixture / test harness
 # entry; moved from the former scripts/install-pipeline.ps1 path to make the role explicit)
 # and from tests/install-pipeline.Tests.ps1 (Pester suite).
 #
-# Runtime pipeline grouping (Step 3 3-2~3-5). The operative contract is this library plus its
-#   Pester suite; the grouping's decision record / rationale is preserved in git history
-#   (not an operative authority):
-#   - 3-2 source / ref resolver (resolved tuple shape).
-#   - 3-3 overwrite materialization core (deterministic copy into current/).
-#   - 3-4 dispatcher (4 action labels routed through one pipeline shape).
-#   - 3-5 verify (minimal: payload roots exist + metadata core fields).
+# Runtime pipeline grouping (resolver → materialization → dispatcher → verify). The
+#   operative contract is this library plus its Pester suite; the grouping's decision
+#   record / rationale is preserved in git history (not an operative authority):
+#   - source / ref resolver (resolved tuple shape).
+#   - overwrite materialization core (deterministic copy into current/).
+#   - dispatcher (4 action labels routed through one pipeline shape).
+#   - verify (minimal: payload roots exist + metadata core fields).
 #
 # Boundaries kept by this library:
-#   - resolver tuple `toolRoot` is source-side canonical local ToolRoot
-#     (parent §6 Layer 1 / §11.1 metadata `toolRoot`), NOT the materialization
+#   - resolver tuple `toolRoot` is the source-side canonical local ToolRoot
+#     (the install.json `toolRoot` identity hint), NOT the materialization
 #     destination. Destination is global install area's current/ — kept as a
 #     separate path concept inside Invoke-InstallMaterialization.
-#   - metadata schema follows §11 (install.json sibling-of-current/, JSON).
+#   - metadata schema: install.json sibling-of-current/, JSON (INSTALL.md §4 / §5).
 #   - source-cut is detection only; this library never auto-resolves it.
 #   - this library never writes outside the caller-supplied InstallArea.
 
@@ -247,7 +247,8 @@ function Test-InstallPipelineSourceCachePresent {
     return (Test-Path -LiteralPath $gitDir)
 }
 
-# STEP3 guide §16.3 install row: single `git clone <repoUrl> <cache>` into a fresh cache dir.
+# git-url install acquisition (INSTALL.md §2 run-scoped work area): single
+# `git clone <repoUrl> <cache>` into a fresh cache dir.
 # Fails fast if the cache already exists with payload — caller is expected to gate this on
 # Test-InstallPipelineSourceCachePresent / action == 'install' semantics.
 function Invoke-InstallPipelineGitUrlClone {
@@ -268,7 +269,8 @@ function Invoke-InstallPipelineGitUrlClone {
     $cache = Get-InstallPipelineSourceCacheDir -InstallArea $InstallArea
     if (Test-Path -LiteralPath $cache) {
         # If anything is present (even partial), refuse — operator must clean it up. Atomicity
-        # is at the deliverable artifact level (install.json/manifest/marker/current/), per §16.4;
+        # is at the deliverable artifact level (install.json/manifest/marker/current/ —
+        # clone/resolve failures precede materialization, so deliverables keep byte-identity);
         # partial cache from a prior failed clone is operator-visible cleanup territory.
         $any = Get-ChildItem -LiteralPath $cache -Force -ErrorAction SilentlyContinue
         if ($null -ne $any) {
@@ -288,11 +290,11 @@ function Invoke-InstallPipelineGitUrlClone {
     return $cache
 }
 
-# STEP3 guide §16.3: post-clone HEAD resolution for install / update-source when
-# `-Branch` is supplied. The work area is a fresh clone (per-action; STEP3 §16.2),
+# git-url post-clone HEAD resolution for install / update-source when
+# `-Branch` is supplied. The work area is a per-action fresh clone (INSTALL.md §2),
 # so we resolve <remote>/<branch> (the cloned tip) directly. Restore takes a
 # user-supplied `--ref` and goes through Resolve-InstallPipelineRef instead;
-# update-current is intentionally unsupported for git-url (STEP3 §16.3 / INSTALL.md §7).
+# update-current is intentionally unsupported for git-url (INSTALL.md §7).
 function Get-InstallPipelineGitUrlRemoteHead {
     [CmdletBinding()]
     param(
@@ -321,7 +323,8 @@ function Get-InstallPipelineGitUrlRemoteHead {
     return (@($res.Stdout) -join "`n").Trim()
 }
 
-# STEP3 guide §15.2: per-file payload-manifest.json (backlog candidate (b)).
+# payload-manifest.json — per-file integrity manifest (per-file SHA-256 model;
+# design record preserved in git history).
 # Enumerates every regular file under current/<payloadRoots>/** with size +
 # lowercase-hex SHA-256, sorted by forward-slash path for determinism.
 function New-InstallPipelineManifest {
@@ -399,7 +402,7 @@ function Read-InstallPipelineManifest {
     return $m
 }
 
-# STEP3 guide §15.3: payload-marker.json — presence flag + integrity binding.
+# payload-marker.json — presence flag + integrity binding.
 function New-InstallPipelineMarker {
     [CmdletBinding()]
     param(
@@ -590,12 +593,12 @@ function Invoke-InstallMaterialization {
     if (-not (Test-Path -LiteralPath $InstallArea -PathType Container)) {
         throw "Invoke-InstallMaterialization: InstallArea not found: $InstallArea"
     }
-    # §16.5 + relative-InstallArea regression (AC-IP-GITURL-TOOLROOT-ABS-1): normalize the
+    # Relative-InstallArea regression guard (AC-IP-GITURL-TOOLROOT-ABS-1): normalize the
     # InstallArea once so that $tmpZip / $tmpExtract built directly below resolve to absolute
     # paths even when the caller supplied a relative -InstallArea. Get-InstallPipeline*Dir/Path
     # helpers already normalize, but $tmpZip is constructed here without going through them.
     $InstallArea = [System.IO.Path]::GetFullPath($InstallArea)
-    # STEP3 guide §16.5: materialization source = tuple.toolRoot (source-side canonical local
+    # Materialization source = tuple.toolRoot (source-side canonical local
     # ToolRoot). For local-clone that equals tuple.sourceLocation (user-supplied path); for
     # git-url that equals the source cache at <InstallArea>/source-cache (URL goes into
     # tuple.sourceLocation, not into the archive path).
@@ -610,7 +613,7 @@ function Invoke-InstallMaterialization {
 
     # Destination = global install area's current/ payload directory.
     # This is intentionally a different path concept from the resolver tuple's
-    # `toolRoot` (= source-side canonical local ToolRoot, parent §6 Layer 1).
+    # `toolRoot` (= source-side canonical local ToolRoot).
     $currentDir = Get-InstallPipelineCurrentDir -InstallArea $InstallArea
 
     if (Test-Path -LiteralPath $currentDir) {
@@ -744,7 +747,7 @@ function Invoke-InstallPipelineDispatch {
         throw "Invoke-InstallPipelineDispatch: action $($Tuple.action) requires existing install metadata; none found at $InstallArea (run -Action install first)."
     }
 
-    # D3 multi-marker check (parent §2.2; STEP3 guide §16.5): the source we are about to
+    # Source-repo multi-marker check (Test-IsSourceRepoRoot, 3-marker AND): the source we are about to
     # archive from must be a valid ai-harness source repo. Apply to both modes — for
     # local-clone the source is tuple.sourceLocation (user-supplied path), for git-url
     # the source is tuple.toolRoot (= cache after clone). Arbitrary git repos / arbitrary
@@ -764,9 +767,9 @@ function Invoke-InstallPipelineDispatch {
     # update-source. Verified later by Invoke-InstallPipelineVerify (byte-identity vs the template).
     $null = Set-InstallPipelineRootReadme -InstallArea $InstallArea
 
-    # STEP3 guide §15.4 write hook — manifest + marker right after materialization,
+    # Manifest + marker write hook — right after materialization,
     # before install.json. install.json lastUpdatedHead must equal manifest.head and
-    # marker.head; verify hook (§15.4) re-checks that binding.
+    # marker.head; the verify hook re-checks that binding.
     $manifest = New-InstallPipelineManifest -InstallArea $InstallArea -Head ([string]$Tuple.resolvedRefSha)
     Write-InstallPipelineManifest -InstallArea $InstallArea -Manifest $manifest
     $marker = New-InstallPipelineMarker -Head ([string]$Tuple.resolvedRefSha)
@@ -919,7 +922,7 @@ function Invoke-InstallPipelineVerify {
         $mdLastUpdatedHead = [string]$md.lastUpdatedHead
     }
 
-    # STEP3 guide §15.4 verify hook — manifest + marker. Both validated independently
+    # Manifest + marker verify hook. Both validated independently
     # so a missing manifest does not skip marker reporting, and vice versa.
     $manifest = $null
     try {
@@ -1006,7 +1009,7 @@ function Invoke-InstallPipelineVerify {
         if ($marker.manifestPath -ne $script:InstallPipelineManifestName) {
             $errors.Add("marker.manifestPath mismatch: $($marker.manifestPath) (expected $script:InstallPipelineManifestName)")
         }
-        # §15.3 / §15.4: marker.payloadRoots must equal the constant
+        # marker.payloadRoots must equal the constant
         # ["config","scripts","snippets","templates"] (manifest 의 payloadRoots 와 동일).
         $expectedRoots = $script:InstallPipelinePayloadRoots
         $markerRoots = @($marker.payloadRoots)

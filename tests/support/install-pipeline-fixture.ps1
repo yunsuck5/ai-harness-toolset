@@ -88,7 +88,7 @@ try {
 
     # Resolve invocation context: D1 runtime ToolRoot + D9 ProjectRoot.
     # This is invocation context, separate from the resolved tuple field `toolRoot`
-    # (= source-side canonical local ToolRoot per parent §6 Layer 1 / §11.1).
+    # (= source-side canonical local ToolRoot; the install.json `toolRoot` identity hint).
     $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 
     $runtimeTool = '(unresolved)'
@@ -301,7 +301,7 @@ try {
         Write-Host ('install-pipeline: tuple-toolRoot (transient run-scoped work area, cleaned up at action end) = {0}' -f $tuplePath)
     }
     else {
-        Write-Host ('install-pipeline: tuple-toolRoot (source-side ToolRoot, parent §6 Layer 1) = {0}' -f $tuplePath)
+        Write-Host ('install-pipeline: tuple-toolRoot (source-side canonical local ToolRoot) = {0}' -f $tuplePath)
     }
 }
 catch {

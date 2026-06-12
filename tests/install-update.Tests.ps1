@@ -306,7 +306,8 @@ BeforeAll {
         'smoke_failed','cleanup_failed_with_leftover','failed','update_aborted_no_approval'
     )
 
-    # Hygiene scan literal + regex sets (mirror of design §4.7 Tier A / Tier B).
+    # Hygiene scan literal + regex sets (Tier A / Tier B deployable-reference hygiene;
+    # design record preserved in git history).
     $script:TierA = @(
         'polishing/','polishing\',
         'repo_snapshot/','repo_snapshot\',
@@ -751,8 +752,9 @@ Describe 'install-update.ps1 — no-write sentinel (T10)' {
         script:Assert-PathTreeUnchanged -Before $snapAreaBefore  -After $snapAreaAfter  -Label 'InstallArea'
         script:Assert-PathTreeUnchanged -Before $snapCHomeBefore -After $snapCHomeAfter -Label 'ClaudeHome (TestDrive)'
         script:Assert-PathTreeUnchanged -Before $snapXHomeBefore -After $snapXHomeAfter -Label 'CodexHome (TestDrive)'
-        # Real user-global file count must not increase (best-effort probe; per design §9.4 known
-        # limits, this does not catch directory-only creation / ACL / ADS mutation — V7 manual review).
+        # Real user-global file count must not increase (best-effort probe; known limits —
+        # this does not catch directory-only creation / ACL / ADS mutation — V7 manual review;
+        # design record preserved in git history).
         $realCAfter | Should -BeExactly $realCBefore -Because 'real %USERPROFILE%\.claude file count changed'
         $realXAfter | Should -BeExactly $realXBefore -Because 'real %USERPROFILE%\.codex file count changed'
     }
