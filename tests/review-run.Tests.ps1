@@ -619,8 +619,8 @@ Describe 'review-run canonical pass directory' {
         # RV-B-05 Batch II (light P3 wording) + Stage 4-R1 (Counter-argument
         # runtime alignment): the preamble must instruct the reviewer to
         # articulate the strongest case AGAINST its own conclusion in
-        # ## Counter-argument (per REVIEW_RESULT_CONTRACT.md §3c, the dedicated
-        # pressure-test surface) before issuing the verdict. Wording-only; no
+        # ## Counter-argument (the dedicated pressure-test surface; spec-of-record:
+        # docs/review/review_spec.md) before issuing the verdict. Wording-only; no
         # new parser-required H2 (## Counter-argument remains optional /
         # strongly-recommended / non-parser).
         $stdin | Should -Match 'strongest case AGAINST'

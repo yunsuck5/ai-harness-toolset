@@ -24,7 +24,7 @@ Local-first test fixtures for ai-harness-toolset.
   Invoke-Pester -Path .\tests -Output Detailed
   ```
 
-- Test files (current canonical review topology — three-level `<review-task-id>/<perspective>/pass-NN/` with `<perspective>` **required**; `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`):
+- Test files (current canonical review topology — three-level `<review-task-id>/<perspective>/pass-NN/` with `<perspective>` **required**; spec-of-record: `docs/review/review_spec.md`):
   - `tests/review-prepare.Tests.ps1` — `review-prepare` allocating the canonical three-level `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` and seeding `input.md` from `templates/review-input.md`: per-perspective pass allocation, the `-Perspective`-required failure path (omitting it fails fast — no two-level fallback), and invalid-perspective rejection.
   - `tests/review-run.Tests.ps1` — `review-run` Codex invocation surface driven by a Codex stub, plus `## Verdict` shape validation. Covers effort/model resolution and run-facts, including the U9 config-backed `categoryPolicy` lookup (`-EffortCategory`): matched category applies `{model,effort}`, a genuinely absent (missed) category soft-falls-back to the scalar config, explicit `-Effort` / `-Model` win per axis, a matched-but-malformed entry (out-of-enum / missing / null `reasoningEffort`) fails fast **unconditionally** (even under an explicit `-Effort` override), and the shipped config keeps every category at the `xhigh` safety floor. A distinct-value fixture ToolRoot (`New-CategoryToolRoot`, which copies the real `scripts/` tree so the explicit-ToolRoot script resolution succeeds) proves the category values flow into the Codex argv. The stub is generated under Pester's `$TestDrive` physical path at test time and never invokes the real Codex CLI.
   - `tests/review-input-verify.Tests.ps1` — five-section readiness gate: filled-PASS, missing-heading FAIL, placeholder-remains FAIL.
@@ -38,7 +38,7 @@ Local-first test fixtures for ai-harness-toolset.
 
 ## Validation scope terms
 
-These terms name the validation scopes referenced by the local-validation-closeout discipline. Which scope a given change class must run before closeout is operator judgment carried on the active surface — the `ai-harness-review` skill's validation-scope-by-change-class guidance (`snippets/claude-skills/ai-harness-review/SKILL.md`) and the review input template's `## Validation evidence` section (`templates/review-input.md`) are the operative authority; `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §6c is the rationale / decision record for that policy, not its operative home. The definitions below are the testing-convention home for the suite terms those surfaces cite.
+These terms name the validation scopes referenced by the local-validation-closeout discipline. Which scope a given change class must run before closeout is operator judgment carried on the active surface — the `ai-harness-review` skill's validation-scope-by-change-class guidance (`snippets/claude-skills/ai-harness-review/SKILL.md`) and the review input template's `## Validation evidence` section (`templates/review-input.md`) are the operative authority; `docs/review/review_spec.md` records that policy (spec-of-record), not its operative home. The definitions below are the testing-convention home for the suite terms those surfaces cite.
 
 - **`full suite`** — every `tests/*.Tests.ps1`, i.e. whatever `Invoke-Pester -Path .\tests` discovers (the recommended command above). Snapshot at this writing: 23 test files — a snapshot orientation that changes as tests are added or removed, so the exact file / case count is not pinned as a durable literal.
 - **`review-system suite`** — the review-subsystem subset used as the recent regression guard: `tests/review-adapter.Tests.ps1`, `tests/review-input-verify.Tests.ps1`, `tests/review-prepare.Tests.ps1`, `tests/review-run.Tests.ps1`, `tests/review-verify.Tests.ps1`. The recurring `Pester 88/88` figure refers to this subset, **not** the full suite — do not read `88/88` as a full-suite count. `tests/review-safety-negtest.Tests.ps1` launches the real Codex CLI and is **not** part of this routine subset guard (run it deliberately).
@@ -64,7 +64,7 @@ When writing a **new** stdout contract test for `review-run`'s success-path outp
 - **No mass rewrite.** This is a discipline for **new** tests. The existing loose effort assertions (`AC-RR13` / `AC-RR14` / `AC-RR16` in `tests/review-run.Tests.ps1`) are intentionally left unchanged; tightening them is an optional separate cleanup, not part of this convention.
 - **Convention only.** This changes neither the parser/verifier, the runtime behavior, nor the run-fact emission format — it is a test-authoring convention.
 
-The Batch D2 / RV-B-06 run-fact assertions already in `tests/review-run.Tests.ps1` (the `(?m)^...$` style) follow this discipline and serve as the reference examples. Design rationale: `docs/systems/review/REVIEW_RUNNER_STDOUT_ANCHOR_TEST_PLAN.md`.
+The Batch D2 / RV-B-06 run-fact assertions already in `tests/review-run.Tests.ps1` (the `(?m)^...$` style) follow this discipline and serve as the reference examples. Design rationale: preserved in git history (the then `docs/systems/review/REVIEW_RUNNER_STDOUT_ANCHOR_TEST_PLAN.md`).
 
 ## Manual acceptance criteria
 

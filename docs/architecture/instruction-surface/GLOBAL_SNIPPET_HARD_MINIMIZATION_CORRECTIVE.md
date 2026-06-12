@@ -1,5 +1,7 @@
 # Global Snippet Hard Minimization — Corrective (per-item disposition record)
 
+> **당시-경로 주석 (review 도메인 이주, batch R).** 본 기록 안의 review 문서 경로·식별자(`docs/contracts/review/**` · `docs/contracts/evidence/**` · `docs/policies/REVIEWER_CONFIG_POLICY.md` · `docs/policies/REVIEW_EFFORT_GUIDE.md` · `docs/systems/review/**`)는 작성 시점 경로다 — review 도메인은 이후 `docs/review/`(spec-of-record `review_spec.md` · queue `review_backlog.md`)로 이주했고 구계열 본문은 git history 에 보존된다.
+
 **Status: implemented corrective record.** This documents the corrective that took the global snippet from a *compact policy bundle* to a *minimal bootstrap*, introduced a **two-tier rules architecture**, and made the **entire global distribution self-contained** (no `docs/` dependency). It is the per-item classification record required by the corrective direction and the current authority for the snippet's shape and the rules tiers.
 
 ## The two-tier rules architecture (user-directed)

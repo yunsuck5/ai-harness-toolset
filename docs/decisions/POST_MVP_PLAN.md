@@ -4,7 +4,7 @@
 
 post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 implementation, scoped work, scheduling, 또는 release 가 자동 승인되지 않는다. 각 항목은 별도 scoped 승인을 거친 뒤에만 작업이 시작된다.
 
-> **현행 routing (docs taxonomy reset).** 본 문서의 current status / next action / completed / deferred 판단은 이제 다음 자리가 authoritative 다 — `docs/current/REPO_READING_GUIDE.md` (question→read-first routing), system status (`docs/systems/install-update/STATUS.md` + `DEFERRED.md`, `docs/systems/review/STATUS.md`, brief 는 `docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md`), 그리고 §11 numbered order 의 1:1 routing view `docs/roadmap/CURRENT_MILESTONES.md`. "현재 진행 / 잔여 / 다음 할 일" 은 committed mirror 가 아니라 on-demand status-briefing 으로 답한다 (`rules/docs-working-model/docs-working-model.md` 의 *On-demand status-briefing model*); 기존 `docs/current/PROJECT_STATE.md` 와 `docs/current/NEXT_ACTIONS.md` (project-current mirror) 는 제거되었다. 본 POST_MVP_PLAN.md 는 post-MVP **decision record (§1–§9)** 와 numbered remaining order (§11) 의 authority 로 유지된다. §10 의 상세 commit-bound completed narrative 는 git history 에 보존된다. current 판단에는 위 SoT/system 자리를 먼저 본다.
+> **현행 routing (docs taxonomy reset).** 본 문서의 current status / next action / completed / deferred 판단은 이제 다음 자리가 authoritative 다 — `docs/current/REPO_READING_GUIDE.md` (question→read-first routing), system status (`docs/systems/install-update/STATUS.md` + `DEFERRED.md`, review 는 `docs/review/review_spec.md` + `docs/review/review_backlog.md`, brief 는 `docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md`), 그리고 §11 numbered order 의 1:1 routing view `docs/roadmap/CURRENT_MILESTONES.md`. "현재 진행 / 잔여 / 다음 할 일" 은 committed mirror 가 아니라 on-demand status-briefing 으로 답한다 (`rules/docs-working-model/docs-working-model.md` 의 *On-demand status-briefing model*); 기존 `docs/current/PROJECT_STATE.md` 와 `docs/current/NEXT_ACTIONS.md` (project-current mirror) 는 제거되었다. 본 POST_MVP_PLAN.md 는 post-MVP **decision record (§1–§9)** 와 numbered remaining order (§11) 의 authority 로 유지된다. §10 의 상세 commit-bound completed narrative 는 git history 에 보존된다. current 판단에는 위 SoT/system 자리를 먼저 본다.
 
 ---
 
@@ -36,8 +36,8 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
   - 새 feature, 새 reviewer adapter, multi-reviewer orchestration, review history DB, cross-run aggregation, automatic retention 은 별도 scoped 승인 없이 추가하지 않는다.
   - bug fix, contract clarification, 기존 행동의 정합성 보정은 maintenance scope 안에서 가능하다. 단, 새 feature 와 maintenance fix 의 경계가 모호한 변경은 별도 scoped 승인을 받는다.
   - canonical review task/pass topology 채택 (a5d94a5 contract alignment + c81fe45 implementation) 은 maintenance scope 안의 contract clarification + 그에 정합한 implementation 이며, 새 feature 의 추가가 아니다 (§10 Completed 참조).
-- review verdict (`yes` / `no` / `yes with risk`) 는 commit / push / publish / merge / release / deployment 를 자동 승인하지 않는다는 contract 가 그대로 유지된다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 의 non-goals).
-- 사용자 운영 권고 문서로서 `docs/policies/REVIEW_EFFORT_GUIDE.md` 가 추가되어 post-MVP 단계의 review effort / cost 통제 가이드를 제공한다. 본 가이드는 review subsystem 의 contract 를 재정의하지 않으며, 어떤 자동 게이트도 도입하지 않는다.
+- review verdict (`yes` / `no` / `yes with risk`) 는 commit / push / publish / merge / release / deployment 를 자동 승인하지 않는다는 경계가 그대로 유지된다 (spec-of-record: `docs/review/review_spec.md`).
+- 사용자 운영 권고 문서로서 당시 `docs/policies/REVIEW_EFFORT_GUIDE.md` 가 추가되어 post-MVP 단계의 review effort / cost 통제 가이드를 제공했다 (현재는 그 durable 원칙이 `docs/review/review_spec.md` 로 흡수되었고 본문은 git history 에 보존). 본 가이드는 review subsystem 의 contract 를 재정의하지 않았으며, 어떤 자동 게이트도 도입하지 않았다.
 
 ---
 
@@ -136,7 +136,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 - 본 문서는 post-MVP 결정의 ai-harness-toolset 내부 record 다.
 - 같은 결정을 외부 web handoff 자료가 함께 다루는 경우, 충돌이 발생하면 **본 문서의 보수적 해석** (= MVP 종료 / 구현 미승인 / guardrail 유지) 을 우선한다.
-- MVP scope 자체의 정의는 `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`, review subsystem 의 contract 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`, Brief 책임은 `docs/brief/brief_spec.md` 가 source-of-truth 다. 본 문서는 이 contract / spec 들과 상충하는 결정을 내리지 않는다.
+- MVP scope 자체의 정의는 `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`, review 도메인은 `docs/review/review_spec.md`, Brief 책임은 `docs/brief/brief_spec.md` 가 spec-of-record 다. 본 문서는 이 contract / spec 들과 상충하는 결정을 내리지 않는다.
 - MVP closeout 의 가벼운 기록은 `docs/decisions/DECISIONS.md` 에 한 줄로 두고, 자세한 내역은 본 문서를 가리킨다.
 
 ---
@@ -147,7 +147,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 ### Completed (source repo side)
 
-본 §10 Completed 의 상세 commit-bound narrative 는 git history 에 보존된다. 현행 compact completed-ledger 는 system status 가 authoritative 다 — install/update: `docs/systems/install-update/STATUS.md`, review: `docs/systems/review/STATUS.md`, brief: 완료 ledger 의 현재 의미는 `docs/brief/brief_spec.md` 가 표현하고 상세는 git history 에 보존된다. 각 ledger 의 completed ID 집합과 항목 수는 해당 single home 에서 보므로 본 절에서 다시 열거하지 않는다 — inline 으로 enumerate 하면 그 home 이 늘어날 때마다 본 절이 stale 해지기 때문이다. deferred(reopen condition 포함)는 `docs/systems/install-update/DEFERRED.md` / `docs/brief/brief_backlog.md`. 아래 §10 Deferred / Operations backlog track / Decisions reaffirmed 절은 그대로 유지된다.
+본 §10 Completed 의 상세 commit-bound narrative 는 git history 에 보존된다. 현행 compact completed-ledger 는 system status 가 authoritative 다 — install/update: `docs/systems/install-update/STATUS.md`; review·brief(이주된 도메인): 완료 ledger 의 현재 의미는 각 도메인 spec(`docs/review/review_spec.md`·`docs/brief/brief_spec.md`)이 표현하고 상세는 git history 에 보존된다. 각 ledger 의 completed ID 집합과 항목 수는 해당 single home 에서 보므로 본 절에서 다시 열거하지 않는다 — inline 으로 enumerate 하면 그 home 이 늘어날 때마다 본 절이 stale 해지기 때문이다. deferred(reopen condition 포함)는 `docs/systems/install-update/DEFERRED.md` / `docs/brief/brief_backlog.md` / `docs/review/review_backlog.md`. 아래 §10 Deferred / Operations backlog track / Decisions reaffirmed 절은 그대로 유지된다.
 
 ### Deferred (separate scoped approval required)
 
@@ -174,7 +174,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - 설치 / adoption mode 의 방향 결정은 `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §1, §4 에 기록되었고, 그 구체적 layer / path / flow / metadata 모델은 `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` 가 current source-of-truth 다. `copy / link / pinned-link` framing 은 §6 안 historical record 로 보존되며, implementation 세부 중 managed block marker 적용, Claude skill global / update / removal 절차 문서화, ToolRoot / ProjectRoot path handling audit 문서화, shared / global mode invocation contract design 문서화, shared / global mode implementation (§6 의 8 개 split unit 전부), clean target smoke test criteria 정의, global install/update/self-adoption operating model 문서화는 모두 완료되었다 (§10 Completed). 잔여 항목은 install / update implementation 의 deferred 잔여 (step 3; STEP3 guide §13.2) 이며 (§10 Deferred, §11 의 numbered order; global behavior validation 은 §10 Completed 의 step 2 closeout 항목, install / update validation 은 §10 Completed 의 step 4 closeout 항목, self-adoption 은 §10 Deferred 의 Resolved 표기 + §11 step 5 의 in-place annotation 및 `docs/systems/install-update/STATUS.md` IU-13 참조), 모두 별도 scoped 승인이 필요하다 (§6, `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §6, §8, §9, `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`, `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` §4, §6).
 - shared / global mode implementation 완료와 actual install / update / self-adoption 은 구분된다. 전자는 §10 Completed 이고, 후자의 잔여는 §11 의 remaining order step 3 (install / update implementation 의 deferred 잔여) 로서 별도 scoped 승인이 필요하다 (step 2 manual global activation 검증, step 4 install / update validation, step 5 self-adoption 은 §10 Completed / Resolved 의 각 closeout 항목 — step 5 는 resolved HEAD `8293878d` (apply 2026-05-25; STATUS IU-13) 로 닫혔다 — 참조). POST_MVP_PLAN.md 의 어떤 진술도 실제 global install / global mutation 을 자동 승인하지 않는다 — Step 5 closeout 자체도 그 이후의 임의 mutation 을 자동 승인하지 않는다.
 - docs taxonomy 의 access-pattern path migration 은 **적용되었다** (2026-05-23; placement authority `docs/README.md`; §10 deferred 표의 해당 항목은 Resolved 로 표기됨). risk-resolution pass 에서 roadmap 잔류 문서까지 모두 access-pattern 자리로 이동 완료되어 `docs/roadmap/` 는 milestone routing only 다.
-- review verdict (`yes` / `no` / `yes with risk`) 는 commit / push / release 의 자동 승인이 아니다 (§2, §8, `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`).
+- review verdict (`yes` / `no` / `yes with risk`) 는 commit / push / release 의 자동 승인이 아니다 (§2, §8, `docs/review/review_spec.md`).
 
 ---
 

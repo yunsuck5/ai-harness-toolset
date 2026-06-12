@@ -14,7 +14,7 @@
 - Claude skill global 절차: `INSTALL.md` §10 + `scripts/activate-global.ps1` (install/update) / `scripts/uninstall-global.ps1` (removal)
 - global install / update 운영 모델: `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`
 - subsystem scope: `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`
-- review record 계약: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`
+- review record 계약: `docs/review/review_spec.md` (review 도메인 spec-of-record)
 - Brief location / shape: `docs/brief/brief_spec.md`
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
@@ -165,7 +165,7 @@ channel 3 의 absent-skip / present-but-incomplete-fail-fast 분기 의도: stab
 
 ### D6 — ToolRoot binding in `review-verify`
 
-> **Superseded — D6 mechanism removed (historical decision; git history).** D6 은 removed-legacy `scripts/review-cycle.ps1` + sidecar (`meta.json`) 설계에서 `review-verify` 에 **meta.json `toolRoot` 일치 검증** 과 **call-site forward (cycle / run → verifier)** 를 더하려던 design 결정이었다. 현행 canonical record 는 2-file (`input.md` + `result.md`) 이며 **sidecar 가 없다** (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` §1 / §10; runtime provenance 는 `result.md` *안* 의 `## Reviewer run provenance` 블록). 따라서 현행 `scripts/review-verify.ps1` 는 **meta.json / sidecar 의 `toolRoot` 를 읽거나 비교하지 않으며 mismatch FAIL 도 없고**, `scripts/review-run.ps1` 은 **`review-verify.ps1` 를 호출하지 않는다**. **as-built 로 살아남은 것은 `-ToolRoot` optional parameter 뿐이며**, 그 역할은 (a) D1 priority chain 으로 ToolRoot 를 runtime 재해소하여 payload 부재 / 불완전 시 fail-fast, (b) component verifier (`scripts/review-input-verify.ps1`) 를 ToolRoot 아래에서 해소하는 것이다 (sidecar binding 아님). 상세 parameter / call-site / verification mechanics (및 stale `-RunId` 기반 pseudo-code) 는 git history 에 보존된다. §5.4 는 같은 removed mechanism 의 pseudo-code 자리로 동일하게 historical 이다.
+> **Superseded — D6 mechanism removed (historical decision; git history).** D6 은 removed-legacy `scripts/review-cycle.ps1` + sidecar (`meta.json`) 설계에서 `review-verify` 에 **meta.json `toolRoot` 일치 검증** 과 **call-site forward (cycle / run → verifier)** 를 더하려던 design 결정이었다. 현행 canonical record 는 2-file (`input.md` + `result.md`) 이며 **sidecar 가 없다** (spec-of-record: `docs/review/review_spec.md` — 당시 contract §1 / §10; runtime provenance 는 `result.md` *안* 의 `## Reviewer run provenance` 블록). 따라서 현행 `scripts/review-verify.ps1` 는 **meta.json / sidecar 의 `toolRoot` 를 읽거나 비교하지 않으며 mismatch FAIL 도 없고**, `scripts/review-run.ps1` 은 **`review-verify.ps1` 를 호출하지 않는다**. **as-built 로 살아남은 것은 `-ToolRoot` optional parameter 뿐이며**, 그 역할은 (a) D1 priority chain 으로 ToolRoot 를 runtime 재해소하여 payload 부재 / 불완전 시 fail-fast, (b) component verifier (`scripts/review-input-verify.ps1`) 를 ToolRoot 아래에서 해소하는 것이다 (sidecar binding 아님). 상세 parameter / call-site / verification mechanics (및 stale `-RunId` 기반 pseudo-code) 는 git history 에 보존된다. §5.4 는 같은 removed mechanism 의 pseudo-code 자리로 동일하게 historical 이다.
 
 ### D7 — untracked exclusion policy
 

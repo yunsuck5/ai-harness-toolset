@@ -22,8 +22,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-# Batch C reviewer-safe invocation negative test (automation of REVIEW_POLISHING_BATCH_A_SPEC.md
-# §2d). It exercises the SAME reviewer-safe Codex invocation review-run.ps1 uses
+# Reviewer-safe invocation negative test (design preserved in git history — the then
+# REVIEW_POLISHING_BATCH_A_SPEC.md §2d). It exercises the SAME reviewer-safe Codex invocation review-run.ps1 uses
 # (--ask-for-approval never / exec / --sandbox read-only / --ignore-user-config) under the
 # operator's REAL (possibly permissive) global config, instructs the reviewer to attempt a set
 # of write vectors against the source tree, and confirms each is blocked by BOTH (a) the model's

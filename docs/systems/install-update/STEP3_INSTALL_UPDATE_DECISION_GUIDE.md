@@ -34,7 +34,7 @@
 - Step 3 implementation 의 승인. 본 문서는 plan / direction guide 일 뿐, scoped implementation approval 은 별도로 받는다.
 - `yes` / `no` / `yes with risk` 어느 verdict 의 자동 승인도 아니다.
 
-**Root-level parent docs remain authoritative where they define source-of-truth responsibilities.** 본 문서의 wording 이 부모 root-level docs (`GLOBAL_INSTALL_UPDATE_MODEL.md`, `POST_MVP_PLAN.md`, `GLOBAL_ADOPTION_DECISION.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md`) 의 contract / decision 과 충돌하면 root-level docs 가 우선한다. 또한 본 문서는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`, `docs/brief/brief_spec.md` 등 repo contract / spec docs 의 source-of-truth 지위를 격하하지 않는다.
+**Root-level parent docs remain authoritative where they define source-of-truth responsibilities.** 본 문서의 wording 이 부모 root-level docs (`GLOBAL_INSTALL_UPDATE_MODEL.md`, `POST_MVP_PLAN.md`, `GLOBAL_ADOPTION_DECISION.md`, `SHARED_GLOBAL_INVOCATION_CONTRACT.md`) 의 contract / decision 과 충돌하면 root-level docs 가 우선한다. 또한 본 문서는 `docs/review/review_spec.md`, `docs/brief/brief_spec.md` 등 repo 도메인 spec docs 의 spec-of-record 지위를 격하하지 않는다.
 
 본 문서는 parent `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` 의 **subordinate** 다 — parent 의 source-of-truth 지위를 silently replace 하지 않고 그 결정을 silently override 하지 않으며, parent 결정 변경이 필요하면 parent 문서 자체의 별도 scoped 수정으로 처리한다. (본 문서는 이전 `docs/roadmap/global-install-update/` topic namespace 에 있었으나 access-pattern 재배치로 `docs/systems/install-update/` 로 이동했고 그 namespace 는 해소되었다 — `docs/roadmap/INDEX.md` §4.)
 
@@ -198,7 +198,7 @@ Step 3 의 canonical decomposition 은 다음 9 단계다.
 본 가이드의 사용 / 적용 boundary 는 다음과 같다.
 
 - **source / doc mutation batch 는 Codex review gate 를 거친다.** Step 3 관련 source-file (`installer/`, `tests/installer/`, 또는 본 가이드 / 부모 docs 의 본문) 변경은 정상 review subsystem (`scripts/review-prepare.ps1` → `scripts/review-run.ps1` → `scripts/review-verify.ps1 -RequireResult`) 을 통과한다.
-- **review verdict 는 commit / push / publish / merge / release / adoption 을 자동 승인하지 않는다** (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md`, `POST_MVP_PLAN.md` §2, §8).
+- **review verdict 는 commit / push / publish / merge / release / adoption 을 자동 승인하지 않는다** (`docs/review/review_spec.md`, `POST_MVP_PLAN.md` §2, §8).
 - **실제 global / user filesystem mutation 은 별도 explicit approval boundary** 다 (`GLOBAL_INSTALL_UPDATE_MODEL.md` §12, `GLOBAL_ADOPTION_DECISION.md` §6). 본 가이드가 그것을 자동 승인하지 않는다.
 - **commit / push 는 본 가이드의 verdict 와 무관한 별도 explicit approval boundary** 다. 본 가이드는 commit / push 를 승인하지 않는다.
 - **본 가이드는 implementation, validation, adoption, release, publish, push 의 어느 것도 승인하지 않는다.** plan / direction guide 일 뿐이다.

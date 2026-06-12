@@ -7,7 +7,7 @@ This INDEX's existence does not by itself approve any implementation, source/doc
 ## 1. Where current state lives
 
 - install/update/global-adoption current state → `docs/systems/install-update/STATUS.md` + `DEFERRED.md`
-- review → `docs/systems/review/STATUS.md`; brief → `docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md`
+- review → `docs/review/review_spec.md` + `docs/review/review_backlog.md`; brief → `docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md`
 - overall entrypoint → `docs/current/REPO_READING_GUIDE.md` (question→read-first routing); current progress / remaining work / next action is answered on demand (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*), not from a committed mirror (the former `docs/current/PROJECT_STATE.md` / `NEXT_ACTIONS.md` mirrors were removed)
 - post-MVP numbered remaining order routing view → `docs/roadmap/CURRENT_MILESTONES.md` (authority = `docs/decisions/POST_MVP_PLAN.md` §11)
 
@@ -22,7 +22,7 @@ The former root-level roadmap docs now live in their access-pattern scope folder
 | install/update operating model/design (execution SoT = `INSTALL.md`) | `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` |
 | Step 3 implementation planning guide | `docs/systems/install-update/STEP3_INSTALL_UPDATE_DECISION_GUIDE.md` |
 | shared/global invocation contract (D1–D9) | `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` |
-| review effort/cost guide | `docs/policies/REVIEW_EFFORT_GUIDE.md` |
+| review effort/cost guide | absorbed into `docs/review/review_spec.md` (the then `docs/policies/REVIEW_EFFORT_GUIDE.md` is preserved in git history) |
 | skill global adopt/update/remove procedure | `INSTALL.md` §10; `docs/systems/install-update/STATUS.md` IU-03 |
 
 ## 3. Remaining roadmap doc

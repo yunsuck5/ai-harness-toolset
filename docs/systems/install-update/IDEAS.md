@@ -7,7 +7,7 @@
 > - **Not deferred implementation scope.** `docs/systems/install-update/DEFERRED.md` 의 reopen-조건부 deferred 항목과도 분리된 class.
 > - **No planning / design / implementation 진행 — 별도 user 명시 결정 (별도 scoped `/goal` + Codex review gate) 없이는 어떤 작업도 시작하지 않는다.**
 >
-> 본 문서의 목적은 install-update subsystem 의 candidate 중 **deferred backlog 도 아니고 implementation 대상도 아닌** idea 들을 durable source-managed 문서에 기록하여 future operator turnover / long-term governance review 시점에서 누락되지 않도록 하는 것이다. 형식과 의의는 `docs/systems/review/IDEAS.md` 의 idea-only durability mitigation 을 참고하되, install-update 의 lifecycle 맥락에 맞게 별도로 작성한다 (복제 아님).
+> 본 문서의 목적은 install-update subsystem 의 candidate 중 **deferred backlog 도 아니고 implementation 대상도 아닌** idea 들을 durable source-managed 문서에 기록하여 future operator turnover / long-term governance review 시점에서 누락되지 않도록 하는 것이다. 형식과 의의는 review 도메인의 idea-only durability mitigation (당시 `docs/systems/review/IDEAS.md`; 현재는 `docs/review/review_backlog.md` 의 idea-only rows 로 통합) 을 참고하되, install-update 의 lifecycle 맥락에 맞게 별도로 작성한다 (복제 아님).
 
 ## Relationship to other surfaces
 

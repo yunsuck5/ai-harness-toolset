@@ -46,7 +46,7 @@ These are generated artifacts. They are not part of the toolset payload.
 
 - CLI/runtime dependency boundary is canonical in `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md`.
 - `<project-root>/log/` is the runtime factual record root. Generated records are preserved for inspection and traceability; later corrections are captured as new records under the relevant subsystem contract.
-- Review record contract is canonical in `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.
+- The review record model is specified in `docs/review/review_spec.md` (the review domain spec-of-record).
 
 ## Out of scope
 

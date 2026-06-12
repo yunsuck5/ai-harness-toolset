@@ -8,9 +8,9 @@ Read a contract when you are **producing or validating that specific artifact/pr
 
 | Subfolder | Contract | Read when |
 |---|---|---|
-| `review/` | `REVIEW_RESULT_CONTRACT.md` | producing/validating a review record (`input.md` + `result.md`, verdict) |
-| `evidence/` | `EVIDENCE_CONTRACT.md` | capturing evidence |
 | `global-invocation/` | `SHARED_GLOBAL_INVOCATION_CONTRACT.md` | reasoning about ToolRoot/ProjectRoot resolution and shared/global invocation (D1–D9) |
+
+The former `review/` (`REVIEW_RESULT_CONTRACT.md`) and `evidence/` (`EVIDENCE_CONTRACT.md`) contracts are **absorbed into the review domain spec** — read `docs/review/review_spec.md` when producing/validating a review record or capturing validation evidence (full history in git).
 
 ## What does not belong here
 

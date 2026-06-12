@@ -128,7 +128,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         # Everything review-run depends on (model, reasoning effort, web_search, sandbox,
         # approval) is passed explicitly here, so dropping config.toml does not change behavior;
         # the disclosed trade-off is that a user config carrying a custom model provider /
-        # base_url would also be dropped (docs/policies/REVIEWER_CONFIG_POLICY.md). reviewer-safe
+        # base_url would also be dropped. reviewer-safe
         # precedence is verified for tested write vectors only (scripts/review-safety-negtest.ps1),
         # not a blanket guarantee. reviewer-tool-specific: re-derive if the reviewer tool changes.
         '--ignore-user-config',
@@ -145,7 +145,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
     # sent to the reviewer CLI. This is the posture flags only — it is NOT a blanket safety
     # guarantee; reviewer-safe precedence is verified for tested write vectors only
     # (scripts/review-safety-negtest.ps1), and that tested-vectors-only caveat is kept in the
-    # final report / docs layer (docs/policies/REVIEWER_CONFIG_POLICY.md), never asserted here.
+    # final report / docs layer, never asserted here.
     $postureParts = @()
     $approvalIdx = [array]::IndexOf($codexArgs, '--ask-for-approval')
     if ($approvalIdx -ge 0 -and $approvalIdx + 1 -lt $codexArgs.Count) {
@@ -374,7 +374,7 @@ function Get-ReviewerEffort {
         $CategoryEntry
     )
 
-    # Precedence (docs/policies/REVIEWER_CONFIG_POLICY.md):
+    # Precedence (per-key meaning home: config/reviewer.schema.json):
     # explicit CLI -Effort > matched categoryPolicy entry reasoningEffort >
     # scalar config/reviewer.json reasoningEffort > built-in safe default.
     # Source is the actual resolver branch: 'explicit' / 'category' / 'config' / 'default'.
@@ -410,10 +410,10 @@ function Get-ReviewerEffort {
         }
     }
 
-    # Built-in safe default per the adopted decision record
-    # (docs/systems/review/REVIEW_POLISHING_DECISION_RECORD.md): default = latest
-    # model + xhigh; only clearly-simple local-correctness packets downgrade via an
-    # explicit -Effort. This is the safe-default, not an operational U9 claim.
+    # Built-in safe default (adopted policy): default = latest model + xhigh;
+    # only clearly-simple local-correctness packets downgrade via an explicit
+    # -Effort. This is the safe-default, not an operational claim beyond the
+    # tested scope.
     return [pscustomobject]@{ Effort = 'xhigh'; Source = 'default' }
 }
 

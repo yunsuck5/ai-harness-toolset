@@ -26,7 +26,7 @@ Git은 본 toolset의 기능적 prerequisite가 아니다. 두 가지 보조 역
 
 - Changed-file convenience: operator-role AI 가 review scope 를 잡을 때 `git status --porcelain=v1` 로 tracked 변경 파일 집합을 식별하고 `input.md` 의 `## Target files` section 에 반영한다.
 
-Explicit target files 가 `input.md` 안에 명시되면 비-Git 프로젝트에서도 first-class 로 동작한다. `input.md` 본문 자체가 review request 의 단일 운반 매체이므로, target file 목록을 외부 staging file 로 분산하지 않는다 (`docs/contracts/review/REVIEW_RESULT_CONTRACT.md` 의 canonical artifact contract).
+Explicit target files 가 `input.md` 안에 명시되면 비-Git 프로젝트에서도 first-class 로 동작한다. `input.md` 본문 자체가 review request 의 단일 운반 매체이므로, target file 목록을 외부 staging file 로 분산하지 않는다 (canonical artifact 모델: `docs/review/review_spec.md`).
 
 canonical 두 단계 entry (`scripts/review-prepare.ps1` / `scripts/review-run.ps1`) 중 어느 단계라도 0 이 아닌 코드로 종료되면 자동 재실행하지 않는다. wrapper failure 를 보고하고 별도의 scoped 사용자 승인을 받은 뒤에만 다시 invocation 한다. 자연어 운용 경로에서는 `snippets/claude-skills/ai-harness-review/SKILL.md` 의 retry discipline 절을 따른다.
 

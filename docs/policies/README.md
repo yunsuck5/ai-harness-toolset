@@ -10,8 +10,8 @@ Read a policy when your task touches its domain — each is **conditional**, not
 |---|---|
 | `POWERSHELL_POLICY.md` | editing `.ps1` (encoding, EOL, file IO, collection-return rules) |
 | `CLI_ENVIRONMENT_ASSUMPTIONS.md` | reasoning about CLI/runtime dependencies (PowerShell, Codex, Git tiers) |
-| `REVIEWER_CONFIG_POLICY.md` | configuring or running the reviewer (config location, precedence, defaults, enforcement status) |
-| `REVIEW_EFFORT_GUIDE.md` | deciding review effort/cost for a Codex review |
+
+The former reviewer policies (`REVIEWER_CONFIG_POLICY.md`, `REVIEW_EFFORT_GUIDE.md`) are **absorbed into the review domain spec** — read `docs/review/review_spec.md` (config invariants live with the active surface: `config/reviewer.schema.json` + `scripts/review-run.ps1`).
 
 ## What does not belong here
 

@@ -28,19 +28,15 @@ How to read each entry:
 
 ## Q2. review workflow
 
-- **Primary:** `snippets/claude-skills/ai-harness-review/SKILL.md` (natural-language UX + run orchestration).
-- **Secondary:** `docs/systems/review/STATUS.md` (current review system status), `docs/policies/REVIEW_EFFORT_GUIDE.md`.
+- **Migrated** to the `docs/review/` domain folder — spec-of-record: `docs/review/review_spec.md`; future-work queue: `docs/review/review_backlog.md` (orientation: `docs/README.md`). Day-to-day natural-language UX + run orchestration: `snippets/claude-skills/ai-harness-review/SKILL.md`.
 - **Implementation:** `scripts/review-prepare.ps1` → `scripts/review-run.ps1` → `scripts/review-verify.ps1` (input gate: `scripts/review-input-verify.ps1`).
-- **Historical:** removed-legacy review-cycle / quoting-hardening / clean-target smoke-criteria detail is preserved in git history.
-- **Do not use:** `review-cycle.ps1`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `-TargetFilesPath`, `-ReviewRequestPath` (all removed-legacy).
+- **Do not use:** `review-cycle.ps1`, `meta.json`, `result.json`, `target-files.list`, `<run-id>` flat layout, `-TargetFilesPath`, `-ReviewRequestPath` (all removed-legacy; preserved in git history only).
 
 ## Q3. review result contract
 
-- **Primary:** `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`.
-- **Secondary:** `docs/policies/REVIEWER_CONFIG_POLICY.md`, `docs/systems/review/STATUS.md`.
-- **Implementation:** `templates/review-input.md`, `templates/review-result.md`, `scripts/review-verify.ps1`, `config/reviewer.json`.
-- **Historical:** removed-legacy identifiers are preserved in git history.
-- **Do not use:** sidecar JSON / hash-binding files / external staging folders (outside the canonical contract).
+- **Migrated** — the review artifact model (three-level layout, 2-file record, verdict vocabulary, deterministic gates) is specified in `docs/review/review_spec.md` (spec-of-record).
+- **Implementation:** `templates/review-input.md`, `templates/review-result.md`, `scripts/review-verify.ps1`, `config/reviewer.json` (+ `config/reviewer.schema.json`).
+- **Do not use:** sidecar JSON / hash-binding files / external staging folders (outside the canonical 2-file record).
 
 ## Q4. Brief
 
@@ -76,8 +72,8 @@ Answered **on demand**, not from a committed project-current mirror (see `rules/
 
 ## Q8. backlog / deferred / completed items
 
-- **Primary (open work):** `docs/systems/review/BACKLOG.md`, `docs/systems/install-update/BACKLOG.md` (consolidated open candidates), with `docs/backlog/INDEX.md` as the classification index. The full historical item text is preserved in git history (the per-system `BACKLOG.md` triage rows are the current entrypoint).
-- **Secondary:** for **completed** items the per-system completed-ledgers in `docs/systems/*/STATUS.md`; for **deferred** items (with reopen conditions) `docs/systems/install-update/DEFERRED.md` / `docs/brief/brief_backlog.md`; `docs/decisions/POST_MVP_PLAN.md` §10 (status summary).
+- **Primary (open work):** `docs/review/review_backlog.md` (review domain), `docs/systems/install-update/BACKLOG.md` (install-update open candidates), with `docs/backlog/INDEX.md` as the classification index. The full historical item text is preserved in git history.
+- **Secondary:** for **completed** items the per-system completed-ledgers in `docs/systems/*/STATUS.md` (migrated domains: git history); for **deferred** items (with reopen conditions) `docs/systems/install-update/DEFERRED.md` / `docs/brief/brief_backlog.md` / `docs/review/review_backlog.md`; `docs/decisions/POST_MVP_PLAN.md` §10 (status summary).
 - **Implementation:** n/a (backlog / deferred are records of not-yet-started work; the implementation basis for closed items is the commit pointers in `docs/decisions/POST_MVP_PLAN.md` §10 Completed plus current `scripts/**` / `tests/**`).
 - **Historical:** removed-legacy / closeout items inside the two backlog files.
 - **Do not use:** reading closeout / completed items in the backlog folder as open work.
