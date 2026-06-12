@@ -7,7 +7,7 @@ This INDEX's existence does not by itself approve any implementation, source/doc
 ## 1. Where current state lives
 
 - install/update/global-adoption current state → `docs/systems/install-update/STATUS.md` + `DEFERRED.md`
-- review → `docs/systems/review/STATUS.md`; brief → `docs/systems/brief/STATUS.md` + `DEFERRED.md`
+- review → `docs/systems/review/STATUS.md`; brief → `docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md`
 - overall entrypoint → `docs/current/REPO_READING_GUIDE.md` (question→read-first routing); current progress / remaining work / next action is answered on demand (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*), not from a committed mirror (the former `docs/current/PROJECT_STATE.md` / `NEXT_ACTIONS.md` mirrors were removed)
 - post-MVP numbered remaining order routing view → `docs/roadmap/CURRENT_MILESTONES.md` (authority = `docs/decisions/POST_MVP_PLAN.md` §11)
 

@@ -50,7 +50,7 @@ land brief-check tests.
 do not introduce daemon or watcher.
 
 ## Files to inspect first
-docs/contracts/brief/BRIEF_CONTRACT.md
+docs/brief/brief_spec.md
 templates/brief/BRIEF.md
 
 ## Open risks
@@ -82,7 +82,7 @@ land tests.
 no daemon.
 
 ## Files to inspect first
-docs/contracts/brief/BRIEF_CONTRACT.md
+docs/brief/brief_spec.md
 
 ## Open risks
 none.
@@ -113,7 +113,7 @@ land tests.
 no daemon.
 
 ## Files to inspect first
-docs/contracts/brief/BRIEF_CONTRACT.md
+docs/brief/brief_spec.md
 
 ## Open risks
 none.
@@ -144,7 +144,7 @@ land tests.
 no daemon.
 
 ## Files to inspect first
-docs/contracts/brief/BRIEF_CONTRACT.md
+docs/brief/brief_spec.md
 
 ## Pending user decision
 none.
@@ -174,7 +174,7 @@ land tests.
 no daemon.
 
 ## Files to inspect first
-docs/contracts/brief/BRIEF_CONTRACT.md
+docs/brief/brief_spec.md
 
 ## Open risks
 none.
@@ -205,7 +205,7 @@ land tests.
 no daemon.
 
 ## Files to inspect first
-docs/contracts/brief/BRIEF_CONTRACT.md
+docs/brief/brief_spec.md
 
 ## Open risks
 none.

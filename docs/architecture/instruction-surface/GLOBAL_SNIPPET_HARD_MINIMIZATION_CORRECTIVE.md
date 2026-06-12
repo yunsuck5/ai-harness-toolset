@@ -81,7 +81,7 @@ Disposition: **bootstrap** (kept inline in the snippet safety floor) · **rules 
 ## 4. Distribution made docs-free (SC fix)
 
 - **Snippet:** no `docs/` or `rules/` (repo-root) pointer; points to `<ToolRoot>/snippets/rules/` (distributed).
-- **`ai-harness-brief/SKILL.md`:** the load-bearing heading-set deferral to `docs/contracts/brief/BRIEF_CONTRACT.md` ("does not restate them") replaced — the minimal heading set is now stated inline and tied to the distributed `templates/brief/BRIEF.md` + `scripts/brief-check.ps1`; the docs "Authoritative references" section replaced with distributed source-side surfaces.
+- **`ai-harness-brief/SKILL.md`:** the load-bearing heading-set deferral to 당시 BRIEF_CONTRACT(현 `docs/brief/brief_spec.md`) ("does not restate them") replaced — the minimal heading set is now stated inline and tied to the distributed `templates/brief/BRIEF.md` + `scripts/brief-check.ps1`; the docs "Authoritative references" section replaced with distributed source-side surfaces.
 - **`ai-harness-review/SKILL.md`:** the `docs/**` "policy home" pointers (reference-sweep, reviewer-config category, result.md dual-authorship) reframed to the inline procedure / distributed `config/reviewer.json`.
 - **`templates/review-input.md` + `templates/review-result.md`:** every `docs/contracts/review/REVIEW_RESULT_CONTRACT.md` / `docs/policies/REVIEWER_CONFIG_POLICY.md` "source-of-truth" pointer reframed to the inline shape / the `ai-harness-review` skill / `config/reviewer.json`.
 

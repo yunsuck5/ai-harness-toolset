@@ -4,7 +4,7 @@
 
 post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 implementation, scoped work, scheduling, 또는 release 가 자동 승인되지 않는다. 각 항목은 별도 scoped 승인을 거친 뒤에만 작업이 시작된다.
 
-> **현행 routing (docs taxonomy reset).** 본 문서의 current status / next action / completed / deferred 판단은 이제 다음 자리가 authoritative 다 — `docs/current/REPO_READING_GUIDE.md` (question→read-first routing), system status (`docs/systems/install-update/STATUS.md` + `DEFERRED.md`, `docs/systems/review/STATUS.md`, `docs/systems/brief/STATUS.md` + `DEFERRED.md`), 그리고 §11 numbered order 의 1:1 routing view `docs/roadmap/CURRENT_MILESTONES.md`. "현재 진행 / 잔여 / 다음 할 일" 은 committed mirror 가 아니라 on-demand status-briefing 으로 답한다 (`rules/docs-working-model/docs-working-model.md` 의 *On-demand status-briefing model*); 기존 `docs/current/PROJECT_STATE.md` 와 `docs/current/NEXT_ACTIONS.md` (project-current mirror) 는 제거되었다. 본 POST_MVP_PLAN.md 는 post-MVP **decision record (§1–§9)** 와 numbered remaining order (§11) 의 authority 로 유지된다. §10 의 상세 commit-bound completed narrative 는 git history 에 보존된다. current 판단에는 위 SoT/system 자리를 먼저 본다.
+> **현행 routing (docs taxonomy reset).** 본 문서의 current status / next action / completed / deferred 판단은 이제 다음 자리가 authoritative 다 — `docs/current/REPO_READING_GUIDE.md` (question→read-first routing), system status (`docs/systems/install-update/STATUS.md` + `DEFERRED.md`, `docs/systems/review/STATUS.md`, brief 는 `docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md`), 그리고 §11 numbered order 의 1:1 routing view `docs/roadmap/CURRENT_MILESTONES.md`. "현재 진행 / 잔여 / 다음 할 일" 은 committed mirror 가 아니라 on-demand status-briefing 으로 답한다 (`rules/docs-working-model/docs-working-model.md` 의 *On-demand status-briefing model*); 기존 `docs/current/PROJECT_STATE.md` 와 `docs/current/NEXT_ACTIONS.md` (project-current mirror) 는 제거되었다. 본 POST_MVP_PLAN.md 는 post-MVP **decision record (§1–§9)** 와 numbered remaining order (§11) 의 authority 로 유지된다. §10 의 상세 commit-bound completed narrative 는 git history 에 보존된다. current 판단에는 위 SoT/system 자리를 먼저 본다.
 
 ---
 
@@ -51,7 +51,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 > 한 자리이며, project-local, operator-local, source-control-excluded runtime artifact (gitignored under `log/`)
 > 다. **root `<ProjectRoot>/brief/` 는 rejected**, user-home operator-local runtime root (예:
 > `%USERPROFILE%\.ai-harness\projects\<project-key>\...`) 도 rejected, target persistent footprint 는
-> `<ProjectRoot>/log/` only 다. 현행 source-of-truth 는 `docs/contracts/brief/BRIEF_CONTRACT.md` 다.
+> `<ProjectRoot>/log/` only 다. 현행 source-of-truth 는 `docs/brief/brief_spec.md` 다.
 
 - Brief system 은 post-MVP 의 core 항목이다. 단, 본 문서는 Brief system 의 implementation 시점, 우선순위, owner, deadline 을 확정하지 않는다.
 - canonical Brief 위치 결정 (3차 reconciliation).
@@ -62,8 +62,8 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
   - `scripts/brief-init.ps1` 의 writer destination 과 `scripts/brief-check.ps1` 의 default check path 는 canonical Brief 자리 (`<ProjectRoot>/log/brief/BRIEF.md`) 와 일치한다. canonical 과 destination 의 routing 정합화는 더 이상 future scoped work 가 아니다 (2차 reconciliation 의 잔재였으며 3차 reconciliation 으로 자연 해소되었다).
   - primitive 의 narrow 성격은 destination 의 문제가 아니라 capability 의 문제다 (deterministic writer / stale warning / session-start guidance 의 미구현 — §5 참조).
 - 현재 상태 (source repo).
-  - source-side primitive (`scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `templates/brief/BRIEF.md`) implementation 완료. 단, 이는 BF Level 3 capability 의 full implementation 이 아니라 narrow primitive 수준이다 (`docs/contracts/brief/BRIEF_CONTRACT.md` §"BF Level — save/restore capability maturity").
-  - `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 의 `## Brief` 섹션은 Batch 3 / Track F 에서 제거되어 (`docs/systems/skills/STATUS.md` SK-05) snippet 은 더 이상 Brief framing 을 carry 하지 않는다; 현행 (3차 reconciliation) framing — canonical Brief = `<ProjectRoot>/log/brief/BRIEF.md`, root `<ProjectRoot>/brief/` rejected, Brief 가 유일한 restore source — 은 이제 docs contract (`docs/contracts/brief/BRIEF_CONTRACT.md`) 에만 존재한다. 운영자가 이전 라운드에 destination `CLAUDE.md` / `AGENTS.md` 의 managed block 에 적용한 본문은 그 시점의 snippet 을 그대로 가지고 있으며 source snippet 갱신 이후에도 자동으로 refresh 되지 않는다 — destination managed-block refresh 는 사용자 명시 승인이 필요한 별도 managed-block replacement step (`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §6) 이다. source snippet / managed block / docs contract 의 framing 이 충돌하면 docs contract (`docs/contracts/brief/BRIEF_CONTRACT.md`) 가 우선이다. BF Level 3 deterministic 자동화 (validation / stale warning / session-start guidance) 자체는 여전히 미구현 future scoped work 다 (`docs/contracts/brief/BRIEF_CONTRACT.md` BF Level table + `docs/systems/brief/DEFERRED.md` BR-D-01/03; 무요청 session-start restore-offer automation 은 retire 됨 — BR-D-02). 이 BF-lv3 미구현 사실은 snippet 본문이 아니라 contract / DEFERRED 가 소유한다.
+  - source-side primitive (`scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `templates/brief/BRIEF.md`) implementation 완료. 단, 이는 BF Level 3 capability 의 full implementation 이 아니라 narrow primitive 수준이다 (`docs/brief/brief_spec.md`).
+  - `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` 의 `## Brief` 섹션은 Batch 3 / Track F 에서 제거되어 (`docs/systems/skills/STATUS.md` SK-05) snippet 은 더 이상 Brief framing 을 carry 하지 않는다; 현행 (3차 reconciliation) framing — canonical Brief = `<ProjectRoot>/log/brief/BRIEF.md`, root `<ProjectRoot>/brief/` rejected, Brief 가 유일한 restore source — 은 이제 brief spec (`docs/brief/brief_spec.md`) 에 존재한다. 운영자가 이전 라운드에 destination `CLAUDE.md` / `AGENTS.md` 의 managed block 에 적용한 본문은 그 시점의 snippet 을 그대로 가지고 있으며 source snippet 갱신 이후에도 자동으로 refresh 되지 않는다 — destination managed-block refresh 는 사용자 명시 승인이 필요한 별도 managed-block replacement step (`docs/decisions/GLOBAL_ADOPTION_DECISION.md` §6) 이다. source snippet / managed block / brief spec 의 framing 이 충돌하면 brief spec (`docs/brief/brief_spec.md`) 이 우선이다. BF Level 3 deterministic 자동화 (validation / stale warning / session-start guidance) 자체는 여전히 미구현 future scoped work 다 (`docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md` BR-D-01/03; 무요청 session-start restore-offer automation 은 폐기됨). 이 BF-lv3 미구현 사실은 snippet 본문이 아니라 brief spec / backlog 가 소유한다.
   - target payload 측 source-side primitive smoke test 완료.
   - 위 항목들은 narrow source-side primitive 가 동작 가능 상태라는 의미다. Brief system 전체 (BF Level 3 deterministic capability 등) 의 완료를 의미하지 않으며, 본 절 첫 줄의 implementation 시점 / 우선순위 / owner / deadline 미확정 진술은 그 broader scope 에 대해 그대로 유효하다. (이전 라운드의 "target-canonical routing" 항목은 §3 의 3차 reconciliation 으로 자연 해소되었다.)
 
@@ -71,7 +71,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 ## 5. BF Level 3 — allowed scope
 
-- BF Level 은 path 가 아니라 **save / restore capability maturity** 다 (`docs/contracts/brief/BRIEF_CONTRACT.md`). BF Level 1/2 는 manual save / restore discipline 이고, BF Level 3 는 deterministic Brief maintenance / validation / stale warning / session-start guidance 의 자동화다. (무요청 session-start restore-offer 의 source-side automation 은 BF Level 3 component 가 아니라 retire 됨 — `docs/systems/brief/DEFERRED.md` BR-D-02.)
+- BF Level 은 path 가 아니라 **save / restore capability maturity** 다 (`docs/brief/brief_spec.md`). BF Level 1/2 는 manual save / restore discipline 이고, BF Level 3 는 deterministic Brief maintenance / validation / stale warning / session-start guidance 의 자동화다. (무요청 session-start restore-offer 의 source-side automation 은 BF Level 3 component 가 아니라 폐기되었다.)
 - BF Level 3 는 post-MVP 단계에서 **허용 범위 안** 이다. 단, 사람이 BRIEF 본문을 직접 손편집하는 모델을 BF Level 3 의 목표로 두지 않는다. 반대로 BF Level 3 는 그 손편집 의존을 줄이는 방향이다.
 - 다음 항목은 BF Level 3 의 이름으로도 본 결정 범위에서 명시적으로 **금지** 한다.
   - daemon
@@ -83,7 +83,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 - 본 절은 BF Level 3 이 후속 작업의 scope 안에 있을 수 있다는 사실만 기록한다.
 - 현재 상태 (source repo).
   - `scripts/brief-init.ps1` / `scripts/brief-check.ps1` 라는 **narrow source-side primitive** 가 갖춰져 있다 (§3 참조). 이는 BF Level 3 capability 의 full implementation 이 아니다.
-  - BF Level 3 의 미구현 future scoped work 에는 다음이 포함된다 — deterministic save / update writer, stale warning, session-start guidance. (무요청 session-start restore-offer 의 source-side automation 은 retire 됨 — `docs/systems/brief/DEFERRED.md` BR-D-02; 무요청 restore-offer 는 폐기되어 future automation 대상이 아니다.) (이전 라운드의 "writer destination 을 target canonical (`brief/BRIEF.md`) 로 routing 정합화" 항목은 §3 의 3차 reconciliation 으로 더 이상 항목이 아니다 — destination 자체가 canonical 이다.)
+  - BF Level 3 의 미구현 future scoped work 에는 다음이 포함된다 — deterministic save / update writer, stale warning, session-start guidance. (무요청 session-start restore-offer 의 source-side automation 은 폐기되어 future automation 대상이 아니다.) (이전 라운드의 "writer destination 을 target canonical (`brief/BRIEF.md`) 로 routing 정합화" 항목은 §3 의 3차 reconciliation 으로 더 이상 항목이 아니다 — destination 자체가 canonical 이다.)
   - 본 §5 의 forbidden 항목 (daemon / watcher / scheduler / `BF_STATE.json` / automatic decision-maker) 은 그대로 유지된다.
   - 그 다음 BF Level 3 단계는 본 §5 가 자동 승인하지 않는다. design / scoped 승인을 별도로 거친다.
 
@@ -136,7 +136,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 - 본 문서는 post-MVP 결정의 ai-harness-toolset 내부 record 다.
 - 같은 결정을 외부 web handoff 자료가 함께 다루는 경우, 충돌이 발생하면 **본 문서의 보수적 해석** (= MVP 종료 / 구현 미승인 / guardrail 유지) 을 우선한다.
-- MVP scope 자체의 정의는 `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`, review subsystem 의 contract 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`, Brief 책임은 `docs/contracts/brief/BRIEF_CONTRACT.md` 가 source-of-truth 다. 본 문서는 이 contract 들과 상충하는 결정을 내리지 않는다.
+- MVP scope 자체의 정의는 `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`, review subsystem 의 contract 는 `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`, Brief 책임은 `docs/brief/brief_spec.md` 가 source-of-truth 다. 본 문서는 이 contract / spec 들과 상충하는 결정을 내리지 않는다.
 - MVP closeout 의 가벼운 기록은 `docs/decisions/DECISIONS.md` 에 한 줄로 두고, 자세한 내역은 본 문서를 가리킨다.
 
 ---
@@ -147,7 +147,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
 
 ### Completed (source repo side)
 
-본 §10 Completed 의 상세 commit-bound narrative 는 git history 에 보존된다. 현행 compact completed-ledger 는 system status 가 authoritative 다 — install/update: `docs/systems/install-update/STATUS.md`, review: `docs/systems/review/STATUS.md`, brief: `docs/systems/brief/STATUS.md`. 각 ledger 의 completed ID 집합과 항목 수는 해당 STATUS.md 가 single home 이므로 본 절에서 다시 열거하지 않는다 — inline 으로 enumerate 하면 STATUS 가 늘어날 때마다 본 절이 stale 해지기 때문이다. deferred(reopen condition 포함)는 `docs/systems/install-update/DEFERRED.md` / `docs/systems/brief/DEFERRED.md`. 아래 §10 Deferred / Operations backlog track / Decisions reaffirmed 절은 그대로 유지된다.
+본 §10 Completed 의 상세 commit-bound narrative 는 git history 에 보존된다. 현행 compact completed-ledger 는 system status 가 authoritative 다 — install/update: `docs/systems/install-update/STATUS.md`, review: `docs/systems/review/STATUS.md`, brief: 완료 ledger 의 현재 의미는 `docs/brief/brief_spec.md` 가 표현하고 상세는 git history 에 보존된다. 각 ledger 의 completed ID 집합과 항목 수는 해당 single home 에서 보므로 본 절에서 다시 열거하지 않는다 — inline 으로 enumerate 하면 그 home 이 늘어날 때마다 본 절이 stale 해지기 때문이다. deferred(reopen condition 포함)는 `docs/systems/install-update/DEFERRED.md` / `docs/brief/brief_backlog.md`. 아래 §10 Deferred / Operations backlog track / Decisions reaffirmed 절은 그대로 유지된다.
 
 ### Deferred (separate scoped approval required)
 
@@ -238,7 +238,7 @@ mainpc / vanilla pc 같은 **실제 installed legacy / stale / corrupted state**
 - **literal `?` / `0x3F` non-increase gate** — install / update / managed-block apply 가 source 대비 literal `?` (0x3F) 개수를 증가시키지 않는지의 encoding regression gate. step 4 기본 scope 밖 deferred (별도 결정).
 - **source-cut actual handling** — source-cut 은 현행 contract 상 detection-only (STEP3 guide §12.7 / §17). source-cut path 의 실제 처리는 step 4 기본 scope 밖 deferred.
 - **external git-url / network validation** — git-url mode 의 실제 network fetch / clone / credential / auth / proxy 검증은 step 4 기본 scope 밖 deferred (현 skeleton 은 local-clone 중심).
-- **BF Level 3 (deterministic Brief 자동 저장 등 — deterministic writer / stale warning / session-start guidance)** — §5 의 allowed-but-unimplemented future scoped work. 무요청 자동 복구 (restore-offer source-side automation) 는 retire 됨 (`docs/systems/brief/DEFERRED.md` BR-D-02). step 4 validation 의 default scope 가 아니다.
+- **BF Level 3 (deterministic Brief 자동 저장 등 — deterministic writer / stale warning / session-start guidance)** — §5 의 allowed-but-unimplemented future scoped work. 무요청 자동 복구 (restore-offer source-side automation) 는 폐기되었다. step 4 validation 의 default scope 가 아니다.
 
 #### 11.1.4 실행 진입 전 review gate 와 사용자 승인 boundary
 

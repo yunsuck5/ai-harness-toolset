@@ -42,12 +42,10 @@ How to read each entry:
 - **Historical:** removed-legacy identifiers are preserved in git history.
 - **Do not use:** sidecar JSON / hash-binding files / external staging folders (outside the canonical contract).
 
-## Q4. Brief primitive
+## Q4. Brief
 
-- **Primary:** `docs/contracts/brief/BRIEF_CONTRACT.md` (3rd reconciliation; canonical Brief = `<ProjectRoot>/log/brief/BRIEF.md`).
-- **Secondary:** `docs/systems/brief/STATUS.md` + `DEFERRED.md` (current status + BF Level 3 deferred).
+- **Migrated** to the `docs/brief/` domain folder — spec-of-record: `docs/brief/brief_spec.md`; future-work queue: `docs/brief/brief_backlog.md` (orientation: `docs/README.md`). Historical lineage (1st·2nd·3rd reconciliation narrative) is preserved in git history.
 - **Implementation:** `scripts/brief-init.ps1`, `scripts/brief-check.ps1`, `scripts/brief-status.ps1`, `templates/brief/BRIEF.md`.
-- **Historical:** `docs/contracts/brief/BRIEF_CONTRACT.md` Historical lineage (1st·2nd), and the superseded brief wording inside `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md` / `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` / `docs/decisions/GLOBAL_ADOPTION_DECISION.md`.
 - **Do not use:** root `<ProjectRoot>/brief/` (rejected), any user-home operator-local runtime root (rejected). Brief is the only restore source.
 
 ## Q5. current progress / remaining work / next action
@@ -79,7 +77,7 @@ Answered **on demand**, not from a committed project-current mirror (see `rules/
 ## Q8. backlog / deferred / completed items
 
 - **Primary (open work):** `docs/systems/review/BACKLOG.md`, `docs/systems/install-update/BACKLOG.md` (consolidated open candidates), with `docs/backlog/INDEX.md` as the classification index. The full historical item text is preserved in git history (the per-system `BACKLOG.md` triage rows are the current entrypoint).
-- **Secondary:** for **completed** items the per-system completed-ledgers in `docs/systems/*/STATUS.md`; for **deferred** items (with reopen conditions) `docs/systems/install-update/DEFERRED.md` / `docs/systems/brief/DEFERRED.md`; `docs/decisions/POST_MVP_PLAN.md` §10 (status summary).
+- **Secondary:** for **completed** items the per-system completed-ledgers in `docs/systems/*/STATUS.md`; for **deferred** items (with reopen conditions) `docs/systems/install-update/DEFERRED.md` / `docs/brief/brief_backlog.md`; `docs/decisions/POST_MVP_PLAN.md` §10 (status summary).
 - **Implementation:** n/a (backlog / deferred are records of not-yet-started work; the implementation basis for closed items is the commit pointers in `docs/decisions/POST_MVP_PLAN.md` §10 Completed plus current `scripts/**` / `tests/**`).
 - **Historical:** removed-legacy / closeout items inside the two backlog files.
 - **Do not use:** reading closeout / completed items in the backlog folder as open work.

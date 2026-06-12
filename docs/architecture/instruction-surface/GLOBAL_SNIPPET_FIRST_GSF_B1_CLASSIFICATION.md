@@ -61,7 +61,7 @@ Disposition vocabulary: `keep` / `absorb` / `move` / `compress` / `delete` / `de
 ### 8. `## Brief` (BF Level 3 non-claim line)
 - **disposition:** **defer → skill-plan Batch 3 / Track F** · **owner-surface:** n/a (GSF-B1 does not touch) · **loading-class:** n/a
 - **keep-by-proof:** non-current-capability note (a `delete` target under the current-capability-only rule) — but the deletion is **owned by skill-plan Batch 3**, not GSF-B1 (design §3; plan §1; spec §8).
-- **invariant-impact:** none (unchanged). **rationale:** authoritative deferred record `docs/systems/brief/DEFERRED.md` (non-deployed). GSF-B1 leaves it in place; Batch 3 removes it.
+- **invariant-impact:** none (unchanged). **rationale:** authoritative deferred record = 당시 brief DEFERRED 기록(현 `docs/brief/brief_backlog.md`; non-deployed). GSF-B1 leaves it in place; Batch 3 removes it.
 
 ### 10. `## Forbidden in this toolset` (7 bullets)
 - **6 safety bullets** (no per-user log partitioning · no `BF_STATE.json`/sidecar · no daemon/watcher/scheduler/hook · no implicit/whole-file global-instruction mutation · no creation of `.claude\AGENTS.md` · no auto `.gitignore` mutation): **disposition: keep** · owner-surface: snippet · loading-class: each is an **always-on root instruction candidate** (rule-like; tagged for GSF-B3 only — no rules surface built here).

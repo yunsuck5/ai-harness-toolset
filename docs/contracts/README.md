@@ -9,7 +9,6 @@ Read a contract when you are **producing or validating that specific artifact/pr
 | Subfolder | Contract | Read when |
 |---|---|---|
 | `review/` | `REVIEW_RESULT_CONTRACT.md` | producing/validating a review record (`input.md` + `result.md`, verdict) |
-| `brief/` | `BRIEF_CONTRACT.md` | working with the Brief artifact (canonical location, BF Level, primitive boundary; Brief is the only restore source) |
 | `evidence/` | `EVIDENCE_CONTRACT.md` | capturing evidence |
 | `global-invocation/` | `SHARED_GLOBAL_INVOCATION_CONTRACT.md` | reasoning about ToolRoot/ProjectRoot resolution and shared/global invocation (D1–D9) |
 

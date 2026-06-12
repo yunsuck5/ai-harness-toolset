@@ -37,7 +37,8 @@ The placement criterion is **how a document is read**, not how many topics it to
 |---|---|---|
 | `docs/current/` | `REPO_READING_GUIDE.md` only — question→read-first routing; project-current state / next action answered on demand (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*), not mirrored in any committed file | read first / when orienting |
 | `docs/policies/` | task-scoped AI/operator execution policies (PowerShell, CLI/runtime assumptions, reviewer config, review effort) | when a task touches that policy's domain |
-| `docs/contracts/` | artifact/protocol contracts (`review/`, `brief/`, `evidence/`, `global-invocation/`) | when producing/validating that artifact |
+| `docs/brief/` | the **brief domain folder** — `brief_spec.md` (spec-of-record) + `brief_backlog.md` (future-work queue); the first migrated domain folder under the docs-working-model end-state (`rules/docs-working-model/docs-working-model.md`, *End-state placement and transition*) — lifecycle docs (`brief_design.md` / `brief_plan.md` / `brief_work_packet.md`) exist only during a change | when working with the Brief artifact / workflow |
+| `docs/contracts/` | artifact/protocol contracts (`review/`, `evidence/`, `global-invocation/`) | when producing/validating that artifact |
 | `docs/systems/` | per-subsystem STATUS / BACKLOG / DEFERRED + the install/update operating model; routes to contracts/policies, does not replace them | when checking a subsystem's state |
 | `docs/architecture/` | cross-cutting architecture decisions/audits spanning multiple subsystems/surfaces, deciding a structural target **before** implementation (e.g. `architecture/instruction-surface/INSTRUCTION_SURFACE_PLAN.md`); routes to `docs/systems/**` for current state, does not own it | when planning/auditing how a concern is divided across surfaces |
 | `docs/project/` | project identity, scope, positioning, philosophy | when scoping "what this project is/isn't" |

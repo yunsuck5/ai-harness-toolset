@@ -43,6 +43,8 @@ Each definition is a complete one-line meaning, self-contained in this file. Whe
 - **`commit / push approval`** — commit approval and push approval are each a separate explicit approval, distinct from mutation approval and from each other.
 - **`package-local template / checklist`** — a form (template / checklist) carrying a package-name prefix plus a `_template` / `_checklist` role suffix, used to produce another domain's Design / Plan / Spec; it is a form, not a domain's own artifact.
 - **`external workspace baseline`** — a classification for out-of-repo, pinned, read-only material the repo may consult as **advisory** input (e.g. restore / handoff / planning material). It is **not** a repo terminology dependency — project term meaning is self-contained in this file, not derived from such material — and the repo never references it by a durable pointer.
+- **`checkpoint`** — an explicit-prompt save of a recoverable progress point in the Brief workflow (the save / checkpoint trigger family). Owner = brief (`docs/brief/brief_spec.md`); closed in the brief pilot.
+- **`restore point`** — the saved point an explicit, user-requested Brief restore resumes from (the restore-summary + confirm step of the Brief workflow). Owner = brief (`docs/brief/brief_spec.md`); closed in the brief pilot.
 
 ## Accepted terms with owner boundary
 
@@ -56,10 +58,6 @@ Each definition is a complete one-line meaning, self-contained in this file. Whe
 
 Candidate vocabulary only — each entry names its owner domain and its close condition; nothing here is finalized. This batch *classifies* these terms; it does **not** rewrite their existing repo usage — that is each owner domain's work.
 
-- **`handoff`** — candidate (brief recovery-point wording). Owner = **brief**; close = the brief pilot Design / Spec (the next brief-owner lifecycle work). Not confirmed as a universal replacement term.
-- **`checkpoint`** — candidate (a recoverable progress point in the Brief workflow). Owner = **brief**; close = the brief pilot Design / Spec. Not a final universal `handoff` replacement.
-- **`continuation`** — candidate (continuing into the next session / next task). Owner = **brief**; close = the brief pilot Design / Spec. Not a final universal `handoff` replacement.
-- **`restore point`** — candidate (a saved point a session can be restored from). Owner = **brief**; close = the brief pilot Design / Spec.
 - **`run diagnostics`** — candidate (install-update observed-run-state / status wording). Owner = **install-update**; close = an install-update domain decision. **Not** a repo-wide rename mandate; `INSTALL.md` operative wording must not be blanket-cleaned.
 - **`review-support naming`** — candidate (naming for review-support paths / artifacts). Owner = **review**; close = the review pilot.
 - **`instruction-surface mechanism location`** — candidate (where the live instruction-surface mechanism is specified). Owner = **architecture / instruction-surface** follow-on work; close = after owner absorption in that work. *(Facet note: this is the pending sub-question facet; the broad-domain facet is rejected — see Rejected terms.)*
@@ -93,7 +91,7 @@ A standalone "managed-block" domain. Rejected: the managed block is a marker / p
 A `docs/project/`-style folder kept as a long-term broad owner. Rejected: do not preserve a project folder as a long-term broad owner.
 
 ### handoff/snapshot as repo feature domain
-"handoff / snapshot" elevated into a repo feature domain. Rejected: there is no handoff/snapshot repo feature domain. Do not revive it as one. (The `handoff` *wording* is a separate brief-owned pending entry; this rejects the *domain*.)
+"handoff / snapshot" elevated into a repo feature domain. Rejected: there is no handoff/snapshot repo feature domain. Do not revive it as one. (The `handoff` *wording* was separately closed in the brief pilot as **not adopted as canonical brief vocabulary** — it survives only as a trigger synonym in the brief skill's example phrases. `continuation` was likewise **not adopted** as a project term in the same close — it remains free ordinary wording with no glossary entry.)
 
 ### docs/domains broad taxonomy
 A broad `docs/domains/` taxonomy. Rejected when it would revive bucket sprawl (a folder used as a storage bucket rather than a scope boundary). Do not recreate a broad docs taxonomy that revives bucket sprawl.
@@ -108,8 +106,8 @@ A repo `consumed/` folder or a separate archive folder used as a retire lifecycl
 
 - **Accepted** terms have no open owner action — they are used consistently as defined above.
 - **Accepted-with-owner-boundary** terms stay within their stated boundary; the owner surface (`INSTALL.md`, brief, review, install-update) keeps its own self-contained semantics and this glossary does not override it.
-- **Pending / owner-pending** terms close only in their named owner domain under their named close condition: the brief-owned wording (`handoff` / `checkpoint` / `continuation` / `restore point`) closes in the brief pilot; `run diagnostics` closes in an install-update decision (no repo-wide rename); `review-support naming` and `evidence contract absorption` close in the review pilot; `instruction-surface mechanism location` and `global-invocation single-home` close in their later owner work after absorption; `concrete-path value vs normative boundary` closes in the separate `snippets/rules/` concrete-path audit.
-- This batch records classification and close conditions only. It does **not** rewrite the existing repo usage of any pending token (`handoff` / `checkpoint` / `continuation` / `run diagnostics` / …) — that wording cleanup belongs to each owner domain, not to this glossary.
+- **Pending / owner-pending** terms close only in their named owner domain under their named close condition: `run diagnostics` closes in an install-update decision (no repo-wide rename); `review-support naming` and `evidence contract absorption` close in the review pilot; `instruction-surface mechanism location` and `global-invocation single-home` close in their later owner work after absorption; `concrete-path value vs normative boundary` closes in the separate `snippets/rules/` concrete-path audit. (The formerly-pending brief-owned wording closed in the brief pilot: `checkpoint` / `restore point` accepted above; `continuation` not adopted; `handoff` not adopted as canonical — see the Rejected `handoff/snapshot` entry's note.)
+- This glossary records classification and close conditions only. It does **not** rewrite the existing repo usage of any pending token (`run diagnostics` / `review-support naming` / …) — that wording cleanup belongs to each owner domain, not to this glossary.
 
 ## Do-not-repeat rule
 

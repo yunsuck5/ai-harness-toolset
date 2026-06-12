@@ -15,7 +15,7 @@
 - global install / update 운영 모델: `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`
 - subsystem scope: `docs/project/AI_HARNESS_TOOLSET_SCOPE.md`
 - review record 계약: `docs/contracts/review/REVIEW_RESULT_CONTRACT.md`
-- Brief location / shape 계약: `docs/contracts/brief/BRIEF_CONTRACT.md`
+- Brief location / shape: `docs/brief/brief_spec.md`
 
 위 문서와 본 문서가 상충하면 위 문서들의 보수적 해석을 우선한다.
 
@@ -69,7 +69,7 @@ earlier ToolRoot/ProjectRoot path-handling audit work (preserved in git history)
 - `ToolRoot` — source-managed file (`scripts/`, `templates/`, `config/`, `snippets/`) 의 위치.
 - `ProjectRoot` — 적용 대상 project repo 의 root.
 - `LogRoot` — `<ProjectRoot>/log`.
-- `BriefRoot` — `<ProjectRoot>/log/brief`. 현행 기준: canonical Brief = `<ProjectRoot>/log/brief/BRIEF.md` (project-local · operator-local · source-control-excluded runtime artifact, `log/` 아래 gitignored), root `<ProjectRoot>/brief/` 는 rejected, target persistent footprint = `<ProjectRoot>/log/` only. `BriefRoot` 의 path-resolution 역할은 이 canonical-위치 framing 과 무관하게 고정이다. Brief location / shape 의 canonical source-of-truth 는 `docs/contracts/brief/BRIEF_CONTRACT.md` 다. 이 자리에 있던 brief-location 의 1차·2차·3차 reconciliation 상세 lineage 는 git history 에 보존된다 — 과거 `<ProjectRoot>/brief/BRIEF.md` 를 canonical 로 둔 framing 은 superseded 이며 현행 위치가 아니다.
+- `BriefRoot` — `<ProjectRoot>/log/brief`. 현행 기준: canonical Brief = `<ProjectRoot>/log/brief/BRIEF.md` (project-local · operator-local · source-control-excluded runtime artifact, `log/` 아래 gitignored), root `<ProjectRoot>/brief/` 는 rejected, target persistent footprint = `<ProjectRoot>/log/` only. `BriefRoot` 의 path-resolution 역할은 이 canonical-위치 framing 과 무관하게 고정이다. Brief location / shape 의 canonical source-of-truth 는 `docs/brief/brief_spec.md` 다. 이 자리에 있던 brief-location 의 1차·2차·3차 reconciliation 상세 lineage 는 git history 에 보존된다 — 과거 `<ProjectRoot>/brief/BRIEF.md` 를 canonical 로 둔 framing 은 superseded 이며 현행 위치가 아니다.
 - `ConfigRoot` — `<ToolRoot>/config`.
 - `TemplateRoot` — `<ToolRoot>/templates`.
 - `ScriptRoot` — `<ToolRoot>/scripts`.
@@ -169,7 +169,7 @@ channel 3 의 absent-skip / present-but-incomplete-fail-fast 분기 의도: stab
 
 ### D7 — untracked exclusion policy
 
-> **Superseded — D7 mechanism removed (historical decision; git history).** D7 은 removed-legacy `scripts/review-cycle.ps1` 의 untracked-detection 분기에 관한 design 결정이었다 (`log/` 에 더해 `.ai-harness/` 를 exact-or-strict-child 로 제외하고 `brief/` 는 제외하지 않음). 그 host script 는 removed-legacy 이고 **현행 review 진입 경로 (`review-prepare` / `review-run` / `review-verify`) 의 어떤 script 도 worktree untracked scan 을 수행하지 않으므로** 본 mechanism 은 현행 active surface 에 적용 지점이 없다. 상세 matching 규칙 · 예시 · `brief/`-path 의 BRIEF reconciliation rationale 은 git history 에 보존된다 (Brief canonical 의 source-of-truth 는 `docs/contracts/brief/BRIEF_CONTRACT.md`). §5.5 는 같은 removed mechanism 의 pseudo-code 자리로 동일하게 historical 이다.
+> **Superseded — D7 mechanism removed (historical decision; git history).** D7 은 removed-legacy `scripts/review-cycle.ps1` 의 untracked-detection 분기에 관한 design 결정이었다 (`log/` 에 더해 `.ai-harness/` 를 exact-or-strict-child 로 제외하고 `brief/` 는 제외하지 않음). 그 host script 는 removed-legacy 이고 **현행 review 진입 경로 (`review-prepare` / `review-run` / `review-verify`) 의 어떤 script 도 worktree untracked scan 을 수행하지 않으므로** 본 mechanism 은 현행 active surface 에 적용 지점이 없다. 상세 matching 규칙 · 예시 · `brief/`-path 의 BRIEF reconciliation rationale 은 git history 에 보존된다 (Brief canonical 의 source-of-truth 는 `docs/brief/brief_spec.md`). §5.5 는 같은 removed mechanism 의 pseudo-code 자리로 동일하게 historical 이다.
 
 ### D8 — self-target enforcement
 
