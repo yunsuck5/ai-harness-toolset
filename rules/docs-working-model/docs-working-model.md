@@ -141,7 +141,7 @@ A Design/Plan/Spec lifecycle closeout is not done until **all** hold:
 
 ## On-demand status-briefing model
 
-There is **no committed project-current mirror file** — no committed active queue and no committed project-current summary. "What is done / what remains / what should I do next" is answered **on demand** by the agent reading the authoritative surfaces — after migration, each domain's `<domain>_spec.md` (lifecycle state) + `<domain>_backlog.md`; until then, the not-yet-migrated domain's current surfaces (`docs/systems/*/STATUS.md` / `BACKLOG.md` / `DEFERRED.md`) — then synthesizing a conversational briefing. The user selects the next task conversationally; no mirror file is written.
+There is **no committed project-current mirror file** — no committed active queue and no committed project-current summary. "What is done / what remains / what should I do next" is answered **on demand** by the agent reading the authoritative surfaces — after migration, each domain's `<domain>_spec.md` (lifecycle state) + `<domain>_backlog.md`; for a not-yet-migrated domain, its current authoritative surfaces stand in until its migration batch — then synthesizing a conversational briefing. The user selects the next task conversationally; no mirror file is written.
 
 ## Template / checklist conformance gate
 
