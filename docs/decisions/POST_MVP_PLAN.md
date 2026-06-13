@@ -100,7 +100,7 @@ post-MVP 항목 어느 것도 본 문서가 존재한다는 사실만으로 impl
   - copy-bundle 외의 distribution 채널 (public release packaging, registry publish 등).
 - `package-toolset.ps1` 이 source repo 에 추가되어야 한다고 본 결정이 명령하지 않는다. 필요 시 별도 scoped 승인을 받은 뒤 design / implementation 한다.
 - adoption mode (copy / link / pinned-link) 결정.
-  - MVP 시점의 active default 는 README 가 명시한 copy-only adoption 이었다 (`docs/project/AI_HARNESS_TOOLSET_SCOPE.md` 의 legacy project-local copy payload 절). 이 enumeration 은 historical record 이며, 현행 adoption / default 는 shared / global stable runtime ToolRoot (channel 3) 다 — 아래 reframe 항목, §10 / §11, 그리고 `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` 를 따른다.
+  - MVP 시점의 active default 는 README 가 명시한 copy-only adoption 이었다 (`docs/project/AI_HARNESS_TOOLSET_SCOPE.md` 의 legacy project-local copy payload 절). 이 enumeration 은 historical record 이며, 현행 adoption / default 는 shared / global stable runtime ToolRoot (channel 3) 다 — 아래 reframe 항목, §10 / §11, 그리고 `docs/install-update/install-update_spec.md`(shared/global invocation 계약의 현행 single home; 당시 `docs/contracts/global-invocation/SHARED_GLOBAL_INVOCATION_CONTRACT.md` 를 흡수 — 구 contract 본문은 git history)를 따른다.
   - link / pinned-link adoption mode 의 도입 여부와 책임 경계는 별도 scoped 승인이 필요한 deferred decision 이다.
   - 본 결정은 packaging (`package-toolset.ps1`) 결정과 sibling 관계이며, 두 결정의 boundary 가 일관성 있게 정해진 뒤에야 implementation 단계로 넘어간다.
   - 본 항목의 framing 은 `docs/decisions/GLOBAL_ADOPTION_DECISION.md` §1, §4 의 결정에 의해 reframed 되었다. 위 historical enumeration (copy / link / pinned-link) 은 historical record 로 그대로 보존하되, 현 시점의 preferred direction 은 다음과 같이 갱신되었다.
