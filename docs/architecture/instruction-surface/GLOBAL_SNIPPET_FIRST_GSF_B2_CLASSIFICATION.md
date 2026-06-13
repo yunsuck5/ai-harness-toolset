@@ -186,7 +186,7 @@ These surfaces are **correctly roled and remain** as `reference / contract / dec
 | B2-F07 | `CLI_ENVIRONMENT_ASSUMPTIONS.md` Tier 3 | remain (reference) | low | owner exists (skill) | no |
 | B2-F08 | `GLOBAL_INSTALL_UPDATE_MODEL.md` stale framing | remain + compress (LTS) | low | **partially applied (GSF-B4-D)** | **partial (GSF-B4-D); residual isolated remains** |
 | B2-F09 | `SHARED_GLOBAL_INVOCATION_CONTRACT.md` review-cycle wording | remain + compress | low | **minimally applied (GSF-B4-E)** | **minimal (GSF-B4-E); D1–D9-integral remainder remains** |
-| B2-F10 | design/plan "since landed" annotations | remain + weak compress | low | owner exists (STATUS) | optional (high re-stale risk) |
+| B2-F10 | design/plan "since landed" annotations | remain + weak compress | low | owner existed (skills status ledger; retired batch S; git history) | optional (high re-stale risk) |
 
 **By disposition:** `delete candidate` 2 (B2-F01, B2-F03) · `compress candidate` 5 (B2-F02, B2-F04, B2-F05, F08/F09 as compress-within-remain) · `remain` (dominant — all of §6 + B2-F06/F07 + the remain half of F08/F09/F10) · `migrate` 0 · `retire candidate` 0 · `future AI-native rule candidate` 0 · `stop/report boundary` raised for LTS (B2-F08) and contract-authority (B2-F09) edits. **No `docs/**` content was found that an executable surface must newly own** — every duplication/staleness finding already has a tracked/deployed owner; the fixes are compression/redirection, not behavior migration.
 
