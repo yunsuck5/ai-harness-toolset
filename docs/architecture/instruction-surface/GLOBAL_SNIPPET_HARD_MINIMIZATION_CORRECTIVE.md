@@ -93,7 +93,7 @@ Disposition: **bootstrap** (kept inline in the snippet safety floor) · **rules 
 
 - **Created:** `snippets/rules/` (4 files); `<repo-root>/rules/` (2 files); this record.
 - **Snippet + skills + templates:** reduced / made docs-free as above.
-- **Stale-corrected:** `GLOBAL_SNIPPET_FIRST_MIGRATION_PLAN.md` §2/Stage-flow; `GLOBAL_SNIPPET_FIRST_GSF_B3_RULES_LOADING_DECISION.md` (no-rules conclusion superseded; model retained); `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`; `docs/current/REPO_READING_GUIDE.md` Q10/Q11; `docs/systems/skills/STATUS.md` (SK-06); `docs/systems/skills/FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §4; `docs/architecture/README.md`.
+- **Stale-corrected:** `GLOBAL_SNIPPET_FIRST_MIGRATION_PLAN.md` §2/Stage-flow; `GLOBAL_SNIPPET_FIRST_GSF_B3_RULES_LOADING_DECISION.md` (no-rules conclusion superseded; model retained); `GLOBAL_SNIPPET_FIRST_GSF_B2_CLASSIFICATION.md`; `docs/current/REPO_READING_GUIDE.md` Q10/Q11; the skills STATUS / skill-subsystem plan (retired in batch S; git history); `docs/architecture/README.md`.
 - **Dangling-reference fixes:** `README.md`; `docs/decisions/GLOBAL_ADOPTION_DECISION.md`; `docs/systems/install-update/GLOBAL_INSTALL_UPDATE_MODEL.md`; root `CLAUDE.md` / `AGENTS.md` (Snippet trigger row + Track D note + Repo-execution-conventions + Non-goals, mirror-edited).
 
 ## 6. Follow-up corrective — rules-tier trigger gate

@@ -115,8 +115,8 @@ Per the two-level closeout gate (`DOCS_OPERATING_MODEL.md` §7), inspect-all / r
 **Level 2 (system-local):**
 - `docs/architecture/README.md` — **updated** (instruction-surface row): lists this GSF-B3 decision record alongside the design / plan / spec / GSF-B1 / GSF-B2 records.
 - `docs/architecture/instruction-surface/GLOBAL_SNIPPET_FIRST_MIGRATION_PLAN.md` — **updated** (§2 GSF-B3 "decision landed" status bullet; the §"Stage flow" line reconciled so GSF-B3 is no longer a purely-future stage).
-- `docs/systems/skills/STATUS.md` — *checked: no change required* (GSF-B3 changed no snippet / skill / deployed surface, so no SK ledger row and no current-state flip; SK-00…SK-05 remain accurate).
-- existing `INSTRUCTION_SURFACE_PLAN.md` / `GLOBAL_SNIPPET_RELOCATION_AUDIT.md` / `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md` / `FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` / the GSF design / spec / GSF-B1 / GSF-B2 records — *checked: intentionally not edited* (preserved as prior evidence; this record routes to them — esp. `INSTRUCTION_SURFACE_PLAN.md` §11/§12 and the design §8/§9, which this decision applies without redefining).
+- the (now-retired) skills status ledger — *checked at the time: no change required* (GSF-B3 changed no snippet / skill / deployed surface; the ledger is preserved in git history).
+- existing `INSTRUCTION_SURFACE_PLAN.md` / `GLOBAL_SNIPPET_RELOCATION_AUDIT.md` / `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md` / the GSF design / spec / GSF-B1 / GSF-B2 records — *checked: intentionally not edited* (preserved as prior evidence; this record routes to them — esp. `INSTRUCTION_SURFACE_PLAN.md` §11/§12 and the design §8/§9, which this decision applies without redefining).
 
 ---
 

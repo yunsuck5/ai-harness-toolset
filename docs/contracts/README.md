@@ -13,4 +13,4 @@ This layer currently holds **no live contract files** — the former contracts a
 
 ## What does not belong here
 
-Operator execution policy (→ `docs/policies/`), current system status (→ per-domain spec lifecycle-state sections, or `docs/systems/skills/STATUS.md`), and roadmap/milestone routing (→ `docs/roadmap/`). The operative authority for active behavior is always the active surface a contract records — scripts / templates / skills / config / tests.
+Operator execution policy (→ `docs/policies/`), current system status (→ per-domain spec lifecycle-state sections), and roadmap/milestone routing (→ `docs/roadmap/`). The operative authority for active behavior is always the active surface a contract records — scripts / templates / skills / config / tests.

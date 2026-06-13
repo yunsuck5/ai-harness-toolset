@@ -12,7 +12,7 @@ This INDEX's existence does not by itself approve any implementation, source/doc
 
 ## 2. Relocated docs (formerly in `docs/roadmap/`)
 
-The former root-level roadmap docs moved to their then access-pattern scope folders (several have since been absorbed/retired in the domain migrations — see the table). Current status lives in the per-domain spec/backlog files (remaining per-system board: `docs/systems/skills/STATUS.md`), not in design/record docs.
+The former root-level roadmap docs moved to their then access-pattern scope folders (several have since been absorbed/retired in the domain migrations — see the table). Current status lives in the per-domain spec/backlog files, not in design/record docs.
 
 | Doc | New location |
 |---|---|
@@ -38,5 +38,5 @@ Any source/doc change under `docs/roadmap/` goes through the normal Codex review
 
 ## 6. Source-of-truth relationship
 
-- The docs placement orientation map is `docs/README.md` (binding placement rules → `rules/docs-working-model/docs-working-model.md`); question→read-first routing lives in `docs/current/REPO_READING_GUIDE.md`, and current status lives in the per-domain spec/backlog files (remaining per-system board: `docs/systems/skills/STATUS.md`).
+- The docs placement orientation map is `docs/README.md` (binding placement rules → `rules/docs-working-model/docs-working-model.md`); question→read-first routing lives in `docs/current/REPO_READING_GUIDE.md`, and current status lives in the per-domain spec/backlog files.
 - This INDEX is a routing note for `docs/roadmap/` only; it does not override any relocated doc's contract/decision.

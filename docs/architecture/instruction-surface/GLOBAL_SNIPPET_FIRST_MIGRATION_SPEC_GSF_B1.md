@@ -160,7 +160,7 @@ The design §5 names the only content that may remain always-on as the **minimal
 Item 8 (`## Brief` BF-lv3 non-claim), another non-current section, and the no-auto-mirror `## Forbidden` bullet are **owned by skill-plan Batch 3 (= instruction-surface Track F)** (design §3; plan §1; audit §3.8–§3.10, §5). GSF-B1 acceptance:
 
 - GSF-B1 classifies these as **`defer`** and does **not** delete, edit, or renumber them. It does not absorb Track F into GSF-B1.
-- If GSF-B1's snippet edit is sequenced to run together with skill-plan Batch 3 (the plan allows an interleave), those non-current-section deletions remain **attributed to skill-plan Batch 3** in the classification record and the closeout (skill plan §8 stays authoritative; `STATUS.md` SK ledger records them as Batch 3).
+- If GSF-B1's snippet edit is sequenced to run together with skill-plan Batch 3 (the plan allows an interleave), those non-current-section deletions remain **attributed to skill-plan Batch 3** in the classification record and the closeout (skill plan §8 stays authoritative; recorded as Batch 3 in the skills status ledger, now in git history).
 - The Batch-3 reconciliation dependencies (preserve "current restore source = Brief" elsewhere if still wanted; decide the mirror bullet's generic-vs-drop fate) are **Batch 3's**, not GSF-B1's — GSF-B1 must not pre-empt them.
 
 ---
@@ -204,7 +204,7 @@ GSF-B1 implementation may edit **only**:
 - directly related `scripts/**` **help / validation text or comments** — only to carry absorbed operative text; **no script logic / runtime behavior change** (§13).
 - directly related `tests/**` / verifiers — to add/adjust a deterministic guard for a relocated invariant (and to keep the suite green).
 - root `CLAUDE.md` / `AGENTS.md` — **only if** an item is assigned the repo-local owner surface, and **only** mirror-edited (byte-identical shared body) with the parity guard run (§14/§15).
-- directly related `docs/**` routing / status / reference — the coherence registrations (Q11, architecture README, skills `STATUS.md` if the snippet surface posture changes) and any reference/rationale landing per §10.
+- directly related `docs/**` routing / status / reference — the coherence registrations (Q11, architecture README) and any reference/rationale landing per §10.
 
 Anything outside this list is out of scope for GSF-B1.
 
@@ -264,9 +264,9 @@ Per the two-level closeout gate (`DOCS_OPERATING_MODEL.md` §7), inspect-all / r
 **Level 2:**
 - `docs/architecture/README.md` — **updated** (instruction-surface row): lists this spec.
 - `docs/README.md` §5 — *checked: no change required* (layer description + single example unchanged by adding a file in the existing subfolder).
-- `docs/systems/skills/STATUS.md` — *checked: no change required* (spec stage; no snippet/skill content changed — no SK ledger row, no current-state flip; the snippet's current contents remain accurately described until GSF-B1 lands).
+- the (now-retired) skills status ledger — *checked at the time: no change required* (spec stage; no snippet/skill content changed — no current-state flip; the ledger is preserved in git history).
 - root `CLAUDE.md` / `AGENTS.md` — *checked: no change required this batch* (the trigger-map "Snippet (global payload)" row already routes to the design + plan as controlling authority and states "no snippet minimization without an approved migration batch (spec)"; the plan/design route to this spec, so no re-wiring is required at spec stage — adding every per-batch spec to the always-on root row would bloat it against the "not a policy warehouse" rule).
-- existing `INSTRUCTION_SURFACE_PLAN.md` / `GLOBAL_SNIPPET_RELOCATION_AUDIT.md` / `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md` / `FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` — *checked: intentionally not edited* (prior evidence; relationship via design §3 + plan §1, routed by Q11).
+- existing `INSTRUCTION_SURFACE_PLAN.md` / `GLOBAL_SNIPPET_RELOCATION_AUDIT.md` / `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md` — *checked: intentionally not edited* (prior evidence; relationship via design §3 + plan §1, routed by Q11).
 
 ---
 

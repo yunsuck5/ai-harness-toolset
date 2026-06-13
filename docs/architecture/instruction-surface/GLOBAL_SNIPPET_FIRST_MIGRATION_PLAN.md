@@ -20,8 +20,8 @@ This migration introduces its **own** batch namespace — `GSF-B1 … GSF-B4` �
 
 | Existing order | Status | This plan's relationship |
 |---|---|---|
-| Skill plan §8 — `Batch 1…4` | Batch 1/2 landed; **Batch 3** (non-current snippet-section removal) **landed** (`docs/systems/skills/STATUS.md` SK-05); **Batch 4** (review-polishing) deferred | **Not re-owned.** Skill-plan Batch 3/4 stay authoritative under `FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` §8. GSF-B1 (§2) coordinates with skill Batch 3 but does not renumber or absorb it (design §3). |
-| Instruction-surface §14 — `Track A…G` | A–D landed; **Track F** (= skill Batch 3) **landed** (`docs/systems/skills/STATUS.md` SK-05); **Track E** (ToolRoot) + Track G (= skill Batch 4) deferred | **Track D was the conservative-default snippet pass; GSF-B1 is the aggressive continuation that re-opens that default** (design §3). Track E (ToolRoot) is a separate decision surface, untouched here. |
+| Skill plan §8 — `Batch 1…4` | Batch 1/2 landed; **Batch 3** (non-current snippet-section removal) **landed** (recorded in git history); **Batch 4** (review-polishing) deferred | **Not re-owned.** Skill-plan Batch 3/4 stay authoritative under the retired skill-subsystem plan (git history). GSF-B1 (§2) coordinates with skill Batch 3 but does not renumber or absorb it (design §3). |
+| Instruction-surface §14 — `Track A…G` | A–D landed; **Track F** (= skill Batch 3) **landed** (recorded in git history); **Track E** (ToolRoot) + Track G (= skill Batch 4) deferred | **Track D was the conservative-default snippet pass; GSF-B1 is the aggressive continuation that re-opens that default** (design §3). Track E (ToolRoot) is a separate decision surface, untouched here. |
 
 `GSF-Bn` are migration batches; `Batch n` always means the skill plan; `Track X` always means the instruction-surface plan §14. Where they overlap (the snippet), the skill plan stays the authority for those non-current snippet-section deletions and this plan stays the authority for the keep-by-proof re-judgment of the remaining sections.
 
@@ -124,8 +124,8 @@ Per the two-level closeout gate (`DOCS_OPERATING_MODEL.md` §7), inspect-all / r
 - `docs/architecture/README.md` — **updated** (instruction-surface subfolder row): lists this plan alongside the design + Track A/B/C.
 - root `CLAUDE.md` + `AGENTS.md` — **updated** (the §3 trigger-map wiring, mirror-edited; parity guard run).
 - `docs/README.md` §5 — *checked: no change required* (the `docs/architecture/` layer description + single example are unchanged by adding a file in the existing subfolder).
-- `docs/systems/skills/STATUS.md` — *checked: no change required* (plan stage; no snippet/skill content changed — no SK ledger row, no current-state flip; the snippet's current contents remain accurately described there until GSF-B1 lands).
-- existing `INSTRUCTION_SURFACE_PLAN.md` / `GLOBAL_SNIPPET_RELOCATION_AUDIT.md` / `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md` / `FUNCTION_LEVEL_SKILL_ARCHITECTURE_PLAN.md` — *checked: intentionally not edited* (preserved as prior evidence; relationship declared in the design §3 and this plan §1, routed via Q11).
+- the (now-retired) skills status ledger — *checked at the time: no change required* (plan stage; no snippet/skill content changed — no current-state flip; the ledger is preserved in git history).
+- existing `INSTRUCTION_SURFACE_PLAN.md` / `GLOBAL_SNIPPET_RELOCATION_AUDIT.md` / `REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md` — *checked: intentionally not edited* (preserved as prior evidence; relationship declared in the design §3 and this plan §1, routed via Q11).
 
 ---
 

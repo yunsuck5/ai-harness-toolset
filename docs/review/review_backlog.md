@@ -1,6 +1,6 @@
 # review Backlog
 
-next ID: RV-B-13
+next ID: RV-B-14
 
 | ID | item | reopen / start condition |
 |---|---|---|
@@ -12,3 +12,4 @@ next ID: RV-B-13
 | RV-B-10 | (수용된 잔여 위험) `;`-chain 마지막 비-0 종료가 review-verify 성공을 가리는 보고 관례 위험 | 현 패턴을 넘는 구체 신규 증거 |
 | RV-B-11 | (idea-only — implementation backlog 아님) devil's-advocate pre-pass orchestration | 반복 false-negative 또는 model-bias 의 구체 증거 + 사용자 별도 결정 + 별도 scoped goal |
 | RV-B-12 | (idea-only — implementation backlog 아님) multi-reviewer consensus / calibration loop | RV-B-11 과 동일 증거 + maintenance-mode exit 의 별도 승인(두 조건 동시) + 별도 scoped goal |
+| RV-B-13 | (deferred 결정) review-polishing selective-capture vehicle 결정 — instruction vs skill (non-hook); "leave as caller-judgment instruction" 결론 가능. retired skills 서브시스템 plan(Batch 4; git history)에서 이관 | review-polishing 개선신호의 selective capture 필요가 구체화 + 사용자 결정 + 별도 scoped goal |
