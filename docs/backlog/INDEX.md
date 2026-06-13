@@ -17,7 +17,7 @@ This folder is **not**: implementation / scheduling / release·publish·merge ap
 
 ### Open candidates → per-domain backlog (self-contained)
 
-- review: RV-B-01 (Review 2-pass/profile), RV-B-03 (review result wrapper/fence hygiene), RV-B-04 (no-exec/no-write reviewer contract), RV-B-05 (Review input governance) + 수용된 잔여 위험·idea-only 행 → `docs/review/review_backlog.md` (source-of-truth for the current open candidate set).
+- review: RV-B-01 (Review 2-pass/profile), RV-B-03 (review result wrapper/fence hygiene), RV-B-04 (no-exec/no-write reviewer contract), RV-B-05 (Review input governance), RV-B-13 (review-polishing selective-capture vehicle — retired skills 서브시스템 Batch 4 이관) + 수용된 잔여 위험·idea-only 행 → `docs/review/review_backlog.md` (source-of-truth for the current open candidate set).
 - install-update: IU-B-01 (smoke evidence preservation), IU-B-02 (project-local vs global ToolRoot docs debt), IU-B-03 (path normalization hardening), IU-B-04 (install validation report evidence hygiene), IU-B-05 (snapshot auxiliary evidence wording), IU-B-06 (long-lived docs commit-hash hygiene), IU-B-13 (`snippets/rules/` concrete-path audit) + deferred rows (IU-D-*) + idea-only [RETIRED] row → `docs/install-update/install-update_backlog.md`.
 
 ### Closed → ledgers preserved in git history

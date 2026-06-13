@@ -12,7 +12,7 @@ Read an architecture doc when a task touches **how a structural concern is divid
 
 ## How this differs from `docs/systems/`
 
-- `docs/systems/<system>/` historically answered **"what is one implemented subsystem's current operational posture?"** (per-system board — the skills subsystem docs, the last here, are being retired, history in git, so no current per-system board remains; current per-subsystem state now lives in the migrated domains' `docs/<domain>/` spec/backlog files). It was per-subsystem and described existing state.
+- `docs/systems/<system>/` historically answered **"what is one implemented subsystem's current operational posture?"** (per-system board — the skills subsystem docs, the last here, have been retired (history in git), so no current per-system board remains; current per-subsystem state lives in the migrated domains' `docs/<domain>/` spec/backlog files). It was per-subsystem and described existing state.
 - `docs/architecture/<concern>/` answers **"what is the target structure for a concern that spans several subsystems/surfaces, decided before implementation?"** It is cross-cutting and design-stage. It does not own any subsystem's current state — it points at the per-domain `docs/<domain>/` spec/backlog for that.
 
 It also differs from `docs/decisions/` (discrete settled decision records) by being multi-surface *planning/audit* with classification criteria and option analysis, not a single terminal decision.
