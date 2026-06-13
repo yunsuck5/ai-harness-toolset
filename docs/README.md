@@ -1,6 +1,6 @@
 # docs/ — Docs Tree Orientation & Placement Map
 
-This file is the **docs tree orientation / placement map** — a reading aid for what each `docs/` layer is *for* and how AI/operator and humans navigate the tree. It is **not** an operative authority. The binding placement rules live on the active surface at **`rules/docs-working-model/docs-working-model.md`** (*End-state placement and transition*, *Stable filename rule*), per the root *Final hard rule*; this file keeps the **map** and the **why**. Question routing is `docs/current/REPO_READING_GUIDE.md` (§10); the docs change/closeout process rule is `rules/docs-working-model/docs-working-model.md`.
+This file is the **docs tree orientation / placement map** — a reading aid for what each `docs/` layer is *for* and how AI/operator and humans navigate the tree. It is **not** an operative authority. The binding placement rules live on the active surface at **`rules/docs-working-model/docs-working-model.md`** (*End-state placement and transition*, *Stable filename rule*), per the root *Final hard rule*; this file keeps the **map** and the **why**. Question routing is the minimal per-question table in §7; the docs change/closeout process rule is `rules/docs-working-model/docs-working-model.md`.
 
 The section numbers below are preserved so existing `§N` references resolve; binding-rule sections now hold orientation + a pointer to the operative rule.
 
@@ -35,17 +35,14 @@ The placement criterion is **how a document is read**, not how many topics it to
 
 | Folder | Scope (one purpose) | Access pattern |
 |---|---|---|
-| `docs/current/` | `REPO_READING_GUIDE.md` only — question→read-first routing; project-current state / next action answered on demand (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*), not mirrored in any committed file | read first / when orienting |
 | `docs/policies/` | task-scoped AI/operator execution policies (PowerShell, CLI/runtime assumptions; the former reviewer policies are absorbed into `docs/review/review_spec.md`) | when a task touches that policy's domain |
 | `docs/brief/` | the **brief domain folder** — `brief_spec.md` (spec-of-record) + `brief_backlog.md` (future-work queue); the first migrated domain folder under the docs-working-model end-state (`rules/docs-working-model/docs-working-model.md`, *End-state placement and transition*) — lifecycle docs (`brief_design.md` / `brief_plan.md` / `brief_work_packet.md`) exist only during a change | when working with the Brief artifact / workflow |
 | `docs/review/` | the **review domain folder** — `review_spec.md` (spec-of-record: canonical review artifact model, verdict vocabulary, deterministic gates, reviewer-safe invocation, validation-evidence convention) + `review_backlog.md` (future-work queue); the second migrated domain folder — lifecycle docs (`review_design.md` / `review_plan.md` / `review_work_packet.md`) exist only during a change | when working with the review subsystem |
 | `docs/install-update/` | the **install-update domain folder** — `install-update_spec.md` (spec-of-record: layer/invocation-channel invariants, metadata/artifact identity, footprint contract, activation-surface policy, uninstall invariants, recovery posture) + `install-update_backlog.md` (future-work queue incl. deferred rows); the third migrated domain folder — lifecycle docs exist only during a change; **execution itself is root `INSTALL.md`** (self-contained operative contract) | when working with the install/update/uninstall/activation lifecycle |
-| `docs/contracts/` | artifact/protocol contracts layer (currently no live contract files — the former `global-invocation/` contract is absorbed into `docs/install-update/install-update_spec.md`; the former `review/` and `evidence/` contracts into `docs/review/review_spec.md`) | when producing/validating that artifact |
 | `docs/architecture/` | cross-cutting architecture decisions/audits spanning multiple subsystems/surfaces, deciding a structural target **before** implementation (e.g. `architecture/instruction-surface/INSTRUCTION_SURFACE_PLAN.md`); routes to the per-domain `docs/<domain>/` spec/backlog for current state, does not own it | when planning/auditing how a concern is divided across surfaces |
 | `docs/project/` | project identity, scope, positioning, philosophy | when scoping "what this project is/isn't" |
 | `docs/decisions/` | active decision records (incl. post-MVP decision record + numbered-order authority) | when checking "what was decided" |
 | `docs/roadmap/` | roadmap/milestone routing only (INDEX, current milestones) | when checking remaining order |
-| `docs/backlog/` | backlog index/routing only | when looking up open work |
 
 ## 6. Where new documents belong (orientation)
 
@@ -53,9 +50,22 @@ Briefly: an always-on-for-every-task rule belongs on an always-on surface outsid
 
 → Operative rule (binding placement + transition): `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*).
 
-## 7. How AI/operator should navigate docs
+## 7. How AI/operator should navigate docs (question → read-first routing)
 
-Start from `docs/current/REPO_READING_GUIDE.md` for "which document do I read first for this question" (read-first routing, not authority over the active surface). Open only the scope folder your task needs.
+This file is the single orientation home: §5 above is the placement map; the table below is the **minimal per-question read-first routing** (which document to read first for a question). It is orientation, not authority over the active surface — the active surface owns behavior (root *Final hard rule*). Open only the scope folder your task needs.
+
+| Question | Read first |
+|---|---|
+| install / update / uninstall behavior | `INSTALL.md` (self-contained operative contract) + `docs/install-update/install-update_spec.md` |
+| review workflow / result contract | `docs/review/review_spec.md` + `snippets/claude-skills/ai-harness-review/SKILL.md` |
+| Brief save / restore | `docs/brief/brief_spec.md` + `snippets/claude-skills/ai-harness-brief/SKILL.md` |
+| current progress / what to do next | on-demand briefing — `rules/docs-working-model/docs-working-model.md` (*On-demand status-briefing model*); no committed project-current mirror |
+| decision records / post-MVP numbered order | `docs/decisions/` (`POST_MVP_PLAN.md` §11 ↔ `docs/roadmap/CURRENT_MILESTONES.md`) |
+| open backlog / deferred items | the per-domain `<domain>_backlog.md` (review · install-update · brief) |
+| docs change / closeout / placement | `rules/docs-working-model/docs-working-model.md` |
+| instruction-surface / skill architecture | `docs/architecture/instruction-surface/` |
+
+Removed-legacy "do not use" identifiers and historical bodies are not re-listed here — each lives in its owning domain spec (single-home) or git history.
 
 ## 8. How humans should navigate docs
 
@@ -67,13 +77,12 @@ In short: do not place artifact contracts under `policies/`, or task-scoped/cond
 
 → Operative rule (binding placement prohibitions — stable filenames, legacy-no-growth): `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*, *Stable filename rule*).
 
-## 10. The three complementary docs surfaces (orientation)
+## 10. The two complementary docs surfaces (orientation)
 
-- `docs/README.md` (this file): the docs **structure/placement map** — what each layer is for. The binding placement rules are the operative rule `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*).
-- `docs/current/REPO_READING_GUIDE.md`: per-question **read-first routing** (which document answers which question, and the reading-priority order on conflict) — orientation, not authority over the active surface.
+- `docs/README.md` (this file): the docs **orientation home** — the structure/placement map (§5) and the minimal per-question read-first routing (§7). Orientation, not authority over the active surface; the binding placement rules are the operative rule `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*).
 - `rules/docs-working-model/docs-working-model.md`: the docs **working model** operative rule (document artifact classes, Design/Plan/Spec lifecycle + Spec identity, end-state placement + transition, Spec↔implementation 1:1 sync + proportionality rule, on-demand briefing, reduced closeout gate). Self-contained — the predecessor rationale/record is preserved in git history.
 
-On overlap, placement orientation is this file, question-routing is `REPO_READING_GUIDE.md`, and the binding placement + change/closeout rules are `rules/docs-working-model/docs-working-model.md`.
+On overlap, placement + question-routing orientation is this file (§5 + §7), and the binding placement + change/closeout rules are `rules/docs-working-model/docs-working-model.md`.
 
 ## 11. Reference update rule when moving docs (orientation)
 

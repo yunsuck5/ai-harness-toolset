@@ -7,7 +7,7 @@ This INDEX's existence does not by itself approve any implementation, source/doc
 ## 1. Where current state lives
 
 - install-update → `docs/install-update/install-update_spec.md` + `docs/install-update/install-update_backlog.md` (execution SoT = root `INSTALL.md`); review → `docs/review/review_spec.md` + `docs/review/review_backlog.md`; brief → `docs/brief/brief_spec.md` + `docs/brief/brief_backlog.md`
-- overall entrypoint → `docs/current/REPO_READING_GUIDE.md` (question→read-first routing); current progress / remaining work / next action is answered on demand (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*), not from a committed mirror (the former `docs/current/PROJECT_STATE.md` / `NEXT_ACTIONS.md` mirrors were removed)
+- overall entrypoint → `docs/README.md` (placement map + question→read-first routing); current progress / remaining work / next action is answered on demand (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*), not from a committed mirror (the former `docs/current/PROJECT_STATE.md` / `NEXT_ACTIONS.md` mirrors were removed)
 - post-MVP numbered remaining order routing view → `docs/roadmap/CURRENT_MILESTONES.md` (authority = `docs/decisions/POST_MVP_PLAN.md` §11)
 
 ## 2. Relocated docs (formerly in `docs/roadmap/`)
@@ -38,5 +38,5 @@ Any source/doc change under `docs/roadmap/` goes through the normal Codex review
 
 ## 6. Source-of-truth relationship
 
-- The docs placement orientation map is `docs/README.md` (binding placement rules → `rules/docs-working-model/docs-working-model.md`); question→read-first routing lives in `docs/current/REPO_READING_GUIDE.md`, and current status lives in the per-domain spec/backlog files.
+- The docs orientation map (placement + question→read-first routing) is `docs/README.md` (binding placement rules → `rules/docs-working-model/docs-working-model.md`); current status lives in the per-domain spec/backlog files.
 - This INDEX is a routing note for `docs/roadmap/` only; it does not override any relocated doc's contract/decision.

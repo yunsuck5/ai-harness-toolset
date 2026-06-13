@@ -9,4 +9,4 @@ This folder holds **what this project is, is not, and how it is positioned** —
 
 ## What does not belong here
 
-Execution policies (→ `docs/policies/`), artifact contracts (→ `docs/contracts/`), current status (→ per-domain spec/backlog files; question→read-first routing → `docs/current/REPO_READING_GUIDE.md`), and decision records (→ `docs/decisions/`).
+Execution policies (→ `docs/policies/`), current status (→ per-domain spec/backlog files; question→read-first routing → `docs/README.md`), and decision records (→ `docs/decisions/`).

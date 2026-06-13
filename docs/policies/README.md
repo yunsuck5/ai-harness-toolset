@@ -1,6 +1,6 @@
 # docs/policies/ — Task-Scoped Execution Policies
 
-This folder holds **task-scoped AI/operator execution policies**: rules an agent follows *while doing a task in that policy's domain*. They are not always-on priming (the always-on payload lives in `snippets/**` / the adopted managed block and the repo-local root `CLAUDE.md` / `AGENTS.md`, not here) and not artifact contracts (→ `docs/contracts/`).
+This folder holds **task-scoped AI/operator execution policies**: rules an agent follows *while doing a task in that policy's domain*. They are not always-on priming (the always-on payload lives in `snippets/**` / the adopted managed block and the repo-local root `CLAUDE.md` / `AGENTS.md`, not here) and not artifact contracts (the former artifact-contract layer was absorbed into the domain specs — `docs/review/review_spec.md` · `docs/install-update/install-update_spec.md`).
 
 ## Access pattern
 
@@ -15,4 +15,4 @@ The former reviewer policies (`REVIEWER_CONFIG_POLICY.md`, `REVIEW_EFFORT_GUIDE.
 
 ## What does not belong here
 
-Always-on cross-cutting rules (those live in `snippets/**` / the global managed block or the repo-local root `CLAUDE.md` / `AGENTS.md`, not `docs/`), artifact/protocol contracts (→ `docs/contracts/`), and project philosophy (→ `docs/project/`).
+Always-on cross-cutting rules (those live in `snippets/**` / the global managed block or the repo-local root `CLAUDE.md` / `AGENTS.md`, not `docs/`), artifact/protocol contracts (absorbed into the domain specs), and project philosophy (→ `docs/project/`).
