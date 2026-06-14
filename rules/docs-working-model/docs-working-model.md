@@ -129,6 +129,10 @@ A Design/Plan/Spec lifecycle closeout is not done until **all** hold:
 - Auxiliary role docs (`_policy` / `_contract` / `_state` / `_status` / `_guide`) are **deferred** — not created by default; introduced only by an explicit Design/Plan decision.
 - **Package-local form vs domain form.** This package's `templates/` / `checklists/` files carry the package prefix `docs-working-model_` and a `_template` / `_checklist` role suffix: they are **forms that produce another domain's** documents, not a domain's own artifacts.
 
+## Authoring language
+
+- New human-facing docs are **Korean by default**; technical identifiers (file / function / flag names, code, CLI tokens) stay English. This is a repo-development authoring convention for this repo's own docs — an adopter project chooses its own language.
+
 ## Domain-local closure and top-down reference
 
 - **Domain-local closure** — each domain document is understandable from its own folder + its own live Spec + its own active surface + the stable interfaces it explicitly depends on. If understanding it requires reading another domain's semantics, the Spec has failed.
