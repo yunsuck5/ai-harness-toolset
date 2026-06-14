@@ -5,8 +5,8 @@ $ErrorActionPreference = 'Stop'
 # Root CLAUDE.md and AGENTS.md share a byte-identical body below the
 # "<!-- BEGIN SHARED BODY" marker; only the tool-specific header above it may
 # differ. This enforces the mirror-edit rule
-# (docs/architecture/instruction-surface/REPO_LOCAL_INSTRUCTION_SURFACE_PLAN.md
-# section 4) so a single-file shared-body edit cannot drift silently. It also
+# (the root CLAUDE.md / AGENTS.md *Mirror-edit rule*; Track C design
+# in git history) so a single-file shared-body edit cannot drift silently. It also
 # asserts neither file embeds the global managed block (these files are
 # repo-local development instructions, not the global snippet adoption target).
 

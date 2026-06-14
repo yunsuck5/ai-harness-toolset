@@ -135,7 +135,7 @@ $codexArgs = @(
 
 $codexExit = $null
 $prevPref = $ErrorActionPreference
-# Native stderr capture under EAP=Continue save/restore (docs/policies/POWERSHELL_POLICY.md):
+# Native stderr capture under EAP=Continue save/restore (rules/powershell-and-file-encoding.md):
 # the same pattern review-run.ps1 uses so a Codex stderr line is not promoted to a terminating
 # NativeCommandError before $LASTEXITCODE is read.
 $ErrorActionPreference = 'Continue'

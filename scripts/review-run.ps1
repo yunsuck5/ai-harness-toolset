@@ -171,7 +171,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
     # header line "reasoning effort: <value>" can be read back as the applied-effort
     # run-fact. Under file-level $ErrorActionPreference = 'Stop', capturing native
     # stderr promotes the first stderr line to a terminating NativeCommandError
-    # before $LASTEXITCODE can be read (docs/policies/POWERSHELL_POLICY.md), so the
+    # before $LASTEXITCODE can be read (rules/powershell-and-file-encoding.md), so the
     # capture is wrapped in EAP=Continue save/restore.
     $ErrorActionPreference = 'Continue'
     try {

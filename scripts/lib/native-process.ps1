@@ -58,8 +58,8 @@
 # into a NativeCommandError ErrorRecord. Under file-level
 # $ErrorActionPreference = 'Stop' that record becomes a terminating error and
 # aborts the call BEFORE the caller can inspect $LASTEXITCODE. See
-# docs/policies/POWERSHELL_POLICY.md `Native command invocation under
-# $ErrorActionPreference = 'Stop'`.
+# the active rule rules/powershell-and-file-encoding.md (Native-executable
+# output capture).
 #
 # This helper pins $ErrorActionPreference = 'Continue' for the duration of the
 # native call, redirects child stdout and stderr to separate temp files, and
