@@ -75,7 +75,7 @@ The toolset script that drives a pass performs only deterministic gates: pass-di
 
 When reading `result.md`, Claude Code treats it as a structured artifact — the `## Verdict` line alone is not sufficient for the next action, and the four required disclosure H2s are read alongside it. The verdict → next-action mapping (`yes` / `no` / `yes with risk` each map to a different operator response) is specified in `docs/review/review_spec.md`; the operator-facing operative home lives in the review skill (`snippets/claude-skills/ai-harness-review/SKILL.md` step 6 + step 7).
 
-Spec-of-record: `docs/review/review_spec.md`. Day-to-day natural-language UX, modes A/B, and the acceptance checklist: the review skill `snippets/claude-skills/ai-harness-review/SKILL.md`. CLI / runtime dependency boundary: `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md`.
+Spec-of-record: `docs/review/review_spec.md`. Day-to-day natural-language UX, modes A/B, and the acceptance checklist: the review skill `snippets/claude-skills/ai-harness-review/SKILL.md`. CLI / runtime dependency boundary: host prerequisites in `INSTALL.md` §1 (+ `rules/powershell-and-file-encoding.md` for the PowerShell host); `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md` is the rationale (historical).
 
 ## Evidence and Brief
 
@@ -95,7 +95,7 @@ ai-harness-toolset does not overwrite global or project-local `CLAUDE.md` / `AGE
 
 `%USERPROFILE%\.claude\AGENTS.md` is **forbidden**: that path is not a recognized global instruction location for any agent, and ai-harness must never create it. The Codex user-global instruction path is under `.codex\`, not `.claude\`.
 
-Both snippets are written **dual-role safe** — they apply regardless of whether the loading agent is currently acting as operator, reviewer, auditor, or supervisor. Role-specific behavior is set by `/goal`, the review input, the skill prompt, or the command invocation, not by these global payloads. This role-neutral framing is stated in each snippet's intro; the binding operator-vs-reviewer-mode distinction lives in the `ai-harness-review` and `ai-harness-brief` skills. The snippets are a **minimal always-loaded bootstrap** (a safety floor plus a pointer to the distributed rules tier `snippets/rules/`), not a policy bundle; the reusable rules ship in `snippets/rules/` (global) and `rules/` (repo-only), and the whole distribution carries no `docs/` dependency — see `docs/architecture/instruction-surface/GLOBAL_SNIPPET_HARD_MINIMIZATION_CORRECTIVE.md`.
+Both snippets are written **dual-role safe** — they apply regardless of whether the loading agent is currently acting as operator, reviewer, auditor, or supervisor. Role-specific behavior is set by `/goal`, the review input, the skill prompt, or the command invocation, not by these global payloads. This role-neutral framing is stated in each snippet's intro; the binding operator-vs-reviewer-mode distinction lives in the `ai-harness-review` and `ai-harness-brief` skills. The snippets are a **minimal always-loaded bootstrap** (a safety floor plus a pointer to the distributed rules tier `snippets/rules/`), not a policy bundle; the reusable rules ship in `snippets/rules/` (global) and `rules/` (repo-only), and the whole distribution carries no `docs/` dependency (tier indexes: `snippets/rules/README.md` + `rules/README.md`; migration history in git history — `docs/architecture/instruction-surface/GLOBAL_SNIPPET_HARD_MINIMIZATION_CORRECTIVE.md`).
 
 Adoption is a deliberate user action: append the matching snippet into one of the valid destination files inside the single canonical managed block delimited by the `AI_HARNESS_TOOLSET_GLOBAL` markers. The canonical marker form is identical for both `CLAUDE.md` and `AGENTS.md` (the snippet files themselves carry these markers literally — see the first / last lines of `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md`):
 
@@ -131,10 +131,10 @@ Tags: `active operational` (current, actively-maintained docs), `active referenc
 
 | File | Role | One-line role |
 |---|---|---|
-| `docs/project/AI_HARNESS_TOOLSET_SCOPE.md` | active operational | Project nature, in/out of scope, source-vs-target payload mapping. |
+| `docs/project/AI_HARNESS_TOOLSET_SCOPE.md` | active reference | Project nature / scope / payload-mapping positioning; path concepts (ProjectRoot/ToolRoot/ProjectLogRoot) owned by `rules/terminology-glossary.md`, channel model by `docs/install-update/install-update_spec.md`. |
 | `docs/brief/brief_spec.md` | active operational | Brief spec-of-record: BF Level as save/restore capability maturity, single canonical runtime Brief location (project-local `<ProjectRoot>/log/brief/BRIEF.md`, gitignored under `log/`, not a commit/push target), root `<ProjectRoot>/brief/` rejected, Brief is the only restore source, and the primitive / workflow behavior boundary. |
-| `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md` | active operational | Canonical CLI/runtime dependency boundary. |
-| `docs/policies/POWERSHELL_POLICY.md` | active operational | Encoding, line-ending, file IO, and collection return rules. |
+| `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md` | active reference | CLI/runtime dependency boundary rationale; live requirements owned by `INSTALL.md` §1 + `rules/powershell-and-file-encoding.md`. |
+| `docs/policies/POWERSHELL_POLICY.md` | active reference | Encoding / line-ending / file-IO / collection-return rationale; live rules owned by `rules/powershell-and-file-encoding.md`. |
 | `docs/review/review_spec.md` | active operational | review domain spec-of-record — canonical three-level review artifact model (`input.md` AI-authored + `result.md` dual-authored, `<perspective>` required), verdict vocabulary, deterministic gates, reviewer-safe invocation, config-driven model/effort, and the `log/evidence/<scope>/<case>/` validation-evidence file-format convention (absorbing the former review/evidence contracts and reviewer policies). |
 | `docs/project/TOOLING_POSITION.md` | active reference | Position statements for adjacent tools. |
 

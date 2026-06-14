@@ -38,13 +38,11 @@ These are generated artifacts. They are not part of the toolset payload.
 
 ## Path concepts
 
-- `ProjectRoot` — the root of the project being operated on.
-- `ToolRoot` — the root of the ai-harness-toolset files, resolved per invocation by the channel chain (specified in `docs/install-update/install-update_spec.md`; implemented in `scripts/lib/path.ps1`). In the current shared / global mode it is the channel 3 global stable install (`%USERPROFILE%\.claude\ai-harness-toolset\current`); in source-repo dogfooding it is the repo root; in the legacy project-local copy mode it is `<project-root>/.ai-harness/`.
-- `ProjectLogRoot` — `<ProjectRoot>/log`.
+`ProjectRoot` / `ToolRoot` / `ProjectLogRoot` term meanings are defined in `rules/terminology-glossary.md` (the single home of project term meaning); operative resolution + channel order live on the active surface (`scripts/lib/path.ps1`) and the channel model in `docs/install-update/install-update_spec.md`.
 
 ## Cross-cutting boundaries
 
-- CLI/runtime dependency boundary is canonical in `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md`.
+- CLI/runtime dependency boundary: host prerequisites are the operative contract in `INSTALL.md` §1 (+ `rules/powershell-and-file-encoding.md` for the PowerShell host); `docs/policies/CLI_ENVIRONMENT_ASSUMPTIONS.md` holds the rationale.
 - `<project-root>/log/` is the runtime factual record root. Generated records are preserved for inspection and traceability; later corrections are captured as new records under the relevant subsystem contract.
 - The review record model is specified in `docs/review/review_spec.md` (the review domain spec-of-record).
 

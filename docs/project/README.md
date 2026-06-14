@@ -9,4 +9,4 @@ This folder holds **what this project is, is not, and how it is positioned** —
 
 ## What does not belong here
 
-Execution policies (→ `docs/policies/`), current status (→ per-domain spec/backlog files; question→read-first routing → `docs/README.md`), and decision records (→ the relevant owner surface / domain spec; historical detail in git history).
+Execution policies (live rules → the active surface `rules/powershell-and-file-encoding.md` + `INSTALL.md` §1 host prerequisites; `docs/policies/` is rationale / history only, not the operative authority), current status (→ per-domain spec/backlog files; question→read-first routing → `docs/README.md`), and decision records (→ the relevant owner surface / domain spec; historical detail in git history).

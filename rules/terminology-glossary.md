@@ -45,6 +45,9 @@ Each definition is a complete one-line meaning, self-contained in this file. Whe
 - **`external workspace baseline`** — a classification for out-of-repo, pinned, read-only material the repo may consult as **advisory** input (e.g. restore / handoff / planning material). It is **not** a repo terminology dependency — project term meaning is self-contained in this file, not derived from such material — and the repo never references it by a durable pointer.
 - **`checkpoint`** — an explicit-prompt save of a recoverable progress point in the Brief workflow (the save / checkpoint trigger family). Owner = brief (`docs/brief/brief_spec.md`); closed in the brief pilot.
 - **`restore point`** — the saved point an explicit, user-requested Brief restore resumes from (the restore-summary + confirm step of the Brief workflow). Owner = brief (`docs/brief/brief_spec.md`); closed in the brief pilot.
+- **`ProjectRoot`** — the root of the project being operated on (the target repo); the project's only persistent ai-harness footprint is runtime artifacts under `<ProjectRoot>/log/`. Operative resolution lives on the active surface (`scripts/lib/path.ps1`).
+- **`ToolRoot`** — the root of the installed ai-harness-toolset files (`config` / `scripts` / `snippets` / `templates`), resolved per invocation by the channel chain; in the current shared / global mode it is the channel-3 stable install. Operative resolution + channel order live on the active surface (`scripts/lib/path.ps1`); the channel model is specified in `docs/install-update/install-update_spec.md`.
+- **`ProjectLogRoot`** — `<ProjectRoot>/log`, the runtime factual-record root (evidence / review / brief artifacts); gitignored, never a payload location.
 
 ## Accepted terms with owner boundary
 

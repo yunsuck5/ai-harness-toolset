@@ -35,7 +35,7 @@ The placement criterion is **how a document is read**, not how many topics it to
 
 | Folder | Scope (one purpose) | Access pattern |
 |---|---|---|
-| `docs/policies/` | task-scoped AI/operator execution policies (PowerShell, CLI/runtime assumptions; the former reviewer policies are absorbed into `docs/review/review_spec.md`) | when a task touches that policy's domain |
+| `docs/policies/` | execution-policy **rationale / history** (PowerShell, CLI/runtime assumptions); the live rules are owned by the active surface (`rules/powershell-and-file-encoding.md` + `INSTALL.md` §1), not this folder; the former reviewer policies are absorbed into `docs/review/review_spec.md` | rationale only — read the active surface (above) first for live policy |
 | `docs/brief/` | the **brief domain folder** — `brief_spec.md` (spec-of-record) + `brief_backlog.md` (future-work queue); the first migrated domain folder under the docs-working-model end-state (`rules/docs-working-model/docs-working-model.md`, *End-state placement and transition*) — lifecycle docs (`brief_design.md` / `brief_plan.md` / `brief_work_packet.md`) exist only during a change | when working with the Brief artifact / workflow |
 | `docs/review/` | the **review domain folder** — `review_spec.md` (spec-of-record: canonical review artifact model, verdict vocabulary, deterministic gates, reviewer-safe invocation, validation-evidence convention) + `review_backlog.md` (future-work queue); the second migrated domain folder — lifecycle docs (`review_design.md` / `review_plan.md` / `review_work_packet.md`) exist only during a change | when working with the review subsystem |
 | `docs/install-update/` | the **install-update domain folder** — `install-update_spec.md` (spec-of-record: layer/invocation-channel invariants, metadata/artifact identity, footprint contract, activation-surface policy, uninstall invariants, recovery posture) + `install-update_backlog.md` (future-work queue incl. deferred rows); the third migrated domain folder — lifecycle docs exist only during a change; **execution itself is root `INSTALL.md`** (self-contained operative contract) | when working with the install/update/uninstall/activation lifecycle |
@@ -61,7 +61,7 @@ This file is the single orientation home: §5 above is the placement map; the ta
 | decision records | the relevant owner surface / domain spec (historical decisions in git history) |
 | open backlog / deferred items | the per-domain `<domain>_backlog.md` (review · install-update · brief) |
 | docs change / closeout / placement | `rules/docs-working-model/docs-working-model.md` |
-| instruction-surface / skill architecture | `docs/architecture/instruction-surface/` |
+| instruction-surface / skill architecture | active owners: `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` + `snippets/rules/README.md` + `rules/README.md` (rules tiers) + root `CLAUDE.md` / `AGENTS.md` (repo-local surface); design / migration history in git history (`docs/architecture/instruction-surface/`) |
 
 Removed-legacy "do not use" identifiers and historical bodies are not re-listed here — each lives in its owning domain spec (single-home) or git history.
 
