@@ -13,15 +13,15 @@
 ### 설치 모델
 
 - install / update / restore 는 같은 primitive 의 서로 다른 source/ref resolution path 다 — **source-authoritative overwrite materialization**: source/ref 를 resolve 한 뒤 destination 을 결정론적으로 덮어쓰고, metadata 를 기록하고, 검증하고, 보고한다. destination diff 분석·partial patch·ad-hoc repair 는 이 모델에 존재하지 않는다.
-- 사용자는 파일을 직접 배치하지 않는다 — AI operator(Claude Code)가 source repo 를 기준으로 global Claude layer 를 install / update 하며, 모든 global/user mutation 은 inspect → propose → 명시 승인 → apply → verify 위에서만 수행된다.
+- 사용자는 파일을 직접 배치하지 않는다 — AI operator(Claude Code)가 source repo 를 기준으로 global install layer(벤더-중립 install area + 벤더별 activation home)를 install / update 하며, 모든 global/user mutation 은 inspect → propose → 명시 승인 → apply → verify 위에서만 수행된다.
 - source 획득은 2-mode 다(git-url / local-clone). 두 mode 는 source 획득 단계만 다르고 이후 materialization·metadata write·verify·report 경로는 동일하다.
 - update 는 **metadata-dispatched re-materialization** 이다 — 최초 install 이 기록한 metadata 가 update 경로를 결정하며 사용자가 source 를 매번 재지정하지 않는다. 사용자 업데이트 명령은 의미상 두 종류다 — source 를 먼저 최신화한 뒤 갱신하는 것과, 현재 local HEAD 기준으로 global layer 만 갱신하는 것(후자의 no-source-touch 경로는 local-clone mode 에만 존재 — 아래 git-url acquisition invariant). 명령 수준의 지원 매트릭스와 절차는 `INSTALL.md` 소유다.
 - restore 는 **user-specified ref 만으로** dispatch 된다 — metadata 는 source 위치의 descriptive hint 로만 쓰이고, metadata-derived known-good ref 의 자동 추출·자동 fallback 은 금지다. invalid ref 는 fallback 없이 fail-fast 한다.
 
 ### 계층 모델과 invocation channel
 
-- 5-layer 분리: Layer 0 GitHub remote source / Layer 1 canonical local ToolRoot(source/build input — shared/global mode 의 default runtime ToolRoot 아님) / Layer 2 global Claude install layer(`%USERPROFILE%\.claude`) / Layer 3 ProjectRoot(작업 대상 — payload 설치처 아님) / Layer 4 project-local runtime artifacts(`<ProjectRoot>/log/`).
-- shared/global mode 의 materialized runtime ToolRoot 는 `%USERPROFILE%\.claude\ai-harness-toolset\current`(Layer 2 아래)이며 default 연결 경로다.
+- 5-layer 분리: Layer 0 GitHub remote source / Layer 1 canonical local ToolRoot(source/build input — shared/global mode 의 default runtime ToolRoot 아님) / Layer 2 global install layer — 벤더-중립 install area `%USERPROFILE%\ai-harness-toolset`(payload) + 벤더별 activation home `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex`(activation surface) / Layer 3 ProjectRoot(작업 대상 — payload 설치처 아님) / Layer 4 project-local runtime artifacts(`<ProjectRoot>/log/`).
+- shared/global mode 의 materialized runtime ToolRoot 는 `%USERPROFILE%\ai-harness-toolset\current`(Layer 2 의 install area 아래)이며 default 연결 경로다. install area 는 단일 정의처(path script 의 한 함수)에서 파생되고, activation home(`%USERPROFILE%\.claude` / `%USERPROFILE%\.codex`)과 분리된 벤더-중립 위치다 — install area 는 activation home 아래에 있지 않다.
 - ToolRoot 해소는 **명시 우선 5-channel chain** 이다 — ① CLI `-ToolRoot` ② env `AI_HARNESS_TOOL_ROOT` ③ global stable install ④ dogfooding 판정 ⑤ 명시 error + exit non-zero(시도한 channel 목록 포함). channel 3 은 디렉터리 **부재 시 skip**, 존재하나 payload **불완전 시 fail-fast** 한다(completeness 판정 entrypoint 는 owner 소유). channel 2 는 process-scope 의 override/debug 용이며 default 연결 방식이 아니다. user-level config 파일과 snippet 내 ToolRoot 절대경로 기록은 channel 로 채택되지 않는다.
 - component script 해소는 explicit ToolRoot(channel 1/2/3)에서 fallback 없이 fail-fast, implicit(channel 4 dogfooding)에서 `$PSScriptRoot` fallback + 명시 warning 이다.
 - source repo(dogfooding) 판정은 **다중 marker 의 동시 존재(AND)** 로만 true 다 — 단일 marker 로 판정하지 않는다(marker 집합 값은 owner 소유).
@@ -72,7 +72,7 @@
 - 성공 기준은 **verified footprint-zero 4-target** 이다 — ① install root 부재 ② owned skill mirror 부재 ③ Claude managed-block surface 의 marker pair 0 ④ Codex **effective** managed-block surface 의 marker pair 0(instruction file 자체는 보존). 비-effective Codex 파일의 stale marker pair 는 detect-warn 이며 제거하지 않는다. 성공은 "삭제 명령 발행" 이 아니라 "검증된 end state" 다.
 - 자기-삭제 문제는 **temp finalizer trampoline** 으로 닫는다 — main entrypoint 는 install root 를 직접 삭제하지 않고, finalizer 는 parent 종료를 기다린 뒤 install-root path 를 재guard 하고 expected footprint 를 재확인한 후에만 삭제하며, best-effort self-clean 실패 시 exact temp path 를 보고한다(non-fatal).
 - managed-block 제거는 **marker-span excision** 이다 — instruction file 은 절대 삭제하지 않고(excision 으로 비어도 보존), 0-pair 는 idempotent no-op, 2+/incomplete/malformed/nested 는 fail-fast, marker 밖 byte 는 verbatim 보존하며, 선재 `.amb-backup` 은 자동 삭제하지 않는다(거취는 별도 사용자 결정).
-- install root 삭제는 blind recursive delete 가 아니다 — **expected-footprint enumeration** 과 대조해 unexpected content 는 fail-fast 하고(목록 값은 owner 소유), 모든 destructive op 에 path guard(정규화 후 leaf/parent 정확 일치)를 적용한다.
+- install root 삭제는 blind recursive delete 가 아니다 — **expected-footprint enumeration** 과 대조해 unexpected content 는 fail-fast 하고(목록 값은 owner 소유), 모든 destructive op 에 path guard(정규화 후 expected canonical install area 와의 정확 일치 — 동등성 검사이며 `.claude` parent-name shape 에 의존하지 않는다)를 적용한다. self-삭제 finalizer 는 self-contained 를 유지하기 위해 expected install area 를 `finalizer-input.json` 으로 전달받아 동일 동등성 검사를 재수행한다.
 - non-target 불가침 — `<ProjectRoot>/log/` · source repo/ToolRoot clone · 비-owned sibling skill · marker 밖 content 와 instruction file 자체 · `.claude`/`.codex` 의 비-toolset 파일과 그 디렉터리 자체 · project-root managed block(별도 scope).
 - **dry-run(default·read-only) / apply / verify 는 분리** 된다 — apply 는 preflight-all-then-act(정적 fail-fast 조건이 하나라도 성립하면 아무것도 제거하지 않음)이고, failure 는 **2-tier** 다 — preflight tier(정적 감지 → 전체 차단) vs post-preflight tier(runtime 실패 → per-surface partial; cross-surface transaction 없음). already-absent 는 idempotent no-op 다. status 어휘는 standalone 이며 값 집합은 owner 소유다.
 
@@ -84,7 +84,7 @@
 
 ### 표기 규율
 
-- durable 문서에서 global layer 경로는 `%USERPROFILE%\.claude` placeholder 로 표기하고, 실제 사용자 폴더명·maintainer 경로는 기재하지 않는다.
+- durable 문서에서 경로는 placeholder 로 표기하고 실제 사용자 폴더명·maintainer 경로는 기재하지 않는다 — 벤더-중립 install area 는 `%USERPROFILE%\ai-harness-toolset`, activation home 은 `%USERPROFILE%\.claude` / `%USERPROFILE%\.codex` placeholder 를 쓴다.
 
 ## Owner surface 지도
 

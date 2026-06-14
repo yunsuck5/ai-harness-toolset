@@ -3,6 +3,13 @@ param(
     [string] $InstallArea,
     [string] $ClaudeHome,
     [string] $CodexHome,
+    # NOTE: there is intentionally NO operator-facing -ExpectedInstallArea parameter. The expected
+    # canonical install area for the destructive path guard is ALWAYS computed internally from
+    # Get-StableInstallAreaCandidate (%USERPROFILE%\ai-harness-toolset) and can never be injected by the
+    # caller — otherwise an operator could pass a matching expected area and bypass the canonical guard.
+    # Test isolation is via the lower-level boundary (Get-StableInstallAreaCandidate reads
+    # %USERPROFILE%; Get-UninstallPlan / the finalizer take the resolved value directly), never via a
+    # public CLI parameter.
     # -Apply performs the DESTRUCTIVE uninstall (IU-B-08 batch 3). Without it the default run is a
     # READ-ONLY dry-run. Approval is the explicit -Apply invocation itself — this uninstall step's own
     # apply-time decision, distinct from update-source's "command-implied approval" namespace (INSTALL.md §13.8).
@@ -35,6 +42,7 @@ $ErrorActionPreference = 'Stop'
 # sibling skills, and marker-outside instruction content are NON-targets.
 
 . (Join-Path $PSScriptRoot 'lib/encoding.ps1')
+. (Join-Path $PSScriptRoot 'lib/path.ps1')
 . (Join-Path $PSScriptRoot 'lib/managed-block.ps1')
 . (Join-Path $PSScriptRoot 'lib/activation-surface.ps1')
 . (Join-Path $PSScriptRoot 'lib/install-pipeline-core.ps1')
@@ -54,13 +62,20 @@ if ([string]::IsNullOrEmpty($CodexHome)) {
     }
 }
 if ([string]::IsNullOrEmpty($InstallArea)) {
-    $InstallArea = Join-Path $ClaudeHome 'ai-harness-toolset'
+    # Default install area = the single source of truth in lib/path.ps1 (vendor-neutral,
+    # %USERPROFILE%\ai-harness-toolset). NOT derived from $ClaudeHome.
+    $InstallArea = Get-StableInstallAreaCandidate
 }
+# Expected canonical install area for the path guard — ALWAYS the canonical
+# Get-StableInstallAreaCandidate, never an operator-supplied value. This is what makes the guard a real
+# canonical pin: the operator can choose WHICH InstallArea to point at (-InstallArea), but cannot choose
+# what counts as canonical, so a non-canonical InstallArea is always refused.
+$expectedInstallAreaResolved = [System.IO.Path]::GetFullPath((Get-StableInstallAreaCandidate))
 if ([string]::IsNullOrEmpty($FinalizerTempRoot)) {
     $FinalizerTempRoot = $env:TEMP
 }
 
-$plan = Get-UninstallPlan -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome
+$plan = Get-UninstallPlan -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -ExpectedInstallArea $expectedInstallAreaResolved
 
 function script:Write-UninstallPlanReport {
     param([string] $Mode)
@@ -69,7 +84,7 @@ function script:Write-UninstallPlanReport {
     Write-Host ('uninstall-global: installRootPresent={0}' -f $plan.InstallRootPresent)
     $managedByDisplay = if ($null -ne $plan.ManagedBy -and $plan.ManagedBy -ne '') { $plan.ManagedBy } else { '(none)' }
     Write-Host ('uninstall-global: managedBy={0} managedByOk={1}' -f $managedByDisplay, $plan.ManagedByOk)
-    Write-Host ('uninstall-global: installRootExpectedLocation={0} (.claude\ai-harness-toolset path guard)' -f $plan.ExpectedLocation)
+    Write-Host ('uninstall-global: installRootExpectedLocation={0} (canonical install-area path guard; expected={1})' -f $plan.ExpectedLocation, $expectedInstallAreaResolved)
     foreach ($t in $plan.Targets) {
         Write-Host ('uninstall-global: target name={0} kind={1} status={2} wouldRemove={3} blocked={4}' -f $t.Name, $t.Kind, $t.Status, $t.WouldRemove, $t.Blocked)
         Write-Host ('uninstall-global:   path   {0}' -f $t.Path)
@@ -110,11 +125,17 @@ if ($blockedTargets.Count -gt 0) {
     Write-Host 'uninstall-global: FAIL preflight blocked; no mutation performed.'
     exit 1
 }
-# Install-root path guard is ENFORCED for apply (it is evidence-only in dry-run): the finalizer will
-# delete this tree, so it must be the canonical <...>\.claude\ai-harness-toolset.
-if ($plan.InstallRootPresent -and -not $plan.ExpectedLocation) {
+# Install-area path guard is ENFORCED for apply (it is evidence-only in dry-run). The supplied
+# InstallArea must be EXACTLY the canonical install area (Get-StableInstallAreaCandidate; there is no
+# operator override — test isolation is via the %USERPROFILE% the canonical function reads). This is
+# checked REGARDLESS of whether the install root is present: apply also removes the destructive
+# activation surfaces (managed blocks + skill mirrors under the homes), which are independent of the
+# install root — so a non-canonical InstallArea must be refused BEFORE any surface removal, even when
+# its (wrong) root happens to be absent. Gating on InstallRootPresent here would let a
+# mismatched-but-absent target strip activation surfaces.
+if (-not $plan.ExpectedLocation) {
     Write-Host ('uninstall-global: uninstallStatus=uninstall_blocked')
-    Write-Host ('uninstall-global: FAIL install-root path guard failed (expected <...>\.claude\ai-harness-toolset): {0}; no mutation performed.' -f $plan.InstallAreaPath)
+    Write-Host ('uninstall-global: FAIL install-area path guard failed (expected canonical install area {0}): {1}; no mutation performed.' -f $expectedInstallAreaResolved, $plan.InstallAreaPath)
     exit 1
 }
 
@@ -195,13 +216,14 @@ try {
     Copy-Item -LiteralPath $finalizerSrc -Destination $finalizerCopy -Force
     $inputPath  = Join-Path $selfDir 'finalizer-input.json'
     $inputObj = [ordered]@{
-        installRoot     = $plan.InstallAreaPath
-        parentPid       = $PID
-        expectedEntries = @(Get-UninstallExpectedRootEntries)
-        resultPath      = $resultPath
-        selfDir         = $selfDir
-        timeoutSec      = 60
-        pollMs          = 250
+        installRoot         = $plan.InstallAreaPath
+        expectedInstallArea = $expectedInstallAreaResolved
+        parentPid           = $PID
+        expectedEntries     = @(Get-UninstallExpectedRootEntries)
+        resultPath          = $resultPath
+        selfDir             = $selfDir
+        timeoutSec          = 60
+        pollMs              = 250
     }
     ($inputObj | ConvertTo-Json -Depth 6) | Out-File -LiteralPath $inputPath -Encoding utf8
 

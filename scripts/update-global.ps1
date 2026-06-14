@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
-    # The install ROOT to update. Default %USERPROFILE%\.claude\ai-harness-toolset. Overridable so
-    # tests never touch the real %USERPROFILE%.
+    # The install ROOT to update. Default %USERPROFILE%\ai-harness-toolset (single source of truth =
+    # Get-StableInstallAreaCandidate in lib/path.ps1). Overridable so tests never touch the real
+    # %USERPROFILE%.
     [string] $InstallArea,
 
     # Forwarded to install-update.ps1 -Mode update-source (source identity / ref selection).
@@ -37,6 +38,7 @@ $ErrorActionPreference = 'Stop'
 #                                                 returning its exit code + output verbatim.
 
 . (Join-Path $PSScriptRoot 'lib/encoding.ps1')
+. (Join-Path $PSScriptRoot 'lib/path.ps1')
 . (Join-Path $PSScriptRoot 'lib/install-pipeline-core.ps1')
 . (Join-Path $PSScriptRoot 'lib/native-process.ps1')
 
@@ -53,7 +55,9 @@ if ([string]::IsNullOrEmpty($CodexHome)) {
     }
 }
 if ([string]::IsNullOrEmpty($InstallArea)) {
-    $InstallArea = Join-Path $ClaudeHome 'ai-harness-toolset'
+    # Default install area = the single source of truth in lib/path.ps1 (vendor-neutral,
+    # %USERPROFILE%\ai-harness-toolset). NOT derived from $ClaudeHome.
+    $InstallArea = Get-StableInstallAreaCandidate
 }
 
 $installAreaResolved = [System.IO.Path]::GetFullPath($InstallArea)

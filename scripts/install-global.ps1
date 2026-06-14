@@ -1,7 +1,8 @@
 ﻿[CmdletBinding()]
 param(
     # The install ROOT (the directory that will CONTAIN current/, install.json, payload-manifest.json,
-    # payload-marker.json, and the managed root README). Default %USERPROFILE%\.claude\ai-harness-toolset.
+    # payload-marker.json, and the managed root README). Default %USERPROFILE%\ai-harness-toolset
+    # (the single source of truth is Get-StableInstallAreaCandidate in lib/path.ps1).
     # Overridable so tests never touch the real %USERPROFILE%.
     [string] $InstallArea,
 
@@ -82,7 +83,10 @@ if ([string]::IsNullOrEmpty($CodexHome)) {
     }
 }
 if ([string]::IsNullOrEmpty($InstallArea)) {
-    $InstallArea = Join-Path $ClaudeHome 'ai-harness-toolset'
+    # Default install area = the single source of truth in lib/path.ps1 (vendor-neutral,
+    # %USERPROFILE%\ai-harness-toolset). NOT derived from $ClaudeHome — the install area is
+    # decoupled from the Claude activation home so it does not live under .claude.
+    $InstallArea = Get-StableInstallAreaCandidate
 }
 
 $applyScript  = Join-Path $PSScriptRoot 'apply-managed-block.ps1'

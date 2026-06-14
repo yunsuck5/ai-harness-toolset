@@ -100,6 +100,47 @@ Describe 'Test-IsSourceRepoRoot multi-marker (D3)' {
     }
 }
 
+Describe 'Get-StableInstallAreaCandidate / Get-StableToolRootCandidate (vendor-neutral relocation)' {
+    BeforeEach { script:Clear-EnvToolRoot }
+
+    It 'AC-PATH-AREA-1: install area candidate is %USERPROFILE%\ai-harness-toolset (not under .claude)' {
+        $userProfile = $env:USERPROFILE
+        $area = Get-StableInstallAreaCandidate
+        $expected = [System.IO.Path]::GetFullPath((Join-Path $userProfile 'ai-harness-toolset'))
+        $area | Should -Be $expected
+        (Split-Path -Leaf $area) | Should -Be 'ai-harness-toolset'
+        # The install area is a DIRECT child of the user profile — its parent is NOT .claude.
+        (Split-Path -Leaf (Split-Path -Parent $area)) | Should -Not -Be '.claude'
+    }
+
+    It 'AC-PATH-AREA-1b: install area candidate is derived from $env:USERPROFILE (lower-level test seam)' {
+        # The canonical area reads $env:USERPROFILE (the same base every wrapper uses for its homes), so
+        # a child process with an overridden %USERPROFILE% resolves a sandbox canonical area — this is
+        # the ONLY isolation seam (there is no operator-facing override parameter).
+        $orig = $env:USERPROFILE
+        try {
+            $sandbox = [System.IO.Path]::GetFullPath((Join-Path $TestDrive 'seam-userprofile'))
+            $env:USERPROFILE = $sandbox
+            $area = Get-StableInstallAreaCandidate
+            $area | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $sandbox 'ai-harness-toolset')))
+            # ToolRoot derivation follows the overridden base too.
+            (Get-StableToolRootCandidate) | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $sandbox 'ai-harness-toolset/current')))
+        }
+        finally {
+            $env:USERPROFILE = $orig
+        }
+    }
+
+    It 'AC-PATH-AREA-2: stable ToolRoot candidate derives from the install area + current (single definition)' {
+        $area = Get-StableInstallAreaCandidate
+        $tool = Get-StableToolRootCandidate
+        $tool | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $area 'current')))
+        (Split-Path -Leaf $tool) | Should -Be 'current'
+        # ToolRoot is exactly <install area>\current — derived from the area, not independently defined.
+        (Split-Path -Parent $tool) | Should -Be $area
+    }
+}
+
 Describe 'Get-ToolRoot channel 1 (explicit -ToolRoot)' {
     BeforeEach { script:Clear-EnvToolRoot }
 

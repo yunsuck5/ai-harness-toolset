@@ -10,6 +10,7 @@ BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
     . (Join-Path $script:RepoRoot 'scripts/lib/native-process.ps1')
     . (Join-Path $script:RepoRoot 'scripts/lib/encoding.ps1')
+    . (Join-Path $script:RepoRoot 'scripts/lib/path.ps1')
     . (Join-Path $script:RepoRoot 'scripts/lib/managed-block.ps1')
     . (Join-Path $script:RepoRoot 'scripts/lib/activation-surface.ps1')
     . (Join-Path $script:RepoRoot 'scripts/lib/install-pipeline-core.ps1')
@@ -374,9 +375,10 @@ Describe 'uninstall-global.ps1 — dry-run entrypoint' {
 
     It '-Apply against a non-canonical install-area path is refused by the path guard (exit 1, no mutation)' {
         # -Apply is implemented as of IU-B-08 batch 3, but the install-root path guard requires the
-        # canonical <...>\.claude\ai-harness-toolset shape. This TestDrive area is NOT that shape, so
-        # apply must block on the path guard and mutate nothing. (Full apply behavior with a canonical
-        # fixture path is covered in tests/uninstall-apply.Tests.ps1.)
+        # install area to EQUAL the expected canonical install area (Get-StableInstallAreaCandidate by
+        # default). This TestDrive area is NOT the canonical area and no -ExpectedInstallArea override
+        # is passed, so apply must block on the path guard and mutate nothing. (Full apply behavior with
+        # a matching -ExpectedInstallArea is covered in tests/uninstall-apply.Tests.ps1.)
         $area = script:New-Case 'e-apply'; script:New-ExpectedInstallRoot -Area $area
         $h = script:New-Homes 'e-apply'
         script:Write-MarkedFile (Join-Path $h.ClaudeHome 'CLAUDE.md') 1

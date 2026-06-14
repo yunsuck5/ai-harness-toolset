@@ -68,6 +68,13 @@ function New-LifecycleFixtureSource {
 function New-LifecycleHomes {
     # Allocate isolated TestDrive Claude/Codex homes + the install area path (NOT created — fresh
     # install creates it). Returns Base / Claude / Codex / Area.
+    #
+    # Area is a SIBLING of the .claude / .codex activation homes (under Base), NOT a child of .claude —
+    # this mirrors the vendor-neutral production topology where the install area is
+    # %USERPROFILE%\ai-harness-toolset while activation homes stay under %USERPROFILE%\.claude /
+    # %USERPROFILE%\.codex. The lifecycle entrypoints are always invoked with an explicit -InstallArea
+    # (= this Area), so its exact location is a free fixture choice; placing it outside .claude keeps
+    # the fixture honest about the relocated topology.
     param(
         [Parameter(Mandatory = $true)] [string] $TestDriveRoot,
         [Parameter(Mandatory = $true)] [string] $CaseName
@@ -82,7 +89,7 @@ function New-LifecycleHomes {
         Base   = ([System.IO.Path]::GetFullPath($base))
         Claude = ([System.IO.Path]::GetFullPath($claude))
         Codex  = ([System.IO.Path]::GetFullPath($codex))
-        Area   = ([System.IO.Path]::GetFullPath((Join-Path $claude 'ai-harness-toolset')))
+        Area   = ([System.IO.Path]::GetFullPath((Join-Path $base 'ai-harness-toolset')))
     }
 }
 

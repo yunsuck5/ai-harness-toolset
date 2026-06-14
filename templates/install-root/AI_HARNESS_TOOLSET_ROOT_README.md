@@ -51,7 +51,7 @@ Run it **dry-run first, then apply** (mirrors the activation flow — default is
 - dry-run preview (default): `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\uninstall-global.ps1"`
 - apply: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\uninstall-global.ps1" -Apply`
 
-With no path arguments it targets the default global install (`%USERPROFILE%\.claude\ai-harness-toolset`). `-Apply` reduces the **global ai-harness footprint to zero** and verifies it: this install root (`current/` + the three sibling files + this `README.md`), each owned skill mirror `…\.claude\skills\<name>\` (currently the two shipped skills `ai-harness-review` and `ai-harness-brief`), and the **managed block** in both instruction files. The two instruction files are **never deleted** — only the marker-bounded `AI_HARNESS_TOOLSET_GLOBAL` span is excised, and your content outside the markers is preserved byte-for-byte.
+With no path arguments it targets the default global install (`%USERPROFILE%\ai-harness-toolset`). `-Apply` reduces the **global ai-harness footprint to zero** and verifies it: this install root (`current/` + the three sibling files + this `README.md`), each owned skill mirror `…\.claude\skills\<name>\` (currently the two shipped skills `ai-harness-review` and `ai-harness-brief`), and the **managed block** in both instruction files. The two instruction files are **never deleted** — only the marker-bounded `AI_HARNESS_TOOLSET_GLOBAL` span is excised, and your content outside the markers is preserved byte-for-byte.
 
 **Both managed-block surfaces are targeted — including Codex.** The official uninstaller excises the marker span from:
 

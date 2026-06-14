@@ -45,21 +45,48 @@ function Test-IsSourceRepoRoot {
     return $true
 }
 
+function Get-StableInstallAreaCandidate {
+    [CmdletBinding()]
+    param()
+
+    # Global stable INSTALL AREA (install root): %USERPROFILE%\ai-harness-toolset.
+    # Single source of truth for the default install area — the directory that CONTAINS
+    # current/, install.json, payload-manifest.json, payload-marker.json, and the managed
+    # root README. It is vendor-neutral (NOT under %USERPROFILE%\.claude): the activation
+    # surfaces (Claude CLAUDE.md / skills, Codex AGENTS.md) keep their vendor-specific homes
+    # under .claude / .codex, but the toolset payload itself lives here. install / update /
+    # uninstall all derive their default InstallArea from this one function, and the stable
+    # ToolRoot below derives from it too.
+    #
+    # The user-profile base is read from $env:USERPROFILE — the SAME convention every lifecycle
+    # wrapper already uses for its ClaudeHome / CodexHome defaults (Join-Path $env:USERPROFILE
+    # '.claude' / '.codex'), so the install area and the activation homes share one profile base.
+    # This is also the single lower-level test-isolation seam: a child process launched with an
+    # overridden %USERPROFILE% resolves a sandbox canonical area, so the destructive uninstall guard
+    # is testable without any operator-facing override parameter.
+    $userProfile = $env:USERPROFILE
+    if ([string]::IsNullOrEmpty($userProfile)) {
+        return $null
+    }
+    $candidate = Join-Path -Path $userProfile -ChildPath 'ai-harness-toolset'
+    return [System.IO.Path]::GetFullPath($candidate)
+}
+
 function Get-StableToolRootCandidate {
     [CmdletBinding()]
     param()
 
-    # Global stable install location: %USERPROFILE%\.claude\ai-harness-toolset\current.
-    # This is the default ToolRoot for shared / global mode. The -ToolRoot parameter
-    # and the AI_HARNESS_TOOL_ROOT env var are higher-priority overrides; this path is
-    # the standing default when no override is in play.
-    $userProfile = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
-    if ([string]::IsNullOrEmpty($userProfile)) {
+    # Global stable ToolRoot: <stable install area>\current
+    # (= %USERPROFILE%\ai-harness-toolset\current). Derived from
+    # Get-StableInstallAreaCandidate so the install-area location has a single definition.
+    # This is the default ToolRoot for shared / global mode. The -ToolRoot parameter and the
+    # AI_HARNESS_TOOL_ROOT env var are higher-priority overrides; this path is the standing
+    # default when no override is in play.
+    $area = Get-StableInstallAreaCandidate
+    if ([string]::IsNullOrEmpty($area)) {
         return $null
     }
-    $candidate = Join-Path -Path $userProfile  -ChildPath '.claude'
-    $candidate = Join-Path -Path $candidate    -ChildPath 'ai-harness-toolset'
-    $candidate = Join-Path -Path $candidate    -ChildPath 'current'
+    $candidate = Join-Path -Path $area -ChildPath 'current'
     return [System.IO.Path]::GetFullPath($candidate)
 }
 
@@ -84,7 +111,7 @@ function Get-ToolRoot {
         [string] $ProjectRoot,
         # Optional override for the global stable install path (channel 3).
         # Production callers leave this empty so it resolves to
-        # %USERPROFILE%\.claude\ai-harness-toolset\current; tests inject a
+        # %USERPROFILE%\ai-harness-toolset\current; tests inject a
         # controlled path for deterministic isolation.
         [string] $StableToolRoot
     )
@@ -110,7 +137,7 @@ function Get-ToolRoot {
     }
     $tried.Add('channel 2 (env AI_HARNESS_TOOL_ROOT): not set or empty') | Out-Null
 
-    # channel 3 — global stable install (%USERPROFILE%\.claude\ai-harness-toolset\current).
+    # channel 3 — global stable install (%USERPROFILE%\ai-harness-toolset\current).
     # This is the default ToolRoot for shared / global mode.
     #   - absent directory  -> skip to fallback channels.
     #   - present directory -> must be a complete payload, otherwise fail fast.

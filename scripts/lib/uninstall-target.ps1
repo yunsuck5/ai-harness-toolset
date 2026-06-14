@@ -12,6 +12,7 @@ $ErrorActionPreference = 'Stop'
 #
 # Dependencies are dot-sourced by the caller (scripts/uninstall-global.ps1 / the test harness):
 #   lib/encoding.ps1              (Read-Utf8)
+#   lib/path.ps1                  (Get-StableInstallAreaCandidate — default expected canonical install area)
 #   lib/managed-block.ps1         (Split-ManagedBlockLines, Find-ManagedBlockMarkers, Resolve-ManagedBlockSpan)
 #   lib/activation-surface.ps1    (Get-ActivationSurfacePlan — shared resolver; the SAME effective
 #                                  Codex surface precedence that activation apply/verify uses)
@@ -133,7 +134,13 @@ function Get-UninstallPlan {
     param(
         [Parameter(Mandatory = $true)] [string] $InstallArea,
         [Parameter(Mandatory = $true)] [string] $ClaudeHome,
-        [Parameter(Mandatory = $true)] [string] $CodexHome
+        [Parameter(Mandatory = $true)] [string] $CodexHome,
+        # Expected canonical install area for the destructive-op path guard. Production callers leave
+        # this empty so it resolves to Get-StableInstallAreaCandidate (the vendor-neutral
+        # %USERPROFILE%\ai-harness-toolset); tests inject a controlled path for deterministic
+        # isolation. The guard is exact-path equality, NOT a parent-name shape — it does not depend
+        # on the install area sitting under .claude.
+        [string] $ExpectedInstallArea
     )
 
     $targets = New-Object System.Collections.Generic.List[psobject]
@@ -143,11 +150,22 @@ function Get-UninstallPlan {
     $rootPresent = Test-Path -LiteralPath $installAreaFull -PathType Container
 
     # Destructive-op path-guard EVIDENCE (recorded, not a dry-run hard block): the future apply
-    # requires the install root to be <...>\.claude\ai-harness-toolset. Tests use TestDrive paths,
-    # so this is evidence only here; the destructive batch enforces it.
-    $rootLeaf       = Split-Path -Leaf $installAreaFull
-    $rootParentLeaf = Split-Path -Leaf (Split-Path -Parent $installAreaFull)
-    $expectedLocation = ($rootLeaf -ieq 'ai-harness-toolset' -and $rootParentLeaf -ieq '.claude')
+    # requires the install root to be EXACTLY the expected canonical install area
+    # (Get-StableInstallAreaCandidate by default; injectable for tests). Exact-path equality
+    # replaces the former leaf=='ai-harness-toolset' AND parent=='.claude' shape check so the guard
+    # is vendor-neutral and pins the one canonical location rather than any */ai-harness-toolset under
+    # any */.claude. Tests inject -ExpectedInstallArea to match their TestDrive area; the destructive
+    # batch enforces this evidence.
+    if ([string]::IsNullOrEmpty($ExpectedInstallArea)) {
+        $ExpectedInstallArea = Get-StableInstallAreaCandidate
+    }
+    $expectedLocation = $false
+    if (-not [string]::IsNullOrEmpty($ExpectedInstallArea)) {
+        $expectedAreaFull = [System.IO.Path]::GetFullPath($ExpectedInstallArea)
+        $sep = [System.IO.Path]::DirectorySeparatorChar
+        $cmp = [System.StringComparison]::OrdinalIgnoreCase
+        $expectedLocation = [string]::Equals($installAreaFull.TrimEnd($sep), $expectedAreaFull.TrimEnd($sep), $cmp)
+    }
 
     $managedBy   = $null
     $managedByOk = $false

@@ -18,7 +18,14 @@ $ErrorActionPreference = 'Stop'
 # the install root by the main entrypoint.
 #
 # Input JSON fields:
-#   installRoot     : the install ROOT to delete (e.g. %USERPROFILE%\.claude\ai-harness-toolset)
+#   installRoot         : the install ROOT to delete (e.g. %USERPROFILE%\ai-harness-toolset)
+#   expectedInstallArea : the expected canonical install area the main entrypoint resolved from its
+#                         single source of truth (lib/path.ps1 Get-StableInstallAreaCandidate, or a
+#                         test-injected path). The finalizer re-guards by requiring installRoot to
+#                         EQUAL this exact path — self-contained (it never dot-sources path.ps1 from
+#                         the install root that is about to be deleted), and vendor-neutral (no
+#                         hardcoded .claude parent shape). A missing/empty value fails the guard
+#                         (fail-closed: never delete without a passed expectation).
 #   parentPid       : PID of the main entrypoint to wait for (delete only after it exits)
 #   expectedEntries : top-level footprint allow-list (from lib/uninstall-target.ps1's single source
 #                     of truth; used for a defensive unexpected-content re-check before deleting)
@@ -34,6 +41,7 @@ $ErrorActionPreference = 'Stop'
 $cfg = Get-Content -LiteralPath $InputPath -Raw | ConvertFrom-Json
 $cfgNames    = @($cfg.PSObject.Properties.Name)
 $installRoot = [System.IO.Path]::GetFullPath([string]$cfg.installRoot)
+$expectedInstallArea = if ($cfgNames -contains 'expectedInstallArea') { [string]$cfg.expectedInstallArea } else { '' }
 $parentPid   = [int]$cfg.parentPid
 $expected    = @($cfg.expectedEntries)
 $resultPath  = [string]$cfg.resultPath
@@ -91,11 +99,19 @@ if ($null -ne (Get-Process -Id $parentPid -ErrorAction SilentlyContinue)) {
     exit 1
 }
 
-# 2. Re-guard the install-root path (self-contained): normalize, then require the canonical
-#    <...>\.claude\ai-harness-toolset shape. Never delete a path that fails this guard.
-$leaf       = Split-Path -Leaf $installRoot
-$parentLeaf = Split-Path -Leaf (Split-Path -Parent $installRoot)
-if (-not ($leaf -ieq 'ai-harness-toolset' -and $parentLeaf -ieq '.claude')) {
+# 2. Re-guard the install-root path (self-contained): require it to EQUAL the expected canonical
+#    install area passed in by the main entrypoint (normalized, case-insensitive). The expectation
+#    travels via finalizer-input.json so the finalizer stays self-contained (no dot-source from the
+#    doomed tree) AND vendor-neutral (exact-path equality, no parent-directory-name assumption).
+#    Fail-closed if no expectation was passed. Never delete a path that fails this guard.
+$sep = [System.IO.Path]::DirectorySeparatorChar
+$cmp = [System.StringComparison]::OrdinalIgnoreCase
+$guardOk = $false
+if (-not [string]::IsNullOrEmpty($expectedInstallArea)) {
+    $expectedFull = [System.IO.Path]::GetFullPath($expectedInstallArea)
+    $guardOk = [string]::Equals($installRoot.TrimEnd($sep), $expectedFull.TrimEnd($sep), $cmp)
+}
+if (-not $guardOk) {
     script:Write-FinalizerResult -Status 'finalizer_path_guard_failed' -Deleted $false -Leftover (script:Invoke-BestEffortSelfClean)
     exit 1
 }

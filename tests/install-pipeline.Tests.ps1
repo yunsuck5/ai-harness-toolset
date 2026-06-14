@@ -992,22 +992,21 @@ Describe 'install-pipeline payload-manifest + payload-marker contract' {
         ($vr.errors -match 'marker.payloadRoots mismatch').Count | Should -BeGreaterThan 0
     }
 
-    It 'AC-IP-MANIFEST-9: no manifest/marker written under any forbidden global path during the round' {
-        # Sanity check: this round's tests never touch %USERPROFILE%\.claude or
-        # %USERPROFILE%\.codex. Confirm those ai-harness-toolset materializations
-        # do not exist as a side-effect of the test fixtures.
+    It 'AC-IP-MANIFEST-9: no manifest/marker written under the real global install area during the round' {
+        # Sanity check: this round's tests never materialize under the REAL vendor-neutral global
+        # install area (%USERPROFILE%\ai-harness-toolset). Confirm no test-fixture pester-* directory
+        # leaked into it. (The activation homes %USERPROFILE%\.claude / %USERPROFILE%\.codex are no
+        # longer install-area locations after the relocation, so they are not the leak target here.)
         $userProfile = [System.Environment]::GetFolderPath([System.Environment+SpecialFolder]::UserProfile)
-        $claudeArea = Join-Path $userProfile '.claude/ai-harness-toolset'
-        if (Test-Path -LiteralPath $claudeArea -PathType Container) {
-            # If the user has a legitimate global install, manifest/marker may exist
-            # from a separate scope. We only check that THIS test run did not create
-            # a new pester-* directory under it (TestDrive is elsewhere).
-            $pesterDirs = Get-ChildItem -LiteralPath $claudeArea -Directory -Force -ErrorAction SilentlyContinue |
+        $installArea = Join-Path $userProfile 'ai-harness-toolset'
+        if (Test-Path -LiteralPath $installArea -PathType Container) {
+            # If the user has a legitimate global install, manifest/marker may exist from a separate
+            # scope. We only check that THIS test run did not create a new pester-* directory under it
+            # (TestDrive is elsewhere).
+            $pesterDirs = Get-ChildItem -LiteralPath $installArea -Directory -Force -ErrorAction SilentlyContinue |
                 Where-Object { $_.Name -match '^pester-' }
             @($pesterDirs).Count | Should -Be 0
         }
-        $codexArea = Join-Path $userProfile '.codex/ai-harness-toolset'
-        Test-Path -LiteralPath $codexArea -PathType Container | Should -BeFalse
     }
 }
 

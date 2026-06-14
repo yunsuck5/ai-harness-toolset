@@ -2,11 +2,17 @@
 $ErrorActionPreference = 'Stop'
 
 # IU-B-08 batch 3 — destructive uninstall apply path + temp finalizer trampoline.
-# EVERYTHING runs in TestDrive. The real %USERPROFILE%\.claude / %USERPROFILE%\.codex are NEVER
-# read-for-write or mutated: every invocation overrides -ClaudeHome / -CodexHome / -InstallArea /
-# -FinalizerTempRoot to TestDrive paths. Install-root fixtures are built as
-# <TestDrive>\<case>\.claude\ai-harness-toolset so the real <...>\.claude\ai-harness-toolset path
-# guard passes against a sandbox path.
+# EVERYTHING runs in TestDrive. The real %USERPROFILE%\.claude / %USERPROFILE%\.codex / the real
+# %USERPROFILE%\ai-harness-toolset install area are NEVER read-for-write or mutated: every invocation
+# overrides -ClaudeHome / -CodexHome / -InstallArea / -FinalizerTempRoot to TestDrive paths. Install-root
+# fixtures are built as <TestDrive>\<case>\ai-harness-toolset (a sibling of the .claude / .codex
+# activation homes, mirroring the relocated vendor-neutral topology). There is NO operator-facing
+# -ExpectedInstallArea parameter — the canonical install area is computed from %USERPROFILE%
+# (Get-StableInstallAreaCandidate), so a legitimate apply against a sandbox area is made canonical by
+# overriding %USERPROFILE% to the fixture root for the child process (the only isolation seam). The
+# path-guard tests instead leave %USERPROFILE% pointing elsewhere so the sandbox -InstallArea is
+# non-canonical and refused. (Run-Finalizer builds the finalizer input JSON directly — a lower-level
+# boundary for the finalizer itself, distinct from the entrypoint's now-removed parameter.)
 
 BeforeAll {
     $script:RepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
@@ -58,12 +64,13 @@ BeforeAll {
         if ($WithLog) { script:Write-File (Join-Path $Area 'log/install-update/run.json') '{}' }
     }
 
-    # Full apply fixture: <case>/.claude/{ai-harness-toolset, CLAUDE.md, skills/...} + <case>/.codex.
+    # Full apply fixture: <case>/ai-harness-toolset (install area, sibling of the activation homes) +
+    # <case>/.claude/{CLAUDE.md, skills/...} + <case>/.codex/AGENTS.md.
     function script:New-ApplyFixture { param([string] $Case)
         $root   = script:New-Dir (Join-Path $TestDrive $Case)
         $claude = script:New-Dir (Join-Path $root '.claude')
         $codex  = script:New-Dir (Join-Path $root '.codex')
-        $area   = script:New-Dir (Join-Path $claude 'ai-harness-toolset')
+        $area   = script:New-Dir (Join-Path $root 'ai-harness-toolset')
         script:New-InstallRoot -Area $area -WithSourceCache -WithLog
         script:Write-Marked (Join-Path $claude 'CLAUDE.md') 1
         script:Write-Marked (Join-Path $codex 'AGENTS.md') 1
@@ -76,9 +83,20 @@ BeforeAll {
     }
 
     function script:Invoke-Apply { param($Fx, [string[]] $Extra = @())
+        # There is NO operator-facing -ExpectedInstallArea: the canonical install area is computed from
+        # %USERPROFILE%. To make the fixture's sandbox area canonical (so the path guard passes for a
+        # legitimate apply), override %USERPROFILE% to the fixture root for the child process — the only
+        # isolation seam. The fixture area is <root>\ai-harness-toolset, which then equals the canonical
+        # the child resolves. -InstallArea is passed explicitly as that same fixture area.
         $args = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Entry,
+            '-InstallArea',$Fx.Area,
             '-ClaudeHome',$Fx.Claude,'-CodexHome',$Fx.Codex,'-Apply','-FinalizerTempRoot',$Fx.Tmp) + $Extra
-        return Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $args
+        $orig = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $Fx.Root
+            return Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $args
+        }
+        finally { $env:USERPROFILE = $orig }
     }
     function script:Invoke-Remove { param([string] $Target)
         return Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
@@ -99,9 +117,20 @@ BeforeAll {
         Start-Sleep -Milliseconds 100
         return $p.Id
     }
-    function script:Run-Finalizer { param([string] $InstallRoot, [int] $ParentPid, [string] $SelfDir, [string] $ResultPath, [int] $TimeoutSec = 5, [int] $PollMs = 100)
+    function script:Run-Finalizer { param([string] $InstallRoot, [int] $ParentPid, [string] $SelfDir, [string] $ResultPath, [int] $TimeoutSec = 5, [int] $PollMs = 100, [string] $ExpectedInstallArea = '', [switch] $OmitExpected)
+        # The finalizer guard requires installRoot to EQUAL expectedInstallArea. Default the expected to
+        # the install root so the happy-path tests pass; a path-guard test passes a MISMATCHED expected;
+        # -OmitExpected drops the field entirely to exercise the fail-closed (no-expectation) path.
+        if ([string]::IsNullOrEmpty($ExpectedInstallArea)) { $ExpectedInstallArea = $InstallRoot }
         $inputPath = Join-Path (script:New-Dir $SelfDir) 'finalizer-input.json'
-        $obj = [ordered]@{ installRoot=$InstallRoot; parentPid=$ParentPid; expectedEntries=@(Get-UninstallExpectedRootEntries); resultPath=$ResultPath; selfDir=$SelfDir; timeoutSec=$TimeoutSec; pollMs=$PollMs }
+        $obj = [ordered]@{ installRoot=$InstallRoot }
+        if (-not $OmitExpected) { $obj['expectedInstallArea'] = $ExpectedInstallArea }
+        $obj['parentPid']       = $ParentPid
+        $obj['expectedEntries'] = @(Get-UninstallExpectedRootEntries)
+        $obj['resultPath']      = $ResultPath
+        $obj['selfDir']         = $SelfDir
+        $obj['timeoutSec']      = $TimeoutSec
+        $obj['pollMs']          = $PollMs
         ($obj | ConvertTo-Json -Depth 6) | Out-File -LiteralPath $inputPath -Encoding utf8
         $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @('-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Finalizer,'-InputPath',$inputPath)
         $res = $null
@@ -155,7 +184,7 @@ Describe 'apply-managed-block.ps1 -Remove' {
 Describe 'uninstall-finalizer.ps1' {
     It 'deletes the install root and absence-verifies (parent already exited)' {
         $case = script:New-Dir (Join-Path $TestDrive 'f-ok')
-        $area = script:New-Dir (Join-Path $case '.claude/ai-harness-toolset'); script:New-InstallRoot -Area $area -WithSourceCache -WithLog
+        $area = script:New-Dir (Join-Path $case 'ai-harness-toolset'); script:New-InstallRoot -Area $area -WithSourceCache -WithLog
         $self = Join-Path $case 'self'; $rp = Join-Path $case 'result.json'
         $r = script:Run-Finalizer -InstallRoot $area -ParentPid (script:New-DeadPid) -SelfDir $self -ResultPath $rp
         $r.Proc.ExitCode | Should -Be 0
@@ -163,18 +192,32 @@ Describe 'uninstall-finalizer.ps1' {
         $r.Result.installRootDeleted | Should -BeTrue
         $r.Result.status | Should -Match 'uninstalled'
     }
-    It 'refuses a path that is not the canonical .claude\ai-harness-toolset (path guard)' {
+    It 'refuses an install root that does not equal the expected canonical install area (path guard)' {
+        # The finalizer guard is exact-path equality against the passed expectedInstallArea (vendor-
+        # neutral; no .claude parent assumption). Here installRoot != expectedInstallArea, so it refuses.
         $case = script:New-Dir (Join-Path $TestDrive 'f-guard')
-        $bad = script:New-Dir (Join-Path $case 'not-claude/ai-harness-toolset'); script:New-InstallRoot -Area $bad
+        $bad = script:New-Dir (Join-Path $case 'ai-harness-toolset'); script:New-InstallRoot -Area $bad
+        $mismatchedExpected = [System.IO.Path]::GetFullPath((Join-Path $case 'different-canonical-area'))
         $self = Join-Path $case 'self'; $rp = Join-Path $case 'result.json'
-        $r = script:Run-Finalizer -InstallRoot $bad -ParentPid (script:New-DeadPid) -SelfDir $self -ResultPath $rp
+        $r = script:Run-Finalizer -InstallRoot $bad -ParentPid (script:New-DeadPid) -SelfDir $self -ResultPath $rp -ExpectedInstallArea $mismatchedExpected
         $r.Proc.ExitCode | Should -Be 1
         (Test-Path -LiteralPath $bad) | Should -BeTrue
         $r.Result.status | Should -Be 'finalizer_path_guard_failed'
     }
+
+    It 'fail-closed: refuses to delete when no expected install area is passed (empty guard input)' {
+        # Defense-in-depth: a finalizer input WITHOUT expectedInstallArea must never delete (fail-closed).
+        $case = script:New-Dir (Join-Path $TestDrive 'f-noexp')
+        $area = script:New-Dir (Join-Path $case 'ai-harness-toolset'); script:New-InstallRoot -Area $area
+        $self = Join-Path $case 'self'; $rp = Join-Path $case 'result.json'
+        $r = script:Run-Finalizer -InstallRoot $area -ParentPid (script:New-DeadPid) -SelfDir $self -ResultPath $rp -OmitExpected
+        $r.Proc.ExitCode | Should -Be 1
+        (Test-Path -LiteralPath $area) | Should -BeTrue
+        $r.Result.status | Should -Be 'finalizer_path_guard_failed'
+    }
     It 'refuses to delete when unexpected top-level content is present' {
         $case = script:New-Dir (Join-Path $TestDrive 'f-unexp')
-        $area = script:New-Dir (Join-Path $case '.claude/ai-harness-toolset'); script:New-InstallRoot -Area $area
+        $area = script:New-Dir (Join-Path $case 'ai-harness-toolset'); script:New-InstallRoot -Area $area
         script:Write-File (Join-Path $area 'surprise.txt') 'x'
         $self = Join-Path $case 'self'; $rp = Join-Path $case 'result.json'
         $r = script:Run-Finalizer -InstallRoot $area -ParentPid (script:New-DeadPid) -SelfDir $self -ResultPath $rp
@@ -184,7 +227,7 @@ Describe 'uninstall-finalizer.ps1' {
     }
     It 'times out (does not delete) while the parent is still alive' {
         $case = script:New-Dir (Join-Path $TestDrive 'f-timeout')
-        $area = script:New-Dir (Join-Path $case '.claude/ai-harness-toolset'); script:New-InstallRoot -Area $area
+        $area = script:New-Dir (Join-Path $case 'ai-harness-toolset'); script:New-InstallRoot -Area $area
         $self = Join-Path $case 'self'; $rp = Join-Path $case 'result.json'
         $r = script:Run-Finalizer -InstallRoot $area -ParentPid $PID -SelfDir $self -ResultPath $rp -TimeoutSec 1 -PollMs 100
         $r.Proc.ExitCode | Should -Be 1
@@ -193,7 +236,7 @@ Describe 'uninstall-finalizer.ps1' {
     }
     It 'reports the exact temp path when self-clean fails (locked file in selfDir)' {
         $case = script:New-Dir (Join-Path $TestDrive 'f-leftover')
-        $area = script:New-Dir (Join-Path $case '.claude/ai-harness-toolset'); script:New-InstallRoot -Area $area
+        $area = script:New-Dir (Join-Path $case 'ai-harness-toolset'); script:New-InstallRoot -Area $area
         $self = script:New-Dir (Join-Path $case 'self'); $rp = Join-Path $case 'result.json'
         $lock = Join-Path $self 'lock.bin'; script:Write-File $lock 'x'
         $fs = [System.IO.File]::Open($lock, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::None)
@@ -219,6 +262,52 @@ Describe 'uninstall-global.ps1 -Apply' {
         (Read-Utf8 -Path $fx.ClaudeMd) | Should -Be $beforeClaude          # marker still present
         (Test-Path -LiteralPath $fx.Skill) | Should -BeTrue                 # skill untouched
         (Test-Path -LiteralPath $fx.Area)  | Should -BeTrue                 # install root untouched
+    }
+
+    It 'non-canonical -InstallArea is refused by the destructive apply guard regardless of root presence (no mutation)' {
+        # The canonical install area is %USERPROFILE%\ai-harness-toolset (no operator override). A
+        # non-canonical -InstallArea must be refused BEFORE any surface removal whether its (wrong) root
+        # is ABSENT or PRESENT — managed-block + skill-mirror removal targets the activation homes, which
+        # are independent of the install root, so a mismatched target must never reach surface removal.
+        $fx = script:New-ApplyFixture 'a-noncanon'
+        $beforeClaude = Read-Utf8 -Path $fx.ClaudeMd
+        $origUP = $env:USERPROFILE
+
+        # (1) ABSENT non-canonical: canonical = $fx.Area (via %USERPROFILE% = $fx.Root); -InstallArea is
+        #     an absent path != canonical -> path guard blocks.
+        $absent = [System.IO.Path]::GetFullPath((Join-Path $fx.Root 'nonexistent-area'))
+        (Test-Path -LiteralPath $absent) | Should -BeFalse
+        try {
+            $env:USERPROFILE = $fx.Root
+            $p1 = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+                '-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Entry,
+                '-InstallArea',$absent,'-ClaudeHome',$fx.Claude,'-CodexHome',$fx.Codex,'-Apply','-FinalizerTempRoot',$fx.Tmp)
+        }
+        finally { $env:USERPROFILE = $origUP }
+        $p1.ExitCode | Should -Be 1
+        ($p1.Stdout) | Should -Match 'uninstallStatus=uninstall_blocked'
+        ($p1.Stdout) | Should -Match 'path guard'
+
+        # (2) PRESENT + VALID non-canonical: $fx.Area is a present valid install, but canonical is
+        #     elsewhere (via %USERPROFILE% = <other>), so the plan has no blocked targets yet the path
+        #     guard still refuses it -> blocked before any surface removal.
+        $elsewhere = script:New-Dir (Join-Path $fx.Root 'elsewhere')
+        try {
+            $env:USERPROFILE = $elsewhere   # canonical = $elsewhere\ai-harness-toolset (!= $fx.Area)
+            $p2 = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+                '-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Entry,
+                '-InstallArea',$fx.Area,'-ClaudeHome',$fx.Claude,'-CodexHome',$fx.Codex,'-Apply','-FinalizerTempRoot',$fx.Tmp)
+        }
+        finally { $env:USERPROFILE = $origUP }
+        $p2.ExitCode | Should -Be 1
+        ($p2.Stdout) | Should -Match 'uninstallStatus=uninstall_blocked'
+        ($p2.Stdout) | Should -Match 'path guard'
+        (Test-Path -LiteralPath $fx.Area) | Should -BeTrue   # present valid install untouched
+
+        # Neither invocation mutated the activation surfaces.
+        (Read-Utf8 -Path $fx.ClaudeMd) | Should -Be $beforeClaude
+        (script:Count-MarkerPairs $fx.ClaudeMd).Begin | Should -Be 1
+        (Test-Path -LiteralPath $fx.Skill) | Should -BeTrue
     }
 
     It 'removes managed blocks (outside content preserved) and the skill dir; preserves sibling skill' {
@@ -295,9 +384,15 @@ Describe 'uninstall-global.ps1 -Apply' {
     It 'finalizer launches correctly when the temp root path contains spaces (no false PASS)' {
         $fx = script:New-ApplyFixture 'a-space'
         $spacedRoot = script:New-Dir (Join-Path $fx.Root 'fin temp with spaces')
-        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
-            '-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Entry,
-            '-ClaudeHome',$fx.Claude,'-CodexHome',$fx.Codex,'-Apply','-FinalizerTempRoot',$spacedRoot)
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $fx.Root   # make the fixture area canonical (no operator override param)
+            $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+                '-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Entry,
+                '-InstallArea',$fx.Area,
+                '-ClaudeHome',$fx.Claude,'-CodexHome',$fx.Codex,'-Apply','-FinalizerTempRoot',$spacedRoot)
+        }
+        finally { $env:USERPROFILE = $origUP }
         $proc.ExitCode | Should -Be 0
         ($proc.Stdout) | Should -Match 'uninstallStatus=uninstall_finalizer_launched'
         # The finalizer (launched from a spaced path) must actually delete the install root.
@@ -309,9 +404,15 @@ Describe 'uninstall-global.ps1 -Apply' {
         # Point -FinalizerTempRoot at a FILE so the finalizer run-id dir creation throws (caught path).
         $badRoot = Join-Path $fx.Root 'not-a-dir'
         script:Write-File $badRoot 'x'
-        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
-            '-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Entry,
-            '-ClaudeHome',$fx.Claude,'-CodexHome',$fx.Codex,'-Apply','-FinalizerTempRoot',$badRoot)
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $fx.Root   # make the fixture area canonical (no operator override param)
+            $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+                '-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Entry,
+                '-InstallArea',$fx.Area,
+                '-ClaudeHome',$fx.Claude,'-CodexHome',$fx.Codex,'-Apply','-FinalizerTempRoot',$badRoot)
+        }
+        finally { $env:USERPROFILE = $origUP }
         $proc.ExitCode | Should -Be 1
         ($proc.Stdout) | Should -Match 'uninstallStatus=uninstall_partial'
         (Test-Path -LiteralPath $fx.Area) | Should -BeTrue            # install root left intact (finalizer never launched)
@@ -321,7 +422,7 @@ Describe 'uninstall-global.ps1 -Apply' {
         $root   = script:New-Dir (Join-Path $TestDrive 'a-multiskill')
         $claude = script:New-Dir (Join-Path $root '.claude')
         $codex  = script:New-Dir (Join-Path $root '.codex')
-        $area   = script:New-Dir (Join-Path $claude 'ai-harness-toolset')
+        $area   = script:New-Dir (Join-Path $root 'ai-harness-toolset')
         script:New-InstallRoot -Area $area -Skills @('ai-harness-review', 'ai-harness-extra')
         script:Write-Marked (Join-Path $claude 'CLAUDE.md') 1
         script:Write-Marked (Join-Path $codex 'AGENTS.md') 1
@@ -330,9 +431,15 @@ Describe 'uninstall-global.ps1 -Apply' {
         script:Write-File (Join-Path $claude 'skills/other-skill/SKILL.md') 'sibling'   # present but NOT in the installed payload
         $tmp = script:New-Dir (Join-Path $root 'fin-temp')
 
-        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
-            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script:Entry,
-            '-ClaudeHome', $claude, '-CodexHome', $codex, '-Apply', '-FinalizerTempRoot', $tmp)
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $root   # make the fixture area ($root\ai-harness-toolset) canonical
+            $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $script:Entry,
+                '-InstallArea', $area,
+                '-ClaudeHome', $claude, '-CodexHome', $codex, '-Apply', '-FinalizerTempRoot', $tmp)
+        }
+        finally { $env:USERPROFILE = $origUP }
         $proc.ExitCode | Should -Be 0
         ($proc.Stdout) | Should -Match 'uninstallStatus=uninstall_finalizer_launched'
         # Both OWNED skill dirs are removed synchronously by the entrypoint (BEFORE the finalizer is
@@ -344,5 +451,64 @@ Describe 'uninstall-global.ps1 -Apply' {
         (Test-Path -LiteralPath (Join-Path $claude 'skills')) | Should -BeTrue
         # The install root is deleted by the (async) finalizer — its sole responsibility.
         (script:Wait-Until { -not (Test-Path -LiteralPath $area) } 25) | Should -BeTrue
+    }
+}
+
+Describe 'uninstall-global.ps1 — canonical expected-area is internal-only (no operator injection)' {
+
+    It 'exposes NO operator-facing ExpectedInstallArea parameter (public surface)' {
+        # The expected canonical install area must never be operator-injectable; otherwise an operator
+        # could pass a matching value and bypass the canonical pin. Assert it is absent from the script's
+        # param block (and InstallArea IS present, as a sanity check that we parsed the right block).
+        $tokens = $null; $perr = $null
+        $ast = [System.Management.Automation.Language.Parser]::ParseFile($script:Entry, [ref]$tokens, [ref]$perr)
+        $paramNames = @($ast.ParamBlock.Parameters | ForEach-Object { $_.Name.VariablePath.UserPath })
+        $paramNames | Should -Contain 'InstallArea'
+        $paramNames | Should -Not -Contain 'ExpectedInstallArea'
+    }
+
+    It 'rejects a passed -ExpectedInstallArea (unknown parameter; no run)' {
+        # Even with a fixture present, passing -ExpectedInstallArea must fail at parameter binding (before
+        # any body logic), proving the injection channel is gone.
+        $fx = script:New-ApplyFixture 'a-rejectparam'
+        $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+            '-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Entry,
+            '-InstallArea',$fx.Area,'-ExpectedInstallArea',$fx.Area,
+            '-ClaudeHome',$fx.Claude,'-CodexHome',$fx.Codex)
+        $proc.ExitCode | Should -Not -Be 0
+        # PowerShell line-wraps the binding error text, so assert on the wrap-proof identifier tokens:
+        # the unknown parameter name and the NamedParameterNotFound error id.
+        (($proc.Stdout + $proc.Stderr)) | Should -Match 'ExpectedInstallArea'
+        (($proc.Stdout + $proc.Stderr)) | Should -Match 'NamedParameterNotFound'
+        # Nothing destructive happened: the fixture's managed block + install root are intact.
+        (script:Count-MarkerPairs $fx.ClaudeMd).Begin | Should -Be 1
+        (Test-Path -LiteralPath $fx.Area) | Should -BeTrue
+    }
+
+    It 'finalizer input carries only the canonical expected install area (deleted root == canonical)' {
+        # No operator override exists, so the finalizer-input expectedInstallArea can only be the canonical
+        # area. Proof: run a legitimate apply (the fixture area is made canonical via %USERPROFILE%), then
+        # read the finalizer RESULT json (it survives self-clean). The finalizer deletes the install root
+        # ONLY when its guard (installRoot == expectedInstallArea from the input JSON) passes — so a
+        # deleted canonical root proves the input's expectedInstallArea was the canonical area.
+        $fx = script:New-ApplyFixture 'a-finalizer-canonical'
+        $origUP = $env:USERPROFILE
+        try {
+            $env:USERPROFILE = $fx.Root
+            $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+                '-NoProfile','-ExecutionPolicy','Bypass','-File',$script:Entry,
+                '-InstallArea',$fx.Area,'-ClaudeHome',$fx.Claude,'-CodexHome',$fx.Codex,'-Apply','-FinalizerTempRoot',$fx.Tmp)
+        }
+        finally { $env:USERPROFILE = $origUP }
+        $proc.ExitCode | Should -Be 0
+        ($proc.Stdout) | Should -Match 'uninstallStatus=uninstall_finalizer_launched'
+        $m = [regex]::Match($proc.Stdout, 'finalizerResult=(.+?) \(written')
+        $m.Success | Should -BeTrue
+        $resultPath = $m.Groups[1].Value.Trim()
+        (script:Wait-Until { Test-Path -LiteralPath $resultPath } 25) | Should -BeTrue
+        $res = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+        $res.installRootDeleted | Should -BeTrue
+        ([System.IO.Path]::GetFullPath([string]$res.installRoot)) | Should -Be ([System.IO.Path]::GetFullPath($fx.Area))
+        (script:Wait-Until { -not (Test-Path -LiteralPath $fx.Area) } 25) | Should -BeTrue
     }
 }

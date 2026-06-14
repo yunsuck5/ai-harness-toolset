@@ -13,7 +13,7 @@ function Get-ToolRootSource {
         [string] $ToolRoot,
         # Optional override for the global stable install path. Production callers
         # leave this empty so it resolves to the real
-        # %USERPROFILE%\.claude\ai-harness-toolset\current; tests inject a
+        # %USERPROFILE%\ai-harness-toolset\current; tests inject a
         # controlled path for deterministic isolation.
         [string] $StableToolRoot
     )

@@ -51,7 +51,7 @@ These files are **tracked** (public to any contributor), so they carry only publ
 - No `/init` (Claude or Codex) — these files are authored, not scaffolded.
 - No hooks, no Codex Rules, no daemon / watcher / scheduler.
 - **Memory is not a delivery surface** — nothing here depends on memory; all of it is tracked.
-- No ToolRoot move (vendor-neutral ToolRoot is a separate decision surface, recorded in git history).
+- **Install topology is locked** (a further move is not a goal of this surface): global install AREA = `%USERPROFILE%\ai-harness-toolset`; stable ToolRoot = `%USERPROFILE%\ai-harness-toolset\current`; activation surfaces stay vendor-specific under `%USERPROFILE%\.claude` and `%USERPROFILE%\.codex`. The earlier vendor-neutral relocation is complete; its decision history is in git.
 - This file does **not** edit the global snippets. The two PowerShell rules live **only here** (the repo-local root files): **Track D removed them** from the global snippet (then in `## Other rules`), completing the Track C→D handoff. The snippet's `## Other rules` section was itself later removed by the hard-minimization corrective, which moved the snippet's adopter-universal reusable rules to the global-distribution rules tier `snippets/rules/` and migrated these two PowerShell rules to the repo-only rules tier `rules/powershell-and-file-encoding.md` (still repo-development discipline, not adopter-universal — see *Repo execution conventions*). No Batch 3 / Batch 4 implementation here.
 
 ## Final hard rule — `docs/**` is not load-bearing authority

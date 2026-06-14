@@ -10,7 +10,7 @@ param(
     [string] $Mode,
 
     # The install ROOT — the directory that CONTAINS current/, install.json, payload-manifest.json,
-    # and payload-marker.json (e.g. %USERPROFILE%\.claude\ai-harness-toolset). It is NOT the current/
+    # and payload-marker.json (e.g. %USERPROFILE%\ai-harness-toolset). It is NOT the current/
     # payload subdirectory. There is intentionally no default: update-source mutates the supplied
     # InstallArea, so inferring a default could mutate the real global install unintentionally. Passing
     # current/ yields an "install.json missing" classification with a hint to use its parent.
