@@ -19,6 +19,15 @@ Applies to any global or user-level AI instruction file: `%USERPROFILE%\.claude\
 
 - The contract above is mechanically enforced by `scripts/apply-managed-block.ps1` + `scripts/lib/managed-block.ps1`: BOM refusal, invalid-UTF-8 / U+FFFD refusal, byte-exact preservation of content outside the block, fail-fast on ambiguous markers, and backup/rollback so a failed apply never leaves the target mutated.
 
+## Global layer carries no project-specific content
+
+The global / common layer — the managed-block payload and the distributed toolset — holds only common AI-development operating rules; it must not embed a specific project's facts. Explicitly forbidden in the global layer:
+
+- a specific project's architecture description;
+- a specific project's current phase / backlog state;
+- a per-repo run-id or other target-specific identifier;
+- a target-specific build / test command (a generic example explicitly marked as such is the only exception).
+
 ## Project layer does not weaken this
 
 A project-local instruction file may strengthen these boundaries but must not redefine, weaken, or bypass them without separate scoped approval.
