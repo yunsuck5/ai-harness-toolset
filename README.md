@@ -1,125 +1,283 @@
 # ai-harness-toolset
 
-Project-local deterministic toolset for Claude / Codex workflows.
+`ai-harness-toolset`은 Claude Code / Codex CLI 같은 AI coding agent가 프로젝트별 review / brief / evidence workflow를 일관되게 수행하도록 돕는 local-first PowerShell toolset입니다.
 
-ai-harness-toolset is a project-local deterministic toolset. It is not an orchestrator, not an installer, and not packaged. Operation is CLI-only. The current adoption model is the **shared / global stable runtime ToolRoot** (channel 3): lifecycle scripts run from a global stable install at `%USERPROFILE%\ai-harness-toolset\current`, resolved per invocation, and runtime output is written under the target project's `<project-root>/log/`. Operating the toolset writes no persistent footprint inside the target repo other than `<project-root>/log/` runtime output; any optional project-local adoption (e.g. a skill copied under `<project-root>/.claude/skills/`) is a separate, user-chosen step.
-
-> **Current adoption model.** The current adoption and default direction is the **shared / global stable runtime ToolRoot** — channel 3, the global stable install at `%USERPROFILE%\ai-harness-toolset\current`, resolved per invocation (see `docs/install-update/install-update_spec.md` — the install-update domain spec carrying the invocation-channel and layer invariants). Source-repo dogfooding resolves the ToolRoot to the repo root (channel 4), but channel 4 is only reached when no channel 3 global stable install is present; on a machine that has one, pass an explicit `-ToolRoot <repo-root>` (channel 1) so channel 3 does not shadow it.
-## Install
-
-[`INSTALL.md`](INSTALL.md) 가 unified install guide 다. GitHub repo URL 과 local clone path 의 두 source input 을 같은 model 로 설명하며, prerequisites / fresh install / update · reinstall / failure handling 까지 본문에 포함되어 self-contained 하다. 본 도구는 system-wide CLI / productized installer 가 없고, install operator 는 Claude Code 다. install identity 는 source 문자열이 아니라 resolved commit SHA 다. 실제 `%USERPROFILE%\ai-harness-toolset\current\` materialize / refresh 는 explicit user-approved global / user filesystem mutation scope 이며, trigger 한 줄로 자동 실행되지 않는다.
-
-## Quick start
-
-The current adoption model is the **shared / global stable runtime ToolRoot** (channel 3). There is no installer and no system-wide CLI: lifecycle scripts run from a global stable install at `%USERPROFILE%\ai-harness-toolset\current`, and every invocation resolves that path automatically — you do not pass `-ToolRoot` or set `AI_HARNESS_TOOL_ROOT`. Runtime output is always written under the target project's `<project-root>/log/`, never back into the install.
-
-Day-to-day, the entrypoint is the Claude Code natural-language UX (e.g. `설치해줘` / `업데이트해줘` / `언인스톨해줘`, handled per `INSTALL.md`); the raw PowerShell commands in the sections below are the fallback / reference shape. Materializing and updating the channel 3 install follows `INSTALL.md` (the self-contained operative contract; domain invariants: `docs/install-update/install-update_spec.md`).
-
-`docs/`, `tests/`, and `log/` are source-repo only — they are never part of the resolved ToolRoot payload. When this README references `docs/*.md` files, read those files from this source repo, not from a target project.
-
-## Runtime log layout
-
-The runtime log tree lives at `<project-root>/log/`; its subdirectories — `log/brief/`, `log/evidence/`, `log/review/` — are created on demand by the primitives that write into them (`scripts/brief-init.ps1` seeds `log/brief/BRIEF.md`, `scripts/review-prepare.ps1` creates `log/review/<review-task-id>/<perspective>/pass-NN/`, and evidence files are written under `log/evidence/`). No separate initialization step is required. `log/` is a runtime artifact root and must not be committed; ensure the target project's `.gitignore` includes `log/`.
-
-Review record retention is human-managed at `<review-task-id>/` directory (or per-`pass-NN/`) granularity. Spec-of-record: `docs/review/review_spec.md`.
-
-## Review artifact contract
-
-The canonical review artifact layout is **three-level** — one pass directory per Codex attempt, under one perspective directory per review viewpoint, under one task directory per review task:
+이 저장소는 package manager 배포물이나 GitHub Actions CI/CD 프로젝트가 아닙니다. 사용자는 GitHub URL을 AI agent에게 전달하고, agent가 이 저장소를 읽어 설치 / 업데이트 / 삭제 / 검증을 수행하는 사용 방식을 기준으로 설계되어 있습니다.
 
 ```text
-<ProjectRoot>/log/review/<review-task-id>/<perspective>/
-  pass-01/
-    input.md   AI-authored from templates/review-input.md
-    result.md  reviewer-adapter body + runner-appended provenance block (dual-authored)
-  pass-02/    (only if the corrective loop adds another attempt)
-    input.md
-    result.md
+https://github.com/yunsuck5/ai-harness-toolset 설치해줘
 ```
 
-`<perspective>` is **required** (the scripts fail fast without it; there is no two-level fallback). Legacy two-level `<review-task-id>/pass-NN/` records from before strict C1 may still exist on disk and can be read manually, but the current scripts require `-Perspective` and the canonical layout is three-level — those legacy records are not tool-supported, not migrated, and not deleted.
+설치 후에는 다음과 같은 자연어 요청으로 운용합니다.
 
-- `<review-task-id>` identifies one Claude Code `/goal` task or one review gate. It is **not** a Claude Code chat / session id. A single session may contain multiple `<review-task-id>` directories for different `/goal` tasks. Operator / AI passes it explicitly via `scripts/review-prepare.ps1 -ReviewTaskId <id>`.
-- `<perspective>` (**required**) is a review viewpoint passed explicitly via `scripts/review-prepare.ps1 -Perspective <viewpoint>` (no automatic inference; omitting it fails fast). It is a separate path segment between `<review-task-id>` and `pass-NN`, validated as a single safe segment (no `..` / `/` / `\` / `pass-NN` shape; safe charset / length).
-- `pass-NN` (zero-padded two-digit) identifies one Codex review attempt inside the corrective loop. The first attempt is `pass-01`; subsequent corrective passes are `pass-02`, `pass-03`, and so on. `review-prepare.ps1 -Pass <pass-NN>` selects it explicitly; omitting `-Pass` auto-allocates the next pass under the same perspective directory (pass numbering is per-perspective).
-- Each `pass-NN/` is write-once. If the input or result is wrong or stale, allocate a fresh `pass-NN/` under the same `<review-task-id>/<perspective>/`; do not edit the old pass to close the review.
+```text
+ai-harness-toolset 최신 버전으로 업데이트해줘
+ai-harness-toolset 언인스톨해줘
+ai-harness-toolset 설치 상태를 검증해줘
+```
 
-`input.md` is authored by Claude Code (the operator-role AI). It contains the target files, context, required inspection paths, review questions, constraints, and the final verdict instruction, in five required H2 sections (`## Context`, `## Required inspection paths`, `## Review questions`, `## Constraints`, `## Final verdict`) plus recommended informational sections (`## Stage`, `## Purpose`, `## Target files`). The user does not type CLI arguments; the natural-language entrypoint and run orchestration is the review skill `snippets/claude-skills/ai-harness-review/SKILL.md`.
+## 현재 상태
 
-`result.md` is **dual-authored**: the verdict/disclosure body is authored by the active reviewer adapter (current MVP adapter: codex, via `--output-last-message`), and `scripts/review-run.ps1` then appends a runner-authored `## Reviewer run provenance` block (a machine run-fact, not reviewer judgment; spec-of-record: `docs/review/review_spec.md`). The reviewer-authored body must contain exactly one top-level `## Verdict` heading whose first non-empty body line is one of `yes`, `no`, `yes with risk` (lowercase, no qualifier, no inline form), plus four required disclosure H2s — `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` — each exactly once, with `none` as the body when a section has no substance. Additional sections (`## Findings`, `## Risks`, `## Counter-argument`, `## Notes`) are free-form. `## Counter-argument` is optional and strongly-recommended (non-parser) — the reviewer's dedicated position for the strongest case AGAINST a `yes` / `yes with risk` verdict (convention specified in `docs/review/review_spec.md`).
+`ai-harness-toolset`은 public preview 단계의 개인 유지보수 프로젝트입니다.
 
-The toolset script that drives a pass performs only deterministic gates: pass-directory containment under `<ProjectRoot>/log/review/` (and, because `<perspective>` is operator-supplied, containment within the intended `<review-task-id>/` task root so a perspective cannot traverse into a sibling task), the five required headings in `input.md`, exactly one Codex execution, the existence of `result.md`, the `## Verdict` allowed-value check, and the four required disclosure H2s each present exactly once in `result.md` (the disclosure check is the `-RequireResult` mode of `scripts/review-verify.ps1`). It does not interpret findings, decide correction scope, or trigger commit / push / publish / merge / release.
+- License: MIT
+- Usage: 개인 / 학습 / 상업적 사용 가능
+- Maintenance: solo-maintained, best-effort
+- Warranty: 없음
+- Primary lifecycle contract: Claude Code-first
+- Codex usage: AGENTS.md-compatible review / brief workflow에서 사용 검증됨
 
-- Single-shot, user-triggered. One Codex CLI execution per `review-run.ps1` call. No retry, no fallback model use, no auto-fix loop.
-- Verdict (`yes` / `no` / `yes with risk`) does not approve commit, push, publish, merge, or release. The user decides the next action explicitly.
-- No external staging folders, no sidecar JSON, no hash-binding files, and no flat single-level run-id layout are part of the canonical contract. Historical references to removed-legacy artifact shapes are preserved in git history and are not operator paths.
-- AI-to-Codex transport is Markdown inside `input.md`. Multi-line content, Korean, ASCII double-quotes, and bullet lists live inside the file. PowerShell argv quoting is not the transport.
+## 핵심 아이디어
 
-When reading `result.md`, Claude Code treats it as a structured artifact — the `## Verdict` line alone is not sufficient for the next action, and the four required disclosure H2s are read alongside it. The verdict → next-action mapping (`yes` / `no` / `yes with risk` each map to a different operator response) is specified in `docs/review/review_spec.md`; the operator-facing operative home lives in the review skill (`snippets/claude-skills/ai-harness-review/SKILL.md` step 6 + step 7).
+기존 개발 도구는 보통 사용자가 설치 명령어를 직접 찾아 실행합니다. 이 프로젝트는 반대로, AI coding agent가 repo를 읽고 필요한 install / update / uninstall / verification 절차를 수행할 수 있도록 저장소 자체를 agent-readable하게 구성합니다.
 
-Spec-of-record: `docs/review/review_spec.md`. Day-to-day natural-language UX, modes A/B, and the acceptance checklist: the review skill `snippets/claude-skills/ai-harness-review/SKILL.md`. CLI / runtime dependency boundary: host prerequisites in `INSTALL.md` §1 (+ `rules/powershell-and-file-encoding.md` for the PowerShell host).
+목표는 다음입니다.
 
-## Evidence and Brief
+```text
+GitHub URL
+→ AI coding agent가 repo를 읽음
+→ install / update / uninstall entrypoint 확인
+→ 사용자 승인 후 global/user surface 적용
+→ target project에는 log/ runtime artifact만 생성
+→ review / brief workflow를 반복 가능하게 사용
+```
 
-- `log/evidence/<scope>/<case>/` captures command, test, and execution facts. The evidence file-format convention (5-file recipe / single-Markdown bundle) is specified in `docs/review/review_spec.md`.
-- The current restore source for any project is **Brief** — it is the only restore source. Brief lives at `<ProjectRoot>/log/brief/BRIEF.md` — a project-local, operator-local, source-control-excluded runtime artifact under `<ProjectRoot>/log/`, gitignored by default and never a commit/push target (`docs/brief/brief_spec.md`). `<ProjectRoot>/brief/BRIEF.md` (root `brief/`) is **rejected**, and so is any user-home operator-local runtime root. "Project-local" here means inside each operator's local checkout of the target repo (because `log/` is gitignored); it does not mean repo-tracked.
-- BF Level is save/restore capability maturity, not a path. BF Level 1/2 is manual save/restore discipline. BF Level 3 (deterministic Brief maintenance, validation, stale warning, session-start guidance) is future scoped work; `scripts/brief-init.ps1` / `scripts/brief-check.ps1` are narrow source-side primitives, not the full BF Level 3 implementation. The unsolicited session-start restore-offer source-side automation is **retired**, not a deferred BF Level 3 component (`docs/brief/brief_spec.md`); only an explicit, user-requested Brief restore remains.
-- Brief stays compact and references review / evidence artifacts by path only. Do not inline full review results, evidence payloads, or cumulative session content into Brief.
-- Snippet protocols in `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` activate only when the user has manually adopted those snippets into a destination `CLAUDE.md` / `AGENTS.md`. There is no automatic global install, no hook, no auto-injection, no automatic transcript or prompt capture, no transcript JSONL parser, no Claude JSONL parser, and no `BF_STATE.json` or other separate state-machine file.
-- **Source snippet alignment.** The source `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` no longer carry the legacy Brief framing — the `## Brief` section was removed by the Batch 3 / Track F snippet minimization (provenance in git history). The current (3rd-reconciliation) Brief framing — BF Level is save/restore capability maturity (not a path), canonical Brief is the project-local runtime artifact at `<ProjectRoot>/log/brief/BRIEF.md` (gitignored under `log/`, seeded by `scripts/brief-init.ps1` and validated by `scripts/brief-check.ps1`), root `<ProjectRoot>/brief/` is rejected, and Brief is the only restore source — is recorded in `docs/brief/brief_spec.md` and realized by the active Brief surface (the `ai-harness-brief` skill, `scripts/brief-init.ps1` / `scripts/brief-check.ps1`, and `templates/brief/BRIEF.md`). **Previously-applied managed blocks** in any destination `CLAUDE.md` / `AGENTS.md` (project-root or user-global) still contain whichever snippet body was last applied at that destination, until the operator explicitly refreshes them; that refresh is a separate user-approved managed-block replacement step (`INSTALL.md` §10), and ai-harness does not perform it automatically. When a previously-applied managed block disagrees with the current framing, the applied block is the stale one — the current Brief framing lives in the active brief skill / `brief-*.ps1` / `templates/brief/BRIEF.md` (recorded in `docs/brief/brief_spec.md`), not in the old managed block.
+## 이 도구가 하는 일
 
-## Snippets for CLAUDE.md / AGENTS.md
+### 1. Global stable ToolRoot 설치
 
-ai-harness-toolset does not overwrite global or project-local `CLAUDE.md` / `AGENTS.md`. It only ships AI-facing English payloads the user may choose to adopt manually:
+기본 설치 모델은 user profile 아래 vendor-neutral install AREA와 그 하위 stable runtime ToolRoot를 사용합니다.
 
-- `snippets/CLAUDE_SNIPPET.md` — payload for a CLAUDE.md-compatible agent (Claude Code and similar). Valid destinations: `<project-root>/CLAUDE.md` (project-root) or `%USERPROFILE%\.claude\CLAUDE.md` (user-global).
-- `snippets/AGENTS_SNIPPET.md` — payload for an AGENTS.md-compatible agent (Codex CLI and similar). Valid destinations: `<project-root>/AGENTS.md` (project-root) or the Codex user-global path `%USERPROFILE%\.codex\AGENTS.md` by default, or `%CODEX_HOME%\AGENTS.md` if the `CODEX_HOME` environment variable is set. At the Codex user-global scope, `AGENTS.override.md` (e.g., `%USERPROFILE%\.codex\AGENTS.override.md`) takes precedence over `AGENTS.md` when both exist; the managed block lives in whichever file is the effective Codex source of truth in that environment.
+```text
+install AREA:
+%USERPROFILE%\ai-harness-toolset\
 
-`%USERPROFILE%\.claude\AGENTS.md` is **forbidden**: that path is not a recognized global instruction location for any agent, and ai-harness must never create it. The Codex user-global instruction path is under `.codex\`, not `.claude\`.
+stable ToolRoot:
+%USERPROFILE%\ai-harness-toolset\current\
+```
 
-Both snippets are written **dual-role safe** — they apply regardless of whether the loading agent is currently acting as operator, reviewer, auditor, or supervisor. Role-specific behavior is set by `/goal`, the review input, the skill prompt, or the command invocation, not by these global payloads. This role-neutral framing is stated in each snippet's intro; the binding operator-vs-reviewer-mode distinction lives in the `ai-harness-review` and `ai-harness-brief` skills. The snippets are a **minimal always-loaded bootstrap** (a safety floor plus a pointer to the distributed rules tier `snippets/rules/`), not a policy bundle; the reusable rules ship in `snippets/rules/` (global) and `rules/` (repo-only), and the whole distribution carries no `docs/` dependency (tier indexes: `snippets/rules/README.md` + `rules/README.md`; migration history in git history).
+stable ToolRoot에는 다음 payload가 deterministic하게 materialize됩니다.
 
-Adoption is a deliberate user action: append the matching snippet into one of the valid destination files inside the single canonical managed block delimited by the `AI_HARNESS_TOOLSET_GLOBAL` markers. The canonical marker form is identical for both `CLAUDE.md` and `AGENTS.md` (the snippet files themselves carry these markers literally — see the first / last lines of `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md`):
+```text
+config/
+scripts/
+snippets/
+templates/
+```
 
-````markdown
-<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->
-<contents of snippets/CLAUDE_SNIPPET.md or snippets/AGENTS_SNIPPET.md>
-<!-- END AI_HARNESS_TOOLSET_GLOBAL -->
-````
+설치 metadata / manifest / marker는 install AREA 안에서 sibling artifact로 관리됩니다.
 
-The marker text `AI_HARNESS_TOOLSET_GLOBAL` is the canonical form for both snippet types — the snippet files carry it literally (the operative form). Updating means replacing only the content inside this managed block; removing means deleting only the entire managed block. Whole-file overwrite of any destination listed above is forbidden.
+### 2. Claude / Codex instruction surface 적용
 
-## Optional Claude Code skills
+운용에 필요한 managed block을 사용자 global instruction surface에 적용합니다.
 
-The toolset ships two optional, copy-only Claude Code skill templates under `snippets/claude-skills/`: `ai-harness-review/SKILL.md` (the review flow below) and `ai-harness-brief/SKILL.md` (the manual Brief save / checkpoint / user-requested restore / update workflow). Each is discovered by its own `description`; copy the one(s) you want to `<project-root>/.claude/skills/<name>/SKILL.md` (project-local, recommended) or `~/.claude/skills/<name>/SKILL.md` (global, opt-in). Nothing is auto-installed.
+```text
+%USERPROFILE%\.claude\CLAUDE.md
+%USERPROFILE%\.codex\AGENTS.md
+```
 
-`snippets/claude-skills/ai-harness-review/SKILL.md` is an optional, copy-only Claude Code skill template. It defines the natural-language entrypoint for the canonical two-step review flow — `scripts/review-prepare.ps1 -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>]` → AI authors the pass `input.md` at `log/review/<review-task-id>/<perspective>/pass-NN/input.md` → `scripts/review-run.ps1 -ReviewTaskId <id> -Perspective <viewpoint> -Pass <pass-NN>` — that natural-language triggers like `현재 진행한 작업 코덱스 리뷰 진행해` resolve to. Adoption is a deliberate user action — copy it to `<project-root>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `~/.claude/skills/ai-harness-review/SKILL.md` (global, opt-in only). Nothing is auto-installed.
-## What this toolset does not do
+Claude skill mirror는 다음 위치에 생성됩니다.
 
-- No automatic or system-wide install. No system-wide CLI, no PATH mutation. (The channel 3 global stable runtime ToolRoot lives under `%USERPROFILE%\ai-harness-toolset\current`, but it is a deliberate, user-requested materialization — not an auto-install, not a PATH change, and not a system-wide CLI; see `docs/install-update/install-update_spec.md`.)
-- No automatic mutation of any global or project-root `CLAUDE.md` / `AGENTS.md`.
-- No watcher, hook, daemon, workflow engine, or productized `review-run`.
-- No auto-fix loop, auto-commit, auto-push, auto-publish, auto-merge, auto-release, or auto-deployment.
-- No CI integration, scheduled runner, or handoff generator.
-- Commits and pushes always require explicit user approval.
+```text
+%USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md
+%USERPROFILE%\.claude\skills\ai-harness-brief\SKILL.md
+```
 
-## Documentation map
+Codex의 경우 `%CODEX_HOME%` 또는 `AGENTS.override.md`가 있는 환경에서는 해당 effective destination을 따릅니다. 자세한 install / update / uninstall contract는 `INSTALL.md`가 self-contained operative contract입니다.
 
-**Start here for current state.** `docs/README.md` is the docs orientation home — its placement map (§5) and minimal per-question read-first routing (§7) route any question to the document that answers it. "What is done / what remains / what to do next" is answered **on demand** — ask the local agent for a status briefing, or read the per-domain status surfaces directly (the on-demand status-briefing model is the operative rule `rules/docs-working-model/docs-working-model.md`). Current status lives in the per-domain spec/backlog files (`docs/brief/` · `docs/review/` · `docs/install-update/`). (There is no committed project-current summary or active-queue file — the former `docs/current/PROJECT_STATE.md` / `NEXT_ACTIONS.md` mirrors were removed.) Superseded / historical material is preserved in git history, not as current docs.
+### 3. Review workflow
 
-The docs below are organized by **access pattern** under `docs/` scope folders — the docs placement orientation map is `docs/README.md` (its binding placement rules live on the active surface at `rules/docs-working-model/docs-working-model.md`). `docs/` root holds only `README.md` (the former `docs/contracts/` artifact-contract layer was absorbed into the domain specs). Each doc routes to its access-pattern home as the read-first place for its topic rather than replacing it (see `docs/README.md` §7). These docs explain, record, and orient — the operative authority for active behavior (execution / validation / routing / approval / behavior contract) lives on the active surface (`scripts/**`, `templates/**`, `snippets/**`, `rules/**`, `snippets/claude-skills/**`, `config/**`, `tests/**`, and the root instructions), which the docs route to and describe rather than override. The earlier flat-root "Policy A" layer is superseded by this access-pattern structure.
+Codex reviewer를 deterministic gate로 호출하기 위한 review artifact layout과 runner scripts를 제공합니다.
 
-Tags: `active operational` (current, actively-maintained docs), `active reference` (advisory), `mixed decision log` (active and historical interleaved), `historical reference` (migration-era).
+대표 artifact 구조는 다음입니다.
 
-| File | Role | One-line role |
-|---|---|---|
-| `docs/brief/brief_spec.md` | active operational | Brief spec-of-record: BF Level as save/restore capability maturity, single canonical runtime Brief location (project-local `<ProjectRoot>/log/brief/BRIEF.md`, gitignored under `log/`, not a commit/push target), root `<ProjectRoot>/brief/` rejected, Brief is the only restore source, and the primitive / workflow behavior boundary. |
-| `docs/review/review_spec.md` | active operational | review domain spec-of-record — canonical three-level review artifact model (`input.md` AI-authored + `result.md` dual-authored, `<perspective>` required), verdict vocabulary, deterministic gates, reviewer-safe invocation, config-driven model/effort, and the `log/evidence/<scope>/<case>/` validation-evidence file-format convention (absorbing the former review/evidence contracts and reviewer policies). |
+```text
+<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-01/
+  input.md
+  result.md
+```
 
-### Current state and systems
+review result의 verdict vocabulary는 다음 세 값입니다.
 
-| Path | Role | One-line role |
-|---|---|---|
-| `docs/install-update/install-update_spec.md` (+ `install-update_backlog.md`) | active domain docs | install-update domain target-state spec and future-work queue (open + deferred rows). |
-| `docs/review/review_backlog.md` | active operational | review future-work queue (open candidates, accepted residual risks, idea-only rows). |
-| `docs/brief/brief_backlog.md` | active operational | Brief future-work queue (BF Level 3 deferred candidates). |
+```text
+yes
+no
+yes with risk
+```
+
+중요: review verdict는 commit / push / publish / merge / release 승인이 아닙니다. 최종 결정은 사용자가 별도로 합니다.
+
+### 4. Brief workflow
+
+프로젝트별 `log/brief/BRIEF.md`를 생성 / 갱신 / 검사하기 위한 brief workflow를 제공합니다.
+
+```text
+<ProjectRoot>/log/brief/BRIEF.md
+```
+
+Brief는 현재 프로젝트 상태를 agent에게 전달하기 위한 runtime artifact이며, source-of-truth가 아니라 운용 보조물입니다.
+
+### 5. Runtime artifact 격리
+
+target project에 남는 persistent footprint는 기본적으로 다음 runtime log tree입니다.
+
+```text
+<ProjectRoot>/log/
+  brief/
+  evidence/
+  review/
+```
+
+`log/`는 runtime artifact root이며 보통 commit 대상이 아닙니다. target project의 `.gitignore`에서 `log/`를 제외하는 것을 권장합니다.
+
+## 빠른 시작
+
+### 설치
+
+Claude Code 또는 Codex CLI에게 다음처럼 요청합니다.
+
+```text
+https://github.com/yunsuck5/ai-harness-toolset 설치해줘
+```
+
+권장 흐름은 다음입니다.
+
+1. agent가 repo를 clone 또는 fetch합니다.
+2. `INSTALL.md`를 읽습니다.
+3. 현재 host 상태와 mutation target을 inspect합니다.
+4. 사용자에게 변경될 global/user path와 cleanup 계획을 보고합니다.
+5. 사용자가 명시적으로 승인하면 install을 수행합니다.
+6. verification / operational smoke를 수행합니다.
+7. 결과와 변경 path를 보고합니다.
+
+### 업데이트
+
+이미 설치된 상태에서는 다음처럼 요청합니다.
+
+```text
+ai-harness-toolset 최신 버전으로 업데이트해줘
+```
+
+### 삭제
+
+```text
+ai-harness-toolset 언인스톨해줘
+```
+
+삭제 역시 사용자 승인 없이 자동 수행되어서는 안 됩니다. agent는 제거 대상과 남길 항목을 먼저 보고해야 합니다.
+
+## 지원 환경
+
+현재 primary target은 Windows + PowerShell 환경입니다.
+
+- Windows PowerShell 5.1 또는 PowerShell 7+
+- git
+- Claude Code 또는 Codex CLI
+- 사용자 profile 아래 `.claude` / `.codex` 경로에 대한 read/write 권한
+
+이 저장소의 scripts는 PowerShell 중심입니다. 다른 OS나 shell은 best-effort이며, 현재 public preview의 primary support target은 아닙니다.
+
+## Claude Code / Codex CLI 지원 범위
+
+| 영역 | Claude Code | Codex CLI |
+|---|---:|---:|
+| install / update / uninstall lifecycle | Primary / Claude Code-first contract | 호환 경로로 사용 가능하나, operative install contract는 현재 Claude Code-first |
+| global instruction surface | `CLAUDE.md` managed block | `AGENTS.md` managed block |
+| review workflow | 사용 가능 | 주요 검증 경로 |
+| brief workflow | 사용 가능 | 사용 가능 |
+| package manager 배포 | 없음 | 없음 |
+| GitHub Actions CI/CD | 사용하지 않음 | 사용하지 않음 |
+
+이 저장소는 Claude Code와 Codex CLI를 대체하지 않습니다. 두 agent가 더 안정적으로 프로젝트별 workflow를 수행하도록 돕는 deterministic toolset입니다.
+
+## 이 도구가 아닌 것
+
+`ai-harness-toolset`은 다음이 아닙니다.
+
+- AI orchestrator
+- autonomous coding framework
+- GitHub Actions CI/CD pipeline
+- cloud service
+- daemon / watcher / scheduler
+- package manager 배포물
+- telemetry 수집 도구
+- secret scanning replacement
+- commit / push / publish 자동 승인 시스템
+
+## 저장소 구조
+
+주요 경로는 다음입니다.
+
+```text
+INSTALL.md                         # install / update / uninstall self-contained operative contract
+AGENTS.md                          # repo-local Codex instruction surface
+CLAUDE.md                          # repo-local Claude instruction surface
+
+config/                            # reviewer config / schema
+scripts/                           # deterministic PowerShell scripts
+snippets/                          # global instruction snippets / skills / rules
+templates/                         # review / brief / install-root templates
+tests/                             # Pester tests
+
+docs/
+  README.md                        # docs tree orientation
+  brief/                           # brief domain spec / backlog
+  install-update/                  # install-update domain spec / backlog
+  review/                          # review domain spec / backlog
+
+rules/                             # repo-development rules
+```
+
+## 문서 읽기 기준
+
+- 설치 / 업데이트 / 삭제를 수행할 때는 `INSTALL.md`를 우선합니다.
+- 내부 문서 구조와 세부 spec 위치는 `docs/README.md`를 참고하십시오.
+
+## 검증
+
+이 저장소는 GitHub Actions를 primary validation path로 사용하지 않습니다.
+
+검증의 중심은 local agent execution과 PowerShell/Pester 기반 테스트입니다.
+
+대표적으로 다음 범위를 확인합니다.
+
+```text
+install / update / uninstall lifecycle
+managed block apply / verify
+review input / result verification
+brief init / status / check
+PowerShell script syntax / encoding discipline
+repo-local instruction parity
+```
+
+실제 테스트 명령은 현재 repo의 `tests/README.md`와 각 script/test 파일을 기준으로 확인하십시오.
+
+## 보안 / 민감정보
+
+이 저장소는 API key, password, private endpoint, 회사 내부 정보, 개인 runtime log를 포함하지 않는 것을 원칙으로 합니다.
+
+Public repo에 넣으면 안 되는 것:
+
+```text
+API key / token / password
+회사 내부 코드 / 문서 / prompt / log / evidence
+개인 machine-specific path
+private model endpoint
+runtime log payload
+```
+
+보안 이슈나 민감정보 노출이 의심되면 `SECURITY.md`를 참고하십시오.
+
+## 기여 정책
+
+이 프로젝트는 solo-maintained입니다. Issues나 제안은 환영하지만, Pull Request나 기능 요청은 선택적으로만 검토됩니다.
+
+큰 설계 변경, lifecycle 변경, global/user filesystem mutation 변경은 maintainer의 명시적 승인 없이 받아들이지 않습니다.
+
+자세한 내용은 `CONTRIBUTING.md`를 참고하십시오.
+
+## License
+
+MIT License.
+
+개인 / 학습 / 상업적 사용이 가능합니다. 단, 이 소프트웨어는 어떠한 보증도 제공하지 않습니다. 자세한 내용은 `LICENSE.md`를 참고하십시오.
