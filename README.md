@@ -14,7 +14,14 @@ https://github.com/yunsuck5/ai-harness-toolset 설치해줘
 ai-harness-toolset 최신 버전으로 업데이트해줘
 ai-harness-toolset 언인스톨해줘
 ai-harness-toolset 설치 상태를 검증해줘
+
+이 작업 진행 후 코덱스 리뷰 진행해
+현재 변경사항을 commit 전에 리뷰해줘
+현재 상태로 브리프 저장해
+새 세션에서 BRIEF.md 기준으로 세션 복원해
 ```
+
+리뷰 결과는 대상 프로젝트의 `log/review/` 아래에 저장되고, Brief는 `log/brief/BRIEF.md`에 저장됩니다. 리뷰 결과는 commit / push / publish 승인 자체가 아니며, 최종 결정은 사용자가 별도로 합니다.
 
 ## 현재 상태
 
