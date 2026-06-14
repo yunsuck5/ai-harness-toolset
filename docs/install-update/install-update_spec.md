@@ -94,7 +94,7 @@
 - **tests** — `tests/install-global.Tests.ps1` · `install-update.Tests.ps1` · `update-global.Tests.ps1` · `activate-global.Tests.ps1` · `activation-surface.Tests.ps1` · `apply-managed-block.Tests.ps1` · `managed-block.Tests.ps1` · `install-pipeline.Tests.ps1` · `uninstall-apply.Tests.ps1` · `uninstall-target.Tests.ps1` · `path.Tests.ps1` · `resolve-script.Tests.ps1`(행동 잠금·회귀 보호).
 - **templates** — `templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md`(installed-root landing page — update/uninstall discovery).
 - **snippets** — 배포 instruction payload 와 skill(self-contained topology 운반).
-- **managed-block 정책**(marker 검출·destination 분기·update 규칙) — `INSTALL.md`(managed-block apply 규칙·skill adoption 규칙, self-contained)와 위 scripts(`apply-managed-block.ps1`·`activate-global.ps1`·`scripts/lib/managed-block.ps1`·`activation-surface.ps1`)가 소유한다. adopter 측 global/user instruction file mutation 경계는 배포 rule(`snippets/rules/global-file-mutation-boundary.md`)이 소유한다. `docs/decisions/GLOBAL_ADOPTION_DECISION.md` 는 채택 결정의 기록(background)이며 behavior authority 가 아니다.
+- **managed-block 정책**(marker 검출·destination 분기·update 규칙) — `INSTALL.md`(managed-block apply 규칙·skill adoption 규칙, self-contained)와 위 scripts(`apply-managed-block.ps1`·`activate-global.ps1`·`scripts/lib/managed-block.ps1`·`activation-surface.ps1`)가 소유한다. adopter 측 global/user instruction file mutation 경계는 배포 rule(`snippets/rules/global-file-mutation-boundary.md`)이 소유한다.
 
 ## Durable boundary
 

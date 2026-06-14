@@ -41,8 +41,6 @@ The placement criterion is **how a document is read**, not how many topics it to
 | `docs/install-update/` | the **install-update domain folder** — `install-update_spec.md` (spec-of-record: layer/invocation-channel invariants, metadata/artifact identity, footprint contract, activation-surface policy, uninstall invariants, recovery posture) + `install-update_backlog.md` (future-work queue incl. deferred rows); the third migrated domain folder — lifecycle docs exist only during a change; **execution itself is root `INSTALL.md`** (self-contained operative contract) | when working with the install/update/uninstall/activation lifecycle |
 | `docs/architecture/` | cross-cutting architecture decisions/audits spanning multiple subsystems/surfaces, deciding a structural target **before** implementation (e.g. `architecture/instruction-surface/INSTRUCTION_SURFACE_PLAN.md`); routes to the per-domain `docs/<domain>/` spec/backlog for current state, does not own it | when planning/auditing how a concern is divided across surfaces |
 | `docs/project/` | project identity, scope, positioning, philosophy | when scoping "what this project is/isn't" |
-| `docs/decisions/` | active decision records (incl. post-MVP decision record + numbered-order authority) | when checking "what was decided" |
-| `docs/roadmap/` | roadmap/milestone routing only (current milestones) | when checking remaining order |
 
 ## 6. Where new documents belong (orientation)
 
@@ -60,7 +58,7 @@ This file is the single orientation home: §5 above is the placement map; the ta
 | review workflow / result contract | `docs/review/review_spec.md` + `snippets/claude-skills/ai-harness-review/SKILL.md` |
 | Brief save / restore | `docs/brief/brief_spec.md` + `snippets/claude-skills/ai-harness-brief/SKILL.md` |
 | current progress / what to do next | on-demand briefing — `rules/docs-working-model/docs-working-model.md` (*On-demand status-briefing model*); no committed project-current mirror |
-| decision records / post-MVP numbered order | `docs/decisions/` (`POST_MVP_PLAN.md` §11 ↔ `docs/roadmap/CURRENT_MILESTONES.md`) |
+| decision records | the relevant owner surface / domain spec (historical decisions in git history) |
 | open backlog / deferred items | the per-domain `<domain>_backlog.md` (review · install-update · brief) |
 | docs change / closeout / placement | `rules/docs-working-model/docs-working-model.md` |
 | instruction-surface / skill architecture | `docs/architecture/instruction-surface/` |

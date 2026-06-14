@@ -36,7 +36,7 @@ $script:FixtureRepoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '.
 # Fixture / temp-only entry: reject any InstallArea that points at the global
 # stable install area or any path under %USERPROFILE%\.claude or %USERPROFILE%\.codex.
 # Actual global apply is a separate explicit user-approved scope per
-# INSTALL.md §10 (Approval boundaries) and GLOBAL_ADOPTION_DECISION.md §6.
+# INSTALL.md §10 (Approval boundaries).
 function Assert-NotForbiddenInstallArea {
     [CmdletBinding()]
     param(

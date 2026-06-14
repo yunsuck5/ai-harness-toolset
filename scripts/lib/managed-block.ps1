@@ -23,9 +23,9 @@ $ErrorActionPreference = 'Stop'
 #   - BOM handling is the caller's responsibility (apply-managed-block.ps1 requires
 #     UTF-8 without BOM, the activation-file convention).
 #
-# Marker counting follows GLOBAL_ADOPTION_DECISION.md §6 "Marker detection
-# (counting rule)": fenced code blocks are skipped, and a line counts only on a
-# whole-line trim match. Inline-code / prose mentions are never counted.
+# Marker counting rule (self-contained here): fenced code blocks are skipped, and
+# a line counts only on a whole-line trim match. Inline-code / prose mentions are
+# never counted.
 
 $script:ManagedBlockBeginMarker = '<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->'
 $script:ManagedBlockEndMarker   = '<!-- END AI_HARNESS_TOOLSET_GLOBAL -->'
