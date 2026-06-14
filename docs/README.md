@@ -42,7 +42,7 @@ The placement criterion is **how a document is read**, not how many topics it to
 | `docs/architecture/` | cross-cutting architecture decisions/audits spanning multiple subsystems/surfaces, deciding a structural target **before** implementation (e.g. `architecture/instruction-surface/INSTRUCTION_SURFACE_PLAN.md`); routes to the per-domain `docs/<domain>/` spec/backlog for current state, does not own it | when planning/auditing how a concern is divided across surfaces |
 | `docs/project/` | project identity, scope, positioning, philosophy | when scoping "what this project is/isn't" |
 | `docs/decisions/` | active decision records (incl. post-MVP decision record + numbered-order authority) | when checking "what was decided" |
-| `docs/roadmap/` | roadmap/milestone routing only (INDEX, current milestones) | when checking remaining order |
+| `docs/roadmap/` | roadmap/milestone routing only (current milestones) | when checking remaining order |
 
 ## 6. Where new documents belong (orientation)
 

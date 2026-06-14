@@ -1,6 +1,6 @@
 # Global Adoption Decision
 
-> **현행 status routing.** 본 문서는 install/update/global-adoption 의 design/model/record source 다. install-update 도메인의 **current 명세 / future-work queue** 의 authoritative 자리는 `docs/install-update/install-update_spec.md` + `docs/install-update/install-update_backlog.md` 다 (전체 routing 진입점: `docs/README.md`; roadmap index: `docs/roadmap/INDEX.md`; 구 system STATUS/DEFERRED ledger 는 git history). 본 문서 본문과 도메인 spec 이 충돌하면 current 판단은 spec 을 따른다. 본문 안의 `docs/systems/install-update/**` 경로는 작성 시점 경로다(도메인 이주로 retire — git history 보존).
+> **현행 status routing.** 본 문서는 install/update/global-adoption 의 design/model/record source 다. install-update 도메인의 **current 명세 / future-work queue** 의 authoritative 자리는 `docs/install-update/install-update_spec.md` + `docs/install-update/install-update_backlog.md` 다 (전체 routing 진입점: `docs/README.md`; 구 system STATUS/DEFERRED ledger 는 git history). 본 문서 본문과 도메인 spec 이 충돌하면 current 판단은 spec 을 따른다. 본문 안의 `docs/systems/install-update/**` 경로는 작성 시점 경로다(도메인 이주로 retire — git history 보존).
 
 본 문서는 `ai-harness-toolset` 의 운영 계층 전환 방향을 추적 가능한 형태로 보존한다. **결정의 기록이며, implementation 승인이 아니다.**
 
