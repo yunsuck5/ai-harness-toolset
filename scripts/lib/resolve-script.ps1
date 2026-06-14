@@ -22,7 +22,7 @@ function Get-ToolRootSource {
     # that misconfiguration fails fast. The explicit sources, in priority order,
     # are: the -ToolRoot parameter (channel 1), the AI_HARNESS_TOOL_ROOT env var
     # (channel 2), and the global stable install (channel 3). The implicit
-    # sources (dogfooding source repo, legacy .ai-harness) keep the fallback.
+    # source (dogfooding source repo, channel 4) keeps the fallback.
     if (-not [string]::IsNullOrEmpty($ToolRoot)) {
         return 'explicit'
     }

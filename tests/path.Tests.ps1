@@ -278,7 +278,7 @@ Describe 'Get-ToolRoot channel 4 (dogfooding multi-marker)' {
     It 'AC-PATH-CH4-2: does NOT match dogfooding when only single legacy marker present' {
         $project = script:New-CaseDir -Name 'ch4-single-marker'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'scripts/verify-ps1.ps1') -Content "# fake`n"
-        # Without all three markers + no .ai-harness/ legacy dir, channel chain should throw.
+        # Without all three markers and no other resolvable channel, the chain should throw.
         $threw = $false
         $msg = ''
         try {
@@ -294,31 +294,50 @@ Describe 'Get-ToolRoot channel 4 (dogfooding multi-marker)' {
     }
 }
 
-Describe 'Get-ToolRoot channel 5 (legacy .ai-harness)' {
+Describe 'Get-ToolRoot project-local payload is not a ToolRoot fallback (negative invariant)' {
     BeforeEach { script:Clear-EnvToolRoot }
 
-    It 'AC-PATH-CH5-1: returns ProjectRoot/.ai-harness when that directory exists' {
-        $project = script:New-CaseDir -Name 'ch5-legacy'
-        $legacy = Join-Path $project '.ai-harness'
-        $null = New-Item -ItemType Directory -Path $legacy -Force
-        $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot (script:AbsentStablePath)
-        $result.TrimEnd('/','\') | Should -Be ((Resolve-Path -LiteralPath $legacy).ProviderPath.TrimEnd('/','\'))
+    It 'AC-PATH-NOFB-1: a project-root child payload directory does NOT resolve as a ToolRoot fallback (throws)' {
+        # No project-local payload directory is a ToolRoot source. Even if a target project
+        # contains a child directory that looks like a copied tool payload (config/scripts/
+        # templates under a child), Get-ToolRoot must NOT resolve to it -- project-root-based
+        # implicit resolution is allowed ONLY via dogfooding source-repo markers AT the project
+        # root (channel 4). A non-source-repo target therefore fails fast at the terminal.
+        $project = script:New-CaseDir -Name 'nofb-payload-child'
+        $payload = Join-Path $project 'some-local-payload'
+        script:Write-Utf8NoBomFile -Path (Join-Path $payload 'scripts/verify-ps1.ps1') -Content "# fake`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $payload 'templates/review-input.md') -Content "# fake`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $payload 'config/reviewer.json') -Content "{}`n"
+        $threw = $false
+        $msg = ''
+        try {
+            Get-ToolRoot -ProjectRoot $project -StableToolRoot (script:AbsentStablePath) | Out-Null
+        }
+        catch {
+            $threw = $true
+            $msg = [string]$_.Exception.Message
+        }
+        $threw | Should -BeTrue -Because 'no project-local payload subdirectory is a ToolRoot fallback'
+        $msg | Should -Match 'no ToolRoot channel could be resolved'
     }
 
-    It 'AC-PATH-CH5-2: dogfooding marker wins over legacy .ai-harness' {
-        $project = script:New-MultiMarkerSourceRepo -Name 'ch5-dogfood-wins'
-        $legacy = Join-Path $project '.ai-harness'
-        $null = New-Item -ItemType Directory -Path $legacy -Force
+    It 'AC-PATH-NOFB-2: dogfooding markers AT the project root resolve to the root, not to a payload child' {
+        # The ONLY project-root-based implicit resolution is dogfooding: markers AT the project
+        # root. A payload-like child dir present at the same time is never consulted -- channel 4
+        # resolves to the root that carries the markers.
+        $project = script:New-MultiMarkerSourceRepo -Name 'nofb-root-wins-over-child'
+        $payload = Join-Path $project 'some-local-payload'
+        script:Write-Utf8NoBomFile -Path (Join-Path $payload 'scripts/verify-ps1.ps1') -Content "# fake`n"
         $result = Get-ToolRoot -ProjectRoot $project -StableToolRoot (script:AbsentStablePath)
         $result.TrimEnd('/','\') | Should -Be ($project.TrimEnd('/','\'))
     }
 }
 
-Describe 'Get-ToolRoot channel 6 (no channel resolved)' {
+Describe 'Get-ToolRoot channel 5 (no channel resolved / terminal)' {
     BeforeEach { script:Clear-EnvToolRoot }
 
-    It 'AC-PATH-CH6-1: throws with channel trace listing all attempted channels' {
-        $project = script:New-CaseDir -Name 'ch6-empty-project'
+    It 'AC-PATH-CH5-TERM-1: throws with channel trace listing all attempted channels (1..4)' {
+        $project = script:New-CaseDir -Name 'ch5-empty-project'
         $threw = $false
         $msg = ''
         try {
@@ -333,7 +352,6 @@ Describe 'Get-ToolRoot channel 6 (no channel resolved)' {
         $msg | Should -Match 'channel 2'
         $msg | Should -Match 'channel 3'
         $msg | Should -Match 'channel 4'
-        $msg | Should -Match 'channel 5'
         $msg | Should -Match 'AI_HARNESS_TOOL_ROOT'
         $msg | Should -Match '-ToolRoot'
     }

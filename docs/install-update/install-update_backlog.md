@@ -9,7 +9,6 @@ install-update 도메인의 future-work queue — open / deferred / idea-only ro
 | ID | Row (one line) | Start/reopen condition |
 |---|---|---|
 | IU-B-01 | Smoke evidence preservation — runbook-only / helper-script / archive-manifest 선택 미정 | scoped goal 승인 시 착수 |
-| IU-B-02 | legacy channel-5 copy-model 표현 vs 현행 channel-3 모델의 docs wording 정합화(docs-debt) | scoped goal 승인 시 착수 |
 | IU-B-03 | `scripts/lib/path.ps1` path normalization edge-case hardening(cross-cutting — install+review 공용) | scoped goal 승인 시 착수 |
 | IU-B-04 | Install validation report evidence hygiene — PASS verdict 와 anomalous wrapper signal 의 분리 | scoped goal 승인 시 착수 |
 | IU-B-05 | Snapshot auxiliary evidence exactness wording polish | scoped goal 승인 시 착수 |

@@ -94,7 +94,7 @@ function Get-ToolRoot {
     # channel 1 — explicit -ToolRoot parameter (highest priority).
     if (-not [string]::IsNullOrEmpty($ToolRoot)) {
         if (-not (Test-Path -LiteralPath $ToolRoot -PathType Container)) {
-            throw ('Get-ToolRoot: channel 1 (-ToolRoot parameter): directory not found: {0}. Provide a valid existing directory or omit -ToolRoot to fall back to env / stable / dogfooding / legacy channels.' -f $ToolRoot)
+            throw ('Get-ToolRoot: channel 1 (-ToolRoot parameter): directory not found: {0}. Provide a valid existing directory or omit -ToolRoot to fall back to env / stable / dogfooding channels.' -f $ToolRoot)
         }
         return [System.IO.Path]::GetFullPath($ToolRoot)
     }
@@ -104,7 +104,7 @@ function Get-ToolRoot {
     $envTool = [System.Environment]::GetEnvironmentVariable('AI_HARNESS_TOOL_ROOT')
     if (-not [string]::IsNullOrEmpty($envTool)) {
         if (-not (Test-Path -LiteralPath $envTool -PathType Container)) {
-            throw ('Get-ToolRoot: channel 2 (env AI_HARNESS_TOOL_ROOT): directory not found: {0}. Set AI_HARNESS_TOOL_ROOT to an existing directory or unset it to fall back to stable / dogfooding / legacy channels.' -f $envTool)
+            throw ('Get-ToolRoot: channel 2 (env AI_HARNESS_TOOL_ROOT): directory not found: {0}. Set AI_HARNESS_TOOL_ROOT to an existing directory or unset it to fall back to stable / dogfooding channels.' -f $envTool)
         }
         return [System.IO.Path]::GetFullPath($envTool)
     }
@@ -138,14 +138,7 @@ function Get-ToolRoot {
     }
     $tried.Add(('channel 4 (dogfooding multi-marker on ProjectRoot={0}): markers missing' -f $project)) | Out-Null
 
-    # channel 5 — legacy <ProjectRoot>/.ai-harness.
-    $legacy = Join-Path -Path $project -ChildPath '.ai-harness'
-    if (Test-Path -LiteralPath $legacy -PathType Container) {
-        return [System.IO.Path]::GetFullPath($legacy)
-    }
-    $tried.Add(('channel 5 (legacy <ProjectRoot>/.ai-harness): not present at {0}' -f $legacy)) | Out-Null
-
-    # channel 6 — nothing resolved.
+    # channel 5 — nothing resolved: no channel produced a ToolRoot, so fail fast with the full trace.
     $trace = $tried -join '; '
     throw ('Get-ToolRoot: no ToolRoot channel could be resolved. Tried: {0}. Set AI_HARNESS_TOOL_ROOT, pass -ToolRoot, or install the global stable ToolRoot.' -f $trace)
 }

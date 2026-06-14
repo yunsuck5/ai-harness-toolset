@@ -2,9 +2,9 @@
 
 Project-local deterministic toolset for Claude / Codex workflows.
 
-ai-harness-toolset is a project-local deterministic toolset. It is not an orchestrator, not an installer, and not packaged. Operation is CLI-only. The current adoption model is the **shared / global stable runtime ToolRoot** (channel 3): lifecycle scripts run from a global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation, and runtime output is written under the target project's `<project-root>/log/`. A legacy project-local copy mode (channel 5), in which the source folders are copied into a `.ai-harness/` payload at the target project root, remains supported for backward compatibility but is not the recommended adoption shape for new projects.
+ai-harness-toolset is a project-local deterministic toolset. It is not an orchestrator, not an installer, and not packaged. Operation is CLI-only. The current adoption model is the **shared / global stable runtime ToolRoot** (channel 3): lifecycle scripts run from a global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation, and runtime output is written under the target project's `<project-root>/log/`. Operating the toolset writes no persistent footprint inside the target repo other than `<project-root>/log/` runtime output; any optional project-local adoption (e.g. a skill copied under `<project-root>/.claude/skills/`) is a separate, user-chosen step.
 
-> **Current adoption model.** The current adoption and default direction is the **shared / global stable runtime ToolRoot** — channel 3, the global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation (see `docs/install-update/install-update_spec.md` — the install-update domain spec carrying the invocation-channel and layer invariants). The **legacy project-local copy mode** (channel 5) — the `.ai-harness/` payload covered in its own subsection below — is still supported for backward compatibility, but is not the recommended adoption shape for new projects. Source-repo dogfooding resolves the ToolRoot to the repo root (channel 4), but channel 4 is only reached when no channel 3 global stable install is present; on a machine that has one, pass an explicit `-ToolRoot <repo-root>` (channel 1) so channel 3 does not shadow it.
+> **Current adoption model.** The current adoption and default direction is the **shared / global stable runtime ToolRoot** — channel 3, the global stable install at `%USERPROFILE%\.claude\ai-harness-toolset\current`, resolved per invocation (see `docs/install-update/install-update_spec.md` — the install-update domain spec carrying the invocation-channel and layer invariants). Source-repo dogfooding resolves the ToolRoot to the repo root (channel 4), but channel 4 is only reached when no channel 3 global stable install is present; on a machine that has one, pass an explicit `-ToolRoot <repo-root>` (channel 1) so channel 3 does not shadow it.
 ## Install
 
 [`INSTALL.md`](INSTALL.md) 가 unified install guide 다. GitHub repo URL 과 local clone path 의 두 source input 을 같은 model 로 설명하며, prerequisites / fresh install / update · reinstall / failure handling 까지 본문에 포함되어 self-contained 하다. 본 도구는 system-wide CLI / productized installer 가 없고, install operator 는 Claude Code 다. install identity 는 source 문자열이 아니라 resolved commit SHA 다. 실제 `%USERPROFILE%\.claude\ai-harness-toolset\current\` materialize / refresh 는 explicit user-approved global / user filesystem mutation scope 이며, trigger 한 줄로 자동 실행되지 않는다.
@@ -16,24 +16,6 @@ The current adoption model is the **shared / global stable runtime ToolRoot** (c
 Day-to-day, the entrypoint is the Claude Code natural-language UX (e.g. `설치해줘` / `업데이트해줘` / `언인스톨해줘`, handled per `INSTALL.md`); the raw PowerShell commands in the sections below are the fallback / reference shape. Materializing and updating the channel 3 install follows `INSTALL.md` (the self-contained operative contract; domain invariants: `docs/install-update/install-update_spec.md`).
 
 `docs/`, `tests/`, and `log/` are source-repo only — they are never part of the resolved ToolRoot payload. When this README references `docs/*.md` files, read those files from this source repo, not from a target project.
-
-### Legacy project-local copy mode (channel 5)
-
-The project-local copy mode is still supported for backward compatibility but is not the recommended adoption shape for new projects. It has no global install; instead, four source folders are manually copied from this repo into the target project:
-
-| Source repo | Target payload (legacy channel 5) |
-|---|---|
-| `config/` | `<project-root>/.ai-harness/config/` |
-| `scripts/` | `<project-root>/.ai-harness/scripts/` |
-| `snippets/` | `<project-root>/.ai-harness/snippets/` |
-| `templates/` | `<project-root>/.ai-harness/templates/` |
-
-Rules (legacy mode):
-
-- Copy only the four folders above. Do not copy `docs/`, `.git/`, `log/`, or repo-level files such as `README.md` or `.gitattributes`.
-- Do not modify any global file.
-- The `.ai-harness/` payload lives entirely inside the target project root and can be removed by deleting that directory.
-- After copying, `<project-root>/.ai-harness/scripts/` becomes the script root (channel 5 ToolRoot) for that project.
 
 ## Runtime log layout
 
@@ -80,7 +62,7 @@ Spec-of-record: `docs/review/review_spec.md`. Day-to-day natural-language UX, mo
 ## Evidence and Brief
 
 - `log/evidence/<scope>/<case>/` captures command, test, and execution facts. The evidence file-format convention (5-file recipe / single-Markdown bundle) is specified in `docs/review/review_spec.md`.
-- The current restore source for any project is **Brief** — it is the only restore source. Brief lives at `<ProjectRoot>/log/brief/BRIEF.md` — a project-local, operator-local, source-control-excluded runtime artifact under `<ProjectRoot>/log/`, gitignored by default and never a commit/push target (`docs/brief/brief_spec.md`). `<ProjectRoot>/brief/BRIEF.md` (root `brief/`) is **rejected**, and so is any user-home operator-local runtime root (e.g. `%USERPROFILE%\.ai-harness\projects\...`). "Project-local" here means inside each operator's local checkout of the target repo (because `log/` is gitignored); it does not mean repo-tracked.
+- The current restore source for any project is **Brief** — it is the only restore source. Brief lives at `<ProjectRoot>/log/brief/BRIEF.md` — a project-local, operator-local, source-control-excluded runtime artifact under `<ProjectRoot>/log/`, gitignored by default and never a commit/push target (`docs/brief/brief_spec.md`). `<ProjectRoot>/brief/BRIEF.md` (root `brief/`) is **rejected**, and so is any user-home operator-local runtime root. "Project-local" here means inside each operator's local checkout of the target repo (because `log/` is gitignored); it does not mean repo-tracked.
 - BF Level is save/restore capability maturity, not a path. BF Level 1/2 is manual save/restore discipline. BF Level 3 (deterministic Brief maintenance, validation, stale warning, session-start guidance) is future scoped work; `scripts/brief-init.ps1` / `scripts/brief-check.ps1` are narrow source-side primitives, not the full BF Level 3 implementation. The unsolicited session-start restore-offer source-side automation is **retired**, not a deferred BF Level 3 component (`docs/brief/brief_spec.md`); only an explicit, user-requested Brief restore remains.
 - Brief stays compact and references review / evidence artifacts by path only. Do not inline full review results, evidence payloads, or cumulative session content into Brief.
 - Snippet protocols in `snippets/CLAUDE_SNIPPET.md` and `snippets/AGENTS_SNIPPET.md` activate only when the user has manually adopted those snippets into a destination `CLAUDE.md` / `AGENTS.md`. There is no automatic global install, no hook, no auto-injection, no automatic transcript or prompt capture, no transcript JSONL parser, no Claude JSONL parser, and no `BF_STATE.json` or other separate state-machine file.

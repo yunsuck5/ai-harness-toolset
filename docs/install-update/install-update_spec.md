@@ -22,11 +22,11 @@
 
 - 5-layer 분리: Layer 0 GitHub remote source / Layer 1 canonical local ToolRoot(source/build input — shared/global mode 의 default runtime ToolRoot 아님) / Layer 2 global Claude install layer(`%USERPROFILE%\.claude`) / Layer 3 ProjectRoot(작업 대상 — payload 설치처 아님) / Layer 4 project-local runtime artifacts(`<ProjectRoot>/log/`).
 - shared/global mode 의 materialized runtime ToolRoot 는 `%USERPROFILE%\.claude\ai-harness-toolset\current`(Layer 2 아래)이며 default 연결 경로다.
-- ToolRoot 해소는 **명시 우선 6-channel chain** 이다 — ① CLI `-ToolRoot` ② env `AI_HARNESS_TOOL_ROOT` ③ global stable install ④ dogfooding 판정 ⑤ legacy `<ProjectRoot>/.ai-harness` ⑥ 명시 error + exit non-zero(시도한 channel 목록 포함). channel 3 은 디렉터리 **부재 시 skip**, 존재하나 payload **불완전 시 fail-fast** 한다(completeness 판정 entrypoint 는 owner 소유). channel 2 는 process-scope 의 override/debug 용이며 default 연결 방식이 아니다. user-level config 파일과 snippet 내 ToolRoot 절대경로 기록은 channel 로 채택되지 않는다.
-- component script 해소는 explicit ToolRoot(channel 1/2/3)에서 fallback 없이 fail-fast, implicit(channel 4/5)에서 `$PSScriptRoot` fallback + 명시 warning 이다.
+- ToolRoot 해소는 **명시 우선 5-channel chain** 이다 — ① CLI `-ToolRoot` ② env `AI_HARNESS_TOOL_ROOT` ③ global stable install ④ dogfooding 판정 ⑤ 명시 error + exit non-zero(시도한 channel 목록 포함). channel 3 은 디렉터리 **부재 시 skip**, 존재하나 payload **불완전 시 fail-fast** 한다(completeness 판정 entrypoint 는 owner 소유). channel 2 는 process-scope 의 override/debug 용이며 default 연결 방식이 아니다. user-level config 파일과 snippet 내 ToolRoot 절대경로 기록은 channel 로 채택되지 않는다.
+- component script 해소는 explicit ToolRoot(channel 1/2/3)에서 fallback 없이 fail-fast, implicit(channel 4 dogfooding)에서 `$PSScriptRoot` fallback + 명시 warning 이다.
 - source repo(dogfooding) 판정은 **다중 marker 의 동시 존재(AND)** 로만 true 다 — 단일 marker 로 판정하지 않는다(marker 집합 값은 owner 소유).
 - ProjectRoot 는 CWD default 이며, `.git` entry(directory/file 모두 유효) 부재 시 advisory warning 만 출력한다(fail 아님).
-- backward compatibility: channel 5(legacy)의 유지와 channel 3 의 absent-skip 으로 stable install 도입 전 환경의 운영이 깨지지 않는다.
+- backward compatibility: channel 3 의 absent-skip 과 channel 4 dogfooding 으로 stable install 도입 전 / source-repo 환경의 운영이 깨지지 않는다.
 
 ### install metadata 와 산출물 identity
 
@@ -90,7 +90,7 @@
 
 - **`INSTALL.md`** — 실행 operative contract(self-contained·anti-coupling — install 실행 중 `docs/**` 무참조): 설치/업데이트/재설치/uninstall 발견 절차 · 명령과 단계 순서 · 승인 문답 · metadata schema 필드 값 · final status vocabulary 와 precedence · exit code · run evidence 계약 · managed-block/skill adoption 규칙 · deterministic narrow entrypoint 경계 · bootstrap clone cleanup · acquisition cache 류 later-phase 결정.
 - **lifecycle scripts** — `scripts/install-global.ps1`(fresh install + first-time managed-block insertion bootstrap) · `scripts/install-update.ps1`(inspect/verify/update-source + mutation guard) · `scripts/update-global.ps1`(name-based update 재진입) · `scripts/activate-global.ps1`(activation orchestration·canonical-overwrite path) · `scripts/apply-managed-block.ps1`(managed-block replace/insert/remove IO) · `scripts/uninstall-global.ps1` · `scripts/uninstall-finalizer.ps1`.
-- **lib** — `scripts/lib/path.ps1`(ToolRoot 6-channel 해소·payload completeness 판정·source-repo 판정·ProjectRoot 해소) · `scripts/lib/resolve-script.ps1`(component script 해소·fallback 정책) · `scripts/lib/activation-surface.ps1`(activation surface plan 의 single home — source→destination map·mutation class) · `scripts/lib/managed-block.ps1`(managed-block primitive — set/add/remove) · `scripts/lib/uninstall-target.ps1`(read-only uninstall plan resolver) · `scripts/lib/install-pipeline-core.ps1`(temp-only pipeline library; entry 는 `tests/support/install-pipeline-fixture.ps1`).
+- **lib** — `scripts/lib/path.ps1`(ToolRoot 5-channel 해소·payload completeness 판정·source-repo 판정·ProjectRoot 해소) · `scripts/lib/resolve-script.ps1`(component script 해소·fallback 정책) · `scripts/lib/activation-surface.ps1`(activation surface plan 의 single home — source→destination map·mutation class) · `scripts/lib/managed-block.ps1`(managed-block primitive — set/add/remove) · `scripts/lib/uninstall-target.ps1`(read-only uninstall plan resolver) · `scripts/lib/install-pipeline-core.ps1`(temp-only pipeline library; entry 는 `tests/support/install-pipeline-fixture.ps1`).
 - **tests** — `tests/install-global.Tests.ps1` · `install-update.Tests.ps1` · `update-global.Tests.ps1` · `activate-global.Tests.ps1` · `activation-surface.Tests.ps1` · `apply-managed-block.Tests.ps1` · `managed-block.Tests.ps1` · `install-pipeline.Tests.ps1` · `uninstall-apply.Tests.ps1` · `uninstall-target.Tests.ps1` · `path.Tests.ps1` · `resolve-script.Tests.ps1`(행동 잠금·회귀 보호).
 - **templates** — `templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md`(installed-root landing page — update/uninstall discovery).
 - **snippets** — 배포 instruction payload 와 skill(self-contained topology 운반).
@@ -108,7 +108,7 @@
 
 ## Cross-domain interface
 
-- **target footprint** — target project 의 persistent footprint 는 `<ProjectRoot>/log/` only 다(BRIEF/Evidence/Review 트리가 그 아래에 위치하며, 각 트리의 semantics 는 brief/review 도메인 spec 소유). forbidden: `.ai-harness/` · payload root 사본 · ai-harness 전용 `CLAUDE.md`/`AGENTS.md` · root `<ProjectRoot>/brief/` · user-home operator-local runtime root.
+- **target footprint** — target project 의 persistent footprint 는 `<ProjectRoot>/log/` only 다(BRIEF/Evidence/Review 트리가 그 아래에 위치하며, 각 트리의 semantics 는 brief/review 도메인 spec 소유). forbidden: payload root 사본 · ai-harness 전용 `CLAUDE.md`/`AGENTS.md` · root `<ProjectRoot>/brief/` · user-home operator-local runtime root.
 - **self-target enforcement** — "source repo 에 git-tracked file 이 `log/` 아래 존재하면 비-zero exit" 검사의 owner 는 `scripts/verify-ps1.ps1`(sub-check)과 배포 rule(repository-change-safety)이다 — 본 도메인은 footprint contract 의 짝 invariant 로 노출만 한다.
 - **배포 표면 topology** — deployed snippet/SKILL.md 는 invocation topology 를 self-contained 로 운반한다(`docs/**` 경로 참조 0).
 
