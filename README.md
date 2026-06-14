@@ -23,6 +23,8 @@ ai-harness-toolset 설치 상태를 검증해줘
 
 리뷰 결과는 대상 프로젝트의 `log/review/` 아래에 저장되고, Brief는 `log/brief/BRIEF.md`에 저장됩니다. 리뷰 결과는 commit / push / publish 승인 자체가 아니며, 최종 결정은 사용자가 별도로 합니다.
 
+리뷰 흐름, verdict 의미, local-correctness / system-coherence 관점은 [리뷰 시스템 가이드](user_guide/review-system_ko.md)를 참고하십시오.
+
 ## 현재 상태
 
 `ai-harness-toolset`은 public preview 단계의 개인 유지보수 프로젝트입니다.
@@ -233,6 +235,7 @@ docs/
   review/                          # review domain spec / backlog
 
 rules/                             # repo-development rules
+user_guide/                        # public 사용자 가이드 (review-system_ko.md 등)
 ```
 
 ## 문서 읽기 기준
