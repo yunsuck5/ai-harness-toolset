@@ -7,7 +7,7 @@ This file is the **single, self-contained home of project term meaning** for dev
 - This is the **single home** of what a project term means. When a term defined here appears in any docs / spec / rule / review / brief / planning work, use it consistently and do **not** re-explain an **accepted** term in local prose — if a reader needs the meaning, route them here instead of copying the definition.
 - A **pending / owner-pending** term is *candidate vocabulary*, not settled. Do not use it as if it were final; it closes only in its named owner domain under its named close condition.
 - A **rejected** term is not adopted. Do not revive a rejected term under a new name or as an accepted-looking heading anywhere outside the `## Rejected terms` section.
-- One root word may carry **two distinct facets** in different states, each tracked separately. A facet naming a *specific sub-question* is classified independently of the same root word *as a broad domain* — e.g. the sub-question facet `instruction-surface mechanism location` (a pending facet that has since **closed**, see *Term ownership and close conditions*) vs the broad-domain facet `instruction-surface as independent domain` (rejected, in the Rejected section). The single-state rule applies per exact term/facet, not per root word; each entry states its facet to avoid confusion.
+- One root word may carry **two distinct facets** in different states, each tracked separately. A facet naming a *specific sub-question* is classified independently of the same root word *as a broad domain* — e.g. the sub-question facet `instruction-surface mechanism location` (now **closed** — see *Term ownership and close conditions*) vs the broad-domain facet `instruction-surface as independent domain` (rejected, in the Rejected section). The single-state rule applies per exact term/facet, not per root word; each entry states its facet to avoid confusion.
 - This glossary records meaning and classification **only**. It grants **no mutation, commit, or push approval**, and no review verdict — those remain separate explicit user approvals. It does **not** weaken the `INSTALL.md` self-contained install / update / uninstall operative contract, and it does not own any other system's semantics.
 
 ## Status vocabulary
@@ -68,13 +68,13 @@ Candidate vocabulary only — each entry names its owner domain and its close co
 Not adopted — typically a broad mixed-owner domain / bucket with no proven narrow owner / lifecycle / domain-local closure. Each entry: what it is + why rejected + do-not-revive-as. Rejected terms appear as headings **only** within this section.
 
 ### instruction-surface as independent domain
-A broad standalone "instruction-surface" domain/bucket. Rejected: it mixes owners and proves no narrow owner / lifecycle / closure. Do not revive it as an independent domain under another name. (The narrow facet `instruction-surface mechanism location` has since **closed** — the live instruction-surface mechanism is specified by the active surface: the snippet `## Operating rules and topology` + the rules-tier indexes `snippets/rules/README.md` / `rules/README.md` + the root `CLAUDE.md` / `AGENTS.md`; its architecture/instruction-surface follow-on work completed and the `docs/architecture/instruction-surface/` docs were retired. This rejected broad-domain facet stands unchanged.)
+A broad standalone "instruction-surface" domain/bucket. Rejected: it mixes owners and proves no narrow owner / lifecycle / closure. Do not revive it as an independent domain under another name. (The narrow facet `instruction-surface mechanism location` has since **closed** — owner = the active surface; see *Term ownership and close conditions*. This rejected broad-domain facet stands unchanged.)
 
 ### global-invocation as independent domain
 A broad standalone "global-invocation" domain. Rejected for the same broad-bucket reason. Do not revive as an independent domain. (The narrow facet `global-invocation single-home` has since **closed** in the install-update domain migration — the single home is the install-update domain spec.)
 
 ### evidence umbrella as independent domain
-A broad "evidence" umbrella domain / system / shared contract. Rejected as a broad bucket. Do not revive evidence as a domain / system / shared contract. (Narrow pending facet: `evidence contract absorption`.)
+A broad "evidence" umbrella domain / system / shared contract. Rejected as a broad bucket. Do not revive evidence as a domain / system / shared contract. (The narrow facet `evidence contract absorption` has since **closed** — the evidence file-format convention was absorbed into the review domain spec `docs/review/review_spec.md`; see *Term ownership and close conditions*. This rejected broad-domain facet stands unchanged.)
 
 ### managed-block as independent domain
 A standalone "managed-block" domain. Rejected: the managed block is a marker / payload boundary owned by the install and instruction surfaces, not its own domain. Do not revive it as a domain.
@@ -86,7 +86,10 @@ A standalone "managed-block" domain. Rejected: the managed block is a marker / p
 "packaging" as a broad owner concept. Rejected: this toolset is not packaged. Do not revive packaging as a broad owner.
 
 ### project folder as broad owner
-A `docs/project/`-style folder kept as a long-term broad owner. Rejected: do not preserve a project folder as a long-term broad owner.
+A `docs/project/`-style folder kept as a long-term broad owner. Rejected: do not preserve a project folder as a long-term broad owner. (The `docs/project/` folder has since been retired; path concepts live in this glossary, domain-specific boundaries live in their domain specs, and root `README.md` states project-level positioning; preservation = git history.)
+
+### policy bucket as broad owner
+A `docs/policies/`-style folder kept as a long-term broad execution-policy bucket. Rejected: the live execution-policy rules are owned by the active surface (`rules/powershell-and-file-encoding.md` + `INSTALL.md` §1 host prerequisites), not a docs folder; the `docs/policies/` folder was retired (rationale preserved in git history). Do not revive a broad policy bucket — a policy's home is the active rule / script / test that enforces it.
 
 ### handoff/snapshot as repo feature domain
 "handoff / snapshot" elevated into a repo feature domain. Rejected: there is no handoff/snapshot repo feature domain. Do not revive it as one. (The `handoff` *wording* was separately closed in the brief pilot as **not adopted as canonical brief vocabulary** — it survives only as a trigger synonym in the brief skill's example phrases. `continuation` was likewise **not adopted** as a project term in the same close — it remains free ordinary wording with no glossary entry.)
@@ -95,7 +98,7 @@ A `docs/project/`-style folder kept as a long-term broad owner. Rejected: do not
 A broad `docs/domains/` taxonomy. Rejected when it would revive bucket sprawl (a folder used as a storage bucket rather than a scope boundary). Do not recreate a broad docs taxonomy that revives bucket sprawl.
 
 ### architecture broad bucket as long-term owner
-A `docs/architecture/`-style broad mixed-owner classification kept as a long-term owner. Rejected **as a long-term broad mixed-owner bucket** — but this is a boundary, **not** an immediate delete approval. A narrow architecture domain is allowed only when it proves a narrow owner, lifecycle, domain-local closure, reference model, and active-surface relationship; any such absorption is handled separately and owner-absorption-gated.
+A `docs/architecture/`-style broad mixed-owner classification kept as a long-term owner. Rejected **as a long-term broad mixed-owner bucket**. The `docs/architecture/` folder has since been retired — its live content was absorbed into the active owner surfaces and the folder deleted (preservation = git history) through the owner-absorption-gated process. A narrow architecture domain would be allowed only when it proves a narrow owner, lifecycle, domain-local closure, reference model, and active-surface relationship; none currently exists, and any future absorption stays owner-absorption-gated.
 
 ### repo consumed/ archive lifecycle
 A repo `consumed/` folder or a separate archive folder used as a retire lifecycle. Rejected: retire = deletion, with git history as the preservation mechanism. Do not revive a separate archive / `consumed/` folder as a repo pattern.
