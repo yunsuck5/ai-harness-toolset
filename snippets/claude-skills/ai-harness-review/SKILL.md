@@ -83,16 +83,16 @@ Before finalizing the target set, verify it against the actual changed file set 
 
 Pick a `<review-task-id>` for this work: a stable string identifying the `/goal` task or review gate (for example, `topology-simplification-2026-05-16`). Reuse the same `<review-task-id>` for every pass of the same task; pick a new one only when the task itself changes. Pick a `<perspective>` (review viewpoint, e.g. `local-correctness` / `system-coherence`) and pass `-Perspective <viewpoint>` — it is **required** (omitting it fails fast; there is no two-level fallback). Determine the `pass-NN` for this attempt: `pass-01` for the first reviewer attempt of this task+perspective; `pass-02`, `pass-03`, ... for subsequent corrective-loop attempts. You may pass `-Pass <pass-NN>` explicitly, or omit it to let `review-prepare.ps1` auto-allocate the next pass under the same perspective directory (pass numbering is per-perspective).
 
-Invoke `<ToolRoot>/scripts/review-prepare.ps1 -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>] -Stage <stage> -Purpose <line>` once. The script creates the canonical three-level pass directory `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/` and seeds `input.md` from `<ToolRoot>/templates/review-input.md`. Reuse the same `-Perspective` value on the matching `review-run.ps1` / `review-verify.ps1` calls so they resolve the same pass directory.
+Invoke `<ToolRoot>/scripts/review-prepare.ps1 -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>] -Stage <stage> -Purpose <line> -NoSeed` once. The script creates the canonical three-level pass directory `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/`. `-NoSeed` is the standard invocation: it creates an empty `input.md` for you to author in step 4, avoiding the seed-then-overwrite friction (you overwrite the whole template body anyway). The canonical `input.md` shape stays single-homed in `<ToolRoot>/templates/review-input.md` and is fully enumerated in step 4 — consult the template when you need the exact section guidance. Omitting `-NoSeed` falls back to seeding the full template body verbatim (backward-compatible), which you then overwrite. Reuse the same `-Perspective` value on the matching `review-run.ps1` / `review-verify.ps1` calls so they resolve the same pass directory.
 
 Hard rules for step 3:
 
-- The seeded `input.md` is the template body verbatim, not the actual review request. You will overwrite it in step 4. Do not invoke the reviewer yet.
+- Under the standard `-NoSeed` invocation, `input.md` is an empty canvas you author in step 4. (Without `-NoSeed` it is the template body verbatim, not the actual review request, which you then overwrite in step 4.) Either way, do not invoke the reviewer yet.
 - Each `<review-task-id>/<perspective>/pass-NN/` is write-once. If a pass already exists for the chosen `pass-NN`, the script refuses; allocate a new `pass-NN` under the same `<review-task-id>/<perspective>/`.
 
 ### 4. Author the pass `input.md`
 
-Open `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/input.md` — the file just seeded by step 3 — and overwrite its body with the actual review request.
+Open `<ProjectRoot>/log/review/<review-task-id>/<perspective>/pass-NN/input.md` — the file created by step 3 (an empty canvas under the standard `-NoSeed` invocation; the seeded template body otherwise) — and author its body as the actual review request.
 
 The file must contain these required H2 headings (exact text), each with non-empty body:
 

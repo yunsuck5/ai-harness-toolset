@@ -16,7 +16,16 @@ param(
     [string] $Purpose,
 
     [string] $ProjectRoot,
-    [string] $ToolRoot
+    [string] $ToolRoot,
+
+    # NoSeed: create the pass dir + an empty input.md WITHOUT seeding the full
+    # templates/review-input.md body. The operator authors input.md from scratch
+    # (the template body's single home is templates/review-input.md), removing the
+    # seed -> read -> overwrite friction. Default (switch absent) keeps the
+    # full-template seed unchanged (backward-compatible). All other prepare behavior
+    # (pass-dir issue, write-once refusal, path containment, next-pass numbering,
+    # PASS stdout lines) is identical in both modes.
+    [switch] $NoSeed
 )
 
 Set-StrictMode -Version Latest
@@ -89,17 +98,29 @@ if (Test-Path -LiteralPath $passDir -PathType Container) {
     exit 1
 }
 
-$templatePath = Join-Path -Path $tool -ChildPath 'templates/review-input.md'
-if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
-    Write-Host ('review-prepare: FAIL template not found at {0}. ToolRoot={1}.' -f $templatePath, $tool)
-    exit 1
-}
-
-$null = New-Item -ItemType Directory -Path $passDir -Force
-
-$template = Read-Utf8 -Path $templatePath
 $inputPath = Join-Path -Path $passDir -ChildPath 'input.md'
-Write-Utf8NoBom -Path $inputPath -Content $template
+
+if ($NoSeed) {
+    # No-seed mode: skip the template entirely and write an empty input.md for the
+    # operator to author from scratch. The template body's single home is
+    # templates/review-input.md; not re-seeding it each pass removes the
+    # seed -> read -> overwrite friction. review-input-verify still gates the
+    # authored input.md at review-run time, so an empty canvas is intentional.
+    $null = New-Item -ItemType Directory -Path $passDir -Force
+    Write-Utf8NoBom -Path $inputPath -Content ''
+}
+else {
+    $templatePath = Join-Path -Path $tool -ChildPath 'templates/review-input.md'
+    if (-not (Test-Path -LiteralPath $templatePath -PathType Leaf)) {
+        Write-Host ('review-prepare: FAIL template not found at {0}. ToolRoot={1}.' -f $templatePath, $tool)
+        exit 1
+    }
+
+    $null = New-Item -ItemType Directory -Path $passDir -Force
+
+    $template = Read-Utf8 -Path $templatePath
+    Write-Utf8NoBom -Path $inputPath -Content $template
+}
 
 $relPass = (Resolve-ProjectRelativePath -Path $passDir -ProjectRoot $project) -replace '\\', '/'
 $relInput = (Resolve-ProjectRelativePath -Path $inputPath -ProjectRoot $project) -replace '\\', '/'

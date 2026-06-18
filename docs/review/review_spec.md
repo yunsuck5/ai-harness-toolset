@@ -44,7 +44,7 @@
 
 | active surface | 소유 행동 |
 |---|---|
-| `scripts/review-prepare.ps1` | three-level pass 디렉터리 발급 + input seed + write-once 거부 + 다음 pass 번호 산정 |
+| `scripts/review-prepare.ps1` | three-level pass 디렉터리 발급 + input seed(기본; `-NoSeed` 시 빈 input 생성) + write-once 거부 + 다음 pass 번호 산정 |
 | `scripts/review-input-verify.ps1` | input.md 의 required H2·본문·placeholder·금지 문구의 기계 gate |
 | `scripts/review-run.ps1` | reviewer CLI 1회 실행 · reviewer-safe posture 강제 · model/effort/category 해소(분기의 구체 값 포함) · verdict shape 확인 · H1 run-fact emit · provenance append |
 | `scripts/review-verify.ps1` | input shape + (RequireResult) result 존재·verdict shape·4 disclosure H2 count 의 기계 gate |

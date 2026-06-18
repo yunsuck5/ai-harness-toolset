@@ -254,6 +254,34 @@ Describe 'review-prepare canonical layout' {
         # No task subtree created.
         Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId)) -PathType Container | Should -BeFalse
     }
+
+    It 'AC-PR11: -NoSeed creates the pass dir and an EMPTY input.md (not byte-equal to the template) while keeping the PASS/path stdout' {
+        $project = script:New-PrepareCaseRoot -CaseName 'pr11'
+        $taskId  = 'no-seed-task'
+
+        $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -ExtraArgs @('-NoSeed')
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'review-prepare: PASS'
+        $r.Output | Should -Match ('review-task-id: ' + [regex]::Escape($taskId))
+        $r.Output | Should -Match 'pass: pass-01'
+        $r.Output | Should -Match 'pass-dir: log/review/no-seed-task/local-correctness/pass-01'
+        $r.Output | Should -Match 'input: log/review/no-seed-task/local-correctness/pass-01/input.md'
+
+        $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
+        Test-Path -LiteralPath $passDir -PathType Container | Should -BeTrue
+
+        $inputPath = Join-Path $passDir 'input.md'
+        Test-Path -LiteralPath $inputPath -PathType Leaf | Should -BeTrue
+
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $body = [System.IO.File]::ReadAllText($inputPath, $enc)
+        # No-seed mode writes an empty canvas, not the full template body.
+        $body | Should -Be ''
+
+        $templatePath = Join-Path $script:RepoRoot 'templates/review-input.md'
+        $template = [System.IO.File]::ReadAllText($templatePath, $enc)
+        $body | Should -Not -Be $template
+    }
 }
 
 Describe 'review-prepare perspective (C1 three-level) layout' {
