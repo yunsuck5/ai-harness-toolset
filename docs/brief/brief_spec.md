@@ -76,4 +76,4 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 
 - lifecycle 문서: 없음 — batch B closeout 에서 design / plan / work packet 은 retire(삭제)되었고 기록은 git history 가 보존한다.
 - spec ↔ implementation: **live** — behavior 표면(scripts·template·skill·tests)과 문서 표면(routing·backlog·inbound pointer)이 이 spec 과 1:1 동기화되어 있다. 이후의 변경은 live-Spec 갱신(sync-required 전이) 규칙을 따른다.
-- capability maturity: BF Level 1/2 운영 중(primitive 는 target 에서 operable); Level 3 후보는 `brief_backlog.md`(BR-D-01 · BR-D-03, next ID: BR-D-04).
+- capability maturity: BF Level 1/2 운영 중(primitive 는 target 에서 operable); Level 3 후보 항목과 ID 발번(next ID)의 single home 은 `brief_backlog.md` 다(본 spec 은 pointer 로만 참조).

@@ -97,4 +97,4 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 
 - lifecycle 문서: 없음 — batch R closeout 에서 design / plan 은 retire(삭제)되었고 work packet 은 삭제되었다; 기록은 git history 가 보존한다.
 - spec ↔ implementation: **live** — behavior 표면(scripts·templates·skill·config·tests)과 문서 표면(routing·backlog·inbound pointer·배포 표면의 review-문서 self-containment)이 이 spec 과 1:1 동기화되어 있다. 이후의 변경은 live-Spec 갱신(sync-required 전이) 규칙을 따른다.
-- future work: `review_backlog.md`(RV-B-01/03/04/05 이주 + RV-B-09~12 신설 + RV-B-13 이관[retired skills 서브시스템 Batch 4]; next ID: RV-B-16)가 open 항목·수용된 잔여 위험·idea-only 항목을 보유한다.
+- future work: open 항목·수용된 잔여 위험·idea-only 항목과 ID 발번(next ID)의 single home 은 `review_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
