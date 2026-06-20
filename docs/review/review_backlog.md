@@ -1,6 +1,6 @@
 # review Backlog
 
-next ID: RV-B-16
+next ID: RV-B-17
 
 | ID | item | reopen / start condition |
 |---|---|---|
@@ -15,3 +15,4 @@ next ID: RV-B-16
 | RV-B-13 | (deferred 결정) review-polishing selective-capture vehicle 결정 — instruction vs skill (non-hook); "leave as caller-judgment instruction" 결론 가능. retired skills 서브시스템 plan(Batch 4; git history)에서 이관 | review-polishing 개선신호의 selective capture 필요가 구체화 + 사용자 결정 + 별도 scoped goal |
 | RV-B-14 | (deferred 결정) reviewer-execution-boundary / validation-oracle 개선 — reviewer(Codex)가 review 중 `Invoke-Pester` / `verify-ps1.ps1` 를 직접 실행해 validation 을 재현(현행 verdict 는 operator 가 제공한 validation 텍스트에 의존). **reconcile**: 이 row 는 `review_spec.md` Durable boundary 의 "deterministic validation runner 미도입" 경계를 뒤집지 않는다 — 도입 결정이 아니라 open candidate 일 뿐이다 | reviewer-exec 경계 재검토를 정당화하는 구체 증거(operator-validation 의존이 unsound verdict 를 낳은 사례) + 사용자 별도 결정 + 별도 scoped goal |
 | RV-B-15 | (milestone-tracking) adoption smoke test · actual reviewer workflow test · actual development workflow usage test 는 서로 분리된 milestone 이다(한 번에 닫히지 않는 별개 검증 단계) | 해당 milestone 중 하나를 실제 착수할 때 + 별도 scoped goal |
+| RV-B-16 | advisory preflight interface boundary — repo 밖 consultation / blind-advisory pilot 결과를 canonical review input/reporting 경계로 반영할지 판단(consultation/blind 의미·artifact·status 는 review 가 소유하지 않음) | canonical-linked 시너지 실측 + 사용자 결정 + 별도 scoped goal |
