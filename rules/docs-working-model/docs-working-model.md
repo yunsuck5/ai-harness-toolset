@@ -8,14 +8,14 @@ Applies to developing the `ai-harness-toolset` repository — the binding rules 
 
 - Any task that **places, moves, changes, or closes out** `docs/` content.
 - Any task that produces or revises a repo document through the **Design → Plan → Spec lifecycle** — authoring a Design / Plan / Spec, updating a live Spec, closing one out, or retiring an absorbed Design / Plan.
-- Any creation or disposal of a temporary work artifact (Work Packet) or a future-work queue entry.
+- Any creation or disposal of a temporary work artifact (Work Packet or `_incubation` document) or a future-work queue entry.
 
 ## Document artifact classes (five)
 
 Every repo document artifact belongs to exactly one class; mixing roles across classes is a defect:
 
 1. **Planning artifacts** — Design / Plan / Spec (lifecycle below). Only the Spec stays live after closeout.
-2. **Temporary work artifacts (Work Packet)** — round-scoped temporary work documents (see *Work Packet*). A **committed temporary document** carried by git until closeout; deleted at closeout (preservation = git history).
+2. **Temporary work artifacts** — **committed temporary documents** carried by git until closeout, then deleted (preservation = git history): the **Work Packet** (round-scoped; see *Work Packet*) and, for a pre-domain candidate, the **`_incubation` document** (candidate-lifecycle-scoped, not round-scoped; see *Incubation tier*).
 3. **Operator reports / closeout evidence** — execution results, review results, validation evidence, point-in-time states. Live under `<ProjectRoot>/log/**` (runtime area), never in planning-artifact bodies.
 4. **Active implementation surfaces** — scripts, skills, snippets, templates, config, tests, root instruction files, `rules/**`. The active surface owns behavior; a doc describes it (root *Final hard rule*).
 5. **Future-work queue** — per-domain `<domain>_backlog.md` (see *Future-work queue*).
@@ -76,6 +76,24 @@ A Spec carries (the spec template fixes these as its eight sections): **Header**
 - **Lifecycle**: created only when needed (a Plan may declare its necessity, absorption target, and retire condition); at closeout its current-bearing content is absorbed into the Spec / the correct owner surface / the closeout report; then the file is **deleted** — preservation is git history, like a Design/Plan retire.
 - Boundary aid (when the Spec/Work-Packet line wavers): "is it still true after this round ends?" — true → Spec; false → Work Packet.
 
+## Incubation tier (pre-domain candidate stage)
+
+A **candidate** — a capability under evaluation for whether it should become a domain — develops in a governed pre-Design stage: in-repo but non-authoritative, neither an out-of-repo sprawl nor a premature domain.
+
+- **Admission.** A candidate enters incubation only with: a specific problem an existing domain/rule cannot cover, a candidate shape (expected single-home, not a bucket, the success-absorption artifact and the failure-deletion target named), an owner, a review-date, and discard criteria. Missing any → it stays out-of-repo scratch.
+- **Incubation document.** One committed-temporary `docs/<candidate>/<candidate>_incubation.md` per candidate (candidate-local; a class-2 lifecycle role, deleted at promote or discard). It is the candidate's **single planning home**: the incubation tier produces **no separate `_design` / `_plan` / `_spec` file** — canonical role filenames (and authority) begin only at promotion. Header carries `non-authoritative` / `not referenced by canonical rules/indexes` / `owner` / `review-date` / `open questions`. The `_incubation` role joins the *Stable filename rule* as a committed-temporary candidate lifecycle role, not a canonical domain identity.
+- **Candidate lifecycle.** seed-install → brainstorm → formalize (the incubation document matures to canonical *form*, still **non-authoritative**) → dev/test. At each **review-date** the candidate is decided: **promote** (it becomes a domain and enters the *Design / Plan / Spec lifecycle* with canonical filenames), **discard** (a closeout — delete), or **continue** (remain in incubation with a **new review-date** — no candidate continues without a live review-date; a review-date that passes undecided leaves the candidate non-conformant, stale until decided). On **promote**, `docs/<candidate>/` becomes the new domain's home (renamed to the final domain name if it differs); the incubation document's current-bearing content is absorbed (E4) into the new domain's lifecycle artifacts, then the `_incubation.md` is deleted. On **discard** the document is deleted with no absorption into any canonical surface; the discard rationale (the negative evidence that ended it) is stated in the discard commit message (preserved by git history), so a later re-proposal can find why it was rejected. The incubation document follows the lifecycle form and *Stage rewind* but remains non-authoritative.
+- **Form early, authority late (the core invariant).** A candidate artifact may use canonical *form* but holds no canonical *authority* — a candidate's formalized content is never interpreted as a §*Spec identity* canonical Spec. Header text alone does not hold this; E1–E5 below bind as **rule requirements now** (conformance is manual until their checks exist — the checks are a separate implementation change):
+  - **E1** — domain discovery is by promoted canonical artifact, never by `docs/<candidate>/` existence (a folder holding only `_incubation.md` is a non-domain candidate container; `docs/<candidate>/` is not an *End-state placement* domain home and not a discovery target before promotion). No new central registry — at most thin candidate-tracking metadata (name / owner / review-date) on an existing index/manifest, insufficient by itself to locate or use the candidate as a canonical input or discovery index (candidate tracking, not the durable reference E2 forbids).
+  - **E2** — canonical rules/indexes must not durably reference a candidate `_incubation` document (its formalized content included); a canonical→candidate reference is only an **absorbed-conclusion summary** (satisfying E4, re-reviewable without the candidate path/link).
+  - **E3** — before promotion a candidate artifact is not a default or input of any canonical surface (rules, indexes, templates, skills, reviewer checklists, Work Packet generator/input); no canonical-looking sibling (`_design` / `_plan` / `_spec`) is created during incubation.
+  - **E4** — absorption into a tracked file carries: adopted conclusion / rejected alternatives / the evidence type that changed the judgment / scope / failure (discard) criteria / known negative evidence — so "why this survived" is re-reviewable without raw links.
+  - **E5** — this rule's own incubation-tier addition is a one-time bootstrap (incubation cannot incubate itself), not a precedent for later candidates.
+- **Data separation (seed / log / tracked).** A candidate's seed is out-of-repo advisory input, consulted via Brief/conversation, never a durable pointer (*Durable-pointer prohibition*); measurement accumulates under `log/**` (gitignored, never git-tracked); a tracked file carries only self-contained absorbed decisions. Candidate planning while incubating is committed-temporary, never a permanent shadow of any active surface.
+- **Incubation vs Work Packet.** Work Packet = the domain already exists (round work inside it); incubation = the domain does not yet exist (deciding whether it should).
+- **Absorption is a commit-boundary crossing.** Moving seed/scratch content into a tracked file is subject to the same content scrutiny as any other committed change — the absorption step is not a side channel that bypasses the repo's commit gate.
+- **No round cap.** Incubation has no fixed cycle/round limit; it ends on convergence or on the operator/user judging the candidate ready or dead — never on a count.
+
 ## Future-work queue (`<domain>_backlog.md`)
 
 - One file per domain. Each item = **one line + a reopen/start condition**. No narrative, no incident logs, no closeout reports.
@@ -125,7 +143,7 @@ A Design/Plan/Spec lifecycle closeout is not done until **all** hold:
 
 ## Stable filename rule
 
-- Domain documents use **domain-prefixed role filenames**: `<domain>_design.md` / `<domain>_plan.md` / `<domain>_spec.md` / `<domain>_backlog.md` / `<domain>_work_packet.md` (the last is the class-2 temporary work document — a lifecycle role filename existing only during a change, deleted at closeout; not an auxiliary role doc). Re-creating after deletion reuses the same role filename. Forbidden: `<topic>_*.md` topic-named files, filename-evading subfolder splitting (e.g. `docs/<domain>/work/`), per-feature design/plan/spec proliferation inside one domain.
+- Domain documents use **domain-prefixed role filenames**: `<domain>_design.md` / `<domain>_plan.md` / `<domain>_spec.md` / `<domain>_backlog.md` / `<domain>_work_packet.md` (the last is the class-2 temporary work document — a lifecycle role filename existing only during a change, deleted at closeout; not an auxiliary role doc). A pre-domain candidate additionally uses `<candidate>_incubation.md` (*Incubation tier* — likewise a class-2 committed-temporary lifecycle role, deleted at closeout). Re-creating after deletion reuses the same role filename. Forbidden: `<topic>_*.md` topic-named files, filename-evading subfolder splitting (e.g. `docs/<domain>/work/`), per-feature design/plan/spec proliferation inside one domain.
 - Auxiliary role docs (`_policy` / `_contract` / `_state` / `_status` / `_guide`) are **deferred** — not created by default; introduced only by an explicit Design/Plan decision.
 - **Package-local form vs domain form.** This package's `templates/` / `checklists/` files carry the package prefix `docs-working-model_` and a `_template` / `_checklist` role suffix: they are **forms that produce another domain's** documents, not a domain's own artifacts.
 
