@@ -13,7 +13,6 @@ install-update 도메인의 future-work queue — open / deferred / idea-only ro
 | IU-B-04 | Install validation report evidence hygiene — PASS verdict 와 anomalous wrapper signal 의 분리 | scoped goal 승인 시 착수 |
 | IU-B-05 | Snapshot auxiliary evidence exactness wording polish | scoped goal 승인 시 착수 |
 | IU-B-06 | Long-lived docs commit hash hygiene(cross-cutting — literal hash 를 장수명 문서에서 배제) | scoped goal 승인 시 착수 |
-| IU-B-13 | `snippets/rules/` concrete-path audit(concrete-path value vs normative boundary; glossary pending 의 close 지점) | 사용자 명시 지시로 착수; docs end-state project-level batch(P) 시작 전 재확인 |
 
 ## Deferred rows (accepted residual risks under LTS — reopen 조건 보존)
 
