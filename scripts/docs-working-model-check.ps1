@@ -33,11 +33,19 @@ $rulesDir = Join-Path -Path $project -ChildPath 'rules'
 $docsReadme = Join-Path -Path $docsDir -ChildPath 'README.md'
 $rulesReadme = Join-Path -Path $rulesDir -ChildPath 'README.md'
 
-# Discover candidate incubation folders: any docs/<candidate>/ directory that
-# directly contains at least one *_incubation.md file.
+# Discover candidate incubation folders. Two candidate homes (Incubation tier is
+# pre-promotion for a domain OR a rule candidate):
+#   - domain candidate: docs/<candidate>/ containing a *_incubation.md
+#   - rule candidate:   rule_docs/<candidate>/ containing a *_incubation.md
+# Each folder records its base tree (docs / rule_docs) so the E1 README-reference
+# pattern and the E1/E3 messages target the correct tree.
 $incubationFolders = New-Object System.Collections.Generic.List[psobject]
-if (Test-Path -LiteralPath $docsDir -PathType Container) {
-    $candidateDirs = @(Get-ChildItem -LiteralPath $docsDir -Directory -ErrorAction SilentlyContinue)
+$ruleDocsDir = Join-Path -Path $project -ChildPath 'rule_docs'
+foreach ($base in @(
+        [pscustomobject]@{ Dir = $docsDir;    Rel = 'docs' },
+        [pscustomobject]@{ Dir = $ruleDocsDir; Rel = 'rule_docs' })) {
+    if (-not (Test-Path -LiteralPath $base.Dir -PathType Container)) { continue }
+    $candidateDirs = @(Get-ChildItem -LiteralPath $base.Dir -Directory -ErrorAction SilentlyContinue)
     foreach ($cand in $candidateDirs) {
         $incFiles = @(Get-ChildItem -LiteralPath $cand.FullName -Filter '*_incubation.md' -File -ErrorAction SilentlyContinue)
         if ($incFiles.Count -gt 0) {
@@ -47,7 +55,31 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
                 FullName       = $cand.FullName
                 IncubationFiles = $incFiles
                 HasSpec        = $hasSpec
+                BaseRel        = $base.Rel
             }) | Out-Null
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# rule_docs purity (mechanical, hard FAIL): rule_docs/ is a PURE rule-candidate
+# workspace. Every direct child must be a well-formed candidate folder
+# rule_docs/<x>/ that contains <x>_incubation.md; no top-level files and no
+# non-candidate folders. (docs/ is intentionally looser -- it also holds live
+# domain Specs + docs/README.md -- so this purity binds only rule_docs/.)
+# Basis: docs-working-model rule, Incubation tier > Placement consistency + rule_docs purity.
+# ---------------------------------------------------------------------------
+if (Test-Path -LiteralPath $ruleDocsDir -PathType Container) {
+    foreach ($child in @(Get-ChildItem -LiteralPath $ruleDocsDir -Force -ErrorAction SilentlyContinue)) {
+        $rel = Resolve-ProjectRelativePath -Path $child.FullName -ProjectRoot $project
+        if ($child.PSIsContainer) {
+            $expected = Join-Path -Path $child.FullName -ChildPath ($child.Name + '_incubation.md')
+            if (-not (Test-Path -LiteralPath $expected -PathType Leaf)) {
+                $violations.Add(('RULE_DOCS-PURITY FAIL: rule_docs child folder is not a well-formed rule candidate: {0} (rule_docs/<x>/ must contain <x>_incubation.md; rule_docs is a pure rule-candidate workspace, not a general bucket)' -f $rel)) | Out-Null
+            }
+        }
+        else {
+            $violations.Add(('RULE_DOCS-PURITY FAIL: loose file directly under rule_docs/: {0} (rule_docs holds only rule-candidate folders rule_docs/<x>/<x>_incubation.md; no top-level files and no orientation README)' -f $rel)) | Out-Null
         }
     }
 }
@@ -81,7 +113,7 @@ foreach ($folder in $incubationFolders) {
         $siblings = @(Get-ChildItem -LiteralPath $folder.FullName -Filter $siblingSuffix -File -ErrorAction SilentlyContinue)
         foreach ($sib in $siblings) {
             $rel = Resolve-ProjectRelativePath -Path $sib.FullName -ProjectRoot $project
-            $violations.Add(('E3 FAIL: canonical-looking sibling created during incubation: {0} (folder docs/{1}/ holds an _incubation document; no _design/_plan/_spec sibling is allowed before promotion)' -f $rel, $folder.Name)) | Out-Null
+            $violations.Add(('E3 FAIL: canonical-looking sibling created during incubation: {0} (folder {2}/{1}/ holds an _incubation document; no _design/_plan/_spec sibling is allowed before promotion)' -f $rel, $folder.Name, $folder.BaseRel)) | Out-Null
         }
     }
 }
@@ -144,24 +176,26 @@ $e1ReadmeTargets = @($docsReadme, $rulesReadme)
 foreach ($folder in $incubationFolders) {
     if ($folder.HasSpec) { continue }   # has a promoted canonical spec -> a domain home, not an incubation-only candidate container
     $name = [regex]::Escape($folder.Name)
-    # The reference must denote the candidate's OWN docs/<name>/ folder. Trailing slash is
-    # OPTIONAL (a directory link is commonly written without it, e.g. [x](scopeguard)). To avoid
-    # flagging a bare plain-text name mention (allowed thin metadata), the slash-less relative
-    # form is honored ONLY in markdown link-target position "](...".
-    #   - docs-rooted (valid from either README): (./|../)*docs/<name>  (sub-path / slash / end OK)
-    #   - docs-relative link (valid ONLY from docs/README.md): "](" (./)?<name>
+    $baseEsc = [regex]::Escape($folder.BaseRel)
+    # The reference must denote the candidate's OWN <base>/<name>/ folder (base = docs or
+    # rule_docs). Trailing slash is OPTIONAL (a directory link is commonly written without
+    # it, e.g. [x](scopeguard)). To avoid flagging a bare plain-text name mention (allowed thin
+    # metadata), the slash-less relative form is honored ONLY in markdown link-target position
+    # "](...". and ONLY for a docs-based candidate.
+    #   - base-rooted (valid from either README): (./|../)*<base>/<name>  (sub-path / slash / end OK)
+    #   - docs-relative link (valid ONLY from docs/README.md, docs candidates only): "](" (./)?<name>
     # Trailing (?![A-Za-z0-9_-]) prevents matching <name> as a prefix of a longer folder name.
-    $docsRootedPattern = '(?<![A-Za-z0-9_./\\-])(?:\.{1,2}[/\\])*docs[/\\]' + $name + '(?![A-Za-z0-9_-])'
+    $baseRootedPattern = '(?<![A-Za-z0-9_./\\-])(?:\.{1,2}[/\\])*' + $baseEsc + '[/\\]' + $name + '(?![A-Za-z0-9_-])'
     $docsRelativeLinkPattern = '\]\(\s*<?\s*(?:\.[/\\])?' + $name + '(?![A-Za-z0-9_-])'
     foreach ($readme in $e1ReadmeTargets) {
         if (-not (Test-Path -LiteralPath $readme -PathType Leaf)) { continue }
         $rtext = Read-Utf8 -Path $readme
         $isDocsReadme = ($readme -eq $docsReadme)
-        $hit = [regex]::IsMatch($rtext, $docsRootedPattern)
-        if ((-not $hit) -and $isDocsReadme) { $hit = [regex]::IsMatch($rtext, $docsRelativeLinkPattern) }
+        $hit = [regex]::IsMatch($rtext, $baseRootedPattern)
+        if ((-not $hit) -and $isDocsReadme -and ($folder.BaseRel -eq 'docs')) { $hit = [regex]::IsMatch($rtext, $docsRelativeLinkPattern) }
         if ($hit) {
             $rel = Resolve-ProjectRelativePath -Path $readme -ProjectRoot $project
-            $violations.Add(('E1 FAIL: incubation-only candidate folder is referenced as a discovery/domain target: {0} links/points at docs/{1}/ (a folder holding only _incubation.md is a non-domain candidate container; thin name/owner/review-date metadata is allowed, a domain-home link/path is not)' -f $rel, $folder.Name)) | Out-Null
+            $violations.Add(('E1 FAIL: incubation-only candidate folder is referenced as a discovery/domain target: {0} links/points at {2}/{1}/ (a folder holding only _incubation.md is a non-domain/non-rule candidate container; thin name/owner/review-date metadata is allowed, a discovery link/path is not)' -f $rel, $folder.Name, $folder.BaseRel)) | Out-Null
         }
     }
 }
@@ -170,7 +204,7 @@ foreach ($folder in $incubationFolders) {
 # Report
 # ---------------------------------------------------------------------------
 Write-Line ('scanned ProjectRoot {0}; found {1} incubation candidate folder(s)' -f $project, $incubationFolders.Count)
-Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: E1 = docs/README.md + rules/README.md; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + docs/README.md; E3 = _design/_plan/_spec siblings of docs/<candidate>/ incubation folders. E4/E5 are advisory only (not enforced). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ and skills, generator inputs, docs/** other than docs/README.md) is NOT mechanically scanned (manual conformance). A PASS attests only to the scanned subset, not full incubation-tier conformance.'
+Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); rule_docs purity = every direct child of rule_docs/ is a well-formed rule-candidate folder (rule_docs/<x>/ contains <x>_incubation.md) with no top-level files. E4/E5 are advisory only (not enforced). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ and skills, generator inputs, docs/** other than docs/README.md) is NOT mechanically scanned (manual conformance). A PASS attests only to the scanned subset, not full incubation-tier conformance.'
 
 if ($violations.Count -gt 0) {
     foreach ($v in $violations) {
@@ -187,9 +221,9 @@ Write-Line 'E4 INFO: absorption-content completeness (adopted conclusion / rejec
 Write-Line 'E5 INFO: this rule''s own incubation-tier addition is a one-time bootstrap (incubation cannot incubate itself), not mechanically checked and not a precedent.'
 
 if ($violations.Count -gt 0) {
-    Write-Line ('FAIL ({0} E1/E2/E3 violation(s) in the mechanically-scanned subset)' -f $violations.Count)
+    Write-Line ('FAIL ({0} E1/E2/E3/rule_docs-purity violation(s) in the mechanically-scanned subset)' -f $violations.Count)
     exit 1
 }
 
-Write-Line 'PASS (no E1/E2/E3 violations in the mechanically-scanned subset)'
+Write-Line 'PASS (no E1/E2/E3/rule_docs-purity violations in the mechanically-scanned subset)'
 exit 0

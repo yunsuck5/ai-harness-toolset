@@ -1,0 +1,70 @@
+# subagent-work-orchestration Incubation (rule candidate — non-authoritative)
+
+## Header
+
+**이 문서는 무엇인가.** `subagent-work-orchestration` **rule candidate** 의 단일·자족 planning home 이다 — docs-working-model 의 *Incubation tier*(pre-promotion candidate stage)에 있는 **rule candidate** 가, branching-agnostic 운영 규율로서 글로벌 배포 rule 로 승격할지 dogfood 로 검증하는 동안 쓰는 유일한 committed-temporary 문서다. **이 문서 하나만 읽고 작업을 시작할 수 있도록 자족적으로 적는다**(별도 seed 문서 불요).
+
+**무엇을 해결하는가(problem).** 도메인/서페이스가 다른 독립 작업을 메인 세션 한 곳에서 직렬 처리하면 (a) 컨텍스트 오염·용량, (b) 작업속도(리뷰가 순수 작업보다 무거움)가 필연적 병목이 된다. 한 선행 실험(서브에이전트 오케스트레이션 측정 기록)이 서브에이전트가 작업+codex 리뷰를 prepare→run→fix→pass 까지 자율 완주하고, perspective별 병렬 리뷰가 간섭·재시도 0, 병렬 단축 37~46%, 컨텍스트 오프로드됨을 실증했다 — 단 **n=1**(단일 세션·머신·reviewer, 통제 벤치마크 아님). 그 실측이 이 candidate 의 motivating evidence 이며, 원 실험 lineage 는 git history / Brief 로 추적한다(committed doc 은 out-of-repo 경로를 durable pointer 로 두지 않는다). 이 candidate 는 그 실험을 **"메인=오케스트레이터/감독, 서브=실행자"** 기본 운영 규율로 정식화할지 검증한다.
+
+**non-authoritative.** canonical authority 없음(form early / authority late). canonical rules/indexes 는 이 문서를 durable reference 하지 않으며(E2), 이 문서를 읽어야만 동작하는 canonical 표면은 없다(E1/E3). 본문 결정은 후보 수준이고 정규 authority 는 promote 시점에야 생긴다.
+
+**owner / review-date / discard.**
+- **owner** = 사용자.
+- **review-date** = orchestration pilot **3회** 누적 후 첫 판정(promote / discard / continue; count=트리거지 자동종료 아님; continue 시 **새 review-date 필수**).
+- **discard 기준** = §Measurement 의 실패 기준이 반복 관측될 때(메인이 실제 감독 못 하고 요약만 신뢰 / join 시간이 절감분 잠식 / 단일세션 대비 wall-clock 미감소 / out-of-scope·권한경계 위반 / 작은 작업에도 의례적 overhead).
+
+**promote 시 무엇이 되는가.** promote 되면 이 문서의 current-bearing 내용이 E4 로 흡수되어 **글로벌 배포 rule `snippets/rules/subagent-work-orchestration.md`**(branching-agnostic; Design → Plan → rule, **별도 Spec 없음** — rule 은 자기 자신이 spec-of-record)로 들어간 뒤, 이 `_incubation.md`(및 `rule_docs/subagent-work-orchestration/` 폴더)는 삭제된다. **배포 rule 은 universal core 만** 담는다 — branching / Regime-2 / 재귀는 배포 제외(§Regime 2).
+
+**discard 시.** 이 문서가 흡수 없이 삭제되고, 폐기 사유(끝낸 negative evidence)는 discard commit message 에 남겨 git history 가 보존한다.
+
+## 목표 상태 (Regime-1 운영 모델)
+
+메인 오퍼레이터 세션 = **오케스트레이터/감독관**. 독립·무거운 작업 단위는 서브에이전트(=실행자)에 위임하고, 각 실행자는 작업 + 가용한 독립 리뷰(이 프로젝트에선 codex review skill 또는 blind)로 **정합성을 갖춰** 반환한다. 메인은 위임 전 기대값 확정 + 의존/분할 판정 + 통합레벨 calibrated 검증 + 사용자 대화 정렬을 한다.
+
+핵심 invariants:
+- **orchestration-assessment-first (default)** — "항상 서브" 가 아니라, *기본적으로 먼저 분해·병렬가능성을 평가*하고 단위가 독립+무거울 때 서브를 띄운다. 사소·결합·대화성 턴은 메인 직접.
+- **scoped-delegation** — "서브 사용 허가" 가 아니라 *특정 범위 내 위임 허가*: 서브는 커밋/푸시/글로벌/메모리 변경 금지·지정 파일만; out-of-scope 발견은 *수정 말고 보고*; 대화형 요구사항 확인이 필요하면 fork 금지.
+- **calibrated trust, not blind** — 서브의 정합성은 *독립 리뷰어*(서브 자신이 아니라 codex 등)가 만든다 → 메인은 *재리뷰(낭비)가 아니라* ① 리뷰가 실제 통과했는지(verdict 아티팩트 확인) ② 서브가 구조적으로 못 보는 cross-unit/통합 정합성을 판정.
+- **read-capacity 천장** — 병렬 상한 = fork 능력이 아니라 메인이 한 턴에 *완전히 읽고 교차검증* 가능한 결과 수(보수 cap **2**, 정당화 시 3). 읽을 수 있는 것보다 많이 fork = 감독 착각.
+- **JOIN / 의미 독립성** — 함께 리뷰돼야 할(같은 invariant·API·schema·flow·테스트) multi-file 은 쪼개면 거짓 no → *coherence 단위*로 묶는다. **파일 독립 ≠ 의미 독립.** 쪼개기 전에 *join 을 먼저 상상*하라(join 검증이 애매하면 너무 잘게 쪼갰거나 의존을 오판한 것).
+
+## Operating model (실행 절차 — self-locating)
+
+**Step 0 (메인의 환원불가 첫 일).** 위임 *전에* "내 관리 용량 + 이 일이 어떻게 나뉘는가" 를 먼저 계획한다. 소수-독립 → 세션 내 서브 병렬(Regime 1) / 대규모-독립 → Regime 2(보류) / 결합 → 단일. 비자명 분할은 사용자 대화로 정렬(메인의 distinctive 역할).
+
+절차: 1) 목표·non-goal 고정 → 2) touched surface 후보 나열 → 3) shared invariant/API/schema/config 식별 → 4) coherent review unit 결정(JOIN) → 5) 의존 DAG → 6) 병렬 wave 구성(cap·read-capacity) → 7) wave별 join checklist 선작성 → 8) 서브 발급 → 9) 결과 artifact 직접 확인 → 10) 통합·최종 점검 → 보고/승인.
+
+**양면 self-locating 프레임 (role-partition).** 모든 참여자가 같은 프레임에서 자기 위치를 읽는다:
+- **orchestrator stance**(메인) — 분해·의존/JOIN 판정·감독·통합검증·사용자 정렬. operator role 의 *stance* 이지 별도 top-level role 아님.
+- **executor stance**(서브) — 지정 작업 + 독립 리뷰로 정합성 → *고정 필드*로 반환(변경대상 / 근거 / 검증 / 남은위험 / 건드린파일 / 의존성). 감독자 아님(커밋 권한 없음), out-of-scope 보고.
+- **서브 프롬프트 템플릿**: global objective / local task / non-goals / allowed files / stop conditions / expected output.
+- **재작업**: in-frame 교정 = 원래 서브 **resume**(컨텍스트 보존); re-frame = **fresh** 서브(anchoring 오염 회피).
+- **로딩(role-partition)**: 작은 always-visible self-location 프레임(나는 orchestrator냐 executor냐 + 경계·산출) + 역할별 depth(orchestrator=full playbook / executor=경계+출력계약) — 서브 컨텍스트는 얇게(오프로드 보존).
+
+**최고위험 = 의존/JOIN 오분류**(의존을 독립으로 → 병렬 서브가 부분상태 보고 → 거짓 pass/충돌). 메인 위임 불가. **서브 pass 불신** — 서브 내부 리뷰 pass 는 "그 서브 컨텍스트 안의 self-contained 결론" 일 뿐. **핵심 위험 한 줄: 메인이 *실제 감독했다는 착각*.**
+
+## Regime 2 / 재귀 (이 프로젝트 한정 개념 — 배포 제외)
+
+> 이 절은 **글로벌 배포 rule 로 가지 않는다.** 브랜칭 전략은 프로젝트/조직 고유라 배포 layer 가 가정해선 안 됨. 개념 예시로만 둔다.
+
+- **Regime 2** — 대규모-독립 작업을 멀티 clone repo / 브랜치 / 완전 독립 세션으로 나눠 진행하고, 상위 머지 세션이 닫힌 브랜치를 독립 평가·머지. *머지 세션의 집중점(닫힌 단위 판정·머지) ≠ 작업 세션의 집중점(실행)* — Regime-1 감독/실행 분업의 한 레벨 위 재귀(fractal).
+- **enabling 조건** — (a) 각 세션이 다른 root 폴더(worktree / remote isolation; 이건 *mechanism* 이지 branching strategy 가 아님) (b) 서브에이전트 중첩 깊이(harness capability — 검증 필요).
+- **게이트(보류 사유)** — AI 머지 신뢰 미확립 + 사용자 분할-명확성 선행. **Regime-1 감독 품질이 곧 머지 세션 신뢰의 토대** → Regime-1 견고화가 Regime-2 게이트 해소 경로.
+- 재귀(계층0 전략수립 → 계층1 Regime-1 서브 → 계층2 …)도 같은 *배포-제외* 바구니.
+
+## Vocabulary (domain-local 정의 — 후보)
+
+> 용어의 **full domain-local 정의는 incubation 동안 여기** 있고, 최종 의미의 single home 은 **promote 시** `rules/terminology-glossary.md` 가 된다. anchoring 시점에 meaning-bearing 용어는 glossary 에 **`pending` reservation**(owner / facet / close / not-this / promotion-target)으로 등록한다 — full 정의는 여기, glossary 는 예약(meaning-home 이전 아님). 등록 대상 = `subagent-work-orchestration` / `orchestrator stance` / `executor stance`. `Regime 1/2`·계층·calibrated supervision 등은 **seed-local**(과등록 금지).
+
+- **subagent-work-orchestration** — 위 §목표 상태 / Operating model 의 운영 규율(메인=오케스트레이터/감독, 서브=실행자; Regime-1, branching-agnostic). `architecture` / `policy` broad bucket 아님.
+- **orchestrator stance** — operator 세션이 분해·의존판정·감독·통합검증·사용자 정렬을 수행하는 stance. top-level role(operator/reviewer/supervisor) 아님.
+- **executor stance** — 서브에이전트가 지정 작업 + 독립 리뷰로 정합성을 갖춰 고정필드로 반환하는 stance. 감독자/커밋 권한 없음.
+
+## Measurement (pilot — 임시 scaffolding, ship 안 함)
+
+정성 누적(gitignored `log/**` 등 임시 scaffolding, 정규 기능 비포함): fork 수 / join 시간 / conflict 수 / **메인이 재검증에서 잡은 결함 수** / 사용자 재작업 요청 수 / 단일세션 대비 총 wall-clock. **graduate gate = 병렬 성공 *횟수* 가 아니라 join 품질 + 실패 회수 능력이 측정된 뒤.** measurement 는 정규 기능 비포함(graduation 시 폐기).
+
+## Open questions
+- 배포 rule 의 universal core ↔ 프로젝트-특정(codex review-to-pass 바인딩) 분리 경계의 최종 형태.
+- role-partition 로딩(작은 always-visible self-location 프레임 + 역할별 depth)의 물리적 home(부트스트랩 확장 vs 기존 표면).
+- pre-impl 필수 relay 의 scope(substantial only) 정식화 여부.

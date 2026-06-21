@@ -43,6 +43,8 @@ The placement criterion is **how a document is read**, not how many topics it to
 
 Briefly: an always-on-for-every-task rule belongs on an always-on surface outside `docs/`; otherwise a doc goes in the single layer (§5) matching its access pattern, partitioned to avoid pulling unrelated scope and kept consolidated to avoid a dense reference chain.
 
+A **rule candidate** (incubating toward a promoted `rules/` or `snippets/rules/` rule file) does **not** go under `docs/` — it incubates in the sibling top-level **`rule_docs/<candidate>/<candidate>_incubation.md`** tree (a pure rule-candidate workspace, no orientation README of its own). Placement, purity, and lifecycle are owned by `rules/docs-working-model/docs-working-model.md` (*Incubation tier* — Placement consistency + rule_docs purity); this note is the orientation pointer only.
+
 → Operative rule (binding placement + transition): `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*).
 
 ## 7. How AI/operator should navigate docs (question → read-first routing)

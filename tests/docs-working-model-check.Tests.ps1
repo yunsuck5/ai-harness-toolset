@@ -238,7 +238,7 @@ Describe 'docs-working-model-check advisories' {
         $result.Output | Should -Match 'all \.md under rules/'
         $result.Output | Should -Match 'package-local templates/ or checklists/ under a rule ARE included'
         $result.Output | Should -Match 'NOT mechanically scanned'
-        $result.Output | Should -Match 'PASS \(no E1/E2/E3 violations in the mechanically-scanned subset\)'
+        $result.Output | Should -Match 'PASS \(no E1/E2/E3/rule_docs-purity violations in the mechanically-scanned subset\)'
     }
 
     It 'AC-DWM-ADVISORY-2: E4/E5 advisories do not change a failing exit code' {
@@ -250,5 +250,119 @@ Describe 'docs-working-model-check advisories' {
         $result.ExitCode | Should -Be 1 -Because $result.Output
         $result.Output | Should -Match 'E4 INFO'
         $result.Output | Should -Match 'E5 INFO'
+    }
+}
+
+Describe 'docs-working-model-check rule_docs (rule candidates)' {
+    It 'AC-DWM-RULE-PASS-1: a rule_docs/<candidate>/ with only _incubation.md exits 0' {
+        $project = script:New-CaseRoot -CaseName 'rule-pass'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n`nnon-authoritative; owner: x; review-date: 2026-07-01.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Match 'found 1 incubation candidate folder'
+    }
+
+    It 'AC-DWM-RULE-E3-1: a _spec.md sibling in a rule_docs candidate fails, message names rule_docs/' {
+        $project = script:New-CaseRoot -CaseName 'rule-e3-spec'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_spec.md') -Content "# premature spec`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'E3 FAIL'
+        $result.Output | Should -Match 'rule_docs/swo/'
+    }
+
+    It 'AC-DWM-RULE-E2-1: a rules file durably linking a rule_docs _incubation.md fails' {
+        $project = script:New-CaseRoot -CaseName 'rule-e2-link'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# some rule`n`nSee [the candidate](../../rule_docs/swo/swo_incubation.md) for detail.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'E2 FAIL'
+        $result.Output | Should -Match 'swo_incubation.md'
+    }
+
+    It 'AC-DWM-RULE-E1-1: rules/README linking a rule_docs candidate folder as a discovery target fails' {
+        $project = script:New-CaseRoot -CaseName 'rule-e1-readme'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/README.md') -Content "# rules index`n`nSee [swo](../rule_docs/swo/) candidate.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'E1 FAIL'
+        $result.Output | Should -Match 'rule_docs/swo/'
+    }
+
+    It 'AC-DWM-RULE-E1-2: a slash-less docs-relative link [x](swo) does NOT fire for a rule candidate' {
+        $project = script:New-CaseRoot -CaseName 'rule-e1-noslash-docsrel'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
+        # The docs-relative-link slash-less form is docs-candidates-only; it must NOT match a
+        # rule candidate whose home is rule_docs/, not docs/.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/README.md') -Content "# docs orientation`n`nUnrelated: [swo](swo) is not a docs domain here.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'E1 FAIL'
+    }
+
+    It 'AC-DWM-RULE-MIX-1: a docs candidate and a rule candidate together are both discovered and pass clean' {
+        $project = script:New-CaseRoot -CaseName 'rule-mix'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'found 2 incubation candidate folder'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+}
+
+Describe 'docs-working-model-check rule_docs purity' {
+    It 'AC-DWM-PURITY-1: a loose file directly under rule_docs/ fails' {
+        $project = script:New-CaseRoot -CaseName 'purity-loose-file'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/notes.md') -Content "# stray top-level file`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'RULE_DOCS-PURITY FAIL'
+        $result.Output | Should -Match 'loose file directly under rule_docs/'
+        $result.Output | Should -Match 'notes\.md'
+    }
+
+    It 'AC-DWM-PURITY-2: a rule_docs child folder without a matching _incubation.md fails' {
+        $project = script:New-CaseRoot -CaseName 'purity-noncandidate-folder'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/random/draft.md') -Content "# not a candidate`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'RULE_DOCS-PURITY FAIL'
+        $result.Output | Should -Match 'not a well-formed rule candidate'
+        $result.Output | Should -Match 'random'
+    }
+
+    It 'AC-DWM-PURITY-3: a folder whose _incubation.md name mismatches the folder fails purity' {
+        $project = script:New-CaseRoot -CaseName 'purity-name-mismatch'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/mismatchdir/other_incubation.md') -Content "# mismatched name`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'RULE_DOCS-PURITY FAIL'
+        $result.Output | Should -Match 'mismatchdir'
+    }
+
+    It 'AC-DWM-PURITY-4: a well-formed rule_docs/<x>/<x>_incubation.md has no purity violation' {
+        $project = script:New-CaseRoot -CaseName 'purity-clean'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'RULE_DOCS-PURITY FAIL'
     }
 }
