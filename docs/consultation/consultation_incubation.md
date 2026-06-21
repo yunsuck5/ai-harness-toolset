@@ -2,7 +2,7 @@
 
 ## Header
 
-**이 문서는 무엇인가.** `consultation` **candidate** 의 단일 planning home 이다 — docs-working-model 의 *Incubation tier*(pre-domain candidate stage)에 있는 capability 가, domain 으로 승격할지 평가받는 동안 사용하는 유일한 committed-temporary 문서다. 이 candidate 는 read-only advisory consultation 을 정규 domain 으로 둘 가치가 있는지 dogfood 로 검증한다.
+**이 문서는 무엇인가.** `consultation` **candidate** 의 단일 planning home 이다 — docs-working-model 의 *Incubation tier*(pre-promotion candidate stage)에 있는 domain candidate 가, domain 으로 승격할지 평가받는 동안 사용하는 유일한 committed-temporary 문서다. 이 candidate 는 read-only advisory consultation 을 정규 domain 으로 둘 가치가 있는지 dogfood 로 검증한다.
 
 **non-authoritative.** 이 문서는 **canonical authority 가 없다** — canonical *form* 을 쓰더라도 §*Spec identity* 의 canonical Spec 으로 해석되지 않는다. canonical rules/indexes 는 이 문서를 durable reference 하지 않으며(E2), 이 문서를 읽어야만 동작하는 canonical 표면은 없다(E1/E3). 본문의 결정은 모두 후보 수준이며, 정규 authority 는 promote 시점에야 생긴다("form early, authority late").
 
