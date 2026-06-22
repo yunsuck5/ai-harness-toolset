@@ -43,7 +43,7 @@ The placement criterion is **how a document is read**, not how many topics it to
 
 Briefly: an always-on-for-every-task rule belongs on an always-on surface outside `docs/`; otherwise a doc goes in the single layer (§5) matching its access pattern, partitioned to avoid pulling unrelated scope and kept consolidated to avoid a dense reference chain.
 
-A **rule candidate** (incubating toward a promoted `rules/` or `snippets/rules/` rule file) does **not** go under `docs/` — it incubates in the sibling top-level **`rule_docs/<candidate>/<candidate>_incubation.md`** tree (a pure rule-candidate workspace, no orientation README of its own). Placement, purity, and lifecycle are owned by `rules/docs-working-model/docs-working-model.md` (*Incubation tier* — Placement consistency + rule_docs purity); this note is the orientation pointer only.
+A **rule** being added or revised does **not** keep its planning under `docs/` — it uses the sibling top-level **`rule_docs/<rule>/`** tree: an in-repo, per-rule planning workspace holding that rule's lifecycle docs (`<rule>_incubation.md` for a new-rule candidate; `_design` / `_plan` / `_work_packet` during the add/revise), persisting as an idle `.gitkeep` anchor between changes (no orientation README of its own). The output stays in `rules/<rule>/<rule>.md` (or `snippets/rules/<rule>.md`) — a rule is its own spec-of-record, so `rule_docs/` holds no spec. Placement, the 3-state purity, and lifecycle are owned by `rules/docs-working-model/docs-working-model.md` (*Incubation tier* — the `rule_docs/` workspace bullet); this note is the orientation pointer only.
 
 → Operative rule (binding placement + transition): `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*).
 

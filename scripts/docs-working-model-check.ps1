@@ -62,25 +62,100 @@ foreach ($base in @(
 }
 
 # ---------------------------------------------------------------------------
-# rule_docs purity (mechanical, hard FAIL): rule_docs/ is a PURE rule-candidate
-# workspace. Every direct child must be a well-formed candidate folder
-# rule_docs/<x>/ that contains <x>_incubation.md; no top-level files and no
-# non-candidate folders. (docs/ is intentionally looser -- it also holds live
-# domain Specs + docs/README.md -- so this purity binds only rule_docs/.)
-# Basis: docs-working-model rule, Incubation tier > Placement consistency + rule_docs purity.
+# rule_docs structural conformance (mechanical, hard FAIL): rule_docs/ is the
+# per-rule, 1:1 rule-bound planning workspace. Each direct child rule_docs/<id>/
+# is a PERSISTENT per-rule folder snapshot-distinguishable into exactly THREE
+# valid states (docs-working-model rule, Incubation tier > rule_docs purity):
+#   - idle              = files are EXACTLY {.gitkeep}; valid ONLY if a
+#                         corresponding existing rule output file exists
+#                         (rules/<id>/<id>.md OR snippets/rules/<id>.md).
+#                         No corresponding rule output -> RULE_DOCS-ORPHAN
+#                         (a discarded candidate's / deleted rule's folder left behind).
+#   - candidate incubation = contains <id>_incubation.md (may also carry a round-scoped
+#                         <id>_work_packet.md; E3 still forbids _design/_plan/_spec
+#                         siblings); valid, need NOT have a rule output yet.
+#   - active lifecycle work = contains one or more of
+#                         <id>_design.md / <id>_plan.md / <id>_work_packet.md; valid.
+# Allowed files in a child: ONLY .gitkeep or
+#   <id>_{incubation,design,plan,work_packet}.md (.md only). Anything else
+#   (README / archive / consumed / old / misc / mismatched-id / non-.md) is a
+#   RULE_DOCS-FILE violation; a subfolder is a RULE_DOCS-FILE violation. A loose
+#   file DIRECTLY under rule_docs/ (not inside a <id>/ child) is RULE_DOCS-PURITY.
+# This is a STRUCTURE (snapshot) check only: it deletes nothing and must not flag
+# a valid idle .gitkeep folder. (docs/ is intentionally looser -- it also holds
+# live domain Specs + docs/README.md -- so this binds only rule_docs/.)
 # ---------------------------------------------------------------------------
 if (Test-Path -LiteralPath $ruleDocsDir -PathType Container) {
     foreach ($child in @(Get-ChildItem -LiteralPath $ruleDocsDir -Force -ErrorAction SilentlyContinue)) {
         $rel = Resolve-ProjectRelativePath -Path $child.FullName -ProjectRoot $project
-        if ($child.PSIsContainer) {
-            $expected = Join-Path -Path $child.FullName -ChildPath ($child.Name + '_incubation.md')
-            if (-not (Test-Path -LiteralPath $expected -PathType Leaf)) {
-                $violations.Add(('RULE_DOCS-PURITY FAIL: rule_docs child folder is not a well-formed rule candidate: {0} (rule_docs/<x>/ must contain <x>_incubation.md; rule_docs is a pure rule-candidate workspace, not a general bucket)' -f $rel)) | Out-Null
+        if (-not $child.PSIsContainer) {
+            # Loose file directly under rule_docs/ -- not inside a <id>/ child.
+            $violations.Add(('RULE_DOCS-PURITY FAIL: loose file directly under rule_docs/: {0} (rule_docs holds only per-rule folders rule_docs/<id>/; no top-level files and no orientation README)' -f $rel)) | Out-Null
+            continue
+        }
+
+        $id = $child.Name
+        $allowedNames = @(
+            '.gitkeep',
+            ($id + '_incubation.md'),
+            ($id + '_design.md'),
+            ($id + '_plan.md'),
+            ($id + '_work_packet.md'))
+        $cmp = [System.StringComparison]::OrdinalIgnoreCase
+
+        # Enumerate the folder's direct entries. No subfolders allowed; every file
+        # must be in the allowed set (snapshot validation only -- nothing removed).
+        $entries = @(Get-ChildItem -LiteralPath $child.FullName -Force -ErrorAction SilentlyContinue)
+        $hasIncubation = $false
+        $hasLifecycle  = $false
+        $hasGitkeep    = $false
+        $allowedFileCount = 0
+        foreach ($entry in $entries) {
+            $entryRel = Resolve-ProjectRelativePath -Path $entry.FullName -ProjectRoot $project
+            if ($entry.PSIsContainer) {
+                $violations.Add(('RULE_DOCS-FILE FAIL: disallowed subfolder under rule_docs/{0}/: {1} (a per-rule folder holds only .gitkeep or {0}_{{incubation,design,plan,work_packet}}.md; no subfolders)' -f $id, $entryRel)) | Out-Null
+                continue
             }
+            $isAllowed = $false
+            foreach ($an in $allowedNames) {
+                if ([string]::Equals($entry.Name, $an, $cmp)) { $isAllowed = $true; break }
+            }
+            if (-not $isAllowed) {
+                $violations.Add(('RULE_DOCS-FILE FAIL: disallowed file under rule_docs/{0}/: {1} (allowed: .gitkeep or {0}_{{incubation,design,plan,work_packet}}.md, .md only; no README/archive/consumed/old/misc or mismatched-id files)' -f $id, $entryRel)) | Out-Null
+                continue
+            }
+            $allowedFileCount++
+            if ([string]::Equals($entry.Name, '.gitkeep', $cmp)) { $hasGitkeep = $true }
+            elseif ([string]::Equals($entry.Name, ($id + '_incubation.md'), $cmp)) { $hasIncubation = $true }
+            else { $hasLifecycle = $true }  # _design / _plan / _work_packet
         }
-        else {
-            $violations.Add(('RULE_DOCS-PURITY FAIL: loose file directly under rule_docs/: {0} (rule_docs holds only rule-candidate folders rule_docs/<x>/<x>_incubation.md; no top-level files and no orientation README)' -f $rel)) | Out-Null
+
+        # State determination on the ALLOWED files present.
+        if ($hasIncubation -or $hasLifecycle) {
+            # candidate incubation OR active lifecycle work -> valid; need not have
+            # a rule output yet (incubation) or is a normal existing-rule revision.
+            continue
         }
+
+        # No incubation and no lifecycle work. The only remaining valid state is
+        # idle = EXACTLY {.gitkeep}. A corresponding existing rule output must back it.
+        $isIdleExact = ($hasGitkeep -and $allowedFileCount -eq 1)
+        if ($isIdleExact) {
+            $ruleOutputNested = Join-Path -Path (Join-Path -Path $rulesDir -ChildPath $id) -ChildPath ($id + '.md')
+            $ruleOutputSnippet = Join-Path -Path (Join-Path -Path $ruleDocsDir -ChildPath '..') -ChildPath ('snippets/rules/' + $id + '.md')
+            $ruleOutputSnippet = [System.IO.Path]::GetFullPath($ruleOutputSnippet)
+            $hasRuleOutput = (Test-Path -LiteralPath $ruleOutputNested -PathType Leaf) -or (Test-Path -LiteralPath $ruleOutputSnippet -PathType Leaf)
+            if (-not $hasRuleOutput) {
+                $violations.Add(('RULE_DOCS-ORPHAN FAIL: idle rule_docs/{0}/ (.gitkeep-only) has no corresponding rule output (expected rules/{0}/{0}.md or snippets/rules/{0}.md): {1} (an idle folder is valid only for an EXISTING rule; a discarded candidate or deleted rule must remove its folder)' -f $id, $rel)) | Out-Null
+            }
+            continue
+        }
+
+        # Neither a recognized work state nor an exact idle .gitkeep folder: an empty
+        # folder, or one carrying only stray/disallowed files (those are already
+        # reported above) with no .gitkeep and no recognized state file. Flag the
+        # folder itself so it is not silently accepted.
+        $violations.Add(('RULE_DOCS-PURITY FAIL: rule_docs/{0}/ is in no valid state: {1} (must be idle [.gitkeep only, with an existing rule output], candidate incubation [{0}_incubation.md], or active lifecycle work [{0}_design.md/_plan.md/_work_packet.md])' -f $id, $rel)) | Out-Null
     }
 }
 
@@ -204,7 +279,7 @@ foreach ($folder in $incubationFolders) {
 # Report
 # ---------------------------------------------------------------------------
 Write-Line ('scanned ProjectRoot {0}; found {1} incubation candidate folder(s)' -f $project, $incubationFolders.Count)
-Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); rule_docs purity = every direct child of rule_docs/ is a well-formed rule-candidate folder (rule_docs/<x>/ contains <x>_incubation.md) with no top-level files. E4/E5 are advisory only (not enforced). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ and skills, generator inputs, docs/** other than docs/README.md) is NOT mechanically scanned (manual conformance). A PASS attests only to the scanned subset, not full incubation-tier conformance.'
+Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep only, requires an existing rule output rules/<id>/<id>.md or snippets/rules/<id>.md, else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY). E4/E5 are advisory only (not enforced). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ and skills, generator inputs, docs/** other than docs/README.md) is NOT mechanically scanned (manual conformance). A PASS attests only to the scanned subset, not full incubation-tier conformance.'
 
 if ($violations.Count -gt 0) {
     foreach ($v in $violations) {
@@ -221,9 +296,9 @@ Write-Line 'E4 INFO: absorption-content completeness (adopted conclusion / rejec
 Write-Line 'E5 INFO: this rule''s own incubation-tier addition is a one-time bootstrap (incubation cannot incubate itself), not mechanically checked and not a precedent.'
 
 if ($violations.Count -gt 0) {
-    Write-Line ('FAIL ({0} E1/E2/E3/rule_docs-purity violation(s) in the mechanically-scanned subset)' -f $violations.Count)
+    Write-Line ('FAIL ({0} E1/E2/E3/rule_docs-purity/orphan/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
     exit 1
 }
 
-Write-Line 'PASS (no E1/E2/E3/rule_docs-purity violations in the mechanically-scanned subset)'
+Write-Line 'PASS (no E1/E2/E3/rule_docs-purity/orphan/file violations in the mechanically-scanned subset)'
 exit 0
