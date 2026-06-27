@@ -18,7 +18,7 @@
 ## Batch 정의
 
 **batch-1 — `docs-working-model.md` incubation↔terminology lifecycle 정정**
-- **목적(한 줄).** glossary 를 incubation 하위 절차에서 분리하고, 의미확정을 owner-surface close(review 직전)로 옮기며, incubation applicability·contrast 허용선·transition 을 명문화.
+- **목적(한 줄).** glossary 를 incubation 하위 절차에서 분리하고, 의미확정을 finalization-owner close(review 직전)로 옮기며, incubation applicability·contrast 허용선·transition 을 명문화.
 - **scope.** *다루는 것* = Design (A)~(F) 의 규칙 텍스트 반영. *안 다루는 것* = candidate 콘텐츠(4 stashed 파일) · incubation↔terminology 검사 enablement(cs2) · 완전 apply/relax matrix · glossary lifecycle 전면 재구조화. (rule_docs 모델 + 그 check 는 batch-2.)
 - **hard boundary(불가침).** ① stash 된 4파일 미수정. ② 별도 `docs-working-model_spec.md` 생성 금지(rule = 자기 spec-of-record). ③ accepted-term 의 glossary=의미 home 모델 불변(over-correction 금지). ④ pending = owner-identity 만, `_incubation.md` 경로 durable pointer 금지(E2). ⑤ rejected umbrella 부활 금지. ⑥ E5(이 rule 의 incubation-tier 추가는 one-time bootstrap)·Final hard rule(docs 비-authority) 위반 금지.
 - **validation expectation(무엇이 성립해야).** blind(diff, framing 제거) 무결 + canonical review PASS. 내부 정합: (B)의 finalization-before-review 가 기존 `corrected-state Codex review` 어휘·closeout 게이트와 모순 없음 / (A)의 accepted 모델 불변 / 새 문장이 Spec identity 의 "closeout 에서 live" 와 정합 / "promotion 시 확정" 잔존 0.
@@ -42,6 +42,15 @@
 - **validation expectation.** relay-B(완료 = no-rewind) + **full-scope blind(실제 coordinated diff) 무결** + **canonical dual PASS(최종 1회, load-bearing).** 구현 중 lightweight local clause-map 점검(각 closeout 용어 → 어느 lifecycle); 중간 canonical 금지(반쯤 바뀐 모델 검증 = 나쁜 신호).
 - **review focus.** 중의성 명시 새 모순 0 · E4=removal precondition(closeout-지연 함정 차단) · "ALL current-bearing"=E4형식(손실·raw 둘 다 아님) · state-migration scope(per-domain batch 모델 보존) · closeout primitive 과통합 0(discard 폴더삭제·idle 유지 구분 보존) · taxonomy/Final-hard-rule 불변.
 - **Work Packet 필요 = 예.** batch-1 WP 에 batch-3 작업노트(절 분류 + 삽입 초안) 병치. 흡수 = rule 편집. retire = closeout.
+
+**batch-4 — `docs-working-model.md` + `terminology-glossary.md`: terminology 등록 lifecycle owner-pending(가등록) 도입**
+- **목적(한 줄).** 용어 등록 타임라인의 "finalization-owner live-but-deferred" 구간을 `owner-pending` 상태로 정립해 live-but-deferred 용어의 incubation-`pending` 오배치를 해소.
+- **scope.** 다루는 것 = glossary status split(finalization-owner-live 축) · closeout 2건 이동 · 형제 갱신 · `finalization-owner` 등록 + rule owner-pending 등록 규칙 · 용어 통일(`owner-surface close`→`finalization-owner close`). 안 다루는 것 = pending thin-vs-fuller residual(별도 batch) · pre-existing 2 desync · candidate 콘텐츠.
+- **batch 단위 = 단일 JOIN.** rule terminology-registration 계열 절 + glossary status/Pending/형제 = 한 묶음(쪼개면 cross-surface transient desync).
+- **hard boundary.** ① pending 내용규칙 미터치(Path 1) ② finalization-owner ≠ active `owner surface`(Spec 격상 금지) ③ finalization-owner = owner id / tracked path(E2; runtime state 금지) ④ closeout 2건만 이동 ⑤ rule = 자기 spec-of-record.
+- **validation expectation.** relay-B 수렴 + diff-blind self-introduced 0 + canonical dual(blocking 0). docs-working-model-check PASS · EOL LF · ws 0.
+- **review focus.** owner-pending 축이 Spec identity·sync-required 와 정합 / cross-surface(rule↔glossary) 일관 / single-home·E2·batch-3 closeout 중의성 유지 / self-ref 순환 없음.
+- **Work Packet.** batch-1 WP 에 batch-4 작업노트 병치(B4-1~7).
 
 ## Open decision 의 close 지점
 

@@ -7,7 +7,7 @@
 ## Header
 
 - **무엇의 Design 인가.** `docs-working-model` 규칙의 *incubation tier ↔ terminology(glossary) lifecycle 결합*을 정정한다. 현 규칙은 "용어 등록"을 incubation 의 하위 절차로 묶고 의미확정을 promotion 에 두어, incubating 후보 인코딩이 glossary 와 lockstep 으로 cross-reconcile 되며 교착(integration 리뷰 3라운드 no/no)을 일으킨다.
-- **체인이 끝나면 무엇이 되는가.** `docs-working-model.md` 가 (A) pending 용어 = owner-identity thin reservation, (B) 의미확정 = owner-surface close(corrected-state review 직전), (C) incubation applicability(default strict + 명시 완화/유지), (D) cross-domain contrast 허용선, (E) transition clause 를 담도록 수정된다. 이후 cs2 에서 격리(stash)된 3 incubation + glossary 후보가 새 규칙에 맞춰 재정렬된다.
+- **체인이 끝나면 무엇이 되는가.** `docs-working-model.md` 가 (A) pending 용어 = owner-identity thin reservation, (B) 의미확정 = finalization-owner close(corrected-state review 직전), (C) incubation applicability(default strict + 명시 완화/유지), (D) cross-domain contrast 허용선, (E) transition clause 를 담도록 수정된다. 이후 cs2 에서 격리(stash)된 3 incubation + glossary 후보가 새 규칙에 맞춰 재정렬된다.
 - **이 문서가 아닌 것.** glossary lifecycle 전면 first-class 재구조화 아님 · 완전 apply/relax matrix 정식화 아님(둘 다 deferred) · candidate 콘텐츠(consultation/blind/orchestration 본문) 수정 아님(cs2) · mutation/commit/push 승인 아님.
 
 ## 왜 바꾸는가 / 무엇을 바꾸는가
@@ -94,3 +94,21 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 - **(R2)** finalization-before-review ordering 이 기존 `corrected-state Codex review` 규칙·closeout 게이트와 정합해야. **close = 구현 시 규칙 본문 대조.**
 - **(R3)** "충돌 가능 이름"/"완화 여부" 판정 모호성 → 최소 기준 + default strict + 중재자(glossary rule owner) 명문화로 닫음. **close = 규칙 본문 (A)/(C).**
 - **(R4)** rule candidate closeout 경계(orchestration) ill-defined → "terminal rule 파일 landing changeset 내, exposed pending term 처리 포함" 으로 고정. **close = 규칙 본문 (B).**
+
+## batch-4 (추가): terminology 등록 lifecycle — owner-pending(가등록) 도입
+
+> docs-working-model revision 의 continuation(batch-1 이 이미 incubation↔terminology scope; state-migration "continue the same not-yet-closed-out work" 충족). orchestration(relay-A ×2 → relay-B ×4 → 설계 blind ×4 → 구현 → diff-blind ×3 → canonical dual)로 수렴·검증. cs1 닫지 않음.
+
+**결함 (cs1 모델).** 용어 등록 타임라인이 incubation thin `pending` 과 finalization-owner close finalize 두 점만 규정하고, 그 사이 "finalization-owner 가 이미 live authority 인데 closeout 미완"(=가등록) 구간이 비어, live-but-deferred 용어(이번 revision 의 closeout 2건 — rule 이 commit/push 되어 live·closeout deferred)가 incubation 칸 `pending` 에 오배치됐다.
+
+**방향 (canonical 통과; LC yes-with-risk / SC yes, blocking 0).**
+- glossary status 를 **finalization-owner-live 축**으로 `pending`(아직 live 아님) / `owner-pending`(이미 live, finalization deferred)로 분리. pending 내용규칙(thin-vs-fuller)은 *안 건드림*(별도 pre-existing residual; Path 1).
+- owner-pending 등록 = finalization-owner go-live(기존-rule revision rule landing / deployed implementation / 기존 live domain sync-required Spec update; 신규 domain Spec 제외; trigger ≠ commit/push 승인). 필드 = one-line meaning + finalization-owner(owner id / tracked path, E2) + facet + close-condition + not-this. monotonic + go-live 오판 정정 예외 + retire-before-close 처리 + rejected 전이(pending/owner-pending 공통) 4-class cross-surface sweep.
+- 용어 통일: `owner-surface close` → `finalization-owner close`(이 design/plan/work_packet 의 batch-1 표현도 batch-4 에서 동기화). `finalization-owner` ≠ active-behavior `owner surface`(live Spec 이 finalization-owner 여도 active 격상 아님). `finalization-owner` 를 glossary 에 owner-pending 으로 등록(자기참조 dogfood).
+- 이동 = closeout 2건만(finalization-owner=`rules/docs-working-model/docs-working-model.md`, close-condition=deferred 미래 closeout); 나머지 candidate 항목은 pending 유지.
+
+**owner surface.** `terminology-glossary.md`(status·항목) + `docs-working-model.md`(*Terminology registration* 계열 절). rule = 자기 spec-of-record.
+
+**non-goals.** pending thin-vs-fuller residual reconcile(별도 terminology batch) · pre-existing 2 desync(candidate `close=on promotion` / glossary rejected `rule_docs` 의 3-state) 수정 · taxonomy 변경 · candidate 콘텐츠 수정.
+
+**open risk / 상태.** canonical 통과(blocking 0). LC=yes-with-risk 의 risk = 기획서 stale `owner-surface close` 표현 + batch-4 절 부재였고, batch-4 동기화(용어 rename + 이 절)로 해소. cs1 deferred-closeout 유지.
