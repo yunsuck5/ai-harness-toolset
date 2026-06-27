@@ -43,6 +43,17 @@
 
 **최고위험 = 의존/JOIN 오분류**(의존을 독립으로 → 병렬 서브가 부분상태 보고 → 거짓 pass/충돌). 메인 위임 불가. **서브 pass 불신** — 서브 내부 리뷰 pass 는 "그 서브 컨텍스트 안의 self-contained 결론" 일 뿐. **핵심 위험 한 줄: 메인이 *실제 감독했다는 착각*.**
 
+## Close-the-loop validation contract (cheap-first; executor 소유)
+
+> 값비싼 canonical review 에만 의존하지 않도록 *값싼 사전검사로 먼저 닫는* 운영 규율. 이 절은 orchestration 이 **언제·어떻게 루프를 닫는가**만 소유하고, 각 cheap 도구(blind 결함 prefilter / consultation 의 `독립 의견`·`재조율`)의 semantics 는 그 도구의 도메인이 소유한다(cross-domain 재서술 금지 — 여기서는 이름으로만 참조).
+
+- **delegate-by-default.** 실질 validation 은 기본적으로 executor 에 위임한다 — skip-prone 한 operator(main)를 critical path 에서 뺀다. main 직접 validation 은 최소화한다.
+- **executor 가 cheap loop 를 닫고 보고한다.** (이 close-the-loop 은 *changeset 검증*용 절차다; 토론형 advisory operation 은 이 루프에 포함되지 않고 각자 도메인 operating model 이 소유한다.) executor 는 비싼 canonical review *전에* 값싼 사전검사를 먼저 돌려 닫는다(cheap-first): **blind 로 결함을 거르고(concern 보고되면 수정 후 재실행) → 정리되면 canonical review → 반환.** blind 의 입력·status·반복 semantics 는 blind 도메인 소유(여기선 이름으로만 참조; orchestration 은 *순서*[cheap-first → escalate]만 소유). cheap-first 이므로 canonical 의 주의가 obvious 결함이 아니라 hard 문제로 간다.
+- **최소 evidence (대화형, no-file).** executor 반환에 포함한다: `blind 실행 여부` · `blind 결과(보고된 concern 과 그 처리; status 어휘 등 blind semantics 는 blind 도메인 소유)` · `canonical 실행 여부 + verdict, 또는 canonical-only 선택 사유`. 파일 로그가 아니다(no-file / no-hidden-state 정합). *미래 경화(현재 미구현)*: file-free fingerprint-bound return-value token — wrapper 가 호출 시 changeset fingerprint 를 토큰에 박고 done-gate 가 현재 changeset 과 일치 확인. omission·scope-drift 방지용이며, 위조·audit 는 이 threat 밖(= canonical review / 완전 독립 세션의 몫).
+- **main acceptance + JOIN.** main 은 executor 의 intra-unit verdict 를 재심하지 않는다 — evidence 가 present·coherent 한지 확인하고, executor 가 구조적으로 못 보는 cross-unit 통합 정합(JOIN)만 판정한다.
+- **operator-combinable output (JOIN guarantee).** operator reconciliation 대상이 되는 도메인 산출(예: consultation·blind)은 결합·중립화 가능한 shape 로 finding 을 노출해야 한다(해당 시 confidence·assumption 필드 포함). 각 도메인은 *자기 출력 shape* 를 소유하고, 이 계약은 "여러 도메인 산출이 operator 단계에서 결합 가능해야 한다"는 JOIN 규칙만 소유한다(필드 자체를 중앙에서 과소유하지 않는다).
+- **ceiling 정직.** 이 툴셋은 hook 금지라 어떤 게이트도 *강제 실행*되지 않는다(canonical 포함). 위는 "실행하면 검증 가능하나 호출은 선택"인 review-level *nudge* 이지 hard gate 가 아니다. 실질 완화 = delegate-by-default + 호출명이 오용을 가시화(절차형 호출을 1회로 단축하면 가시적 미완료가 되도록 — 각 operation 의 완료 의미는 해당 도메인이 소유).
+
 ## Regime 2 / 재귀 (이 프로젝트 한정 개념 — 배포 제외)
 
 > 이 절은 **글로벌 배포 rule 로 가지 않는다.** 브랜칭 전략은 프로젝트/조직 고유라 배포 layer 가 가정해선 안 됨. 개념 예시로만 둔다.
@@ -68,3 +79,4 @@
 - 배포 rule 의 universal core ↔ 프로젝트-특정(codex review-to-pass 바인딩) 분리 경계의 최종 형태.
 - role-partition 로딩(작은 always-visible self-location 프레임 + 역할별 depth)의 물리적 home(부트스트랩 확장 vs 기존 표면).
 - pre-impl 필수 relay 의 scope(substantial only) 정식화 여부.
+- close-the-loop 이 hard gate 아닌 nudge(hook 금지)일 때, 누락된 cheap-validation 을 main 이 accept 가능한 조건·중단권 소재(실 사용 측정으로 성숙).
