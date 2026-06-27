@@ -2,6 +2,8 @@
 
 > 이 Design 은 `docs-working-model` 규칙 변경의 방향성 문서다 — 영구 live 아님. closeout 시 current-bearing 내용이 `docs-working-model.md`(rule = 자기 spec-of-record)로 흡수된 뒤 이 문서·`_plan.md`·`_work_packet.md` 는 retire(삭제, 보존=git history). 이 Design 은 mutation/commit/push 승인이 아니다(1회 진술).
 
+> **★ 열린 thread 갱신 (2026-06-27).** cs1(`40bffd2`)은 *deferred closeout* 상태다 — closeout 요건(candidate 운용검증을 새 모델로 완료 + relay/blind 정규기능화)이 아직 미충족. 그 운용검증(Stage 2 promote dogfood)이 cs1 자기 모델의 **disposal-timing 자기모순**(아래 **batch-3**)을 표면화 → **Stage rewind 로 batch-3 추가**. batch-3 는 cs1 을 닫지 않는다(closeout 요건 불변).
+
 ## Header
 
 - **무엇의 Design 인가.** `docs-working-model` 규칙의 *incubation tier ↔ terminology(glossary) lifecycle 결합*을 정정한다. 현 규칙은 "용어 등록"을 incubation 의 하위 절차로 묶고 의미확정을 promotion 에 두어, incubating 후보 인코딩이 glossary 와 lockstep 으로 cross-reconcile 되며 교착(integration 리뷰 3라운드 no/no)을 일으킨다.
@@ -51,6 +53,39 @@
 - **Owner surface.** `docs-working-model.md`(규칙 = 모델 정의) + `docs-working-model-check.ps1`(기계검사). 산출물은 `rules/<rule>/<rule>.md` 또는 `snippets/rules/<rule>.md`(rule = 자기 spec-of-record, rule_docs 에 spec 없음).
 - **하지 않을 것.** rule_docs 에 정규 spec-doc 두지 않음(rule stale 리스크 — 사용자 반대) · persistent `.gitkeep` 은 *rule-defined anchor*이지 rejected ad-hoc dead/archive/bucket 폴더가 아님 · 1:1 rule-bound(broad bucket 부활 금지) · glossary `rule-candidate incubation` 항목 재정렬은 cs2.
 - **open risk.** **(R5)** rule_docs bullet(폴더 persist) ↔ 기존 Candidate lifecycle bullet(폴더 fate) 정합 필요 + check E3 ↔ active-state 공존 정합. **close = 규칙 본문 + check ↔ canonical 재리뷰.**
+
+## batch-3 (추가): promotion 의 incubation 처분 정합 (E4-centered) + closeout 중의성 해소 + state-migration
+
+> cs1 의 deferred-closeout 운용검증(Stage 2 promote dogfood, 2026-06-27)이 cs1 자기 모델의 결함을 표면화 → **Stage rewind**(Design 으로 되돌아 교정). canonical dual review 가 통과시킨(`40bffd2`) latent 결함을 *운용*이 잡음 = dogfood=결함탐지기. **방향은 relay→blind→relay→re-blind 로 검증**: 초기 가설 α(incubation 을 promote 동안 보존·`_work_packet` 이관)는 blind 가 E4·artifact-taxonomy·Work Packet 경계와 **3 hard 충돌**로 *폐기* → **E4-centered 로 flip**, re-blind 가 구조 통과(잔여 = clarity 정제 4건). 이 batch-3 는 cs1 을 *닫지 않으며*(closeout 요건 불변), **Design 도 닫히지 않음**(Plan 에서 안 잡히면 Stage rewind 로 재개).
+
+**결함 (현 규칙 = cs1 산출; orchestration 으로 정밀화).**
+1. **"closeout" 중의성 → line-18↔90 외형 모순**: *Document artifact classes* #2 는 `_incubation` 을 **"candidate-lifecycle-scoped"** committed-temporary(closeout 까지)로 두는데, *Incubation tier* 3-state 는 promote 시 `_incubation` 을 Design 작성 전 삭제한다. 실은 **`_incubation` 의 closeout = *candidate* closeout(=promotion/discard)** 이고, 이는 Design/Plan/WP 가 죽는 *promoted-lifecycle* closeout 보다 이르다. 두 closeout 이 한 단어로 뭉개져 외형상 모순처럼 보인다(논리 모순이라기보다 *중의성*).
+2. **"absorbed" under-application**: promote 시 `_design` 이 `_incubation` 보다 작아 근거 손실 — 보존경로 부재(gap)가 아니라 **E4 흡수완전성 미적용**. E4 가 *이미* "결론·대안·evidence-type·scope·실패기준·negative-evidence 를 raw link 없이 재검토 가능하게 흡수"를 요구.
+3. **closeout 개념 분절**: 처분이 ~5곳(two-level gate / lifecycle absorption-retire / rule_docs idle-return / WP 삭제 / incubation discard)에 흩어져 disposal-timing single home 부재 + *Lifecycle closeout* 체크리스트가 `_incubation` 누락(중의성의 증상 — promoted closeout 시점엔 이미 처분됨).
+4. **state-migration 부재**: "이전 revision 미retire 중 새 revision 시작" · "stash 산출물 이관(재사용/재검증/폐기)" 미모델링 — 이 batch-3 의 cs1-점유 placement 가 실증.
+
+**고정 불변식 (메타 순환 차단; orchestration 으로 확정).**
+- **artifact-class taxonomy 불변** — `_incubation` 은 *file artifact* 그대로(현 rule 이 artifact 를 document/file 단위로 individuate). "file=state-token, artifact=material" 재해석은 *taxonomy 변경*이라 **폐기**(blind 포착; 고정 조건과 모순).
+- 정렬 기준 = "임시 artifact 는 *자기* closeout 에 처분"(per-artifact closeout: incubation=candidate closeout / Design·Plan·WP=promoted-lifecycle closeout / 미promote candidate=discard closeout).
+
+**방향 (E4-centered — relay+blind 검증, α 폐기).**
+- **(1) "closeout" 중의성 명시**: candidate closeout(=promotion/discard) ≠ promoted-lifecycle closeout. → line-18↔90 해소 + 체크리스트 `_incubation` 누락 설명.
+- **(2) promotion 에서 E4 흡수완전성 강제**: `_incubation` 의 *current-bearing content 전부를 E4 구조로* promoted artifact 에 흡수 → `_incubation.md` 제거(공존 0, E3 유지). 손실=E4 under-application. **raw reference 보존·Work Packet 이관 불요**(Work Packet 은 readiness/decision material 금지).
+- **(3) closeout primitive**: disposal-timing single home 호명, 단 per-artifact closeout event 와 file/folder·promote/discard 처분 차이(discard candidate=폴더 전체 삭제 / existing-rule closeout=idle 폴더 유지)는 *보존*(과통합 금지).
+- **(4) state-migration (general-minimal)**: 새 revision 시작 시 *같은 role-slot* 의 미retire planning docs 있으면 먼저 disposition / stash·pre-revision 산출물은 판정(재사용/재검증/폐기) 전 non-authoritative. *전역 병행 revision 안 막음*(per-domain/per-rule batch 모델 보존), Stable filename rule·rule_docs purity 와 비충돌(archive/subfolder 0).
+- **re-blind refinement (반영)**: 흡수대상=candidate-kind 별(domain→Design/Plan/Spec, 최종 Spec / rule→terminal rule file) · E4=흡수 *요건구조*이지 scope 축소 아님(current-bearing 전부) · "candidate/discard closeout" 명명 정리(discard=candidate closeout 의 variant).
+
+**owner surface (수정 대상 절).** *Document artifact classes* #2 · *Incubation tier*(Candidate lifecycle·3-state) · *Closeout*(two-level gate / lifecycle absorption-retire — `_incubation` 누락 명시) · Work Packet 경계 참조 · **state-migration 신설 절**. (+ 필요시 `docs-working-model-check.ps1` — file/material 재해석 없으니 discriminator 변경 최소.) rule = 자기 spec-of-record(별도 spec 없음).
+
+**non-goals.**
+- **workflow-altitude discipline 흡수 안 섞음**(별도 작은 편집 — altitude 자기적용).
+- closeout 완전 codify · orchestration 운용모델(b) · promote 재개(c) · disposition rule 승격(d) = 이 stage 밖.
+- **cs1 을 닫지 않음**(closeout 요건 불변). **Design 닫지 않음**(Plan rewind 가능). candidate 콘텐츠(stash) 수정 안 함. rejected umbrella 부활 안 함. **taxonomy 변경 안 함**.
+
+**open risks / Plan-readiness (batch-3).**
+- **(R6, 갱신)** α 과통합 위험 → **해소**(α 폐기, E4-centered 가 relay+blind 통과). 잔여 = re-blind 4 refinement 를 Plan 에서 정밀 잠금.
+- **(R7)** 절 문구 · 흡수완전성 판단 *강도*("closeout 때 판단 가능" 수준 — 약하면 손실/강하면 새 검증머신) · check 변경 = Plan/구현 detail → park(workflow-altitude).
+- **(R8, 갱신)** state-migration scope = *같은 role-slot* 한정(전역 아님) — Plan 에서 Stable filename rule·rule_docs purity 대조로 잠금.
 
 ## Plan readiness / open risks
 

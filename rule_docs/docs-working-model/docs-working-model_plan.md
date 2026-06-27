@@ -34,12 +34,24 @@
 - **review focus.** rule_docs bullet(폴더 persist) ↔ Candidate lifecycle bullet(폴더 fate) 정합 · E3 ↔ active-state 정합(공존 0) · idle backing 위치가 rule/check/tests 일치 · check 가 rule text 3-state 를 정확히 구현 · 이 lifecycle docs 가 실제 cs1 scope 를 승인.
 - **Work Packet.** batch-1 WorkPacket 에 rule_docs 모델 섹션을 함께 둔다(별도 WP 불요).
 
+**batch-3 — `docs-working-model.md` promotion incubation 처분 정합 (E4-centered; orchestration 검증)**
+- **목적(한 줄).** promotion 에서 `_incubation` 처분을 E4 흡수완전성 + "closeout" 중의성 해소로 정합화 + state-migration 절 신설(line-18↔90 외형모순 · 체크리스트 누락 · closeout 분절 · 미retire-중-새revision gap 해소).
+- **scope.** *다루는 것* = Design batch-3 (1)~(4) + re-blind/relay-B refinement 의 rule 텍스트 반영. *안 다루는 것* = candidate 콘텐츠(stash) · workflow-altitude 흡수 · taxonomy 변경 · check 로직 변경(file/material 재해석 없으니 최소) · (b)/(c)/(d).
+- **batch 단위 = 단일 JOIN.** artifact-classes #2 · Incubation-tier(candidate lifecycle · 3-state) · Closeout 절(2개)은 한 묶음(쪼개면 transient 자기모순); state-migration 절은 같은 closeout/role-slot vocab 에 물려 같은 batch(독립 운영규칙 아님 — relay-B 의존성 점검 통과). batch-1/2 는 landed(`40bffd2`).
+- **hard boundary(불가침; relay-B 보강 포함).** ① taxonomy 불변(file/material 재해석 금지) ② **E4 흡수완전성 = `_incubation.md` removal 의 *precondition***(같은 atomic promotion transition 내 완료; closeout 으로 미루기 금지) ③ **"ALL current-bearing content" = E4 형식 대표**(raw carryover 아님) ④ **no committed coexistence**(`_incubation.md` ↔ `_design`/`_plan`/`_spec`) ⑤ **Work Packet ≠ incubation-evidence sink**(흡수처 = promoted tracked file) ⑥ **closeout 용어 = local 중의성 해소이지 global 재정의 아님** ⑦ **state-migration = 같은 role-slot 한정**(병행 revision 안 막음 · archive/subfolder 0) ⑧ 별도 spec 금지 · rejected umbrella 금지 · Final hard rule 준수.
+- **validation expectation.** relay-B(완료 = no-rewind) + **full-scope blind(실제 coordinated diff) 무결** + **canonical dual PASS(최종 1회, load-bearing).** 구현 중 lightweight local clause-map 점검(각 closeout 용어 → 어느 lifecycle); 중간 canonical 금지(반쯤 바뀐 모델 검증 = 나쁜 신호).
+- **review focus.** 중의성 명시 새 모순 0 · E4=removal precondition(closeout-지연 함정 차단) · "ALL current-bearing"=E4형식(손실·raw 둘 다 아님) · state-migration scope(per-domain batch 모델 보존) · closeout primitive 과통합 0(discard 폴더삭제·idle 유지 구분 보존) · taxonomy/Final-hard-rule 불변.
+- **Work Packet 필요 = 예.** batch-1 WP 에 batch-3 작업노트(절 분류 + 삽입 초안) 병치. 흡수 = rule 편집. retire = closeout.
+
 ## Open decision 의 close 지점
 
 - **R1**(check-script 가 in-flight 에 걸림) → **이 Plan 이 닫음**: check-script 는 cs2 로 이연(transition-aware).
 - **R2**(finalization-before-review 정합) → batch-1 구현 중 규칙 본문 대조로 닫음.
 - **R3**("충돌 가능 이름"/"완화" 모호성) → batch-1 규칙 본문 (A)/(C)(최소 기준 + default strict + 중재자 = glossary rule owner).
 - **R4**(rule candidate closeout 경계) → batch-1 규칙 본문 (B)(terminal rule landing changeset 내 + exposed pending term 처리).
+- **R6**(α 폐기·E4-centered) → **Design 에서 닫힘**(relay→blind→relay→re-blind; α 가 E4·taxonomy·Work Packet 과 3 hard 충돌 → flip). Plan 은 re-blind 4 refinement 만 정밀 잠금.
+- **R7**(E4 흡수완전성 강도) → **이 Plan 이 닫음**: E4 완료 = `_incubation.md` removal precondition(같은 atomic transition) + 결과는 later closeout 에서 judgeable; *새 검증머신 금지*. ("judgeable at closeout"만이면 함정 — relay-B.)
+- **R8**(state-migration scope) → **이 Plan 이 닫음**: 같은 role-slot 한정 + Stable filename rule · rule_docs purity(no archive/subfolder) 대조. 전역 병행 revision 안 막음.
 
 ## Stage rewind 조건
 

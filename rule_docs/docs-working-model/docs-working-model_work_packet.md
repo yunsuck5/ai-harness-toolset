@@ -95,3 +95,30 @@ An incubating candidate may state its identity by contrast with an existing conc
 | R-6 | `docs/README.md` rule_docs 설명 | candidate-only → 일반화 모델로 정정 |
 
 **canonical pass-01 정정 반영:** ① R-2 의 "promote 시 폴더 persist" ↔ R-3 의 "promote 시 폴더 삭제" 모순 해소(intra-doc sibling-sweep 누락이었음 — R-3 를 R-2 와 정합). ② active-state 의 `_incubation`+`_design/_plan` 공존 claim 제거(promote 시 `_incubation` 흡수·삭제 후 design/plan → 비공존 → E3 무결). ③ idle backing 위치를 `rules/<id>/<id>.md` *또는* `snippets/rules/<id>.md` 로(rule/check/tests 일치). ④ 이 lifecycle docs(Plan/Design/WP)가 batch-2 를 cs1 scope·승인대상으로 명시.
+
+## batch-3 작업노트 — promotion incubation 처분 정합 (E4-centered)
+
+> orchestration(relay-A→relay-B→blind→재조율→re-blind→relay-B[Plan]) 검증 방향. 아래는 *구현이 다듬을 출발 텍스트*(영어로 `docs-working-model.md` 반영). 강도 = Plan hard boundary 준수. **rule 미편집 — 이건 초안 노트.**
+
+### 편집 대상 절 (`docs-working-model.md`)
+| 편집 | 대상 절 | 종류 |
+|---|---|---|
+| B3-1 | *Document artifact classes* item 2 (`_incubation` "until closeout") | reword(closeout = *candidate-lifecycle* closeout 명시) |
+| B3-2 | *Incubation tier* > Candidate lifecycle (promote) | reword(흡수 = E4 형식·removal precondition; 손실=E4 under-application) |
+| B3-3 | *Incubation tier* > 3-state (active/promotion) | reword(제거 = candidate-lifecycle closeout; no committed coexistence 유지; E4 precondition) |
+| B3-4 | *Closeout — reduced two-level gate* / *Lifecycle closeout — absorption and retire* | add(3 closeout 명명 + 체크리스트 `_incubation` 누락 이유 + local-중의성 단서) |
+| B3-5 | 신설 절 *State migration (same role-slot)* (위치 = Lifecycle closeout / Stage rewind 인접) | new |
+
+### 삽입 초안 (출발 텍스트 — 영어 반영)
+- **B3-1**: "… the **`_incubation` document** (candidate-lifecycle-scoped, not round-scoped; disposed at its **candidate-lifecycle closeout** — the candidate's promotion or discard — which precedes any promoted-lifecycle closeout; see *Incubation tier*)."
+- **B3-2**: "… the incubation document's current-bearing content is absorbed into the promoted artifacts **per E4 (every current-bearing item represented in E4 form — adopted conclusion / rejected alternatives / judgment-changing evidence type / scope / failure criteria / negative evidence — not raw-carried). This E4 absorption is complete as a precondition of removal, within the atomic promotion transition;** then the `_incubation.md` is removed. **A promoted artifact smaller than the `_incubation` is not a licence to lose reference — incomplete absorption is an E4 violation, not a reason to preserve the raw document.**"
+- **B3-3**: "… at promotion the `_incubation.md` is **removed as the candidate-lifecycle closeout** (E4 absorption complete as its precondition), so it never coexists with `_design`/`_plan`/`_spec` in committed state — E3 stays intact."
+- **B3-4** (Lifecycle closeout 에 추가): "This is the **promoted-lifecycle closeout** — Design / Plan / Work Packet are disposed here. `_incubation.md` is **not** listed because it was already disposed at the earlier **candidate-lifecycle closeout** (its promotion or discard). The closeout events are distinct and **locally disambiguated** (this does not redefine *closeout* elsewhere): *candidate-lifecycle closeout* (promotion or discard — disposes `_incubation.md`) · *promoted-lifecycle closeout* (this section) · *candidate-discard closeout* = the discard variant of the candidate-lifecycle closeout. Each temporary artifact is disposed at **its own** closeout."
+- **B3-5** (신설): "**State migration (same role-slot).** Beginning a new revision of a rule/domain whose *prior* revision's planning docs (`_design`/`_plan`/`_work_packet`, or a candidate `_incubation`) remain un-retired in the **same role-slot** requires their disposition first — the applicable closeout, or an explicit decision to continue them as this revision's docs. A stashed or pre-revision artifact is **non-authoritative until judged** (reuse / re-verify / discard). This binds only the same role-slot — it does not block parallel per-domain / per-rule revisions, and creates no archive / subfolder (per *Stable filename rule* / `rule_docs/` purity)."
+
+### Edge / 정합 체크 (구현 시 = lightweight local clause-map)
+- "closeout" 전 사용처가 어느 lifecycle 를 가리키나 전수(candidate / promoted / discard) — *global 재정의 0* 확인.
+- B3-2 의 E4-precondition 문구가 기존 "absorbed (E4)" 와 모순 0.
+- B3-5 가 *Stable filename rule*(role 재사용)·`rule_docs/` purity(no archive/subfolder)·per-domain batch 모델과 비충돌.
+- `docs-working-model-check.ps1` 영향 = file/material 재해석 없으니 구조 discriminator 불변(확인만; 변경 시 별도).
+- **retire 조건**: closeout 시 이 batch-3 노트도 batch-1/2 와 함께 삭제(rule 텍스트에 흡수된 뒤).
