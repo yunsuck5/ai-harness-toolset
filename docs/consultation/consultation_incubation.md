@@ -69,14 +69,22 @@
 - **advisory preflight** — 최종 review / implementation / decision 전에 read-only advisory 계층을 돌려 risk · open question · alternative 를 확인하는 선택적 사전 단계.
 - **status vocabulary** — consultation 자체에는 canonical verdict 를 쓰지 않는다: `synthesized` / `needs-follow-up` / `conflicting-opinions` / `insufficient-context`. 이는 review 의 `yes` / `no` / `yes with risk` 와도, blind advisory 의 `no-concerns-reported` / `concerns-reported` / `inconclusive` 와도 분리된다.
 - **packaging mode(consultant topology 축)** — `single-consultant` / `parallel-consultation` / `role-split-consultation` / `counterpoint`(반론 생성). `roundtable`(1차 응답 종합 후 2차 반론)은 비용·contamination 위험이 커 후속 후보. `council` 은 domain 명이 아니라 pending packaging alias 다.
-- **relay mode(framing 축 — packaging 과 직교)** — `mode A`(pre-focus 독립: operator 가 자기 초안을 만들기 전에 호출, 자기 입장 미포함) / `mode B`(내-stance 공유: 진행 중인 초안/입장을 공유하고 반론·정렬을 받음). §8 packaging 축과 조합 가능하다.
+- **framing-axis operation(framing 축 — packaging 과 직교)** — 이 축에는 명시적으로 named 된 두 operation 이 있다: **`독립 의견`(id `independent`; = seed 의 mode A)** — pre-focus 독립 자문(operator 가 자기 초안을 만들기 전에 호출, 자기 입장 미포함) · **`재조율`(id `reconcile`; = seed 의 mode B)** — 내-stance 공유 적대적 토론(진행 중인 초안/입장을 공유하고 반론·정렬을 받음). 두 operation 의 운용 세부는 §Operating model 이 소유한다. 이 축은 packaging mode 축과 조합 가능하다(직교).
 
-## Operating model (relay a/b + pre-focus timing)
+## Operating model (framing-axis operations + pre-focus timing)
 
-- **pre-focus 원칙.** advisory 의 가치는 operator 의 포커스가 고정되기 전에 호출할수록 크다 — 이미 작업/설계를 시작한 뒤 호출하면 포커스가 그쪽으로 잡혀 종합이 편향된다.
-- **권장 운용.** 방향-설정 지시 수신 즉시 → (백그라운드) mode A 먼저 → operator 독립 정리 → 합쳐 방향 논의 → 진행 → 진행 중 모호/외부관점 필요 지점에서 재호출(A 또는 B).
+framing 축에는 **명시적으로 named 된 두 operation** 이 있다(seed 의 mode A/B). 이 둘은 framing-axis operation 이며 위 §Vocabulary 의 packaging mode 축(`single-consultant` / `parallel-consultation` / `role-split-consultation` / `counterpoint`)과 **직교**한다 — 어느 packaging 으로도 실어 나를 수 있다.
+
+- **`독립 의견` (operation; id `independent`; = seed 의 mode A).** pre-focus 독립 자문. 입력 = 질문 + 배경만(operator 의 stance / 결론 유도 미포함). **한 run 은 one-shot, 항상 terminal** — run 내부에 round 루프가 없다. (operator 가 이후 다시 호출하면 그것은 *이전 run 의 연장/루프가 아니라 새 독립 run* 이다 — §권장 운용 의 "재호출"이 이것이다.) `독립 의견` run 결과들이 서로 충돌해도 `독립 의견` 자체는 루프로 들어가지 않는다 — 충돌을 다투려면 operator 가 *별도의 새 `재조율` run* 을 시작한다(§충돌 시 디폴트). 목적 = operator 포커스가 고정되기 전 앵커링 방지 독립 견해.
+- **`재조율` (operation; id `reconcile`; = seed 의 mode B).** 적대적 토론. 입력 = **operator stance 필수**(진행 중인 초안/입장을 공유하고 반론·정렬을 받음). **multi-round 기본**(고정 round cap 없음; operator = circuit-breaker, 즉 수렴/종료 판정 주체도 operator 다 — consultant 가 스스로 종결하지 않는다). **loop state**(루프-제어 값; **operator 가 붙이는 wrapper 상태이지 consultant 산출 필드가 아니다**; status vocabulary 와 별개 축) = `needs_reply`(turn-terminal — operator 응답을 기다리는 라운드 경계로, 루프는 계속된다; status vocabulary 의 `needs-follow-up` 과 *철자만 비슷할 뿐 다른 축*이다 — 후자는 산출 분류 라벨) / `converged`(operator 가 advisory 로 더 다툴 점이 없다고 판단) · `human_residual`(operator 가 남은 미결을 사람 몫으로 넘김) — 둘 다 loop-terminal(루프 종료). `needs_reply` 에서 멈춰 종결로 취급하지 않는다 — **1회 반론 후 complete 금지**(한 번 반론 받고 종결하면 미완료다). 끝에 operator 의 **독립 평가**를 붙인다(상대 의견을 verbatim 으로 transport 하지 않는다). 호출명 자체가 1회 오용을 *가시적 미완료*로 만든다.
+- **loop state ≠ status vocabulary(두 별개 축; promote 시에도 별 필드).** 위 operation 의 **loop state**(`one-shot terminal` for `독립 의견`; `needs_reply` / `converged` / `human_residual` for `재조율`)는 **한 operation run 의 루프-제어 값**이다. 이는 §Vocabulary 의 consultation `status vocabulary`(`synthesized` / `needs-follow-up` / `conflicting-opinions` / `insufficient-context` — operator 가 advisory 산출을 *어떻게 분류*했는지)와 **다른 축**이며 합치지 않는다. loop state 는 consultation operation 자기 영역(operator 가 `재조율` run 을 돌리는 동안 붙이는 값)이지 다른 도메인의 schema 가 아니다; promote 시 design/spec 에서 status vocabulary 와 **별개 필드**로 두되(동일 필드명으로 합치지 않음), 구체 필드 위치·이름은 그때 확정한다.
+- **pre-focus 원칙.** advisory 의 가치는 operator 의 포커스가 고정되기 전에 호출할수록 크다 — 이미 작업/설계를 시작한 뒤 호출하면 포커스가 그쪽으로 잡혀 종합이 편향된다. `독립 의견` 이 이 타이밍의 1순위다.
+- **권장 운용.** 방향-설정 지시 수신 즉시 → (백그라운드) `독립 의견` 먼저 → operator 독립 정리 → 합쳐 방향 논의 → 진행 → 진행 중 모호/외부관점 필요 지점에서 재호출(`독립 의견` 또는 `재조율`).
 - **세 시점 모두 유효.** 작업 *전*(pre-focus) · 작업 *중*(모호점) · 작업 *후*(review 전 advisory preflight chain) — 배타가 아니라 추가 타이밍이다.
-- **mode B 와 blind 의 분리 근거.** mode B 는 framing 을 *제공*하고, blind advisory 는 framing 을 *제거*한다(operator framing 이 판정을 기울이는 것을 막기 위해). framing 에 대해 **정반대 동작원리**이므로 같은 동작이 아니며, 따라서 별개 레이어로 둔다(원칙: 동작원리가 다르면 구분; 합치려면 하나의 동작임을 입증).
+- **`재조율` 과 blind 의 분리 근거.** `재조율` 은 framing 을 *제공*하고, blind advisory 는 framing 을 *제거*한다(operator framing 이 판정을 기울이는 것을 막기 위해). framing 에 대해 **정반대 동작원리**이므로 같은 동작이 아니며, 따라서 별개 레이어로 둔다(원칙: 동작원리가 다르면 구분; 합치려면 하나의 동작임을 입증).
+- **충돌 시 디폴트 = `재조율` 루프(reconciliation loop).** consultant 응답이 서로 충돌하거나 (`재조율` 에서) operator 초안을 반박할 때, 디폴트는 *재조율 루프*(재-relay · 재질의)이지 fiat 종결이 아니다. 멈춤은 *양쪽 AI 가 모두 답을 못 내는 크리티컬 미결* 일 때뿐이며, operator 가 외부 circuit-breaker 다. 수렴은 advisory 일 뿐 어떤 행동도 승인하지 않는다(수렴 ≠ commit / promote 승인). (이 디폴트는 운용 도구 쪽에는 반영돼 있었으나 이 문서엔 빠져 있던 gap 의 fold-in 이다.)
+- **operation-intrinsic vs validation-workflow 경계.** 위에서 규정한 것은 각 operation 의 **자기 내재 동작**(`독립 의견`=one-shot, `재조율`=multi-round 루프·terminal·operator circuit-breaker)뿐이다 — 이는 consultation 자신의 산출이라 여기 home 이다. 그러나 이 두 operation 을 외부 validation 흐름에서 cheap-first 루프로 *언제·어떻게* 끼워 호출하는지는 이 문서 소유가 아니라 **orchestration 의 close-the-loop 계약**이 소유한다.
+- **id vs 한글 트리거.** 위 operation 의 machine `id`(`independent` / `reconcile`)는 이 문서가 incubation 동안 쓰는 domain-local 식별자다. 사용자-facing **한글 트리거 문구**(`독립 의견` / `재조율`)의 최종 확정은 glossary 가 promotion 시 한다 — incubation 동안의 한글 사용은 domain-local 후보이며 glossary 확정을 선점하지 않는다.
 
 ## Cross-domain interface — review (optional advisory preflight only)
 
@@ -86,14 +94,24 @@
 - canonical reviewer 는 target 을 독립 검증하며 consultation 결론을 advisory 로만 취급한다.
 - review skill 통합은 로드맵상 **최후 단계**다 — consultation 과 blind advisory 가 독립적으로 닫힌 뒤에만 review 가 optional preflight consumer 가 된다(premature integration 금지).
 
+## consultation 자기 경계 (own boundary + 참조)
+
+> 이 절은 consultation **자신의** 경계만 선언한다 — no-file 런타임 · 자기 입력 경계 · 자기 finding shape. close-the-loop / evidence-schema 처리는 **이름붙인 외부 계약**을 참조만 하고 그 semantics 를 재서술하지 않는다(candidate promote / discard / continue lifecycle 자체는 외부 계약이 아니라 이 문서 §Candidate lifecycle state 가 소유한다). 세부 schema·naming 은 promote 시 design/spec 에서 확정한다.
+
+- **no-file 런타임.** consultation 이라는 **기능 자체는 per-run input/output 파일을 만들지 않는다** — 실행은 conversational synthesis 로만 둔다(canonical 리뷰의 `input.md` / `result.md` 와 정반대). 아래 §Open 의 "runtime artifact 저장 여부"는 이로써 *저장 안 함* 으로 닫힌다. no-file ↔ 측정의 긴장은 이렇게 풀린다: **기능은 no-file 이고, 실험의 pilot 측정은 gitignored runtime scaffolding 에 사는데 그것은 기능 파일이 아니다**(graduation 시 폐기되는 별개 실험 영역). (자기 작업을 codex review 로 돌릴 때 생기는 산출물도 *리뷰 도메인* 의 runtime footprint 로 별개이며 consultation 자신의 산출이 아니다.)
+- **consultation 자기 입력 경계.** consultation 은 **blind 의 산출을 입력으로 받지 않으며**(자기 종합·판단을 blind 에 의존하지 않음), consultation 응답은 **operator synthesis** 로만 종합된다 — 두 레이어는 operator synthesis 에서야 결합된다.
+- **consultation 자기 finding shape.** consultation 의 각 advisory 항목은 자기 출력 형태로 **confidence** 와 (근거가 된) **assumption** 을 함께 단다. consultation 의 status vocabulary(`synthesized` / `needs-follow-up` / `conflicting-opinions` / `insufficient-context`)는 이 도메인 자신의 어휘로 분리 유지한다(vocab 분리 불변식). 항목이 이 shape 를 갖는 이유는, operator 가 이를 **`subagent-work-orchestration` close-the-loop validation contract** 를 통해 다른 advisory 산출과 reconcile 할 수 있게 하기 위해서다 — 그 reconcile 절차·evidence semantics 자체는 그 계약이 소유하며 이 문서는 이름으로만 참조한다. 필드 naming·표현 세부는 promote design/spec 에서 후보정한다.
+- **downstream → review.** consultation 결과를 review 로 넘길 때는 **operator 가 중립화해 review 의 preflight-input interface 형식으로** 넘긴다 — 그 interface 의 형태는 review 가 소유하므로 consultation 은 이를 **참조(consume)** 할 뿐 그 내부 구조를 재서술하지 않는다(연결 경계의 home 은 위 §Cross-domain interface). review 표면 자체는 로드맵 최후 단계라 지금 수정하지 않는다.
+- **lifecycle 소유 + JOIN 참조.** candidate 의 promote / discard / continue **lifecycle** 는 §Candidate lifecycle state 가 소유한다(외부 계약이 아니다). **`subagent-work-orchestration` close-the-loop validation contract** 는 오직 **operator-combinable-output JOIN 보장**(advisory 산출이 operator 가 합칠 수 있는 형태라는 보장)을 위해서만 이름으로 참조한다 — consultation 의 operation(`독립 의견` / `재조율`)과 그 reconciliation 동작은 changeset close-the-loop 이 아니라 이 문서 §Operating model 이 소유하므로, consultation 은 자신의 close-the-loop 처리를 그 계약에 위임하지 않는다(consultation 은 discussion 도구이지 changeset-validation 이 아니다). 이 문서가 자기 것으로 정의하는 것은 *무엇이 한 consultation pilot run 인지*뿐이다(= 한 번의 request → responses → operator synthesis).
+
 ## Open questions
 
-- consultation 결과를 runtime artifact 로 남길지, 아니면 conversational synthesis 로만 둘지 — 초기에는 저장을 강제하지 않는다. 남긴다면 review runtime 영역(`log/review`)과 **분리된 별도 runtime 영역**이어야 하지만, 그 **구체 경로 값은 이 incubation 문서가 정하지 않는다** — durable boundary 원칙상 구체 runtime 경로는 promote 시 active surface 가 소유하므로, 어떤 concrete path 도 여기서 owner-surface 결정으로 굳히지 않는다.
+> no-file 런타임(이전 "runtime artifact 저장 여부")과 consultation↔blind 순서·직접 의존은 위 §consultation 자기 경계 에서 닫혔다. 아래는 promote design/spec 으로 미룬 잔여 결정이다.
+
 - 외부 상용 AI 호출 시 입력 redaction 과 secret boundary 를 어디에 둘지(전역 security 규율과의 interface).
 - sub-agent 만 지원할지, 외부 CLI / API adapter 도 지원할지.
-- output vocabulary 를 어디까지 고정할지.
-- consultation 과 blind advisory 의 순서가 항상 고정인지, 요청별 선택인지.
-- review skill 이 consultation / blind preflight 를 자동 호출하는 기본 조건(있다면).
+- output vocabulary 세부를 어디까지 고정할지(핵심 필드 confidence / assumption 은 §consultation 자기 경계 의 finding shape 에서 고정; 세부 naming·표현은 잔여).
+- review skill 이 consultation / blind preflight 를 자동 호출하는 기본 조건(있다면) — 로드맵 최후 단계.
 
 ## Candidate lifecycle state
 
