@@ -252,3 +252,45 @@ An incubating candidate may state its identity by contrast with an existing conc
 - rule/domain 비대칭: rule 은 Spec 없어 marker 본체 = 3-state active(이미 존재); domain 만 Spec lifecycle-state marker 추가.
 - single-home: 다른 절 재소유 0(각 면은 자기 절 — Spec identity/E1/State migration/Future-work queue).
 - retire: closeout 시 이 5-B 노트도 함께 삭제.
+
+## Phase-1 작업노트 — 5-E: enforcement (settled 모델 강제/게이트)
+
+> 5-E Plan(batch-8) 승인결정을 line-level 편집 + 초안 + test 케이스로. round-scoped(승인 아님·Spec 대체 아님·실행기록 금지→log/). **rule/스크립트 미편집 — 구현이 이 초안을 다듬어 반영.** final single-home = live 산출물(check/checklists/template/rule). closeout 시 삭제.
+
+### 편집 대상 (파일/절/라인 → 편집)
+| ID | 대상 | tier | 편집 |
+|---|---|---|---|
+| EN-1 | `scripts/docs-working-model-check.ps1` `$canonicalFiles`(L164-171) + SCOPE INFO(L282) | MS | E2 scan 집합에 `snippets/rules/*.md` 추가 + SCOPE INFO 문구 갱신 |
+| EN-2 | 같은 스크립트 — 신규 검사 블록 | MS | promoted domain `_spec.md` 의 Lifecycle-state marker *validity*(허용 token 정확히 하나) |
+| EN-3 | `tests/docs-working-model-check.Tests.ps1` | MS | EN-1/EN-2 케이스 + 후보 newly-fail 0 회귀 |
+| EN-4 | `checklists/docs-working-model_design_checklist.md` | SC | altitude/detail-flow 게이트 항목 |
+| EN-5 | `checklists/docs-working-model_spec_checklist.md` | SC | Lifecycle-state 절 존재+marker validity 항목 |
+| EN-6 | `checklists/docs-working-model_promotion_checklist.md`(신규) | SC | promotion-boundary/promoted-but-not-live 게이트 |
+| EN-7 | `templates/docs-working-model_spec_template.md` | form | Lifecycle-state field = 'exactly one of prelive/sync-required/live' 명시(이미 3종 명명 — SC 검사가능하게) |
+| EN-8 | `docs-working-model.md` Closeout Level 2 | PCG/R1 | terminal-rule Level-2 매핑 한 줄 |
+| EN-9 | `docs-working-model.md` line 104 | rule-text/L104 | parenthetical disambiguation |
+| EN-10 | `_design.md` Phase-1 roadmap 절 | (Plan-close) | deferred-enforcement 목록을 5-G/5-X/5-T 옆 follow-on 으로 추가(아래) |
+
+### 초안 (구현이 다듬을 출발 — final = live 산출물)
+- **EN-1 (E2 scope):** `$canonicalFiles` 에 `snippets/rules/` 의 `*.md` recursive 추가. `snippets/rules/README.md`(index)도 대상 적합(`rules/README` 동급). SCOPE INFO 의 "snippets/ … NOT mechanically scanned" → "snippets/rules/ 포함"으로 정정. **over-reach 금지**: 실제 durable `*_incubation.md` ref 만(기존 E2 discriminator·`$incTails` 매칭 그대로; snippets 파일도 같은 regex/tail 검사).
+- **EN-2 (lifecycle-state marker validity) — ★ 회귀 확인 완료(scope 추가 불요):** 대상 = promoted domain Spec = `docs/<domain>/<domain>_spec.md`(incubation 후보 `docs/<cand>/` 는 `_spec.md` 없음 → 자동 제외 = **후보 conform-pass**). **현 repo 3개 live spec(review/install-update/brief) 전부 동일 marker-line 관례 사용 확인**: `## Lifecycle state` 절 + `- spec ↔ implementation: **live**`(marker 는 **bolded**), 그리고 같은 줄 plain prose 에 "sync-required 전이" 언급. → **검사 설계 = bolded marker token(`**prelive**`/`**sync-required**`/`**live**`) *정확히 하나*** (또는 `spec ↔ implementation: **X**` assertion line 파싱) — **plain-prose 언급은 marker 아님**(naive token-count 였으면 live+sync-required 2개로 오판했을 것). 위반 = 절 부재 / bolded marker 0 / 2+ / 비허용. **결과: 기존 3 spec 이미 conform(X=live), 수정 불요, newly-fail 0**(EN-7 template 이 이 marker-line 관례를 codify → 미래 spec 도 검사가능). **NSE 한계**: same-path 오소비는 *못 막음*(marker 존재·유효까지만).
+- **EN-8 (R1, 한 문장 — 초과 시 split):** Closeout *Level 2* 에 추가: "For a `rule_docs` / terminal-rule change, the Level-2 surface is the **terminal rule file itself** (`rules/<id>/<id>.md` or `snippets/rules/<id>.md`), reconciled 1:1; a rule has no `<domain>_spec.md` / `<domain>_backlog.md`, so its open questions are resolved before the terminal rule lands (no backlog deferral)."
+- **EN-9 (L104 disambiguation, meaning-preserving):** "The mechanical check for this model (`scripts/docs-working-model-check.ps1`)…" → "The mechanical check **for this conditional terminology-registration model** (the future terminology-registration check added to `scripts/docs-working-model-check.ps1`; the script's current structural E1/E2/E3 checks are 'rule requirements now' per *Form early, authority late* and are not transition-deferred)…". (dialectic 이 확인한 기존 의미 *명시화*; 새 의미 0.)
+- **EN-4/5/6 (checklist 초안 방향, 의미 기준):**
+  - EN-4 Design: "[ ] detail 이 Design altitude 를 넘지 않는가 — round/line-level 분석·execution mechanics·exhaustive enumeration·정확 marker/token·final normative wording 0(각자 WP/Spec/log); decision-grade(semantic target·trade-off·ownership·대표예시)만 — 충족/미충족+evidence"
+  - EN-5 Spec: "[ ] Lifecycle state 절 존재 + marker 가 prelive/sync-required/live 중 *정확히 하나* — 충족/미충족+evidence"
+  - EN-6 promotion(신규; promotion·discard·de-promotion/withdrawal event): "[ ] prelive Spec 을 live authority 로 소비 안 함(governance-discoverable≠implementation-authority) [ ] E4 흡수 완전(adopted/rejected-alts/evidence-type/scope/failure/negative → `_design`, never WP) [ ] 미해결 open-Q routed(domain backlog / rule pre-landing); neither→live 차단 [ ] de-promotion 시 promotion-withdrawal 기록(모든 promoted artifact 처분+marker; live 후 금지)"
+- **EN-7 (template):** 이미 prelive/sync-required/live 명명(5-B corrective). 추가 = Lifecycle state 절 안내를 "exactly one of"로 명확(EN-5 가 검사).
+
+### deferred-enforcement durable home — Plan-close (조사 결과)
+후보: **(a)** rule 내 thin pointer → *3번째 rule-text 터치* = Plan "2건"·narrow-scope 와 충돌(scope-creep) → 기각. **(b)** closeout report = log/(gitignored) → durable 아님 → 기각(단독). **(c)** 새 rule-backlog mechanism → 과통합 → 기각.
+→ **Plan-close = roadmap-listing**: deferred-enforcement 목록을 `_design.md` Phase-1 roadmap 의 5-G/5-X/5-T *옆* follow-on item 으로 둔다(EN-10). silent-drop 아님(roadmap 에 명시). durable 이전은 *cs1-closeout 의 roadmap-migration*(5-G/5-X/5-T 도 같은 운명 — 5-E 고유 부담 아닌 *기존 cs1 의무*). → **5-E 는 rule-text 2건 유지**(R1+L104). deferred 목록(요약) = durable-pointer 일반 scan · docs/ 도메인 purity/stable-filename · terminology state-machine(pending↔owner-pending·field-schema) · rejected-term cross-surface sweep · review-date staleness · WP-content checklist · **E3 cross-folder rename-lineage(known hard residual)** · E4/E5 semantic.
+
+### Edge / 정합 (구현 시 확인)
+- EN-2 가 *기존 live domain spec* newly-fail 0(위 회귀) — 후보 3종은 `_spec` 없어 자명, 기존 domain 은 확인 필수.
+- EN-1 snippets scan 이 over-reach 0(실제 `_incubation` ref 만; snippets/rules 의 4파일엔 candidate ref 없음 → 현 repo PASS 유지).
+- EN-8 R1 = 한 문장(초과 시 split — WP review 기준).
+- EN-9 L104 = meaning-preserving(governs 대상 불변, 명시만).
+- verify-ps1(BOM+CRLF) + full Pester + `docs-working-model-check` 현-repo PASS.
+- **EN-6-wiring (canonical SC pass-01 corrective)**: 신규 promotion checklist 는 파일만 추가하면 죽은 deliverable — rule package 의 *manifest*(Package note `docs-working-model.md:5` 열거 + conformance gate forms-list `:202`) + *application trigger*(conformance gate `:200` 에 "promotion-boundary event 가 promotion checklist 통과")에 배선해야 EN-6 완성. descriptive routing(normative 신규 아님). rules/README.md 은 operative home 으로 라우팅만 하고 열거 안 함 → 미수정.
+- retire: closeout 시 이 5-E 노트 삭제.

@@ -8,4 +8,5 @@
 - [ ] 수정 대상이 기존 live Spec·구현·구조물을 특정하는가 — 충족/미충족 + evidence 한 줄
 - [ ] Plan readiness 판단과 open risk 목록(각각의 close 예정지 포함)이 있는가 — 충족/미충족 + evidence 한 줄
 - [ ] 회차성 내용 0(작업 로그 / review result / 시점성 상태) — 충족/미충족 + evidence 한 줄
+- [ ] Detail 이 Design altitude 를 넘지 않는가 — 제외(lower-grade) 0: round/line-level 분석·execution sequence/staging/mechanics·exhaustive enumeration/inventory·final normative(MUST/forbid) wording(각자 WP/Spec/log 로 흐른다); 허용(decision-grade): semantic target·conceptual model·trade-off·ownership boundary·deciding target-state invariant·decision-critical identifier/interface 명·closed enum/taxonomy(그 taxonomy 자체가 결정일 때)·대표/경계 예시 — 충족/미충족 + evidence 한 줄
 - [ ] Header 3개 항목 각 3줄 이내 + 승인 경계 1회 진술 + 미치환 채움 표시 0 — 충족/미충족 + evidence 한 줄

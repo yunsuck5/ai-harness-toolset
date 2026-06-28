@@ -34,4 +34,4 @@
 
 ## Lifecycle state
 
-{{compact 상태 절: design/plan 존재 여부 · spec lifecycle state(**prelive / sync-required / live** — 신규 promote 후 closeout 전 = `prelive`; 기존 live Spec in-place 갱신 후 = `sync-required`; closeout 1:1 = `live`) · capability/maturity 한 줄}}
+{{compact 상태 절. 이 절은 lifecycle marker 를 **정확히 하나** 담는다 — `**prelive**` | `**sync-required**` | `**live**` 중 하나를 **bolded** 로 쓴다(plain-prose 언급은 marker 가 아니며, 한 절에 bolded marker 가 둘 이상 있으면 안 된다): 신규 promote 후 closeout 전 = `**prelive**`; 기존 live Spec in-place 갱신 후 = `**sync-required**`; closeout 1:1 = `**live**`. 그 외 design/plan 존재 여부 · capability/maturity 한 줄. (검사: spec checklist + `docs-working-model-check.ps1` EN-2.)}}

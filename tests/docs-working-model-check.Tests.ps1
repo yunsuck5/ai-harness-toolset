@@ -54,7 +54,9 @@ BeforeAll {
 Describe 'docs-working-model-check happy path' {
     It 'AC-DWM-PASS-NONE-1: no incubation docs at all exits 0' {
         $project = script:New-CaseRoot -CaseName 'pass-none'
-        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/review/review_spec.md') -Content "# review spec`n"
+        # A promoted domain spec must (EN-2) carry a Lifecycle state section with exactly one
+        # bolded lifecycle marker; the plain-prose "sync-required" mention must NOT count.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/review/review_spec.md') -Content "# review spec`n`n## Lifecycle state`n`n- spec to implementation: **live** - synced 1:1; later changes follow the sync-required transition.`n"
 
         $result = script:Invoke-Check -ProjectRoot $project
         $result.ExitCode | Should -Be 0 -Because $result.Output
@@ -237,8 +239,10 @@ Describe 'docs-working-model-check advisories' {
         $result.Output | Should -Match 'SCOPE INFO: MECHANICAL subset only'
         $result.Output | Should -Match 'all \.md under rules/'
         $result.Output | Should -Match 'package-local templates/ or checklists/ under a rule ARE included'
+        $result.Output | Should -Match 'all \.md under snippets/rules/'
+        $result.Output | Should -Match 'snippets/rules/ IS now mechanically scanned for E2'
         $result.Output | Should -Match 'NOT mechanically scanned'
-        $result.Output | Should -Match 'PASS \(no E1/E2/E3/rule_docs-purity/orphan/file violations in the mechanically-scanned subset\)'
+        $result.Output | Should -Match 'PASS \(no E1/E2/E3/EN-2/rule_docs-purity/orphan/file violations in the mechanically-scanned subset\)'
     }
 
     It 'AC-DWM-ADVISORY-2: E4/E5 advisories do not change a failing exit code' {
@@ -473,5 +477,170 @@ Describe 'docs-working-model-check rule_docs structure (3-state model)' {
         $result.ExitCode | Should -Be 0 -Because $result.Output
         $result.Output | Should -Match 'docs-working-model-check: PASS'
         $result.Output | Should -Not -Match 'RULE_DOCS-.*FAIL'
+    }
+}
+
+Describe 'docs-working-model-check EN-1 snippets/rules E2 scope' {
+    It 'AC-DWM-EN1-1: a snippets/rules file durably linking a candidate _incubation.md fails E2' {
+        $project = script:New-CaseRoot -CaseName 'en1-snippets-link'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'snippets/rules/some-dist-rule.md') -Content "# some distributed rule`n`nSee [the candidate](../../docs/scopeguard/scopeguard_incubation.md) for detail.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'E2 FAIL'
+        $result.Output | Should -Match 'scopeguard_incubation.md'
+    }
+
+    It 'AC-DWM-EN1-2: a clean snippets/rules file with no candidate ref passes' {
+        $project = script:New-CaseRoot -CaseName 'en1-snippets-clean'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        # A bare "_incubation" concept token (no concrete path) is not a durable reference.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'snippets/rules/some-dist-rule.md') -Content "# some distributed rule`n`nThe _incubation document is a class-2 lifecycle role.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'E2 FAIL'
+    }
+}
+
+Describe 'docs-working-model-check EN-2 promoted domain Spec lifecycle marker' {
+    It 'AC-DWM-EN2-PASS-1: a domain _spec.md with exactly one bolded **live** marker (plain "sync-required" prose present) passes' {
+        $project = script:New-CaseRoot -CaseName 'en2-live-ok'
+        # The bolded **live** is the sole marker; the plain-prose "sync-required" mention must NOT be counted.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## 목표 상태`n`nwidget is a thing.`n`n## Lifecycle state`n`n- lifecycle docs: none.`n- spec to implementation: **live** - synced 1:1; later changes follow the sync-required transition.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'EN-2 FAIL'
+    }
+
+    It 'AC-DWM-EN2-PASS-PRELIVE-1: a promoted domain _spec.md whose sole bolded marker is **prelive** passes' {
+        $project = script:New-CaseRoot -CaseName 'en2-prelive-ok'
+        # A newly-promoted domain Spec carries **prelive** (written, not yet made live by closeout).
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## 목표 상태`n`nwidget is a thing.`n`n## Lifecycle state`n`n- lifecycle docs: _design + _plan present (promoted, not yet closed out).`n- spec to implementation: **prelive** - written, not yet made live by closeout.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'EN-2 FAIL'
+    }
+
+    It 'AC-DWM-EN2-PASS-SYNCREQ-1: a promoted domain _spec.md whose sole bolded marker is **sync-required** passes' {
+        $project = script:New-CaseRoot -CaseName 'en2-syncreq-ok'
+        # A previously-live Spec updated in place is **sync-required** (awaiting re-sync).
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## 목표 상태`n`nwidget is a thing.`n`n## Lifecycle state`n`n- lifecycle docs: none.`n- spec to implementation: **sync-required** - live Spec updated in place, awaiting re-sync.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'EN-2 FAIL'
+    }
+
+    It 'AC-DWM-EN2-MISSING-1: a domain _spec.md with no Lifecycle state section fails' {
+        $project = script:New-CaseRoot -CaseName 'en2-missing'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## 목표 상태`n`nwidget is a thing.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'EN-2 FAIL'
+        $result.Output | Should -Match 'no "## Lifecycle state" section'
+    }
+
+    It 'AC-DWM-EN2-ZERO-1: a Lifecycle state section with no bolded marker (only plain prose) fails' {
+        $project = script:New-CaseRoot -CaseName 'en2-zero'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: live (plain, not bolded); sync-required later.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'EN-2 FAIL'
+        $result.Output | Should -Match 'found 0'
+    }
+
+    It 'AC-DWM-EN2-TWO-1: a Lifecycle state section with two bolded markers fails' {
+        $project = script:New-CaseRoot -CaseName 'en2-two'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live**`n- also somehow: **sync-required**`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'EN-2 FAIL'
+        $result.Output | Should -Match 'found 2'
+    }
+
+    It 'AC-DWM-EN2-INVALID-1: a bolded token that is not one of the three valid markers fails (counts as zero valid markers)' {
+        $project = script:New-CaseRoot -CaseName 'en2-invalid'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **archived**`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'EN-2 FAIL'
+        $result.Output | Should -Match 'found 0'
+    }
+
+    It 'AC-DWM-EN2-CANDIDATE-1: a candidate folder with only _incubation.md (no _spec.md) does not fire EN-2' {
+        $project = script:New-CaseRoot -CaseName 'en2-candidate'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'EN-2 FAIL'
+    }
+
+    It 'AC-DWM-EN2-FENCE-1: a **live** marker that appears ONLY inside a fenced code block is not counted (EN-2 FAIL, found 0)' {
+        $project = script:New-CaseRoot -CaseName 'en2-fence-only'
+        # The only **live** lives inside a ```-fenced example; the section has no real bolded marker,
+        # so the fenced marker must NOT be counted -> found 0.
+        $content = "# widget spec`n`n## Lifecycle state`n`n- lifecycle docs: none.`n`n" + '```text' + "`nexample marker: **live**`n" + '```' + "`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'EN-2 FAIL'
+        $result.Output | Should -Match 'found 0'
+    }
+
+    It 'AC-DWM-EN2-FENCE-2: a real bolded marker plus a fenced example marker counts only the real one (PASS)' {
+        $project = script:New-CaseRoot -CaseName 'en2-fence-plus-real'
+        # One real **live** marker line, and a fenced code example that also shows **sync-required**;
+        # only the real (non-fenced) marker is counted -> exactly one -> PASS.
+        $content = "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live** - synced 1:1.`n`n" + '```text' + "`nexample of another state: **sync-required**`n" + '```' + "`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'EN-2 FAIL'
+    }
+
+    It 'AC-DWM-EN2-FENCE-3: a fenced example block containing a different fence delimiter inside it does not break the fence; the real **live** marker after it counts (PASS)' {
+        $project = script:New-CaseRoot -CaseName 'en2-fence-inner-delim'
+        # A ```-fenced example block contains ~~~ delimiter lines (a DIFFERENT delimiter char)
+        # plus bolded markers inside it. The inner ~~~ lines must NOT close the backtick fence,
+        # so the fenced **sync-required**/**prelive** are not counted; only the real **live**
+        # marker after the fence closes is counted -> exactly one -> PASS. (Under the old
+        # toggle-on-any-fence logic the first inner ~~~ would wrongly close the fence and the
+        # fenced markers would leak out -> found 2 -> FAIL; this case locks the new behavior.)
+        $content = "# widget spec`n`n## Lifecycle state`n`n" + '```text' + "`n~~~`nfenced: **sync-required**`n~~~`nalso fenced: **prelive**`n" + '```' + "`n`n- spec to implementation: **live** - synced 1:1.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'EN-2 FAIL'
+    }
+
+    It 'AC-DWM-EN2-DUP-1: two "## Lifecycle state" sections fail (ambiguous lifecycle state)' {
+        $project = script:New-CaseRoot -CaseName 'en2-duplicate-section'
+        # Two Lifecycle state sections, each with one marker; the duplicate itself is the violation.
+        $content = "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live**`n`n## Lifecycle state`n`n- spec to implementation: **sync-required**`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'EN-2 FAIL'
+        $result.Output | Should -Match 'more than one "## Lifecycle state" section'
     }
 }

@@ -1,0 +1,9 @@
+# Promotion conformance checklist — docs-working-model lifecycle
+
+> promotion-boundary / promoted-but-not-live 이벤트가 lifecycle 규칙을 지켰는지 **의미 기준으로** 점검한다. 대상 = promotion·discard(candidate-lifecycle closeout) + de-promotion/withdrawal(promoted-but-not-live reversal = *State migration* 소관). 판정 = "충족/미충족 + 한 줄 evidence". **evidence 는 이 checklist 본문에 축적하지 않는다** — operator report / closeout report 소관.
+
+- [ ] prelive Spec 을 live authority 로 소비하지 않는가(governance-discoverable ≠ implementation-authority — 단순 발견은 live behavior 의 1:1 근거가 아니다) — 충족/미충족 + evidence 한 줄
+- [ ] E4 흡수가 완전한가(adopted conclusion / rejected alternatives / 판단을 바꾼 evidence type / scope / failure criteria / negative evidence → entry `_design`, never the Work Packet) — 충족/미충족 + evidence 한 줄
+- [ ] 미해결 open question 이 resolved 되었거나 explicitly deferred 되었는가 — domain → `<domain>_backlog.md`(one line + reopen/start condition), 단 그 backlog 이 아직 없으면 entry `_design` 의 `Deferred Questions` 섹션으로 fallback(Plan 이 이후 backlog 로 흡수) / rule(backlog 없음) → `_design`/`_plan` 에 유지하고 terminal rule landing 전 resolve; neither-resolved-nor-deferred 는 live(closeout/terminal landing) 전환을 차단한다(deferred backlog item 은 tracked future work, blocker 아님) — 충족/미충족 + evidence 한 줄
+- [ ] discard(candidate-lifecycle closeout 의 discard 변형) 시 `_incubation.md`(rule candidate 면 `rule_docs/<candidate>/` 폴더 전체)가 삭제되고 discard 근거(negative evidence)가 discard commit message 에 기록되었는가 — E4 promotion-absorption 은 *promote* 경로에만 적용되며 discard 에는 canonical 흡수가 없다(둘은 상충하지 않는다) — 충족/미충족 + evidence 한 줄
+- [ ] de-promotion 이 `promotion-withdrawal` 로 기록되었는가 — 모든 promoted-lifecycle artifact(`_design`/`_plan`, 이미 쓰였으면 `prelive` `<domain>_spec.md`) 처분 + candidate 의 `_incubation` 재개(`restored from withdrawn promotion` marker 동반; candidate id 재사용 가능·history 보존 = recorded reversal); live(closeout-reconciled Spec / landed terminal rule) 후엔 금지 — 충족/미충족 + evidence 한 줄

@@ -7,6 +7,7 @@
 - [ ] **회차성 내용이 0인가** — candidate-file 목록 / 실행 명령 시퀀스 / staging 절차 / review result / readiness 판정 / 시점성 작업 상태(lifecycle state 절의 compact 표시 제외) — 충족/미충족 + evidence 한 줄
 - [ ] Durable boundary 가 **지속 경계**인가(이번 회차가 끝나도 참인가; 회차 통제가 아닌가) — 충족/미충족 + evidence 한 줄
 - [ ] Cross-domain 참조가 interface 에 한정되는가(다른 도메인 semantics 재진술 0) — 충족/미충족 + evidence 한 줄
+- [ ] `## Lifecycle state` 절이 존재하고 그 marker 가 prelive / sync-required / live 중 **정확히 하나**(bolded `**…**`; plain-prose 언급은 marker 아님)인가 — 충족/미충족 + evidence 한 줄
 - [ ] Header 3개 항목이 각 3줄 이내이고, 승인 경계가 문서당 1회만 진술되는가(절마다 반복 0) — 충족/미충족 + evidence 한 줄
 - [ ] Plan 일관성: Spec 이 Plan 의 batch boundary 를 위반하지 않는가(위반 시 rewind 표시) — 충족/미충족 + evidence 한 줄
 - [ ] stable filename 준수(`<domain>_spec.md`; package-local 형틀명과 혼동 0) + 미치환 채움 표시 0 — 충족/미충족 + evidence 한 줄

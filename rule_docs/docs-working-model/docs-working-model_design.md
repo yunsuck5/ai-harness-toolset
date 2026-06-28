@@ -140,6 +140,7 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 - **5-T (5-K 뒤)** — 글로벌 `snippets/rules/` universal-core ↔ project-residue split(orchestration 배포용; repo-only 후보 name-ref·codex-binding 혼재). → 별도 item.
 - **5-E (같은 settle-pass 끝)** — enforcement: `docs-working-model-check.ps1`(E2 스캔 `snippets/` 제외 false PASS·transition-awareness 미구현) + tests + checklists(5-D altitude-게이트 포함) + templates. 규칙 본문 settle 후 그 위에서 기계화. → 별도 item.
 - **의존 요약(DAG):** 5-D → 5-K → 5-B → 5-X; 5-G 는 5-K 와 독립 병렬; 5-T 는 5-K 뒤; 5-E 는 본문 settle 후 최후. (batch 번호 부여·세부 순서 = Plan.)
+- **★ 5-E 후 deferred-enforcement follow-on (5-E narrow 밖 — no silent drop; cs1-closeout roadmap-migration 대상, 5-G/5-X/5-T 와 동일 운명):** durable-pointer 일반 scan · docs/ 도메인 purity·stable-filename · terminology state-machine(pending↔owner-pending·field-schema·monotonicity) · rejected-term cross-surface sweep · review-date staleness(passed-date) · WP-content checklist · **E3 cross-folder rename-lineage(known hard residual — 규칙은 lineage 금지하나 check 는 same-folder sibling 만)** · **E2 precision(pre-existing, 구현 orchestration 산): base-tree tail 모호(같은 id 가 docs/+rule_docs/ 양쪽이면 false-match — 극히 드묾) + absolute-path durable-ref 미매칭(repo-relative-only regex) + **angle-bracket link `[x](<path>)` 미매칭**(lookbehind 가 `<` 차단 — review-A; pre-existing 일반-E2, rules/**·docs/README 동일, 5-E EN-1 은 snippets/rules 로 reach 만 넓힘 = 로직 불변·5-E 산 아님; durable-pointer 일반 scan 과 일부 겹침)** · E4/E5 semantic-completeness. (행선지 = 이 roadmap 의 follow-on; rule-text 아님. 5-E gap 인벤토리[Claude+codex relay-A 병합] + 구현 orchestration 산.)
 - **★ SPLIT lock (이 Design 의 결정 — 사용자 2026-06-28; triangulation 의 JOIN 권고를 phase-경계 relay-B 적대검증으로 *뒤집음*):** 5-K 와 5-B 를 **분리**한다(한 item 으로 JOIN 안 함). 근거 = (a) transient 는 5-K 에 *보수적 fallback 한 줄*("post-swap pre-live 상태는 기존 *Spec identity* time-phasing[writing-completion blueprint → implementer reference → closeout live]을 따른다")로 **봉합** 가능 → 모순 아님, 덜-명시일 뿐 → 5-B 가 이후 명시 상태로 승격 (b) **atomicity(5-K)와 state-marker(5-B)는 분리 가능한 별개 관심사**(relay-B 추가지적: atomicity 는 E3-intact 보장에만, "상태"는 marker 의 책임 — SCM-mechanic 에 lifecycle semantics 과적재 금지) (c) normative-method §2(통합단위 좁게) (d) 5-B 의 discovery 위험(prelive 가 live 로 오소비)을 clean 한 5-K 와 *격리*. = over-join 회피.
 
 ## 5-D: lifecycle artifact 별 content/altitude 할당 + detail-flow 원칙 — Design (direction-level)
@@ -237,3 +238,48 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 - **de-promotion 기록 절차**(withdrawal changeset·marker; State migration·rule_docs purity 와 정합).
 - **rule/domain 비대칭** — rule 은 Spec 이 없어 marker 수용 surface·open-Q 행선지가 domain 과 다름(orchestration 지적). 비대칭의 구체 처리 = Plan.
 - **open-Q routing fallback**(backlog 부재 시 행선지) + 형식 의무 — Work Packet.
+
+## 5-E: enforcement — settled 모델의 강제/게이트 — Design (direction-level)
+
+> Phase-1 의 *최후* item(DAG: 본문 settle 후 그 위에서 기계화). 5-D/5-K/5-B 가 settle 한 의무를 *강제/게이트*만 하고 새 normative 의미는 안 만든다(5E-c1; 의미변경 필요 시 Stage rewind). **`09aced5` 의 yes-with-risk(5-B enforcement deferral)를 닫는다.** **direction-level** — 정확 check 로직·regex·checklist 문구·test 케이스는 Plan/WP. **mode-2 + full-scope orchestration. `.ps1` 변경이라 verify-ps1(UTF-8 BOM+CRLF) + full Pester 도.** 독립 gap 인벤토리(Claude 자체 + codex relay-A 병합 — 4대 축 수렴)는 *Work Packet* 소관(여기엔 카테고리·direction·fork 만; enumeration front-load 금지 — 5-D altitude).
+
+### 5-E 고정 불변식 (이 라운드 상수; P0-1~6 상속)
+- **5E-c1 — enforcement ≠ 새 normative 의미.** 이미 settle 된 의무를 *강제/게이트*만; 강제하려다 규칙 의미가 바뀌면 Stage rewind(해당 item).
+- **5E-c2 — 3-tier routing(새 머신 금지; 기존 3층 정렬).** 단위 = *검증 명제*(verification proposition), tier = ① 기계 hard-check(정적 구조) ② checklist 의미게이트 ③ closeout 프로세스게이트. **한 검증 명제 = 정확히 한 owner tier**(같은 명제 중복강제 금지 — single-home 의 enforcement 판); 단 **한 *hazard* 는 여러 tier 의 서로 다른 명제로 방어 가능**(relay-B 보정 — 'obligation=tier 하나'는 잘못된 granularity; 예: lifecycle-state hazard = marker 존재[MS] + 올바른 값[SC] + live-전환 timing[PCG]). check 의 `SCOPE INFO`("MECHANICAL subset only") honesty 보존.
+- **5E-c3 — 정적 불가능은 정직 분류.** 런타임 소비자 행동(prelive 가 live 로 *소비됨*)은 어떤 정적 check 도 못 봄 → marker-presence proxy 까지만 + over-claim 금지(false safety).
+- **5E-c4 — candidate-agnostic + transition 완결(★ dual-lens dialectic 으로 재확정 — 이전 'deferred 일반 mechanism' framing 회수).** in-flight 후보 3종 미터치(P0-6). **구조검사 E1/E2/E3 는 *지금* binding**(line 105 "E1–E5 bind as rule requirements now")이며 anchored 후보에도 즉시 — 후보 3종은 *conform 하여 pass*(exempt 아님). 5-E 의 새 *구조* check(E2 snippets·lifecycle-state marker)도 즉시 binding, 후보는 *conform-pass*(`_spec` 없음·durable snippets ref 없음 → newly-fail 0 = 회피 아닌 통과). transition clause(line 104) 유예 = **오직 conditional-terminology-registration *check*(미구축·5-E 비대상)** → 5-E 는 transition *완결*(미이행 의무 0). exemption registry 불요. *유일 잔여* = line 104 parenthetical `(docs-working-model-check.ps1)` 용어 애매(structural-only script ↔ terminology 문단) = wording residual(5E-R3).
+- **5E-c5 — `.ps1` 실행규율.** UTF-8 BOM+CRLF + verify-ps1 + full Pester.
+
+### Header
+- **무엇의 Design 인가.** docs-working-model 규칙의 *enforcement 표면*(mechanical check `docs-working-model-check.ps1` + checklists + templates + closeout 절)을 settled 모델(5-D/5-K/5-B + batch-1~4)에 맞춰 정합화한다. 현재 다수 의무가 text-only 수동 conformance.
+- **체인이 끝나면 무엇이 되는가(방향).** enforcement 표면이 **3-tier routing** 으로 정합된다 — 각 검증 명제가 제 tier(MS/SC/PCG)로 라우팅되고, 정적 불가능은 marker-presence proxy + 정직 disclose. 구체: `09aced5` risk 의 **구조적 enforcement gap**(lifecycle-state marker 존재·E2 `snippets/` scope·withdrawal/open-Q closeout 절차)이 닫힌다 + 5-D altitude-gate + 명시 check gap(transition-awareness 정합). **★ 단 'prelive 가 live 로 *소비*되는' 위험 *자체*는 정적으로 못 닫음(NSE — marker-proxy 까지; over-claim 금지, 5E-c3)** — 5-E 는 *구조적* gap 을 닫지 consumer-behavior 를 닫는다 주장 안 함(blind/relay-B 보정).
+- **이 문서가 아닌 것.** *전체* 인벤토리 강제 아님(broader gap = catalogued defer) · 새 normative 규칙 의미 아님(5E-c1) · 후보 미터치(P0-6) · taxonomy 변경 아님(P0-1) · 별도 `_spec.md` 아님(P0-3) · 정확 로직/문구/케이스 잠금 아님(Plan/WP) · mutation/commit/push 승인 아님.
+
+### 결함 (방향 수준 — risk-closure + dogfood)
+1. **`09aced5` enforcement 공백**(1차 동기): 5-B 상태 모델은 rule text 에 완결됐으나 *기계적 강제* 부재 — lifecycle-state header(현재 3-state 추론)·prelive same-path 소비방지·withdrawal lineage. live 전환이 자동해소 아님(다음 promotion 이 같은 창 재개방 — 구조적 원인 그대로).
+2. **명시 check gap 2종**: (a) E2 content-scan = `rules/**`+`docs/README.md` 만 → **`snippets/rules/` 미스캔 = false-PASS**(rule candidate 의 promotion target 이 바로 거기인데 E2 가 못 봄; SCOPE INFO 자기천명). (b) **transition-awareness 미구현** — 규칙 transition clause 가 "realigning changeset 에서 transition-aware enable" 약속하나 현 구조검사(E1/E2/E3)는 즉시-binding → *불일치*.
+3. **5-D altitude-gate 미기계화**: detail-flow invariant(front-load=결함)가 checklist 게이트로 없음.
+4. **(인벤토리 추가 surface)** prelive 가 *가장 논의됐는데 가장 미게이트*(Spec checklist 가 Lifecycle-state 절을 *묻지도 않음*) · rule_docs/terminal-rule **closeout Level-2 surface 부재**(closeout gate 가 domain-Spec 형상 end-to-end — 양 인벤토리 독립 포착, 최대 구조 gap).
+
+### 방향 (direction — 세부는 Plan/WP)
+- **3-tier routing 으로 *제 tier* 강제(5E-c2).** *transition 의무*(atomic swap·retire=deletion·withdrawal·finalize-before-review)는 snapshot 이 못 보므로 **PCG(closeout gate)로 정직 라우팅** — 정적 check 에 욱여넣지 않음(인벤토리 "the trap"; 규칙도 "E3 guarantees only non-coexistence" 인정).
+- **(MS) check 확장**: E2 scan 에 `snippets/rules/` 추가(false-PASS 닫음) + promoted `_spec.md` 의 **Lifecycle-state marker presence** 검사. (그 외 MS-가능 항목 선별 = Plan; over-mechanize 경계.)
+- **(SC) checklist 정합**: 5-D altitude/detail-flow 게이트 + Spec checklist 에 **Lifecycle-state 절** 추가 + prelive 소비-인식·withdrawal-기록·open-Q-routing 의미게이트. (신규 candidate-lifecycle/promotion checklist vs 기존 확장 = Plan.)
+- **(PCG) closeout 게이트**: rule_docs/terminal-rule **Level-2 변종** + withdrawal=기록된 reversal + open-Q-blocks-live 를 closeout 절차의무로.
+- **(D) template**: Lifecycle-state 를 *testable required convention* 으로(이미 prelive/sync-required/live 명명; checklist 가 검사 가능하게).
+- **transition-awareness(★ dual-lens dialectic 으로 *재확정*; codex 양 lens[중립 blind + Reading-1 refute relay-B] 모두 Reading 1 지지·refute 실패→CONCEDE)**: 구조검사(E1/E2/E3, 5-E 신규 포함)는 즉시 binding(line 105), anchored 후보는 conform-pass. transition 유예 = terminology-registration check 한정(5-E 비대상) → 5-E transition 완결. exemption registry 불요. 잔여 = line 104 parenthetical 용어 애매(WP/5E-R3).
+- **broader 인벤토리 = catalogued defer(no silent drop — adversarial §11)**: durable-pointer 일반 scan·docs/ 도메인 purity·terminology state-machine·rejected-term sweep·review-date staleness·WP checklist 등은 5-E 밖 — *후속 enforcement 항목으로 보존*(행선지 = Plan; 규칙엔 backlog 없음). **★ E3 cross-folder rename-lineage = known hard residual(relay-B)**: 규칙은 lineage 금지하나 script 는 same-folder sibling 만 봄 — promotion-integrity/rename-evasion 이지 prelive-소비 아니라 5-E narrow 밖 defer 가능하되 *명시 잔여*로 둔다(silent drop 금지). 5-E 는 Phase-1 *최후 settle* 이지 enforcement-전수완성이 아님(과통합 차단 — normative §2).
+
+### Owner surface / 수정 대상 (방향)
+- **3 verification tier**: `scripts/docs-working-model-check.ps1`(+`tests/docs-working-model-check.Tests.ps1`) = MS · `rules/docs-working-model/checklists/*` = SC · `rules/docs-working-model/docs-working-model.md` *Closeout* 절 = PCG(terminal-rule Level-2; 5E-R1). **+ form surface**(검증 tier 아님): `rules/docs-working-model/templates/*` = Lifecycle-state field 등 *생성 form*(SC checklist 가 그 form 을 검사 — re-blind 보정으로 D 를 4번째 검증 tier 로 안 씀). rule = 자기 spec-of-record.
+
+### non-goals
+- 전체 인벤토리 강제 · 새 normative 의미(5E-c1) · 후보 realign(Phase 2) · 5-G/5-X/5-T · taxonomy 변경 · exemption-registry 신설 · 정확 로직/regex/문구/케이스(Plan/WP) · mutation/commit/push 승인 아님.
+
+### Open risk / direction fork (orchestration adjudicate)
+- **(5E-R1) terminal-rule closeout Level-2 — relay-B adjudicate = 조건부 (a) 의미-완성.** rule *Closeout* Level-2 가 domain `_spec`/`_backlog` 만 명명 → rule closeout 의 Level-2 surface 공백. terminal-rule variant 추가 = *이미 정해진 owner surface(terminal rule 파일)를 closeout gate 에 매핑*하는 의미-완성(새 의미 아님). **단 tight 제약(이걸 넘으면 5E-c1 위반→별도 item/Stage rewind)**: terminal rule 파일 *자체*가 Level-2 surface, rule 은 backlog 없어 open-Q 는 terminal landing 전 resolve; **새 파일/backlog/state-store/의미-field 만들면 즉시 별도 item**. close 확인 = Plan.
+- **(5E-R2) MS vs over-mechanize.** 인벤토리 MS-가능 항목 중 *어디까지가 5-E scope* (09aced5 risk+명시 gap) vs defer. **close = Plan.**
+- **(5E-R3) transition-awareness — ★ dual-lens dialectic 으로 *해소*.** blind(중립 textual) + relay-B(Reading 1 refute-attempt) 둘 다 Reading 1 지지(codex CONCEDE: 구조검사 즉시-binding, transition 은 terminology-check 한정). 5-E 는 transition 완결. 잔여(parenthetical 애매) → **사용자 결정 = (a): 5-E 가 bounded 명료화 포함** — line 104 의 "the mechanical check for this model" → *terminology-registration model* 임을 명시(meaning-preserving disambiguation; 새 의미/gate 0 — 이 애매함이 *내 오독을 유발*했으니 5-E 가 닫음). R1 보다 가벼운 rule-text 터치(proportionality = wording cleanup 급).
+
+### Plan-readiness (Plan/WP 가 닫을 detail)
+- MS 선별(5-E scope 경계) · SC 구조(신규 vs 확장 checklist) · PCG terminal-rule Level-2 fork(5E-R1) · transition-awareness 표현(5E-R3) · deferred 인벤토리 행선지 · 정확 check 로직/regex/marker 토큰/test 케이스/checklist 문구 — Plan/Work Packet/구현.
