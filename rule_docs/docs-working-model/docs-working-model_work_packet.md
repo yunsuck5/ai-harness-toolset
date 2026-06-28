@@ -189,3 +189,66 @@ An incubating candidate may state its identity by contrast with an existing conc
 - **candidate-agnostic**: 어느 후보(consultation/blind/orchestration)와도 무관 — 일반 lifecycle 작성 규율만.
 - **Final hard rule**: docs 비-authority·active-surface=authority(P0-3) 위반 0(이 변경은 rule 본문 = active surface).
 - **retire 조건**: closeout 시 이 5-D 노트도 batch-1~4 노트와 함께 삭제.
+
+## Phase-1 작업노트 — 5-K: promotion 전이 (entry artifact swap; transition-aware E3)
+
+> 5-K Plan 결정을 line-level 편집 + 삽입 초안으로(5-D landed 규칙 위에서). final wording single-home = live rule.
+> **★ 구현됨 + full-scope orchestration 정정.** 아래는 출발 초안이고 final = live rule. full-scope blind+relay-B(규칙 전문 read, diff 아님)가 잡아 정정: ① blind — 내가 *안 건드린* 두 곳(line 86 "writes terminal rule file directly", line 95 "absorbed into rules/ rule file")이 5-K entry=`_design` 와 이중진술 → rule-candidate entry 일관화(entry=`_design`, terminal rule=eventual output) ② relay-B — Proportionality-collapse hedge 제거(promotion=normative→min `_design`) · E4 흡수 by-kind 명시(decision-grade→`_design`·never WP / round-scoped→active-lifecycle WP / `_incubation` raw 0) · filename↔live-authority 분리 ③ re-blind — 내 by-kind fix 가 "never WP"+"into WP" 문장내 모순 → 별개 절 분리. 수렴(re-blind no-concerns). 전체 discovery/state-machine·rename-lineage = **5-B defer**.
+
+### 편집 대상 절 (`docs-working-model.md`, *Incubation tier*)
+| 편집 | 대상 | 종류 |
+|---|---|---|
+| K-1 | *Candidate lifecycle* promote 문단(E4 흡수 대상 "the promoted Design / Plan / Spec, or the terminal rule file") | reword(→ entry promoted artifact `_design`; swap 명확화) |
+| K-2 | 3-state *active lifecycle work* 문단("within the one promotion transition (a single changeset that writes the promoted artifacts and removes the `_incubation.md` together)") | reword(swap=`_incubation`→`_design`; atomicity=E3-intact 보장; transient fallback) |
+| K-3 | *E3* 문단("no canonical-looking sibling … created during incubation") | reword(transition-aware: binding window=`_incubation` 존재 기간) |
+
+### 삽입 초안 (영어 — 구현이 확정)
+**[K-1] Candidate lifecycle promote — E4 흡수 대상 정밀화.**
+> …the incubation document's current-bearing content is absorbed (E4 — every current-bearing item in E4-required form, not raw-carried) into **the entry promoted artifact: the `_design.md` that the promotion transition writes** (a domain candidate then continues Design → Plan → Spec, a rule candidate Design → Plan → terminal rule — the proportional shape of that lifecycle is governed by the *Proportionality rule*), **never the Work Packet**, as a **precondition of removal** within the promotion transition (the atomic `_incubation.md` → `_design.md` swap); then the `_incubation.md` is removed (the candidate-lifecycle closeout). The remaining current-bearing content is carried forward by that normal lifecycle (the promoted-lifecycle closeout reconciles the eventual Spec / terminal rule 1:1) — not re-absorbed and not lost; a promoted Design smaller than the `_incubation` is still an E4 violation, not a licence to keep the raw document.
+
+**[K-2] 3-state active — swap + atomicity 한정.**
+> …at promotion the `_incubation.md` is removed as the candidate-lifecycle closeout — its E4 absorption into **the entry promoted artifact (the `_design.md`)** completed as a precondition of removal — within **the promotion transition: the one atomic changeset that removes `_incubation.md` and writes `_design.md` together (the `_incubation.md` → `_design.md` swap)**, so `_incubation.md` never coexists in committed state with `_design.md` / `_plan.md` / `_spec.md` — E3 stays intact. (That atomicity guarantees only the non-coexistence; *what state* the promoted artifact is then in — promoted but not yet live — follows the *Spec identity* time-phasing until a lifecycle-state marker is defined for it.)
+
+**[K-3] E3 transition-aware.**
+> **E3** — before promotion a candidate artifact is not a default or input of any canonical surface …; no canonical-looking sibling (`_design` / `_plan` / `_spec`) is created **while the `_incubation.md` exists (the incubation period)**. The promotion transition is the boundary that atomically removes `_incubation.md` and writes `_design.md`, so a sibling appears only *after* incubation ends, never *during* it (the binding window is the incubation period, not the whole promoted lifecycle).
+
+### Edge / 정합 체크 (구현 시 lightweight 대조)
+- **batch-3 정합**: swap("`_incubation`→`_design`")이 batch-3 "atomic promotion transition · E4=removal precondition"의 *정밀화*(그 "single changeset"이 무엇↔무엇 교체인지 고정) — 번복 아님.
+- **lifecycle 정합**: entry artifact=`_design` 이 현 규칙 "Design→Plan→Spec"/"Design→Plan→rule" 진입과 일치.
+- **E4-precondition 보존**: swap 시 entry artifact 로 *완전* 흡수, 나머지=정규 lifecycle carry(손실/raw 둘 다 아님).
+- **atomicity 과적재 0**: 상태(promoted-but-not-live)는 5-B marker 소관; 5-K 는 Spec-identity time-phasing fallback 한 줄만.
+- **5-D 정합**: K-1~K-3 가 5-D 의 Lifecycle invariant `_incubation` carve-out(*Incubation tier* governs `_incubation`)·Design decision-grade(E4 rejected-alternatives→Design)와 충돌 0.
+- **retire**: closeout 시 이 5-K 노트도 함께 삭제.
+
+## Phase-1 작업노트 — 5-B: promote-but-not-live 상태머신
+
+> 5-B Plan 결정의 편집 대상 + 초안 방향(5-K/5-D landed 위에서). 정확 문구 = 구현 시 각 절 읽고 확정(5-D 원칙). final single-home = live rule.
+> **★ 구현됨 + full-scope orchestration 정정.** 아래는 출발 방향이고 final = live rule. full-scope blind(5 라운드 수렴)가 잡은 정정: **rule/domain 비대칭 명시**(prelive=domain-Spec 전용; rule=`_design`/`_plan` active-lifecycle-work, terminal landing 까지 discoverable rule 아님) · de-promotion 이 prelive Spec 도 처분(E1 잔존 방지) · open-Q domain(backlog defer)/rule(pre-landing resolve) 분리 + neither-resolved-nor-deferred 만 block · prelive Spec 작성 시점 명확(전이=`_design`, Spec=이후 단계). **relay-B(judgment) → 5-E inputs(설계-robustness, 5-B 모델 밖 enforcement)**: ① rule 에 명시 lifecycle-state header field(현재 3-state 추론) ② withdrawal lineage 의무 field + re-promote gate ③ prelive Spec same-path 소비자 mechanical check ④ rule open-Q 를 rule 본문 non-goal/unsupported-boundary 로 닫는 옵션 ⑤ 통일 lifecycle header. (5-B=상태 모델 / 5-E=명시 marker·기계화.)
+
+### 편집 대상 절 (`docs-working-model.md`)
+| 편집 | 대상 절 | 종류 |
+|---|---|---|
+| B-1 | *Spec identity* lifecycle-state (현 live/sync-required) | add `prelive`(promoted-but-not-live) marker — 'blueprint' 형용사와 구분 |
+| B-2 | *Incubation tier* E1 (discovery by promoted canonical artifact) | add 2층 — governance-discoverable(prelive 포함) vs implementation-authoritative(live only) |
+| B-3 | *State migration* | add de-promotion = 기록된 `promotion-withdrawal`(incubation 재개 허용+marker; 무기록 rollback 금지; live 후 금지) |
+| B-4 | *Incubation applicability* §Open / *Future-work queue* | open-Q routing: promotion 시 미해결 → backlog(있으면)/entry-artifact `Deferred Questions`(없으면); 미해결=live 차단 |
+| B-5 | *E3* (transition-aware, 5-K 가 손댐) | rename-lineage 확장 — candidate/successor-id/rename-target; promotion changeset=source disposal+target creation 동일 changeset |
+| B-6 | *Live-Spec update* (sync-required) | 정합 확인/1줄 — prelive(신규 domain 첫 Spec, closeout 전) ≠ sync-required(기존 live domain 갱신) |
+
+### 초안 방향 (구현이 정확 문구 확정)
+- **B-1**: Spec lifecycle-state marker 3종 = `prelive`(promoted, closeout 전, not-live — 신규 domain 첫 Spec) / `sync-required`(기존 live Spec in-place 갱신 후) / `live`(closeout 1:1). prelive 는 *Spec identity* 의 "writing-completion = blueprint of target state" 시점 상태에 이름을 준 것(형용사 'blueprint'는 그대로, 상태명은 prelive).
+- **B-2**: E1 discovery 를 2층으로 — 모든 promoted canonical artifact(prelive 포함)는 *governance* 발견 대상(리뷰·lifecycle 추적)이나, *implementation authority*(behavior 의 1:1 근거)는 live/sync-required 만. 단순 발견이 live authority 로 오독되는 것 차단(5-K 의 filename↔authority 분리를 discovery 축으로 확장).
+- **B-3**: de-promotion — promoted-but-not-live 를 되돌릴 때 = `promotion-withdrawal` changeset(기록). incubation 재개 *허용*(marker "restored from withdrawn promotion" 동반; candidate id 재사용 가능, history 보존). 무기록 silent rollback 금지. **live(closeout/terminal landing) 후엔 de-promotion 금지** — repeal/supersede(정상 lifecycle)만. (identity-monotonic 아님; 5-D 에서 retract 한 "candidate 부활 불가" 모델 계승.)
+- **B-4**: promotion(swap) 시 미해결 incubation open-question → 도메인 `<domain>_backlog.md`(있으면, one-line+reopen condition 형식) / 없으면 entry-artifact(`_design`)의 `Deferred Questions` 절에 두고 Plan 때 backlog/tasks 로 흡수. **미해결 open-Q 존재 시 live 전환 차단**.
+- **B-5**: E3 를 sibling-금지에서 lineage-금지로 — `_incubation` 존재 중 그 candidate·그 successor-id·rename-target *어디에도* `_design`/`_plan`/`_spec` 생성 금지; promotion transition 은 source `_incubation` disposal(또는 final-name rename)과 target `_design` creation 을 *같은 changeset*에 포함(rename 우회 차단; 5-K atomic-swap 보강).
+- **B-6**: *Live-Spec update* 의 sync-required 가 *기존 live* domain 의 in-place 갱신 상태임을 유지하고, 신규 domain 첫 Spec 의 prelive 와 구분(별 칸) 1줄 명시.
+
+### Edge / 정합 체크
+- prelive ≠ 'blueprint' 형용사(Spec identity)·≠ sync-required(다른 칸).
+- 2층 discovery 가 E1·*Final hard rule*(active-surface=authority)·5-K filename↔authority 와 정합.
+- de-promotion=history-preservation 이 5-D retract·*State migration*(carried-over)·rule_docs purity(no archive)와 정합.
+- open-Q routing 이 *Future-work queue* 형식(one-line+condition)·*Incubation applicability* §Open 소유권 이동과 정합.
+- E3 lineage 가 5-K atomic-swap·*Stable filename rule*(rename) 과 정합.
+- rule/domain 비대칭: rule 은 Spec 없어 marker 본체 = 3-state active(이미 존재); domain 만 Spec lifecycle-state marker 추가.
+- single-home: 다른 절 재소유 0(각 면은 자기 절 — Spec identity/E1/State migration/Future-work queue).
+- retire: closeout 시 이 5-B 노트도 함께 삭제.

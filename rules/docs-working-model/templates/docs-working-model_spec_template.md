@@ -34,4 +34,4 @@
 
 ## Lifecycle state
 
-{{compact 상태 절: design/plan 존재 여부 · spec↔implementation sync 상태(live / sync-required) · capability/maturity 한 줄}}
+{{compact 상태 절: design/plan 존재 여부 · spec lifecycle state(**prelive / sync-required / live** — 신규 promote 후 closeout 전 = `prelive`; 기존 live Spec in-place 갱신 후 = `sync-required`; closeout 1:1 = `live`) · capability/maturity 한 줄}}

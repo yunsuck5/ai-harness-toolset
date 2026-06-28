@@ -106,3 +106,51 @@
 - **axis note = proportionality 는 *lifecycle 발동 여부*** 한정(WP/incubation/backlog 는 자기 creation trigger, 여기 미주관).
 - **deferred(5-D 밖)**: rule_docs/terminal-rule 의 *Closeout 2-level gate* 부재(blind C2) = 기존 *Closeout* 절의 pre-existing gap → 별도 item(5-E 또는 closeout 보강).
 - 정정 후 full-scope re-blind = no-concerns(수렴). final wording single-home = live rule.
+
+**batch-6 — 5-K: promotion 전이 (transition event vs promoted lifecycle; E3/E4 on entry artifact)**
+- **목적(한 줄).** promote 의 이중정의(다단계 D→P→S lifecycle ↔ 단일 atomic changeset)를 "전이 이벤트(=`_incubation`→entry artifact swap) vs promoted lifecycle" 분리로 해소하고, E4 흡수 대상·E3 경계를 entry promoted artifact 기준으로 명확화.
+- **scope.** 다루는 것 = *Incubation tier* 의 Candidate lifecycle(promote 문단)·3-state(active)·E3 문단의 promotion-transition 정정. 안 다루는 것 = 5-B blueprint 상태머신(별도 item) · 후보 콘텐츠 · Proportionality 의 Design-collapse 재정의(reference만) · taxonomy.
+- **batch 단위 = 단일 JOIN.** 세 문단은 한 transition 의 인접 진술(쪼개면 transient 모순).
+- **hard boundary.** ① taxonomy 불변(`_incubation`=file artifact; 5-D 가 `_incubation` 을 Lifecycle-invariant special-path 로 carve-out 한 것과 정합) ② E4 흡수 = removal 의 precondition 보존(batch-3) ③ no committed coexistence(E3 intact) ④ atomicity = E3-intact 보장에만(상태 marker 는 5-B; 5-K 는 그 자리 안 만듦) ⑤ 5-D landed 모델(Lifecycle invariant·Design decision-grade) 정합 ⑥ rule=자기 spec-of-record.
+- **open decision close(이 Plan 이 닫음).**
+  - **entry promoted artifact = `_design.md`** — domain·rule candidate 둘 다 Design 으로 시작(현 규칙 "Design→Plan→Spec"/"Design→Plan→rule"). 전이 = `_incubation`→`_design` swap. (trivial candidate 의 proportional collapse 는 *Proportionality rule*+5-D axis 소관 — 5-K 재정의 안 함, reference만.)
+  - **E4 흡수 대상(swap 시점) = entry promoted artifact(`_design`)**, swap 시점 *완전*(removal precondition). 현 "the promoted Design / Plan / Spec, or the terminal rule file" 나열 → "the entry promoted artifact" 로 정밀화. 나머지 current-bearing 은 정규 lifecycle carry(Design→…→Spec/rule, promoted-lifecycle closeout 이 1:1).
+  - **E3 transition-aware** — binding window = `_incubation.md` 존재 기간; swap = incubation 종료 경계(공존0 = E3 intact).
+  - **atomicity 역할 한정** — "single changeset that writes the promoted artifacts and removes `_incubation`" → **swap(`_incubation` out, `_design` in)**으로 명확화. atomicity 는 *공존0(E3-intact)* 보장이고, 전이 산출물이 어떤 *상태*인가는 5-B marker 소관(미landing).
+  - **transient 봉합 fallback** — 5-K landing 시 post-swap pre-live 상태는 기존 *Spec identity* time-phasing(writing-completion blueprint → implementer reference → closeout live)을 따른다는 보수적 한 줄(5-B 가 명시 marker 로 승격할 자리).
+- **validation expectation.** full-scope blind+relay-B(규칙 전문, diff 아님) + canonical dual. 정합: batch-3 atomic-transition·E4-precondition / 5-D invariant 의 `_incubation` carve-out / *Incubation tier* 다른 문단(`_incubation` 정의·E1·E4·E5)·*State migration* / Document artifact classes #2.
+- **review focus.** swap 재정의가 batch-3 와 정합(정밀화·번복 아님) · entry-artifact 가 lifecycle("Design→…")과 정합 · E4-precondition 보존(손실/raw 둘 다 아님) · atomicity 과적재 0 · 5-D `_incubation` carve-out 과 충돌 0.
+- **Work Packet 필요 = 예.**
+
+### Open decision close 지점 (5-K)
+- 5-K-1(entry artifact) → 이 Plan: `_design.md`(domain·rule 공통); collapse=Proportionality 소관.
+- 5-K-2(E4 대상·precondition) → 이 Plan: entry artifact, swap 시 완전(batch-3 보존).
+- 5-K-3(atomicity 역할) → 이 Plan: E3-intact 보장만; 상태=5-B.
+- 5-K-4(transient fallback 문구) → Work Packet → 구현 확정.
+- 5-K-5(batch-3/5-D 정합 clause-map) → Work Packet(구현 시 lightweight).
+- **★ 구현 정정(full-scope orchestration)**: rule-candidate entry 일관화(entry=`_design`, terminal rule=eventual output) · Proportionality-collapse hedge 제거(promotion=normative→min `_design`; collapse 미위임) · E4 흡수 by-kind(decision-grade→`_design`·never WP / round-scoped→WP) · filename↔live-authority 분리. 전체 discovery/state-machine·rename-lineage = **5-B**. 상세 = WP 5-K 노트.
+
+**batch-7 — 5-B: promote-but-not-live 상태머신 (5-K 의 yes-with-risk 를 닫음)**
+- **목적(한 줄).** swap 이 낳는 promoted-but-not-live 상태를 규칙에 정의 — lifecycle-state marker · 2층 discovery · de-promotion · open-Q routing · E3 rename-lineage. (5-K SC canonical 의 deferred risk 를 닫는다.)
+- **scope.** 다루는 것 = *Spec identity*(prelive marker) · *Incubation tier* E1(2층 discovery) · *State migration*(de-promotion) · open-Q routing(*Incubation applicability* §Open → *Future-work queue*) · *E3*(rename-lineage). 안 다루는 것 = 5-K/5-D 재litigate · 후보 콘텐츠 · marker 기계검사(5-E) · taxonomy.
+- **batch 단위 = 단일 JOIN.** prelive 상태의 여러 면(marker·discovery·de-promotion·open-Q)은 한 상태머신 — 쪼개면 transient(상태 정의했는데 discovery/되돌리기 미정).
+- **hard boundary.** ① 5-K landed(swap·entry·filename↔authority)·5-D(invariant·carve-out) 정합 ② marker 명 ≠ *Spec identity* 형용사 'blueprint'(충돌 회피) ③ de-promotion = history-preservation(identity-monotonic 아님 — candidate 부활 *허용*, 기록된 withdrawal) ④ rule/domain 비대칭(rule=no Spec) ⑤ rule=자기 spec-of-record · taxonomy 불변 · single-home(다른 절 재소유 0).
+- **open decision close(이 Plan 이 닫음).**
+  - **marker 명 = `prelive`**(promoted-but-not-live). *Spec identity* lifecycle-state = `prelive` / `sync-required` / `live`. ('blueprint'=형용사로 보존.)
+  - **2층 discovery**: `governance-discoverable`(prelive 포함 — 리뷰·lifecycle 추적) vs `implementation-authoritative`(live/sync-required only). prelive 는 전자 O 후자 X. E1 에 명시(단순 발견≠live authority).
+  - **de-promotion = 기록된 withdrawal**(history-preservation): `promotion-withdrawal` changeset 으로 incubation 재개 *허용*(marker 동반); 무기록 silent rollback 금지; **live 후엔 de-promotion 금지**(repeal/supersede 별도). *State migration* 에. (내 5-K 의 "candidate 부활 불가"는 5-D 에서 이미 retract — 그 모델 계승.)
+  - **open-Q routing**: 미해결 incubation open-Q at promotion → 도메인 `<domain>_backlog.md`(있으면) / 없으면 entry-artifact 의 `Deferred Questions` 절(Plan 때 backlog 흡수); **미해결 open-Q = live 전환 차단**.
+  - **rule/domain 비대칭**: domain = Spec lifecycle-state 에 prelive marker; rule = 3-state "active lifecycle work" 가 이미 prelive 등가(rule 파일은 terminal landing 까지 부재 → E1 discovery 대상 아님). marker 본체 = domain Spec; rule 은 기존 3-state 로 충분(명시만).
+  - **E3 rename-lineage**: E3 의 sibling 금지를 candidate / successor-id / rename-target 로 확장; promotion changeset 이 source `_incubation` disposal/rename + target `_design` creation 을 같은 changeset.
+- **validation expectation.** full-scope blind+relay-B(규칙 전문) + canonical dual. 정합: 5-K swap·5-D invariant·*Spec identity*·E1~E5·*Live-Spec update*(sync-required ≠ prelive)·*State migration*·*Future-work queue*.
+- **review focus.** prelive 가 'blueprint' 형용사·sync-required 와 구분 · 2층 discovery 가 E1·*Final hard rule* 과 정합 · de-promotion=history-preservation(identity 아님) · open-Q 손실 0 · rule/domain 비대칭 명확 · single-home(재소유 0).
+- **Work Packet 필요 = 예.**
+
+### Open decision close 지점 (5-B)
+- 5-B-1(marker 명) → 이 Plan: `prelive`.
+- 5-B-2(2층 discovery) → 이 Plan: governance vs implementation-authority.
+- 5-B-3(de-promotion) → 이 Plan: 기록된 withdrawal(history-preservation), live 후 금지.
+- 5-B-4(open-Q routing) → 이 Plan: backlog/Deferred-Questions fallback, live 차단.
+- 5-B-5(rule/domain 비대칭) → 이 Plan: domain=Spec marker / rule=기존 3-state.
+- 5-B-6(E3 rename-lineage) → 이 Plan: lineage(candidate/successor/rename) 확장.
+- 5-B-7(정확 문구) → Work Packet → 구현 확정.
