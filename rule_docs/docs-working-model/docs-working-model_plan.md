@@ -66,3 +66,43 @@
 
 - **Plan 이 Design 위반**(예: 완전 matrix/재구조화로 확장) → stop, Design 재설계 후 Plan 재시작.
 - **구현이 Spec(=rule) boundary 초과**(예: stash 된 candidate 콘텐츠 수정 · 별도 `_spec.md` 생성 · rejected umbrella 부활) → stop & 사용자에 확인, 조용한 scope 확대 금지.
+
+## Phase-1 — Plan (cs1 revision 의 continuation; 규칙 candidate-agnostic settle)
+
+> Phase-1 = `docs-working-model` 규칙을 *임의 candidate 의 일반 lifecycle* 로 settle 후 freeze(규칙↔후보 양방향 순환을 phase 경계로 차단). 각 item 의 Design = direction-level(별도 `_design.md`). **이 Plan 의 일 = batch 순서·번호 부여 + 각 item 의 승인대상 결정 close**(Design 은 item-label+DAG 만 줬다). cs1 닫지 않음. 운용 = mode-2. **mutation/commit/push 승인 아님.**
+
+### batch 순서/번호 (이 Plan 의 결정)
+- **실행 DAG**: 5-D(토대·최선두) → 5-K → 5-B → 5-X; 5-G 는 5-K 와 병렬; 5-T 는 5-K 뒤; 5-E 는 본문 settle 후 최후.
+- **번호 = landing 순서 기준**: batch-5 = 5-D · batch-6 = 5-K · batch-7 = 5-B (이후 5-G/5-X/5-T/5-E 는 그 시점에 부여). **한 changeset 에 여러 item JOIN 안 함**(SPLIT lock — 5-K↔5-B 분리 결정 계승).
+- **per-item lifecycle**: 각 item = Design(완료) → Plan → (Work Packet) → rule 편집 → closeout. **5-D landing 후 그 규칙이 5-K/5-B Plan 작성을 규율**(5-D Plan 자신은 bootstrap 수동 적용 — E5 동형). 이번 산출 = **5-D Plan + Work Packet** 까지; 5-K/5-B Plan 은 5-D settle 후 이어서.
+
+**batch-5 — 5-D: lifecycle artifact content/altitude 할당 + detail-flow 원칙**
+- **목적(한 줄).** Design 에 content/altitude 경계를 부여하고 계층-횡단 detail-flow 원칙을 명문화해 "Design=방향, detail 은 아래로, 구현 직전 확정"을 규칙으로 강제(현재 Design 만 경계 부재).
+- **scope.** 다루는 것 = ① Design 정의에 content/altitude 경계 ② 신규 detail-flow 원칙(계층-횡단) ③ Proportionality 와의 축-구분 cross-ref. *안 다루는 것* = 기존 Plan/Spec/WP 경계 재정의 · Proportionality 본문 재정의 · checklist/check 기계화(5-E) · 후보 콘텐츠.
+- **batch 단위 = 단일 JOIN.** Design 경계 + detail-flow 원칙 + 축 cross-ref 는 한 coherent normative 추가(같은 lifecycle 절 군) — 쪼개면 transient(경계만·원칙 없음).
+- **hard boundary(불가침).** ① 기존 Plan/Spec/WP content 경계 미변경(Design 경계 *신설*만) ② Proportionality rule 본문 미변경(축 cross-ref 한 줄만) ③ rule=자기 spec-of-record(별도 `_spec.md` 금지) ④ candidate-agnostic(후보 미터치) ⑤ taxonomy 불변(P0-1) ⑥ 새 enforcement 머신 안 만듦(5-E 소관) ⑦ Final hard rule(docs 비-authority) 준수.
+- **open decision close(이 Plan 이 닫음; phase-경계 blind+relay-B 정렬 반영).**
+  - **detail-flow 위치 = *Design / Plan / Spec lifecycle* 절 *최상단* 의 "Lifecycle invariant"**(독립 top-level 절 신설 안 함 = single-home, 단 절 맨 앞에 둬 *묻히지 않게* — relay-B B). **모든 lifecycle artifact 에 거는 invariant 로 서술**(특정 5-D 목록 설명 아님 — 후속 artifact 도 상속).
+  - **Design 경계 = *detail-grade 별* 제외, *decision-grade* 유지**(relay-B A — "direction-only"는 과무딤). 제외 = round/line-level analysis · execution 순서/staging/mechanics · exhaustive enumeration · 정확 marker/field/token 명 · final exact wording. **유지(Design 이 담아야) = semantic target · 개념모델 · chosen trade-off · ownership boundary · target-state invariant · non-goal scope · 대표/경계 예시(exhaustive 아님) · 왜 그 source-of-truth 인지.**
+  - **home-routing = *종류별*(버킷 금지; blind C2 + relay-B D).** approval-target→Plan · direction-rationale/개념모델→Design · round-scoped 조사/대안/line-level→Work Packet · durable target-state/normative text→Spec(또는 rule_docs=terminal rule) · execution record/evidence→`log/**` · final wording→Spec/terminal rule. "Plan+WP" 한 버킷 금지(round-scoped 가 Plan 으로 새는 것 차단).
+  - **Proportionality = 다른 축 + 핵심 예외.** proportionality = *어느 artifact 를 만드나*(meaning-change 면 lifecycle) / detail-flow invariant = *만든 artifact 가 무엇 담나*. **예외(relay-B C): artifact 생략 ≠ content 승격** — proportionality 가 한 artifact 를 생략해도 그 content 를 다른 home 으로 밀어넣지 않는다(만들거나 버리거나, 밀반입 금지). proportionality 본문 미변경, cross-ref 한 줄.
+  - **rule_docs 확정지점 = terminal rule 파일**(domain=Spec 와 대칭; execution-grade 는 여전히 `log/**`, Spec/rule 에 실행순서 lock 금지 — blind C1).
+- **validation expectation.** blind(framing-stripped, **Plan-altitude anchor**) + relay-B 정합 + 구현 시 canonical. 내부 정합: Design 경계가 over-restrict(decision-grade 까지 막음) 0 & under(detail 샘) 0 · home-routing 종류별 누수 0 · execution-grade 가 Spec/rule 로 안 샘(blind C1) · detail-flow 가 Proportionality 와 충돌 0(다른 축+예외) · single-home(lifecycle 절) 유지 · candidate-agnostic.
+- **review focus.** Design 경계가 decision-grade 까지 over-restrict 안 하는가(relay-B A) · home-routing 이 종류별로 새는 곳 없나 · invariant 가 묻히지 않고 모든 artifact 상속하나 · execution↔target-state grade 혼동 0 · Proportionality 축+예외 정합 · candidate 무관 · rule=자기 spec.
+- **Work Packet 필요 = 예.** 편집 대상 절 분류 + 삽입 초안(Design 경계·detail-flow 원칙·축 cross-ref). 흡수 = rule 편집. retire = closeout.
+
+### Open decision close 지점 (5-D)
+- **5-D-1**(detail-flow 위치) → **이 Plan 이 닫음**: 기존 lifecycle 절 확장(독립 절 아님).
+- **5-D-2**(Proportionality 축) → **이 Plan 이 닫음**: 다른 축, cross-ref 한 줄(본문 미변경).
+- **5-D-3**(Design 경계 정확 문구) → Work Packet 삽입 초안 → 구현이 확정.
+- **5-D-4**(rule_docs 확정지점 표현) → Work Packet.
+- **5-D-5**(altitude 게이트의 checklist 화) → **5-E item**(이 batch 밖).
+
+### ★ 구현 시 정정 (full-scope orchestration; 위 결정 보강)
+구현 단계 full-scope blind+relay-B(Codex 규칙 *전문* read — diff 아님; "diff 는 scope 좁혀 놓침" 사용자 교정 반영)가 초안의 **over-absolute invariant** 를 잡아, 위 결정을 다음으로 보강(번복 아님 — scope·예외 추가):
+- **invariant scope = *Design→Plan→Spec/terminal-rule lifecycle***(전 artifact 절대 아님). 다른 artifact class(`log/**`·backlog·glossary·active-surface)는 *자기 절이 소유*, invariant 가 재라우팅 안 함(single-home 보존).
+- **special-paths carve-out**: `_incubation`(의도적 multi-grade 후보 dossier — *Incubation tier* 소유) · *State migration* carried-over(non-authoritative until judged, 자동결함 아님)는 invariant 밖.
+- **Design 경계 nuance**: decision-critical identifier/interface name·*결정 그 자체인* closed enum/taxonomy 는 direction-grade 로 **허용**; exhaustive inventory·final normative(MUST/forbid) wording 만 제외. semantic target = *paraphrasable* statement(Spec 문장 선작성 아님).
+- **axis note = proportionality 는 *lifecycle 발동 여부*** 한정(WP/incubation/backlog 는 자기 creation trigger, 여기 미주관).
+- **deferred(5-D 밖)**: rule_docs/terminal-rule 의 *Closeout 2-level gate* 부재(blind C2) = 기존 *Closeout* 절의 pre-existing gap → 별도 item(5-E 또는 closeout 보강).
+- 정정 후 full-scope re-blind = no-concerns(수렴). final wording single-home = live rule.

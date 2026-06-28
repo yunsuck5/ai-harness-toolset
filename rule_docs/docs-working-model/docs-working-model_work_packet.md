@@ -155,3 +155,37 @@ An incubating candidate may state its identity by contrast with an existing conc
 - pre-existing out-of-scope 2건(candidate `close=on promotion`; glossary rejected `rule_docs` 의 3-state desync)은 batch-4 산 아님(별도 correction-target).
 - 위 "최종 삽입 텍스트"(batch-1 source draft)는 batch-4 가 모델 개정함 — supersession 마커 + `owner-surface close`→`finalization-owner close` rename 으로 동기화.
 - retire 조건: closeout 시 이 batch-4 노트도 batch-1/2/3 와 함께 삭제.
+
+## Phase-1 작업노트 — 5-D: Design content/altitude 경계 + detail-flow 원칙
+
+> 5-D Plan 의 승인대상 결정을 line-level 편집 + 삽입 초안으로 옮긴 round-scoped 노트. *이 노트가 정확 문구를 드는 것 = 5-D 원칙(detail 은 WP altitude)을 5-D 자신에 dogfood.*
+> **★ 구현됨(implementation landed) + full-scope orchestration 정정.** 아래 [D-1]/[D-2]/[D-3] 는 *구현 출발 초안*이고, **final wording 의 single-home = live rule** `docs-working-model.md`(여기 중복 안 함). 구현 시 full-scope blind+relay-B(Codex 가 규칙 *전문* read; diff 아님)가 초안의 **over-absolute invariant** 를 잡아 모델 정정: ① invariant 를 *Design→Plan→Spec/terminal-rule lifecycle* 로 **scope** ② `_incubation`(multi-grade dossier)·*State migration*(carried-over) **special-paths carve-out** ③ 나머지 artifact class(`log/**`·backlog·glossary·active-surface wording)는 *자기 절이 소유* 명시(재라우팅 안 함) ④ Design 경계에 **decision-critical identifier·결정인 closed enum 허용 / exhaustive inventory·final normative wording 제외** nuance ⑤ axis note 를 *lifecycle 발동 여부*로 한정(WP/incubation/backlog 는 자기 trigger). re-blind = no-concerns. 아래 초안은 이 정정 *전* 텍스트이므로 final 은 rule 을 본다.
+
+### 편집 대상 절 (`docs-working-model.md`)
+| 편집 | 대상 절 | 종류 |
+|---|---|---|
+| D-2 | *Design / Plan / Spec lifecycle* 절 > **최상단** 신규 "Lifecycle invariant — detail flows downward" 항목 | insert(독립 top-level 절 아님 — single-home; 단 절 *맨 앞*에 둬 안 묻히게; 모든 artifact 에 거는 invariant) |
+| D-1 | 같은 절 > **Design** bullet | reword(content/altitude 경계 — *detail-grade 별* 제외, decision-grade 유지) |
+| D-3 | *Proportionality rule* 절 끝 | append(축-구분 cross-ref 한 줄; 본문 미변경) |
+| D-4 | *Spec identity* 의 "must not contain" | 무변경 *확인*(Design 경계가 이와 동형인지 대조) |
+
+### 삽입 초안 (출발 텍스트 — 영어 반영; blind+relay-B 정렬 반영)
+
+**[D-2] Lifecycle invariant — lifecycle 절 *최상단*에 신규(모든 artifact 에 거는 invariant).** *(routing 은 re-blind 정렬로 [W]/[S]와 완결 대조: implementation notes·evidence proposals=WP / execution records=log / semantic target=Design vs durable specification=Spec.)*
+> **Lifecycle invariant — detail flows downward (altitude per artifact).** Every lifecycle artifact holds only its own altitude, and detail flows to the artifact that owns it **by kind**, never bucketed upward: **direction rationale / conceptual model / chosen trade-offs / ownership boundary / non-goal scope / the semantic target (what the change must come to mean) → Design**; **approval-target decisions → Plan**; **round-scoped investigation / alternatives / line-level analysis / implementation notes / evidence proposals → Work Packet**; **the durable target-state *specification* / normative rule text → the live Spec, or for a `rule_docs` item the terminal rule file (no separate Spec)**; **execution records / outcomes → operator reports under `log/**`**; **final exact wording → the Spec / terminal rule (never the Design)**. Front-loading a lower-altitude detail into a higher artifact is a defect (it over-commits before the deciding artifact); pushing an approval-target decision *down* into a Work Packet is the inverse defect (it escapes the approval gate). **Omitting an artifact (per the proportionality rule) does not promote its content to another home — create the owning artifact, or drop / externalize the detail; never smuggle it upward.** This invariant binds every lifecycle artifact, including any added later.
+
+**[D-1] Design bullet — content/altitude 경계(detail-grade 별 제외, decision-grade 유지).**
+> **Design** — why / what / owner-surface model / chosen trade-offs / non-goals / which live Spec or implementation it modifies; a **decision-grade direction** artifact, **not permanently live.** A Design carries the *semantic target* (what the change must come to mean) and the decision-grade content needed to align direction — conceptual model, ownership boundary, the deciding target-state invariant, and **representative / boundary examples** (not exhaustive enumerations). It does **not** carry lower-grade detail: round-scoped / line-level analysis, execution sequences / staging / mechanics, exhaustive enumerations, precise marker / field / token names, or **final exact wording** — those flow to their own homes per the lifecycle invariant above (Work Packet, `log/**`, the Spec / terminal rule). This is the Design's content boundary, parallel to the Plan's *not-a-work-memo* and the Spec's *must-not-contain* boundaries. (Distinguish the *semantic target* / deciding invariant — a Design carries it, at direction grade — from the **durable target-state specification and exact wording**, owned by the Spec / terminal rule.)
+
+**[D-3] Proportionality rule — 축-구분 cross-ref 한 줄 append.**
+> (Axis note: the proportionality test decides *which artifacts are created at all* — a normative-meaning change invokes the lifecycle, a meaning-preserving edit does not. The **detail-flow lifecycle invariant** decides *what each created artifact holds*. They are different axes; do not conflate them. Their interaction is governed by that invariant's clause: **omitting an artifact under proportionality does not license moving its content into another artifact.**)
+
+### Edge / 정합 체크 (구현 시 = lightweight 대조)
+- **동형 + grade**: D-1 의 Design 경계가 Plan "not a work memo"·Spec "must not contain" 과 *동형*이며, *detail-grade 별* 제외 + *decision-grade 유지*라 over-restrict(decision-grade 막음) 0 & under(detail 샘) 0.
+- **single-home + prominence**: D-2 가 *Design / Plan / Spec lifecycle* 절 *최상단* invariant 로(독립 top-level 절 0 = single-home, 단 묻히지 않게); 모든 artifact 에 거는 invariant(후속 artifact 상속).
+- **home-routing 종류별**: D-2 의 라우팅이 종류별로 누수 0 — 특히 **execution-grade → `log/**`**(Spec/rule 에 실행순서 lock 0; blind C1), round-scoped → WP(Plan 으로 안 샘; blind C2). "Plan+WP 버킷" 표현 잔존 0.
+- **Proportionality 본문 불변 + 예외**: D-3 는 cross-ref 한 줄 append 만(판정 로직 미변경) + "artifact 생략 ≠ content 승격" 예외 명시(single-home 은 D-2 invariant; D-3 는 참조).
+- **rule_docs 확정지점 정합**: "terminal rule 파일" 이 기존 "rule = 자기 spec-of-record"(Incubation tier·E3·Stable filename rule)와 충돌 0.
+- **candidate-agnostic**: 어느 후보(consultation/blind/orchestration)와도 무관 — 일반 lifecycle 작성 규율만.
+- **Final hard rule**: docs 비-authority·active-surface=authority(P0-3) 위반 0(이 변경은 rule 본문 = active surface).
+- **retire 조건**: closeout 시 이 5-D 노트도 batch-1~4 노트와 함께 삭제.
