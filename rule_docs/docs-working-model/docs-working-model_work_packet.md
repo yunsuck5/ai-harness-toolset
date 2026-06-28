@@ -294,3 +294,43 @@ An incubating candidate may state its identity by contrast with an existing conc
 - verify-ps1(BOM+CRLF) + full Pester + `docs-working-model-check` 현-repo PASS.
 - **EN-6-wiring (canonical SC pass-01 corrective)**: 신규 promotion checklist 는 파일만 추가하면 죽은 deliverable — rule package 의 *manifest*(Package note `docs-working-model.md:5` 열거 + conformance gate forms-list `:202`) + *application trigger*(conformance gate `:200` 에 "promotion-boundary event 가 promotion checklist 통과")에 배선해야 EN-6 완성. descriptive routing(normative 신규 아님). rules/README.md 은 operative home 으로 라우팅만 하고 열거 안 함 → 미수정.
 - retire: closeout 시 이 5-E 노트 삭제.
+
+## batch-9 — 5-F Work Packet (enforcement-hardening; round-scoped)
+
+> 5-F Plan(batch-9) settle 후. round-scoped 작업문서 — 편집대상 분류 + check 로직 *초안* + test 케이스 + WP-checklist 문구·배선 + GUARDED feasibility. **흡수 = 구현 / retire = closeout(이 5-F 노트 삭제).** 정확 final 코드는 구현 산출(이 WP 는 출발 초안). `.ps1` UTF-8 BOM+CRLF + verify-ps1 + full Pester.
+
+### 독립 gap 인벤토리 (codex relay-A landscape + Claude 독립 lens 병합; Plan 이 WP 로 이연)
+항목별 {rule locus · current check coverage · file:line}. (출처 = 이 세션 relay-A landscape 서브에이전트 + 내 독립 reading; 전수 대조됨.)
+- **E2 precision**: rule `docs-working-model.md:107`(E2). check `docs-working-model-check.ps1:223`(`$incRefPattern`)·`:233`(`<`/`>` skip = angle-bracket FN)·`:181-187`(`$incTails`)·`:239-242`(tail EndsWith). regex 가 repo-relative 지향(drive-letter `C:/` 미매칭). tests `tests/docs-working-model-check.Tests.ps1`: normal-link/bare-token/dangling/same-leaf-other-folder 커버, **angle-link·drive-letter·base-tail 테스트 부재**.
+- **docs/ purity**: rule `:175-176`(*Stable filename rule* — `<topic>_*.md`·`docs/<domain>/work/` 금지; auxiliary는 deferred=Design/Plan 승인 필요 — check는 승인 비-구조적(NSE)이라 role-name accept). check: rule_docs purity 로직 `:64-160`(docs/ 로 포팅 대상), docs/ 는 명시 looser `:85-86`. **discriminator = *promotion-entry*(`<domain>_{design,plan,spec}.md` 중 하나라도 존재)** — folder 순회는 EN-2 promoted-spec presence 패턴 `:303-308` 재사용하되, 검사대상은 spec-only 아닌 promotion-entry(mid-promotion 포함; spec-only는 under-enforce — 구현 relay-B/canonical SC 보정).
+- **next-ID**: rule `:119-121`(one line `next ID: <PREFIX>-NN`, monotonic·삭제후 재사용 금지). 실 backlog: `docs/install-update/install-update_backlog.md:3`(multi-prefix `IU-B-14 · IU-D-12`)·rows `:11-30`(IU-B-*/IU-D- 분리). review/brief = single-prefix.
+- **EN-2 fence**: check `:336-360`(fence char+length 추적, CommonMark-correct). tests `:592-633`(fenced-only/real+fenced/inner-delim) — **same-char *짧은* close-fence(긴 opener 미닫힘) edge 부재**.
+- **durable-pointer**: rule `:45`(*Durable-pointer prohibition* — log/**·polishing/**·repo_snapshot/** 등 *전 committed doc*). check: E2 가 `_incubation` ref 만; 일반 durable scan 부재. discriminator 재사용 = E2 `:223/:233`.
+- **rejected-term**: rule `:102`(rejected finalize 전 4-class all-surface sweep). glossary `terminology-glossary.md` *Rejected terms* section. check 부재.
+- **WP-content**: rule `:76`(WP forbidden content). conformance gate `:198-202`(WP 미열거). checklist 부재(design/plan/spec/closeout/promotion).
+
+### 편집대상 (FN-1~FN-9; surface · tier · sketch)
+| id | surface | tier | sketch |
+|---|---|---|---|
+| **FN-1** | `docs-working-model-check.ps1` E2 | MS(rule-text 0) | angle-bracket link `[x](<path>)`: `:233` 의 무조건 `<`/`>` skip 을 *autolink/pointy-bracket destination* 만 벗겨 내부 path 를 incTails 대조(`<` 자체가 template placeholder `<candidate>` 와 구분 — placeholder 는 segment 내 `<...>`, link 는 `(<` … `>)` 형태). absolute/drive-letter: regex 에 `[A-Za-z]:[/\\]` 선두 허용 추가(단 incTails 는 여전히 tail-match). |
+| **FN-2** | `docs-working-model-check.Tests.ps1` EN-2 | MS-test(rule-text 0) | 회귀: (a) ````~~~~```` 4-tilde opener 를 ```~~~``` 3-tilde 가 *안 닫음*, (b) ````` ```` ````` 4-backtick opener 를 ``` ``` ``` 3-backtick 미닫힘 — marker count 정확성 확인. |
+| **FN-3** | `docs-working-model-check.ps1` 신규 docs-purity 절 | MS(rule-text 0) | rule_docs purity(`:64-160`) 형제 함수를 docs/ 로: **discriminator = *promotion-entry*(`<dir>/<dir>_{design,plan,spec}.md` 중 하나라도 존재; mid-promotion 포함 — spec-only는 mid-promotion `work/`-우회 under-enforce[구현 relay-B/canonical SC 보정])인 promoted 도메인만 binding**; 금지 = `<dir>/work/` subfolder · `<topic>_*.md`(domain-prefix 아닌 topic-named) · 비-role `<dir>_*.md`. **auxiliary role(`_policy/_contract/_state/_status/_guide`)은 *accept*** — 규칙 :176 상 deferred(Design/Plan 승인)이나 승인 여부는 비-구조적(NSE)이라 check 가 over-strict 금지 대신 accept(승인=manual/SC residual). in-flight 후보(`_incubation.md`만, planning 파일 없음)·legacy(planning 파일 없음) = 자동 conform-pass. allowed = README·`<dir>_{spec,backlog,design,plan,work_packet,incubation}.md`·auxiliary `<dir>_{policy,contract,state,status,guide}.md`. |
+| **FN-4** | `checklists/docs-working-model_work_packet_checklist.md`(신규) | SC | *WP 파일 자체*만 게이트(5E-c2): "[ ] 실행 command sequence·staging·review/validation 결과·readiness 판정 0(→ log/**) [ ] line-level 분석·구현노트·evidence proposal·reviewer-Q prep 만 [ ] approval-target/normative-wording 0(→ Plan/Spec)". 의미게이트(presence 아님). |
+| **FN-5** | `docs-working-model.md` Package note `:5` + conformance gate `:200/:202` | **bounded normative(1)** | (i) Package note `checklists/` 열거에 `_work_packet_checklist.md` 추가(descriptive) (ii) conformance gate `:200` 에 "a produced **Work Packet** must pass the work-packet checklist" 1문장(=RULE:137 validation-expectation 신설 → **bounded normative completion**; RULE:76 기존 boundary 의 기계화) (iii) forms-list `:202` 에 추가. **WP review 기준 = 이 1문장+열거 초과 시 split.** |
+| **FN-6** | `docs-working-model-check.ps1` 신규 durable 절 | MS(GUARDED) | durable-pointer canonical-subset scan: canonical surfaces(E2 set) 에서 `log/`·`polishing/`·`repo_snapshot/` 등 gitignored-root 로의 durable path/link. **discriminator = E2 path-vs-concept 재사용(single-home)** — concrete-dir-segment 있는 실경로만, 개념언급(`log/**` in prose) 제외. **feasibility: prototype 가 FP 확인 — log/ 는 _incubation 보다 prose 빈도↑라 FP 위험; 미통과 시 SC 강등/defer.** |
+| **FN-7** | `docs-working-model-check.ps1` 신규 next-ID 절 | MS(GUARDED) | floor check: backlog 헤더 `next ID:` 라인 파싱(`·` split → per-prefix `<PREFIX>-NN`), rows 에서 prefix 별 max id, **per-prefix next-ID > max present row id** 검증. **multi-prefix = per-prefix intent 일반화(RULE:121 단수 문구는 simplification — rule-text 무touch 우선; ack 필요 판정 시 hard boundary ① 의 2번째 bounded touch).** **feasibility: install-update multi-prefix 파싱 + review/brief single-prefix 둘 다 PASS 확인.** |
+| **FN-8** | `docs-working-model-check.ps1` 또는 checklist | SC/MS(secondary-GUARDED) | rejected-term section-confinement: glossary *Rejected terms* heading token 이 그 section *밖*에서 heading/bolded(accepted-looking)로 재등장 금지. **feasibility: prose 언급(예 "X 를 rejected")과 accepted-looking 구분 FP 가 trivial 아니면 → SC checklist 로(MS 아님) 또는 defer.** |
+| **FN-9** | `docs-working-model-check.Tests.ps1` | MS-test | FN-1(angle-link·drive-letter·base-tail fixtures)·FN-3(docs purity: promoted 위반/in-flight conform-pass/legacy conform-pass)·FN-6(durable FP/FN)·FN-7(multi+single prefix) 케이스 + 후보 newly-fail 0 회귀. |
+
+### GUARDED feasibility — 구현-prototype 확정 (provisional)
+- **FN-6 durable**: *조건부 IN* — E2 discriminator robust 재사용 가능하면 IN; prototype 가 canonical surfaces 에서 FP>0(prose 의 `log/` 등 오탐) 내면 → SC 강등 또는 defer. (relay-B: "canonical-subset"=의도적 부분, RULE:45 전체는 residual.)
+- **FN-7 next-ID**: *IN 유력* — multi-prefix 파싱 단순(`·` split). rule-text 무touch(per-prefix intent) 우선; prototype 가 install-update+review+brief 셋 다 PASS 확인. RULE:121 ack 필요시에만 2번째 bounded touch(그 경우 WP review 재판정).
+- **FN-8 rejected-term**: *DEFER 유력* — accepted-looking vs prose-mention 구분이 semantic 이라 MS FP 위험; SC checklist 항목(promotion/closeout 인접)으로 흡수하거나 차기 인벤토리로 defer. prototype 불요(설계 판단).
+
+### Edge / 정합 (구현 시 확인)
+- **newly-fail 0(전수)**: FN-3 docs purity 가 현 docs/ 도메인(brief/install-update/review = spec 보유 → binding; 셋 다 `<domain>_{role}` 관례 conform)·후보 2종(blind-advisory/consultation = spec 없음 → conform-pass)에 newly-fail 0. FN-1 over-reach 0(실제 candidate ref 만). FN-7 실 backlog 3종 PASS.
+- **FN-5 bounded touch 격리**: rule-text 편집은 FN-5 의 1문장+열거뿐 — diff 가 초과 시 split(hard boundary ①). canonical 이 이 normative touch 집중 검토.
+- **single-home(P0-2)**: FN-1 ↔ FN-6 discriminator 공유 → 한 helper(예 `Test-DurableCandidateRef`)로 single-home; FN-6 defer 시 FN-1 helper 를 재사용 가능 형태로.
+- **5E-c2**: FN-4 WP-checklist 가 Plan checklist(WP 선언)·closeout(WP 흡수/삭제)·promotion(E4-not-WP)과 *다른 명제*(WP 파일 content) — 중복 owner-tier 0 확인.
+- verify-ps1(BOM+CRLF) + full Pester(신규 케이스) + `docs-working-model-check` 현-repo PASS.
+- retire: closeout 시 이 5-F 노트 삭제.

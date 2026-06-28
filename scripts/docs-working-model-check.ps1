@@ -16,6 +16,89 @@ function Write-Line {
     Write-Host ($prefix + $Message)
 }
 
+function Test-IsConcretePathRef {
+    # Shared path-vs-concept discriminator (single-home; reused by the E2
+    # candidate-_incubation scan and reusable by any future durable-pointer scan --
+    # do NOT fork a divergent copy). Given a path-shaped token already matched by a
+    # caller's regex, decide whether it is a CONCRETE located path rather than a
+    # template / concept token:
+    #   - an angle-bracket placeholder anywhere (e.g. <candidate>) -> a template
+    #     pattern, NOT a concrete path;
+    #   - a glob segment ('*' anywhere, e.g. log/**) -> a concept/pattern mention,
+    #     NOT a concrete path.
+    # The caller's regex is responsible for requiring a real leading directory
+    # segment; this helper only rejects the placeholder / glob shapes.
+    param([string] $Ref)
+    if ($Ref.Contains('<') -or $Ref.Contains('>')) { return $false }
+    if ($Ref.Contains('*')) { return $false }
+    return $true
+}
+
+function Get-PointyBracketLinkDestinations {
+    # A markdown link may wrap its destination in angle brackets: [text](<dest>).
+    # The wrapped destination itself carries NO angle bracket (a <candidate>
+    # placeholder lives INSIDE a path segment -- a different, non-concrete shape).
+    # Return the inner destinations so they can be tail-checked like a bare path
+    # reference (the main E2 regex's lookbehind intentionally skips a '<'-wrapped
+    # destination). CommonMark allows an OPTIONAL link title after the destination
+    # (whitespace then a "..."/'...'/(...) title before the closing ')'), so the
+    # closing ')' may be separated from '>' by ` "title"`; unwrap those too (the
+    # captured dest never includes the title). The dest group stops at '>' so a
+    # title never leaks into the returned reference.
+    param([string] $Text)
+    $dests = New-Object System.Collections.Generic.List[string]
+    foreach ($m in [regex]::Matches($Text, '\]\(\s*<([^<>\r\n]+)>(?:\s+(?:"[^"\r\n]*"|''[^''\r\n]*''|\([^()\r\n]*\)))?\s*\)')) {
+        $dests.Add($m.Groups[1].Value) | Out-Null
+    }
+    return $dests
+}
+
+function Test-CandidateTailMatch {
+    # True if a normalized (forward-slash) reference resolves to a discovered
+    # candidate file path tail (<candidate-folder>/<candidate-file>), either exactly
+    # or as a trailing path segment. (Shared by the bare-reference and the
+    # angle-bracket-link E2 scans so the tail logic has a single home.)
+    param([string] $NormRef, $Tails)
+    $cmp = [System.StringComparison]::OrdinalIgnoreCase
+    foreach ($tail in $Tails) {
+        if ($NormRef.Equals($tail, $cmp) -or $NormRef.EndsWith('/' + $tail, $cmp)) { return $true }
+    }
+    return $false
+}
+
+function Get-LeadingIdToken {
+    # Single-home backlog-id token parser, shared by the BACKLOG-NEXTID per-prefix
+    # floor scan and the table-row scan so the two stay symmetric (the asymmetry
+    # they used to have -- floors counting every token on the line, rows requiring
+    # an EXACT bare "<PREFIX>-NN" first cell -- was the D1/D8 defect). Strip markdown
+    # decoration (** / backtick) then match ONLY the LEADING "<PREFIX>-<digits>"
+    # token; any trailing parenthetical / prose after the token is ignored (so a
+    # "next ID: RV-B-10 (do not reuse RV-B-99)" segment yields RV-B-10, not RV-B-99,
+    # and a decorated/annotated row first cell like "**RV-B-20**" or "RV-B-20
+    # (retired)" still counts as RV-B-20). The digit run must END at a non-alnum
+    # boundary: an UNSEPARATED alnum suffix (e.g. "RV-B-17abc") is a malformed/suffixed
+    # id, NOT a token, and yields $null -- distinct from a space/paren-separated trailing
+    # token (e.g. "RV-B-20 (retired)"), which is fine; only the UNSEPARATED suffix is
+    # rejected. Returns $null when there is no id-shaped
+    # leading token. The numeric part is parsed as [long] (overflow-safe; the old
+    # [int] cast aborted the whole run under $ErrorActionPreference='Stop' on a value
+    # > 2^31); a digit run too large for [long] is reported via .Overflow so the
+    # caller emits a clean FAIL rather than crashing.
+    param([string] $Text)
+    if ($null -eq $Text) { return $null }
+    $stripped = $Text -replace '[`*]', ''
+    if ($stripped -notmatch '^\s*([A-Za-z]+(?:-[A-Za-z]+)*)-([0-9]+)(?![0-9A-Za-z])') { return $null }
+    $prefix = $matches[1]
+    $digits = $matches[2]
+    $num = [long]0
+    $parsed = [System.Int64]::TryParse($digits, [ref] $num)
+    return [pscustomobject]@{
+        Prefix   = $prefix
+        Number   = $num
+        Overflow = (-not $parsed)
+    }
+}
+
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 
 # This is a repo-structural conformance check that operates purely on whatever
@@ -219,33 +302,50 @@ foreach ($folder in $incubationFolders) {
 #     `foo_incubation.md` filename token, with no real `dir/` before it) -> a
 #     rule-concept mention, not a path/link to a located candidate file.
 # So a violation requires: <concrete-dir-segment>/ ... /<name>_incubation.md, with
-# no '<' / '>' in the reference. The leading dir segment may be `.`/`..` relative.
-$incRefPattern = '(?<![A-Za-z0-9_./\\<>-])(?:\.{1,2}[/\\])?(?:[A-Za-z0-9_.\-]+[/\\])+[A-Za-z0-9_.\-]*_incubation\.md'
+# no '<' / '>' in the reference. The leading dir segment may be `.`/`..` relative,
+# or an absolute drive-letter / rooted segment (e.g. `C:/.../<name>_incubation.md`);
+# the tail-match against discovered candidates still confines a hit to a real
+# candidate path.
+$incRefPattern = '(?<![A-Za-z0-9_./\\<>-])(?:[A-Za-z]:[/\\])?(?:\.{1,2}[/\\])?(?:[A-Za-z0-9_.\-]+[/\\])+[A-Za-z0-9_.\-]*_incubation\.md'
 foreach ($cf in $canonicalFiles) {
     if (-not (Test-Path -LiteralPath $cf -PathType Leaf)) { continue }
     $text = Read-Utf8 -Path $cf
     $m = [regex]::Matches($text, $incRefPattern)
     foreach ($match in $m) {
-        # Skip template/concept tokens that carry an angle-bracket placeholder
-        # anywhere in the matched reference: those are <candidate>-shaped patterns,
-        # not real located paths. (The negative lookbehind already blocks a '<'
-        # immediately before the match; this also blocks one mid-reference.)
-        if ($match.Value.Contains('<') -or $match.Value.Contains('>')) { continue }
+        # A template/concept token (a <candidate> placeholder, or a glob) is not a
+        # concrete located path -> not a durable reference (shared path-vs-concept
+        # discriminator). The regex negative lookbehind already blocks a '<'
+        # immediately before the match; this also rejects one mid-reference.
+        if (-not (Test-IsConcretePathRef -Ref $match.Value)) { continue }
         # Only a reference that resolves to a REAL discovered candidate file PATH
         # (<candidate-folder>/<candidate-file>) is an E2 violation; the same leaf filename in a
         # different / non-existent folder, or an example / historical path, is not.
         $normRef = ($match.Value -replace '\\', '/')
-        $isCandidateRef = $false
-        foreach ($tail in $incTails) {
-            $cmp = [System.StringComparison]::OrdinalIgnoreCase
-            if ($normRef.Equals($tail, $cmp) -or $normRef.EndsWith('/' + $tail, $cmp)) {
-                $isCandidateRef = $true
-                break
-            }
-        }
-        if (-not $isCandidateRef) { continue }
+        if (-not (Test-CandidateTailMatch -NormRef $normRef -Tails $incTails)) { continue }
         $rel = Resolve-ProjectRelativePath -Path $cf -ProjectRoot $project
         $violations.Add(('E2 FAIL: canonical surface durably references a candidate _incubation document: {0} -> {1} (a canonical->candidate reference may only be an absorbed-conclusion summary, never a durable path/link)' -f $rel, $match.Value)) | Out-Null
+    }
+    # Angle-bracket (pointy-bracket) markdown link destinations [text](<dest>): the
+    # main scan's negative lookbehind + concrete-path discriminator intentionally
+    # skip a '<'-wrapped destination, so unwrap those here and tail-check the inner
+    # path the same way -- a durable [x](<.../<cand>_incubation.md>) link is still
+    # caught. The inner dest carries no angle bracket (a <candidate> placeholder is a
+    # different, non-concrete shape that stays excluded by Test-IsConcretePathRef). A
+    # destination may carry an OPTIONAL trailing URL fragment/query after the .md
+    # (`..._incubation.md#anchor` / `...?query`); accept that in the end-anchor test and
+    # STRIP it before the tail-match so the path portion still resolves to the discovered
+    # candidate tail (over-reach stays zero: the tail-match is still confined to a real
+    # discovered <candidate-folder>/<file>, so a fragment never manufactures a false hit).
+    foreach ($dest in (Get-PointyBracketLinkDestinations -Text $text)) {
+        if ($dest -notmatch '_incubation\.md(?:[#?][^>]*)?\s*$') { continue }
+        # Strip an optional #fragment / ?query (URL syntax) before the tail-match: the
+        # path portion is what resolves to the candidate file path.
+        $destPath = ($dest.Trim() -replace '[#?].*$', '')
+        if (-not (Test-IsConcretePathRef -Ref $destPath)) { continue }
+        $normRef = ($destPath -replace '\\', '/')
+        if (-not (Test-CandidateTailMatch -NormRef $normRef -Tails $incTails)) { continue }
+        $rel = Resolve-ProjectRelativePath -Path $cf -ProjectRoot $project
+        $violations.Add(('E2 FAIL: canonical surface durably references a candidate _incubation document (angle-bracket link): {0} -> {1} (a canonical->candidate reference may only be an absorbed-conclusion summary, never a durable path/link)' -f $rel, $dest)) | Out-Null
     }
 }
 
@@ -390,10 +490,169 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
 }
 
 # ---------------------------------------------------------------------------
+# DOCS-PURITY (mechanical, hard FAIL): structural purity of a PROMOTED docs domain
+# folder -- the docs/ sibling of the rule_docs/ purity check, but TRANSITION-AWARE
+# and looser (docs/ also holds in-flight candidates + legacy residue). It binds a
+# PROMOTED-ENTRY domain = docs/<domain>/ that carries any one of its own promoted
+# lifecycle docs <domain>_{design,plan,spec}.md. A candidate in incubation can only
+# carry <domain>_incubation.md (E3 forbids a _design/_plan/_spec sibling before
+# promotion), so the presence of any _design/_plan/_spec necessarily marks a domain
+# that has ENTERED promotion (mid-promotion binding) -- the false-positive set against
+# an in-flight candidate is empty. An in-flight candidate (docs/<cand>/ with an
+# _incubation.md and no _design/_plan/_spec) or legacy residue (none of the three) is
+# NOT bound -> conform-pass (transition-aware; matches the rule's *Stable filename
+# rule* end-state model). For a bound promoted domain the *Stable filename rule*
+# forbids: a filename-evading subfolder (e.g. docs/<domain>/work/ -- any subfolder)
+# and a non-role file -- a <topic>_*.md topic-named file (a .md whose prefix is not
+# the domain name) or any <domain>_*.md that is not an allowed role. Allowed:
+# README.md, the domain-prefixed lifecycle role files
+# <domain>_{spec,backlog,design,plan,work_packet,incubation}.md, AND the auxiliary
+# role docs <domain>_{policy,contract,state,status,guide}.md. The auxiliary roles are
+# *deferred* (introduced only by an explicit Design/Plan decision -- *Stable filename
+# rule*), but this check cannot verify that an approval exists (not a structural
+# fact); rather than over-strictly forbid an approved auxiliary doc it ACCEPTS the
+# known auxiliary role names (.md only). Anything else is a DOCS-PURITY violation.
+# STRUCTURE (snapshot) check only -- deletes nothing.
+# ---------------------------------------------------------------------------
+if (Test-Path -LiteralPath $docsDir -PathType Container) {
+    foreach ($domainDir in @(Get-ChildItem -LiteralPath $docsDir -Directory -ErrorAction SilentlyContinue)) {
+        $domain = $domainDir.Name
+        # Promotion-entry discriminator: bound iff any one of _design/_plan/_spec is present.
+        $isPromotedEntry = $false
+        foreach ($role in @('_design.md', '_plan.md', '_spec.md')) {
+            if (Test-Path -LiteralPath (Join-Path -Path $domainDir.FullName -ChildPath ($domain + $role)) -PathType Leaf) { $isPromotedEntry = $true; break }
+        }
+        if (-not $isPromotedEntry) { continue }  # not promoted -> conform-pass (in-flight candidate / legacy)
+
+        $allowedDocsNames = @(
+            'README.md',
+            ($domain + '_spec.md'),
+            ($domain + '_backlog.md'),
+            ($domain + '_design.md'),
+            ($domain + '_plan.md'),
+            ($domain + '_work_packet.md'),
+            ($domain + '_incubation.md'),
+            ($domain + '_policy.md'),
+            ($domain + '_contract.md'),
+            ($domain + '_state.md'),
+            ($domain + '_status.md'),
+            ($domain + '_guide.md'))
+        $cmpDocs = [System.StringComparison]::OrdinalIgnoreCase
+        foreach ($entry in @(Get-ChildItem -LiteralPath $domainDir.FullName -Force -ErrorAction SilentlyContinue)) {
+            $entryRel = Resolve-ProjectRelativePath -Path $entry.FullName -ProjectRoot $project
+            if ($entry.PSIsContainer) {
+                $violations.Add(('DOCS-PURITY FAIL: disallowed subfolder under promoted docs domain docs/{0}/: {1} (a promoted domain folder holds only README.md or {0}_{{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}}.md; a filename-evading subfolder such as docs/{0}/work/ is forbidden by the Stable filename rule)' -f $domain, $entryRel)) | Out-Null
+                continue
+            }
+            $isAllowed = $false
+            foreach ($an in $allowedDocsNames) {
+                if ([string]::Equals($entry.Name, $an, $cmpDocs)) { $isAllowed = $true; break }
+            }
+            if (-not $isAllowed) {
+                $violations.Add(('DOCS-PURITY FAIL: disallowed file under promoted docs domain docs/{0}/: {1} (allowed: README.md or {0}_{{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}}.md, .md only; a <topic>_*.md topic-named file or any non-role {0}_*.md is forbidden by the Stable filename rule)' -f $domain, $entryRel)) | Out-Null
+            }
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
+# BACKLOG-NEXTID (mechanical, hard FAIL): a domain future-work queue
+# docs/<domain>/<domain>_backlog.md must carry a "next ID:" header whose per-prefix
+# floor is strictly ABOVE every present row id of that prefix (ID-reuse prevention --
+# docs-working-model *Future-work queue*). The header may list one OR several
+# per-prefix floors separated by middots (the real install-update backlog carries
+# two: IU-B / IU-D). The floor and the row scan use the SAME leading-token parser
+# (Get-LeadingIdToken) so they stay symmetric:
+#   - FLOOR = the DECLARED leading "<PREFIX>-<digits>" token of EACH middot-separated
+#     segment of the next-ID line; a parenthetical / prose token AFTER the declared
+#     token (e.g. "next ID: RV-B-10 (do not reuse RV-B-99)" -> floor RV-B-10) does
+#     NOT inflate the floor, and a glob like "IU-B-*" carries no digits so it is not
+#     a floor.
+#   - ROW = the FIRST table cell's leading "<PREFIX>-<digits>" token AFTER stripping
+#     markdown decoration (** / backtick) and ignoring any trailing parenthetical, so
+#     a decorated / annotated id ("**RV-B-20**", "RV-B-20 (retired)") still counts.
+# This generalizes the rule's single-prefix illustration to the real multi-prefix
+# shape -- no rule-text change. Violations: a "next ID:" header that holds ZERO valid
+# "<PREFIX>-NN" tokens (malformed header -- rule's required header form); a prefix
+# that has rows but no next-ID floor; a floor that is not strictly greater than that
+# prefix's max present row id; or an id whose digit run overflows [long] (reported as
+# a clean malformed-id FAIL, never a crash). (Reuse of an id below a deleted-row gap
+# is NOT detected -- a deliberate NSE limit; this is a floor check, not full
+# monotonicity.)
+# ---------------------------------------------------------------------------
+if (Test-Path -LiteralPath $docsDir -PathType Container) {
+    foreach ($domainDir in @(Get-ChildItem -LiteralPath $docsDir -Directory -ErrorAction SilentlyContinue)) {
+        $domain = $domainDir.Name
+        $backlogPath = Join-Path -Path $domainDir.FullName -ChildPath ($domain + '_backlog.md')
+        if (-not (Test-Path -LiteralPath $backlogPath -PathType Leaf)) { continue }
+        $rel = Resolve-ProjectRelativePath -Path $backlogPath -ProjectRoot $project
+        $backlogText = Read-Utf8 -Path $backlogPath
+        $backlogLines = $backlogText -split "\r?\n"
+
+        # Per-prefix floors from the (first) "next ID:" line.
+        $nextIdLine = $null
+        foreach ($line in $backlogLines) {
+            if ($line -match '^\s*next ID:') { $nextIdLine = $line; break }
+        }
+        if ($null -eq $nextIdLine) {
+            $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog has no "next ID:" header line: {0} (a future-work queue must carry one "next ID: <PREFIX>-NN" header line for ID-reuse prevention)' -f $rel)) | Out-Null
+            continue
+        }
+        # The declared floor of each middot-separated segment is its LEADING id token
+        # only (a trailing parenthetical / prose token does not inflate the floor).
+        $afterLabel = ($nextIdLine -replace '^\s*next ID:\s*', '')
+        $floors = @{}
+        $floorMalformed = $false
+        foreach ($seg in ($afterLabel -split ([string][char]0x00B7))) {
+            $tok = Get-LeadingIdToken -Text $seg
+            if ($null -eq $tok) { continue }
+            if ($tok.Overflow) {
+                $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog next-ID floor id number is too large to parse: {0} (id "{1}-..." overflows a 64-bit integer; use a sane sequential id)' -f $rel, $tok.Prefix)) | Out-Null
+                $floorMalformed = $true
+                continue
+            }
+            if ((-not $floors.ContainsKey($tok.Prefix)) -or ($tok.Number -gt $floors[$tok.Prefix])) { $floors[$tok.Prefix] = $tok.Number }
+        }
+        if (($floors.Count -eq 0) -and (-not $floorMalformed)) {
+            $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog "next ID:" header holds no valid "<PREFIX>-NN" token: {0} (the header is present but malformed; it must declare at least one "next ID: <PREFIX>-NN" floor)' -f $rel)) | Out-Null
+            continue
+        }
+
+        # Per-prefix max present row id (first table cell's leading id token).
+        $rowMax = @{}
+        $rowOverflow = $false
+        foreach ($line in $backlogLines) {
+            if ($line -notmatch '^\s*\|') { continue }
+            $cells = $line.Split('|')
+            if ($cells.Count -lt 2) { continue }
+            $tok = Get-LeadingIdToken -Text $cells[1]
+            if ($null -eq $tok) { continue }
+            if ($tok.Overflow) {
+                $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog row id number is too large to parse: {0} (id "{1}-..." overflows a 64-bit integer; use a sane sequential id)' -f $rel, $tok.Prefix)) | Out-Null
+                $rowOverflow = $true
+                continue
+            }
+            if ((-not $rowMax.ContainsKey($tok.Prefix)) -or ($tok.Number -gt $rowMax[$tok.Prefix])) { $rowMax[$tok.Prefix] = $tok.Number }
+        }
+        if ($rowOverflow) { continue }
+
+        foreach ($rp in $rowMax.Keys) {
+            if (-not $floors.ContainsKey($rp)) {
+                $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog has rows with prefix {1} but no matching next-ID floor: {0} (each row-id prefix must be tracked by a "next ID: {1}-NN" floor)' -f $rel, $rp)) | Out-Null
+                continue
+            }
+            if ($floors[$rp] -le $rowMax[$rp]) {
+                $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog next-ID floor {1}-{2} is not above the max present {1} row id {1}-{3}: {0} (next ID must be strictly greater than every present row id of that prefix; id reuse/regression is forbidden)' -f $rel, $rp, $floors[$rp], $rowMax[$rp])) | Out-Null
+            }
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
 Write-Line ('scanned ProjectRoot {0}; found {1} incubation candidate folder(s)' -f $project, $incubationFolders.Count)
-Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep only, requires an existing rule output rules/<id>/<id>.md or snippets/rules/<id>.md, else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY). E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). A PASS attests only to the scanned subset, not full incubation-tier conformance.'
+Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every domain backlog docs/<domain>/<domain>_backlog.md carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep only, requires an existing rule output rules/<id>/<id>.md or snippets/rules/<id>.md, else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY). E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
 
 if ($violations.Count -gt 0) {
     foreach ($v in $violations) {
@@ -410,9 +669,9 @@ Write-Line 'E4 INFO: absorption-content completeness (adopted conclusion / rejec
 Write-Line 'E5 INFO: this rule''s own incubation-tier addition is a one-time bootstrap (incubation cannot incubate itself), not mechanically checked and not a precedent.'
 
 if ($violations.Count -gt 0) {
-    Write-Line ('FAIL ({0} E1/E2/E3/EN-2/rule_docs-purity/orphan/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
+    Write-Line ('FAIL ({0} E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/rule_docs-purity/orphan/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
     exit 1
 }
 
-Write-Line 'PASS (no E1/E2/E3/EN-2/rule_docs-purity/orphan/file violations in the mechanically-scanned subset)'
+Write-Line 'PASS (no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/rule_docs-purity/orphan/file violations in the mechanically-scanned subset)'
 exit 0

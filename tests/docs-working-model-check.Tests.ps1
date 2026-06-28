@@ -242,7 +242,9 @@ Describe 'docs-working-model-check advisories' {
         $result.Output | Should -Match 'all \.md under snippets/rules/'
         $result.Output | Should -Match 'snippets/rules/ IS now mechanically scanned for E2'
         $result.Output | Should -Match 'NOT mechanically scanned'
-        $result.Output | Should -Match 'PASS \(no E1/E2/E3/EN-2/rule_docs-purity/orphan/file violations in the mechanically-scanned subset\)'
+        $result.Output | Should -Match 'PASS \(no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/rule_docs-purity/orphan/file violations in the mechanically-scanned subset\)'
+        $result.Output | Should -Match 'DOCS-PURITY = every PROMOTED docs domain'
+        $result.Output | Should -Match 'BACKLOG-NEXTID = every domain backlog'
     }
 
     It 'AC-DWM-ADVISORY-2: E4/E5 advisories do not change a failing exit code' {
@@ -642,5 +644,353 @@ Describe 'docs-working-model-check EN-2 promoted domain Spec lifecycle marker' {
         $result.ExitCode | Should -Be 1 -Because $result.Output
         $result.Output | Should -Match 'EN-2 FAIL'
         $result.Output | Should -Match 'more than one "## Lifecycle state" section'
+    }
+}
+
+Describe 'docs-working-model-check FN-2 EN-2 fence length regression' {
+    It 'AC-DWM-EN2-FENCE-4: a 3-tilde line does NOT close a 4-tilde fence (inner markers stay fenced -> PASS)' {
+        $project = script:New-CaseRoot -CaseName 'en2-fence-tilde-len'
+        # Opener ~~~~ (4 tildes); a later ~~~ (3 tildes) must NOT close it, so the two
+        # fenced markers stay inside the fence and only the real **live** counts -> PASS.
+        # If length-tracking broke (any same-char fence closes), **prelive** would leak -> found 2 -> FAIL.
+        $content = "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live** - synced 1:1.`n`n~~~~`nfenced: **sync-required**`n~~~`nstill fenced: **prelive**`n~~~~`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'EN-2 FAIL'
+    }
+
+    It 'AC-DWM-EN2-FENCE-5: a 3-backtick line does NOT close a 4-backtick fence (inner markers stay fenced -> PASS)' {
+        $project = script:New-CaseRoot -CaseName 'en2-fence-backtick-len'
+        $content = "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live** - ok.`n`n" + '````' + "`nfenced: **sync-required**`n" + '```' + "`nstill fenced: **prelive**`n" + '````' + "`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'EN-2 FAIL'
+    }
+}
+
+Describe 'docs-working-model-check FN-1 E2 angle-bracket / drive-letter refs' {
+    It 'AC-DWM-FN1-1: an angle-bracket markdown link to a real candidate _incubation.md fails E2' {
+        $project = script:New-CaseRoot -CaseName 'fn1-angle-link'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# some rule`n`nSee [the candidate](<../../docs/scopeguard/scopeguard_incubation.md>) for detail.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'E2 FAIL'
+        $result.Output | Should -Match 'angle-bracket link'
+        $result.Output | Should -Match 'scopeguard_incubation.md'
+    }
+
+    It 'AC-DWM-FN1-2: a drive-letter absolute path to a real candidate fails E2' {
+        $project = script:New-CaseRoot -CaseName 'fn1-drive-letter'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# some rule`n`nAbsolute: C:/work/repo/docs/scopeguard/scopeguard_incubation.md is durable.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'E2 FAIL'
+        $result.Output | Should -Match 'scopeguard_incubation.md'
+    }
+
+    It 'AC-DWM-FN1-3: an angle-bracket link to a same-leaf file in a DIFFERENT folder is NOT a violation' {
+        $project = script:New-CaseRoot -CaseName 'fn1-angle-other-folder'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# some rule`n`nHistorical: [old](<../../old/scopeguard_incubation.md>) (different folder).`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'E2 FAIL'
+    }
+
+    It 'AC-DWM-FN1-4: an angle-bracket link to a bare leaf (no folder) is NOT a violation (base-tail)' {
+        $project = script:New-CaseRoot -CaseName 'fn1-angle-bare-leaf'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# some rule`n`nBare: [x](<scopeguard_incubation.md>) has no concrete folder.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'E2 FAIL'
+    }
+
+    It 'AC-DWM-FN1-5: an angle-bracket link WITH a CommonMark title to a real candidate fails E2 (D4)' {
+        $project = script:New-CaseRoot -CaseName 'fn1-angle-title'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        # CommonMark allows an optional title after the angle-bracket destination: [text](<dest> "title").
+        # The unwrap must still extract the destination (title excluded) and flag the durable link.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# some rule`n`nSee [the candidate](<../../docs/scopeguard/scopeguard_incubation.md> `"Candidate doc`") for detail.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'E2 FAIL'
+        $result.Output | Should -Match 'angle-bracket link'
+        $result.Output | Should -Match 'scopeguard_incubation.md'
+    }
+
+    It 'AC-DWM-FN1-6: an angle-bracket link with a trailing #anchor fragment to a real candidate fails E2 (LC FIX-A)' {
+        $project = script:New-CaseRoot -CaseName 'fn1-angle-fragment'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        # A #fragment after the .md must NOT defeat the end-anchor: the path portion still
+        # resolves to the discovered candidate tail. (Before FIX-A the dest did not END in
+        # "_incubation.md" so the angle-scan skipped it -- a narrow false-negative.)
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# some rule`n`nSee [the candidate](<../../docs/scopeguard/scopeguard_incubation.md#anchor>) for detail.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'E2 FAIL'
+        $result.Output | Should -Match 'angle-bracket link'
+        $result.Output | Should -Match 'scopeguard_incubation.md'
+    }
+
+    It 'AC-DWM-FN1-7: an angle-bracket link with a trailing ?query to a real candidate fails E2 (LC FIX-A)' {
+        $project = script:New-CaseRoot -CaseName 'fn1-angle-query'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# some rule`n`nSee [the candidate](<../../docs/scopeguard/scopeguard_incubation.md?v=2>) for detail.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'E2 FAIL'
+        $result.Output | Should -Match 'angle-bracket link'
+        $result.Output | Should -Match 'scopeguard_incubation.md'
+    }
+
+    It 'AC-DWM-FN1-8: a #fragment angle-link to a same-leaf file in a DIFFERENT folder is still NOT a violation (over-reach stays zero)' {
+        $project = script:New-CaseRoot -CaseName 'fn1-angle-fragment-other-folder'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        # Even with a #fragment, the stripped path tail (old/scopeguard_incubation.md) is not the
+        # discovered candidate (scopeguard/scopeguard_incubation.md) -> no hit. FIX-A must not over-reach.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# some rule`n`nHistorical: [old](<../../old/scopeguard_incubation.md#anchor>) (different folder).`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'E2 FAIL'
+    }
+}
+
+Describe 'docs-working-model-check FN-3 docs domain purity' {
+    It 'AC-DWM-FN3-1: a topic-named file under a promoted docs domain fails DOCS-PURITY' {
+        $project = script:New-CaseRoot -CaseName 'fn3-topic-file'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live** - synced 1:1.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/random_topic.md') -Content "# a topic-named file`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'DOCS-PURITY FAIL'
+        $result.Output | Should -Match 'random_topic.md'
+    }
+
+    It 'AC-DWM-FN3-2: a filename-evading subfolder under a promoted docs domain fails DOCS-PURITY' {
+        $project = script:New-CaseRoot -CaseName 'fn3-work-subfolder'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live** - synced 1:1.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/work/notes.md') -Content "# evading subfolder`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'DOCS-PURITY FAIL'
+        $result.Output | Should -Match 'disallowed subfolder'
+        $result.Output | Should -Match 'work'
+    }
+
+    It 'AC-DWM-FN3-3: an auxiliary domain_policy.md is ACCEPTED under a promoted docs domain (its Design/Plan approval is not a structural fact the check can verify)' {
+        $project = script:New-CaseRoot -CaseName 'fn3-aux-policy'
+        # The auxiliary roles (_policy/_contract/_state/_status/_guide) are deferred by the rule
+        # (introduced only by an explicit Design/Plan decision); the check cannot verify approval,
+        # so rather than over-strictly forbid an approved auxiliary doc it accepts the known role names.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live** - synced 1:1.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_policy.md') -Content "# auxiliary policy doc`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'DOCS-PURITY FAIL'
+    }
+
+    It 'AC-DWM-FN3-4: an in-flight candidate (incubation, no spec) with an extra file is conform-pass (no DOCS-PURITY)' {
+        $project = script:New-CaseRoot -CaseName 'fn3-candidate-passthrough'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/cand/cand_incubation.md') -Content "# cand incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/cand/cand_scratch.md') -Content "# scratch (allowed during incubation; folder not promoted)`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'DOCS-PURITY FAIL'
+    }
+
+    It 'AC-DWM-FN3-5: a clean promoted domain (README + spec + backlog) passes' {
+        $project = script:New-CaseRoot -CaseName 'fn3-clean-promoted'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/README.md') -Content "# widget orientation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live** - synced 1:1.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_backlog.md') -Content "# widget backlog`n`nnext ID: WG-B-01`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'DOCS-PURITY FAIL'
+    }
+
+    It 'AC-DWM-FN3-6: a mid-promotion domain (only _design.md, no _spec) with a work/ subfolder fails DOCS-PURITY (promotion-entry binding)' {
+        $project = script:New-CaseRoot -CaseName 'fn3-midpromo-subfolder'
+        # Promotion-entry: a _design.md (no _spec yet) BINDS DOCS-PURITY (a candidate in incubation can
+        # only carry _incubation.md, so a _design sibling means the domain has entered promotion). The
+        # filename-evading work/ subfolder is then forbidden.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_design.md') -Content "# widget design`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/work/notes.md') -Content "# evading subfolder`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'DOCS-PURITY FAIL'
+        $result.Output | Should -Match 'disallowed subfolder'
+        $result.Output | Should -Match 'work'
+    }
+}
+
+Describe 'docs-working-model-check FN-7 backlog next-ID floor' {
+    It 'AC-DWM-FN7-1: a multi-prefix backlog (install-update shape) with floors above max rows passes' {
+        $project = script:New-CaseRoot -CaseName 'fn7-multi-prefix'
+        # Real install-update shape: two per-prefix floors separated by a middot (built
+        # via char code to keep this test file pure ASCII).
+        $mid = [char]0x00B7
+        $content = "# iu backlog`n`nnext ID: IU-B-14 (open IU-B-* rows) $mid IU-D-12 (deferred IU-D-* rows)`n`n| ID | item | cond |`n|---|---|---|`n| IU-B-01 | x | y |`n| IU-B-06 | x | y |`n| IU-D-11 | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/iu/iu_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'BACKLOG-NEXTID FAIL'
+    }
+
+    It 'AC-DWM-FN7-2: a single-prefix backlog with a floor above max row passes' {
+        $project = script:New-CaseRoot -CaseName 'fn7-single-prefix'
+        $content = "# rv backlog`n`nnext ID: RV-B-17`n`n| ID | item | cond |`n|---|---|---|`n| RV-B-01 | x | y |`n| RV-B-16 | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'BACKLOG-NEXTID FAIL'
+    }
+
+    It 'AC-DWM-FN7-3: a floor not strictly above the max present row id fails BACKLOG-NEXTID' {
+        $project = script:New-CaseRoot -CaseName 'fn7-floor-too-low'
+        $content = "# rv backlog`n`nnext ID: RV-B-05`n`n| ID | item | cond |`n|---|---|---|`n| RV-B-09 | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'not above the max present'
+    }
+
+    It 'AC-DWM-FN7-4: a backlog with no next-ID header fails BACKLOG-NEXTID' {
+        $project = script:New-CaseRoot -CaseName 'fn7-no-header'
+        $content = "# rv backlog`n`n| ID | item | cond |`n|---|---|---|`n| RV-B-01 | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'no "next ID:" header'
+    }
+
+    It 'AC-DWM-FN7-5: a parenthetical-prose id on the next-ID line does NOT inflate the floor (D1 prose-inflation)' {
+        $project = script:New-CaseRoot -CaseName 'fn7-prose-inflation'
+        # The DECLARED floor is RV-B-05, which is NOT above the present RV-B-09 row -> a real violation.
+        # The parenthetical "RV-B-99" is prose, not the declared floor; under the old "match every token"
+        # logic it wrongly lifted the floor to 99 and PASSed. Only the segment's leading token is the floor.
+        $content = "# rv backlog`n`nnext ID: RV-B-05 (do not reuse RV-B-99)`n`n| ID | item | cond |`n|---|---|---|`n| RV-B-09 | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'not above the max present'
+    }
+
+    It 'AC-DWM-FN7-6: a row id number that overflows a 64-bit integer is a clean FAIL, not a crash (D5)' {
+        $project = script:New-CaseRoot -CaseName 'fn7-overflow'
+        # A 26-digit id overflows [long]; the old [int] cast aborted the whole run under
+        # $ErrorActionPreference='Stop'. The fix reports a clean malformed-id FAIL with no leaked exception.
+        $content = "# rv backlog`n`nnext ID: RV-B-17`n`n| ID | item | cond |`n|---|---|---|`n| RV-B-99999999999999999999999999 | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'too large to parse'
+        $result.Output | Should -Not -Match 'Exception'
+    }
+
+    It 'AC-DWM-FN7-7: a present-but-tokenless next-ID header is a malformed-header FAIL (D6)' {
+        $project = script:New-CaseRoot -CaseName 'fn7-malformed-header'
+        # The header line exists but declares no "<PREFIX>-NN" token; silent PASS is forbidden.
+        $content = "# rv backlog`n`nnext ID: TBD`n`n| ID | item | cond |`n|---|---|---|`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'holds no valid'
+    }
+
+    It 'AC-DWM-FN7-8: rows of a prefix with no matching next-ID floor fail BACKLOG-NEXTID' {
+        $project = script:New-CaseRoot -CaseName 'fn7-rows-no-floor'
+        # The floor declares RV-B only; a RV-C row has no floor tracking its prefix.
+        $content = "# rv backlog`n`nnext ID: RV-B-17`n`n| ID | item | cond |`n|---|---|---|`n| RV-B-01 | x | y |`n| RV-C-03 | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'no matching next-ID floor'
+    }
+
+    It 'AC-DWM-FN7-9: a decorated row id (**PFX-NN**) is still counted against the floor (D8 row symmetry)' {
+        $project = script:New-CaseRoot -CaseName 'fn7-decorated-row'
+        # Floor RV-B-17 is NOT above the decorated **RV-B-20** row. The old exact "^<PFX>-NN$" row scan
+        # skipped a decorated/annotated id and falsely PASSed; the leading-token scan must still count it.
+        $content = "# rv backlog`n`nnext ID: RV-B-17`n`n| ID | item | cond |`n|---|---|---|`n| **RV-B-20** | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'not above the max present'
+    }
+
+    It 'AC-DWM-FN7-10: a row id with an UNSEPARATED alnum suffix (RV-B-17abc) is NOT counted (malformed; digit-boundary LC FIX-B)' {
+        $project = script:New-CaseRoot -CaseName 'fn7-suffix-malformed-row'
+        # Floor RV-B-05; the ONLY row is the malformed RV-B-17abc. Before FIX-B the leading-token
+        # parser read it as RV-B-17 (digits 17 with the "abc" suffix dangling), so the floor 05 was
+        # "not above 17" -> a false FAIL. With the digit-boundary the token is malformed -> $null ->
+        # the row is not counted -> no RV-B rows -> PASS.
+        $content = "# rv backlog`n`nnext ID: RV-B-05`n`n| ID | item | cond |`n|---|---|---|`n| RV-B-17abc | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'BACKLOG-NEXTID FAIL'
+    }
+
+    It 'AC-DWM-FN7-11: a clean RV-B-17 row IS still counted (digit-boundary does not break a well-formed id; LC FIX-B regression-pair)' {
+        $project = script:New-CaseRoot -CaseName 'fn7-clean-row-still-counted'
+        # The well-formed mirror of FN7-10: floor RV-B-05 is NOT above the present clean RV-B-17 row,
+        # so a real id (ending at a non-alnum boundary) must still be counted -> FAIL. This proves the
+        # digit-boundary lookahead rejects ONLY the unseparated alnum suffix, not a normal id.
+        $content = "# rv backlog`n`nnext ID: RV-B-05`n`n| ID | item | cond |`n|---|---|---|`n| RV-B-17 | x | y |`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/rv/rv_backlog.md') -Content $content
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'not above the max present'
     }
 }
