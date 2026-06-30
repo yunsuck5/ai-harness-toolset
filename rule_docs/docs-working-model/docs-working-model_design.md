@@ -332,7 +332,39 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 ### Plan-readiness (Plan/WP 가 닫을 detail)
 - MS subset 최종 선별(5F-R1·R4) · docs/ allowed-set 표현(5F-R2) · durable-scan scope+discriminator(5F-R3) · E3 rename-evasion 행선지(5F-R5) · WP checklist 문구 + 배선(EN-6 동형) · EN-2 fence test 케이스 · residual catalogue 의 durable home(이 5-F 절 = roadmap; cs1-closeout migration) · **독립 gap 인벤토리**(이 세션 codex relay-A landscape + Claude 독립 lens 병합 — file:line 인용)는 **Work Packet 소관**(enumeration front-load 금지, 5-D altitude).
 
+## 5-PF: 규칙 pending-form governance clarify (under-specification 해소) — Design, direction-level
+
+> 별개 normative lifecycle item·5-G coupling-element 의 root. survey(4 lens)가 표면화하고 게이트(2 lens)가 확증한 *근본* — docs-working-model 규칙이 *비-candidate 출처* pending term 의 form 을 under-specify — 을 세우고 정렬한다. 폐기된 5-G coupling sub-Design(5G-c1 bijection·5G-c3 deliberate-invariant)은 이 근본의 *증상-패치*였고 이 item 이 supersede; 5-G coupling-element 는 clarified 규칙 위 *downstream* 정렬. **direction-level** — 정확 규칙 wording·위치·필드 = Plan/WP/구현(규칙 텍스트 무touch). meta-circular(규칙이 자기 개정) → 자기 규율 엄격. evidence base = 규칙 clause(arbiter); 폐기 framing(bijection·(a)/(b)·deliberate-invariant) 봉인(§0.1/§1.2).
+
+### 진단 (게이트 2 lens 확증 — under-specification, 모순 아님)
+규칙은 form 을 *각각* 명시한다: candidate-introduced pending = thin (L97 "a candidate introduces" scope + L101 "Define no meaning") · 보편 천장 = ≤ one-line meaning + classification (L96 single-home) · owner-pending = one-line meaning (L103). **그러나 *비-candidate 출처*(L96 "several sources … a candidate's incubation is only one such source") pending 의 *천장-안* form(thin 이냐 one-line 이냐)을 어느 절도 결정하지 않는다 = gap.** L97 의 리터럴 scope("a candidate introduces")가 비-candidate 를 제외하고, L103 "thin-vs-fuller form governed elsewhere" 가 *무명으로* 유보 → **모순이 아니라 미명세**(L97↔L103 비충돌; 게이트 Q1 = no-clash-leaves-a-gap 2/2·clause-독립 도출). owner-pending⟹meaning 은 clean.
+
+### clarification 방향 (gap 명세 + 위치 교정; 정확 wording = Plan/WP)
+- **C1 — L97 candidate-도입 scope 를 prominent 하게 surface.** "a candidate introduces" 한정이 *놓치기 쉬워*(survey 4 lens 가 (A)-내부 분열로, 게이트 prompt-leak 가 별도로 입증) "모든 pending = thin" 오독·bijection 확산을 낳았다 → 이 scope 를 등록 reader 시선 경로에 명시(괄호·묻힘 금지). 게이트: descriptive(L97 주어 한정은 *이미* wording).
+- **C2 — "governed elsewhere" 의 *부분* home 식별 + gap 명시(descriptive).** L103 dangling 을 *현존 governance*(L96 천장 + L97 candidate-조임)로 식별하되, **비-candidate 의 천장-안 form 은 그 둘로 닫히지 않음(gap)을 명시** — "elsewhere = L96+L97 complete" 로 *닫지 않는다*(게이트 divergence: 닫으면 mildly-normative). gap 자체는 fork(S3)가 처리.
+- **C3 — L103 직교성("the split is only the finalization-owner-live axis")을 괄호→prominent 본문**(wording 불변; 게이트: descriptive/editorial).
+
+### fork 해소 = S3 (명시 bound-defer; 사용자 settle 확정)
+게이트 확인: 규칙은 비-candidate pending form 을 현재 **S3(미settle)**로 둔다 — S1("비-candidate 도 thin")·S2("one-line 허용") *둘 다* the rule does not establish(L96 천장은 *상한*이지 carry 허용 명시 아님; 2/2). → **구조 진술(천장 settled · candidate=thin) + 비-candidate pending 의 천장-안 thin-vs-one-line = *명시 bound-deferred*(named open question · 천장-capped · 현 instance 0 · 실례 등장 시 settle).** silent gap 아님 = *implicit 확산 차단*(survey 가 입증한 실패모드 = 미명세가 읽기로 전파). settle(S1/S2)은 별도 future normative 결정.
+
+### supersede (5-G coupling 증상-패치 — silent 방치 금지)
+- **5G-c1(form=f(status) bijection)·5G-c3(deliberate-invariant 선언) 및 의존 형제**(Header(a)(b)·방향의 "허용 조합표"·Owner/Open-risk 의 "governed-elsewhere home 명명") = 오염된 coupling-특성화(게이트: bijection·deliberate-invariant 는 (A) goes-beyond) → **이 5-PF 가 supersede**. 권위 = 5-PF. 5-G 절 그 진술은 lineage 보존하되 *비-authoritative*(5-G 배너 참조).
+- **5-G coupling-element 재정의 = downstream** — "clarified 규칙(5-PF)에 정렬". 축-구분 surface 는 C1/C3 로 5-PF 가 처리; 5-G 는 그 위 glossary/cross-surface 정렬만. 5-G 의 *비-coupling* 부분(L8 status-axis·L66 route·필드명 L101↔L66·close-condition desync)은 유효.
+
+### Frozen / non-goals / altitude
+- frozen: candidate-agnostic · taxonomy 불변 · rule = 자기 spec-of-record · owner-pending⟹meaning 불변 · L96 천장 불변.
+- non-goal: enforcement/기계화 · 정확 규칙 wording/위치/필드(Plan/WP) · 5-G glossary realign(downstream 별도) · mutation/commit/push 승인.
+- **direction only — 규칙 텍스트 무touch.** gate-confirmed = 방향만; 정확 wording = 구현-게이트(자기인증 금지·m4 fix).
+
+### Open risk / Plan-readiness
+- **(PF-R1)** C2 의 정확 문구가 "elsewhere 를 닫음"으로 새지 않게(descriptive 유지 — 게이트 divergence) = Plan/WP wording 가드.
+- **(PF-R2)** C1 surface 위치·C3 이동 위치·S3 bound-defer 문구(named open question·천장-cap·instance-trigger) = Plan/WP.
+- **(PF-R3)** 5-G 절 supersede 의 형제 전수 realign(Header/방향/Open-risk) — 이 land 는 *배너*로 1차 차단(비-authoritative 표기), 전수 정합 = 5-G downstream 단계.
+- **(meta-circular)** docs-working-model 자기 normative 개정 = E5 bootstrap → 규칙 자신 lifecycle(rule_docs Design→Plan→landing) 경유.
+
 ## 5-G: terminology-registration 정합 — pending status/form 축-구분 (Design, direction-level)
+
+> ★★ SUPERSEDED (부분) — 2026-07-01: 이 절의 *coupling-특성화*(5G-c1 form=f(status) bijection · 5G-c3 deliberate-invariant 선언 · 의존 형제 "허용 조합표"·"governed-elsewhere home 명명")는 survey(4 lens)+게이트(2 lens)가 *오염된 증상-패치*로 확인 → **5-PF(규칙 pending-form governance clarify)가 supersede**(권위 = 5-PF: 진단=under-specification·C1/C2/C3·S3 bound-defer). 아래 coupling 진술은 lineage 로 보존하되 *비-authoritative*. 5-G 의 *비-coupling* 부분(L8 status-axis·L66 route·필드명·close-condition desync)은 유효하며 clarified 규칙(5-PF) 위 *downstream* 으로 정렬.
 
 > Phase-1 의 5-K 병렬·독립 item(roadmap 위). **tier1~2 토대(docs-working-model rule + terminology-glossary)에서 "pending"이 status축과 form축을 *한 단어 상관*으로 묶어(conceptual coupling) 전달하는 토대 모호함을, 현 thin-pending 결합 모델(R2)을 *유지*한 채 status/form 축-구분 명시 + cross-surface desync 정합으로 닫는다.** 5-F 가 terminology field-schema enforcement 를 **5-G blocked-by**(5F-c3)로 명시했으므로 이 정합이 그 선행조건(5-G 후 unblock). 5-E/5-F 와 동일 운용(mode-2 + full-scope orchestration + canonical) · 동일 lifecycle(`rule_docs/docs-working-model/`). 정합 = **normative·비수렴**(측정이 답 아님 — normative §1) ≠ enforcement(기계화=5-F-class·후행). **direction-level** — 정확 문구·위치·필드명·regex 는 Plan/WP(detail front-load 금지, 5-D altitude). **rule/glossary(.md) 변경 → `.md` EOL=LF; check `.ps1` 무변경.** ★ **이 절은 framing-오염 1차 Design(schema-home=rule·glossary 격하)을 7-lens(×2 라운드) 재검증으로 *폐기*하고 재작성됨** — 병의 근원은 *status/form coupling 암묵화*이지 schema-home 귀속이 아니며, 1차의 "glossary=소비자 격하"는 철회한다.
 
