@@ -4,9 +4,9 @@
 
 ## Header
 
-- **무엇의 Plan 인가.** docs-working-model 규칙의 **두 coordinated 변경**의 batch·경계·검증 결정: **batch-1 = incubation↔terminology lifecycle 정정**(Design (A)~(F)), **batch-2 = rule_docs 모델 일반화 + 그 3-state check**(세션 중 사용자 지시로 cs1 에 추가 — 아래 batch-2).
-- **체인이 끝나면 무엇이 되는가.** `docs-working-model.md` 가 두 변경을 반영한 상태로 수정되고(rule = 자기 spec-of-record), `docs-working-model-check.ps1`(+tests)가 rule_docs 3-state 를 검사하며, Design/Plan/Work Packet 은 closeout 에서 retire.
-- **이 문서가 아닌 것.** candidate 콘텐츠(4 stashed 파일) 재정렬 아님(cs2) · glossary 용어항목 realignment 아님(cs2) · 별도 `_spec.md` 생성 아님(rule 은 자기 spec-of-record) · **incubation↔terminology 의 terminology-registration 검사 enablement 아님(cs2, transition-aware)** · mutation/commit/push 승인 아님. (**rule_docs 3-state check 는 cs1 포함** — batch-2.)
+- **무엇의 Plan 인가.** docs-working-model 규칙 revision(cs1 + 그 continuation)의 batch·경계·검증 결정 — 초기 coordinated 변경 **batch-1·2**(incubation↔terminology lifecycle 정정[Design (A)~(F)] · rule_docs 모델 일반화+3-state check), 추가 정합 **batch-3·4**(promotion 처분 · owner-pending), **Phase-1 규칙 settle batch-5~10**(5-D·5-K·5-B·5-E·5-F·5-PF — 아래 각 절).
+- **체인이 끝나면 무엇이 되는가.** `docs-working-model.md` 가 각 batch 의 변경을 반영한 상태로 수정되고(rule = 자기 spec-of-record), `docs-working-model-check.ps1`(+tests)·checklists 가 settled 모델의 구조/의미 subset 을 강제하며, Design/Plan/Work Packet 은 closeout 에서 retire.
+- **이 문서가 아닌 것.** candidate 콘텐츠(4 stashed 파일) 재정렬 아님(cs2) · glossary 용어항목 realignment 아님(cs2) · 별도 `_spec.md` 생성 아님(rule 은 자기 spec-of-record) · **incubation↔terminology 의 terminology-registration 검사 enablement 아님(cs2, transition-aware)**. (**rule_docs 3-state check 는 cs1 포함** — batch-2.)
 
 ## Batch 순서와 의존
 
@@ -69,12 +69,12 @@
 
 ## Phase-1 — Plan (cs1 revision 의 continuation; 규칙 candidate-agnostic settle)
 
-> Phase-1 = `docs-working-model` 규칙을 *임의 candidate 의 일반 lifecycle* 로 settle 후 freeze(규칙↔후보 양방향 순환을 phase 경계로 차단). 각 item 의 Design = direction-level(별도 `_design.md`). **이 Plan 의 일 = batch 순서·번호 부여 + 각 item 의 승인대상 결정 close**(Design 은 item-label+DAG 만 줬다). cs1 닫지 않음. 운용 = mode-2. **mutation/commit/push 승인 아님.**
+> Phase-1 = `docs-working-model` 규칙을 *임의 candidate 의 일반 lifecycle* 로 settle 후 freeze(규칙↔후보 양방향 순환을 phase 경계로 차단). 각 item 의 Design = direction-level(별도 `_design.md`). **이 Plan 의 일 = batch 순서·번호 부여 + 각 item 의 승인대상 결정 close**(Design 은 item-label+DAG 만 줬다). cs1 닫지 않음. 운용 = mode-2.
 
 ### batch 순서/번호 (이 Plan 의 결정)
-- **실행 DAG**: 5-D(토대·최선두) → 5-K → 5-B → 5-X; 5-G 는 5-K 와 병렬; 5-T 는 5-K 뒤; 5-E 는 본문 settle 후; **5-F(enforcement-hardening)는 5-E 뒤 — 5-E 의 deferred 잔여 closer, terminology-enforcement subset 은 5-G blocked-by**(Design 5-F 절).
-- **번호 = landing 순서 기준**: batch-5 = 5-D · batch-6 = 5-K · batch-7 = 5-B · batch-8 = 5-E(landed) (이후 5-F·5-G·5-X·5-T 는 그 시점에 부여). **한 changeset 에 여러 item JOIN 안 함**(SPLIT lock — 5-K↔5-B 분리 결정 계승).
-- **per-item lifecycle**: 각 item = Design(완료) → Plan → (Work Packet) → rule 편집 → closeout. **5-D landing 후 그 규칙이 5-K/5-B Plan 작성을 규율**(5-D Plan 자신은 bootstrap 수동 적용 — E5 동형). 이번 산출 = **5-D Plan + Work Packet** 까지; 5-K/5-B Plan 은 5-D settle 후 이어서.
+- **실행 DAG**: 5-D(토대·최선두) → 5-K → 5-B → 5-X; **5-PF(pending-form governance root-fix)는 5-G 앞** — 5-G coupling-특성화를 supersede 한 root 라 5-G(coupling-element downstream 정렬 + 비-coupling desync)는 5-PF 뒤(5-G 의 5-K-독립성은 유지, 순서만 5-PF 뒤로 갱신); 5-T 는 5-K 뒤; 5-E 는 본문 settle 후; **5-F(enforcement-hardening)는 5-E 뒤 — 5-E 의 deferred 잔여 closer, terminology-enforcement subset 은 5-G blocked-by**(Design 5-F 절).
+- **번호 = landing 순서 기준**: batch-5 = 5-D · batch-6 = 5-K · batch-7 = 5-B · batch-8 = 5-E(landed) · batch-9 = 5-F(landed) · **batch-10 = 5-PF** (이후 5-G·5-X·5-T 는 그 시점에 부여). **한 changeset 에 여러 item JOIN 안 함**(SPLIT lock — 5-K↔5-B 분리 결정 계승).
+- **per-item lifecycle**: 각 item = Design(완료) → Plan → (Work Packet) → rule 편집 → closeout. **5-D landing 후 그 규칙이 후속 item Plan 작성을 규율**(5-D Plan 자신은 bootstrap 수동 적용 — E5 동형). (첫 산출 세션 = 5-D Plan+WP; 이후 5-K/5-B/5-E/5-F Plan 이 동일 패턴으로 추가·landed.)
 
 **batch-5 — 5-D: lifecycle artifact content/altitude 할당 + detail-flow 원칙**
 - **목적(한 줄).** Design 에 content/altitude 경계를 부여하고 계층-횡단 detail-flow 원칙을 명문화해 "Design=방향, detail 은 아래로, 구현 직전 확정"을 규칙으로 강제(현재 Design 만 경계 부재).
@@ -120,7 +120,7 @@
   - **transient 봉합 fallback** — 5-K landing 시 post-swap pre-live 상태는 기존 *Spec identity* time-phasing(writing-completion blueprint → implementer reference → closeout live)을 따른다는 보수적 한 줄(5-B 가 명시 marker 로 승격할 자리).
 - **validation expectation.** full-scope blind+relay-B(규칙 전문, diff 아님) + canonical dual. 정합: batch-3 atomic-transition·E4-precondition / 5-D invariant 의 `_incubation` carve-out / *Incubation tier* 다른 문단(`_incubation` 정의·E1·E4·E5)·*State migration* / Document artifact classes #2.
 - **review focus.** swap 재정의가 batch-3 와 정합(정밀화·번복 아님) · entry-artifact 가 lifecycle("Design→…")과 정합 · E4-precondition 보존(손실/raw 둘 다 아님) · atomicity 과적재 0 · 5-D `_incubation` carve-out 과 충돌 0.
-- **Work Packet 필요 = 예.**
+- **Work Packet 필요 = 예**(목적 = 5-K 편집 대상 절 분류 + transient fallback 문구·batch-3/5-D 정합 clause-map 노트[5-K-4·5-K-5]; 흡수 대상 = rule 편집[=자기 spec-of-record]; retire 조건 = closeout 시 반영 후 삭제).
 
 ### Open decision close 지점 (5-K)
 - 5-K-1(entry artifact) → 이 Plan: `_design.md`(domain·rule 공통); collapse=Proportionality 소관.
@@ -144,7 +144,7 @@
   - **E3 rename-lineage**: E3 의 sibling 금지를 candidate / successor-id / rename-target 로 확장; promotion changeset 이 source `_incubation` disposal/rename + target `_design` creation 을 같은 changeset.
 - **validation expectation.** full-scope blind+relay-B(규칙 전문) + canonical dual. 정합: 5-K swap·5-D invariant·*Spec identity*·E1~E5·*Live-Spec update*(sync-required ≠ prelive)·*State migration*·*Future-work queue*.
 - **review focus.** prelive 가 'blueprint' 형용사·sync-required 와 구분 · 2층 discovery 가 E1·*Final hard rule* 과 정합 · de-promotion=history-preservation(identity 아님) · open-Q 손실 0 · rule/domain 비대칭 명확 · single-home(재소유 0).
-- **Work Packet 필요 = 예.**
+- **Work Packet 필요 = 예**(목적 = 5-B 편집 대상 절 분류 + marker/discovery/withdrawal 정확 문구 노트[5-B-7] + open-Q routing fallback 형식; 흡수 대상 = rule 편집[=자기 spec-of-record]; retire 조건 = closeout 시 반영 후 삭제).
 
 ### Open decision close 지점 (5-B)
 - 5-B-1(marker 명) → 이 Plan: `prelive`.
@@ -157,7 +157,7 @@
 
 **batch-8 — 5-E: enforcement (settled 모델의 강제/게이트; `09aced5` risk close)**
 
-> 5-E Design(direction-level) settle 후 그 위에서. **이 Plan 의 일 = batch 단위·scope·hard boundary 확정 + Design 의 open(5E-R1/R2/SC/transition/defer-home) close.** 정확 로직·regex·문구·test 케이스 = WP/구현. cs1 닫지 않음. 운용 = mode-2 + full-scope orchestration. **mutation/commit/push 승인 아님.** (sequencing: 사용자가 `09aced5` risk 우선으로 5-E 를 5-G/5-X/5-T *앞에* 둠 — DAG "5-E 최후"는 *본문 settle 후* 의미이고, 5-E 는 *현재 settled* 모델만 강제; 미landing 5-G/5-X/5-T 는 pre-enforce 안 함.)
+> 5-E Design(direction-level) settle 후 그 위에서. **이 Plan 의 일 = batch 단위·scope·hard boundary 확정 + Design 의 open(5E-R1/R2/SC/transition/defer-home) close.** 정확 로직·regex·문구·test 케이스 = WP/구현. cs1 닫지 않음. 운용 = mode-2 + full-scope orchestration. (sequencing: 사용자가 `09aced5` risk 우선으로 5-E 를 5-G/5-X/5-T *앞에* 둠 — DAG "5-E 최후"는 *본문 settle 후* 의미이고, 5-E 는 *현재 settled* 모델만 강제; 미landing 5-G/5-X/5-T 는 pre-enforce 안 함.)
 
 - **목적(한 줄).** 5-D/5-K/5-B + batch-1~4 가 settle 한 의무를 3-tier(MS/SC/PCG)로 강제·게이트해 `09aced5` 의 *구조적* enforcement gap 을 닫는다(consumer-behavior 는 NSE — 정직 scope).
 - **batch 단위 = 단일 JOIN(R1 은 guarded sub-decision).** check(MS)+checklists(SC)+template(form)+closeout terminal-rule(PCG/R1)은 *한 모델의 enforcement* — 쪼개면 transient(check 가 강제하는데 checklist 미게이트, 또는 역). 한 changeset. **단 R1 rule-text 편집은 *유일한 normative-text 터치*라 hard boundary 로 격리**(tight 제약 위반 시 즉시 split).
@@ -184,7 +184,7 @@
 
 **batch-9 — 5-F: enforcement-hardening (5-E deferred 잔여 closer)**
 
-> 5-F Design(direction-level) settle 후 그 위에서. **이 Plan 의 일 = bounded MS/SC item 최종 선별(5F-R1~R5 close) + batch 단위·hard boundary + WP 선언.** 정확 로직·regex·문구·test 케이스 = WP/구현. cs1 닫지 않음. 운용 = mode-2 + full-scope orchestration. **mutation/commit/push 승인 아님.** (sequencing: 5-E 가 settled 모델을 강제했고, 5-F 는 그 *deferred 잔여* 중 정적-강제 가능·저위험 subset 만; 미landing 5-G/5-X/5-T pre-enforce 안 함.)
+> 5-F Design(direction-level) settle 후 그 위에서. **이 Plan 의 일 = bounded MS/SC item 최종 선별(5F-R1~R5 close) + batch 단위·hard boundary + WP 선언.** 정확 로직·regex·문구·test 케이스 = WP/구현. cs1 닫지 않음. 운용 = mode-2 + full-scope orchestration. (sequencing: 5-E 가 settled 모델을 강제했고, 5-F 는 그 *deferred 잔여* 중 정적-강제 가능·저위험 subset 만; 미landing 5-G/5-X/5-T pre-enforce 안 함.)
 
 - **목적(한 줄).** 5-E 가 의도적으로 deferred 한 enforcement 잔여(roadmap catalogue) 중 *정적-강제 가능·hermetic·저위험* subset 을 3-tier(MS/SC)로 마저 강제해 5-E 의 채택된 yes-with-risk 를 닫는다(terminology·NSE·rename-evasion 은 명시 residual — no silent drop).
 - **batch 단위 = 단일 batch(batch-9), 단 *대체로 splittable*(5-E 와 다름).** 5-E 의 JOIN 근거(check↔checklist 가 *한 모델* 강제 → split 시 transient)는 5-F 엔 *문서-level* 로는 **없다** — item 들이 대체로 별개 enforcement gap(docs/ purity ⊥ next-ID ⊥ WP checklist; doc-level intra-transient 0)이라 단일 changeset 은 "hardening" 응집 *packaging* 이며 분할 가능. **단 *코드-level* 예외 1쌍(relay-B 보정)**: E2 precision(FIRM)과 durable-pointer scan(GUARDED)은 *path-vs-concept discriminator 를 공유*(Design 명시) → 둘 다 포함 시 discriminator 는 **single-home(P0-2; divergent-copy 금지)**, durable 을 defer 하면 E2 matcher 를 *재사용 가능 구조*로 둬 미래 divergent-copy 방지.
@@ -208,3 +208,28 @@
 - 5F-R5 → 이 Plan: same-id cross-folder anomaly-check(WP 판정); 진짜 rename-evasion=PCG/별도 item(deferred·잔여폭 큼[규칙 명문 금지]).
 - 5F-rule-text → 이 Plan(closed): **≤2 bounded normative completion**(WP-gate enum + next-ID multi-prefix ack; RULE:137 정의상 normative; descriptive=Package note 파일 열거만; 초과 시 split — 5-E R1 정직성).
 - 정확 로직/regex/discriminator/test/문구 → Work Packet/구현.
+
+**batch-10 — 5-PF: 규칙 pending-form governance clarify (under-specification 해소; 5-G coupling supersede 의 root-fix)**
+
+> 5-PF Design(direction-level; `e0e9657` — 진단 under-spec·C1/C2/C3·S3 명시 bound-defer·5-G coupling supersede) settle 후 그 위에서. **이 Plan 의 일 = batch 단위·scope·hard boundary 확정 + Design open(PF-R1/R2/R3) close + roadmap 배선(PF-DAG).** 정확 규칙 wording·삽입 위치 = WP/구현 — **gate-confirmed 는 방향/구조까지만, 정확 wording 은 구현-게이트가 검증(자기인증 금지).** cs1 닫지 않음. 운용 = mode-2 + full-scope orchestration. (meta-circular: 규칙 자기 normative 개정 = E5 bootstrap 동형 → rule_docs lifecycle 경유 — 이 batch 가 그 경유 자체.)
+
+- **목적(한 줄).** 규칙이 *비-candidate 출처* pending term 의 천장-안 form(thin vs one-line)을 under-specify 함(L97 candidate-scope 묻힘·L103 "governed elsewhere" 무명 유보)을 — gap 을 *닫지 않고* — C1(scope prominent surface)·C2(부분 home 식별 + gap 명시)·C3(직교성 본문화)·S3(명시 bound-defer)로 규칙 본문에 명세해, 암묵 gap 이 *읽기*로 확산되는 실패모드(bijection 오독류)를 차단한다.
+- **batch 단위 = 단일 batch(batch-10).** C1/C2/C3/S3 는 한 under-spec gap 의 clarification 묶음이고 전부 rule 의 인접 절(L96–104)을 건드린다 — 쪼개면 transient(scope 만 surface 되고 gap 미명시 등). 편집 파일 = `docs-working-model.md` **1개** + 이 changeset 의 planning-doc 배선(Design DAG·이 Plan — PF-DAG).
+- **scope.** *다루는 것* = rule L96–104 인접의 **C1**(L97 "a candidate introduces" 한정을 등록 reader 시선 경로에 prominent — 괄호/묻힘 금지; 게이트 확정 descriptive) · **C2**(L103 "governed elsewhere" 의 *부분* home[L96 천장 + L97 candidate-조임] 식별 + 비-candidate 천장-안 form 은 그 둘로 닫히지 않음을 명시) · **C3**(L103 직교성 선언 괄호→본문 승격, wording 불변) · **S3**(비-candidate pending 의 천장-안 thin-vs-one-line = named open question·천장-capped·실례 등장 시 별도 normative settle; instance-0 사실은 timeless 본문 진술 금지 — landing-시점 anchor 또는 본문 생략[Plan/WP evidence]). *안 다루는 것* = S1/S2 settle(사용자 future 결정) · glossary 파일(Status vocab·L66 헤더·필드명 — 5-G downstream) · 5-G 절 형제 realign(PF-R3) · candidate entry 본문(L70–81, cs2) · terminology check 기계화(5-F-class·5-G blocked-by 유지; check `.ps1` 무변경) · taxonomy.
+- **hard boundary(불가침).** ① **gap 명시 ≠ gap 결정** — 구현 문구에 S1("비-candidate 도 thin")/S2("one-line 허용")를 establish 하는 문장·"elsewhere = L96+L97 로 complete" 류 닫힘 단정이 등장하면 **즉시 stop/Stage rewind**(게이트 divergence 가 경고한 지점). 닫힘-단정 판정은 literal 토큰이 아니라 **의미 기준**("fully governed"·"therefore resolved"·"covered by L96/L97" 류 동등 표현 포함) — tripwire 를 단어목록 검사로 축소 금지(relay-B 통과조건). ② **폐기 framing 의 권위-재도입 금지** — bijection·form=f(status)·deliberate-invariant·허용 조합표·(a)/(b)·schema-home 계열을 *권위 있는 진술*(rule 본문·새 normative/설명 문구)로 재도입 0(5-PF supersede 보존); supersede/lineage *식별* 목적의 언급(5-G 배너·이 boundary 의 열거·WP sweep 목록)은 비-authoritative 맥락 하에 허용하되, 구현 changeset 의 새 산문에서는 가급적 간접 지칭("superseded coupling sibling set")(relay-B·blind 수렴 보정 — 절대금지 문구는 이 열거 자체와 자기모순). ③ frozen 상속 — L96 천장 불변 · candidate=thin(L97/L101) 불변 · owner-pending⟹meaning 불변 · candidate-agnostic(P0-6) · taxonomy 불변(P0-1) · rule=자기 spec-of-record(P0-3). ④ **glossary 파일 무변경**(이 batch 는 rule 파일만 — 5-G 소관 침범 0). ⑤ 5-G 절 배너·supersede 상태 유지(형제 전수 realign 은 5-G downstream). ⑥ `.md` EOL LF · docs-working-model-check 현 repo PASS(newly-fail 0).
+- **open decision close(이 Plan 이 닫음).**
+  - **PF-R1(C2 descriptive 가드) → close = 3-요소 구조 + tripwire.** C2 문구는 (i) L103 dangling 의 *부분* home 식별(L96 천장 + L97 candidate-조임) (ii) 비-candidate 의 천장-안 form 은 그 둘로 *닫히지 않음*을 명시 (iii) 닫힘 단정(S1/S2 establish·"complete" 류 — **의미 기준, 동등 표현 포함**) 0 — 이 3-요소가 구현 diff 의 검증 기준(WP 가 문구 초안 + tripwire 대조, 구현-게이트가 "닫힘 단정 0" 을 의미 기준으로 대조; hard boundary ①).
+  - **PF-R2(C1/C3 위치·S3 문구) → close = 방향만.** C1 = candidate-도입 한정을 *등록 절 reader 시선 경로*(L97 도입부)에 prominent(새 제한 신설 아님 — 주어 한정은 이미 wording). C3 = L103 직교성("split is only the finalization-owner-live axis") 괄호→본문 문장 승격, wording 불변. S3 = named open question 형식, **4 bound**(천장 불변 · candidate=thin 불변 · settle trigger = 비-candidate pending 실례 등장 시 별도 normative 결정 · **instance-0 사실진술은 rule 본문에 timeless 로 넣지 않음** — landing-시점 anchor 로 제한하거나 본문 생략·Plan/WP evidence 유지[relay-B 보정; Design 의 "현 instance 0" 은 direction-근거이지 rule-본문 문구 지정이 아님 — within-Design, rewind 불요]). 정확 문구·삽입 위치 = WP/구현.
+  - **PF-R3(5-G 형제 realign 경계) → close = 5-G downstream 소유.** batch-10 은 5-G 절 형제(Header (a)(b)·방향 허용조합표·Owner/Open-risk 의 governed-elsewhere 명명)를 **건드리지 않는다** — 배너의 비-authoritative 차단 유지, 전수 realign 은 5-PF 뒤 5-G downstream 단계 소유(5-G 의 비-coupling desync[L8↔L17·L66 route·필드명·close-조건]도 그 단계 소관 — 이 batch 침범 0).
+  - **PF-DAG(roadmap 배선) → close = 이번 changeset 포함.** Design Phase-1 DAG(item 목록·의존 요약)에 5-PF 배선(5-PF = 5-G coupling-element 의 선행 root-fix) + 이 Plan 의 실행 DAG/번호 줄 갱신(batch-10 = 5-PF) — landed 5-PF Design 방향의 *descriptive 배선*이지 새 결정 아님(미배선 item 은 roadmap 이 발견 못함 — orphaned-deliverable 차단).
+- **validation expectation.** full-scope blind + relay-B(rule 해당 절 *전문* + Design 5-PF 절 — diff 아님) 수렴 · **canonical dual PASS(구현 close 의 load-bearing gate)** · docs-working-model-check 현 repo PASS(newly-fail 0) · `.md` EOL LF · 구현-게이트가 정확 wording 의 "gap 미결정(의미 기준) · 폐기 framing 권위-재도입 0 · frozen 보존" 검증(자기인증 금지).
+- **review focus.** C2/S3 가 gap 을 *닫지 않는가*(S1/S2 establish 0 · 닫힘 단정 0 — 의미 기준, 최우선) · C1 이 의미 변경 없이 scope 만 surface 하는가 · C3 wording 불변 · S3 가 named open question 으로 읽히고 4 bound 를 보존하는가(instance-0 timeless 진술 0 포함) · 폐기 framing 권위-재도입 0 · glossary/5-G 소관 침범 0 · candidate-agnostic · rule=자기 spec-of-record.
+- **Work Packet 필요 = 예.** 목적 = L96–104 편집 지점 분류 + C1/C2/C3/S3 삽입 문구 초안 + PF-R1 tripwire 대조표(각 초안 문장이 식별/명시/establish 중 무엇인지) + 폐기-framing 어휘 sweep 목록. 흡수 대상 = rule 편집(= 자기 spec-of-record). retire 조건 = closeout 시 편집이 rule 에 반영되면 삭제.
+
+### Open decision close 지점 (5-PF)
+- PF-R1 → 이 Plan: C2 = 부분-home 식별 + gap 명시 + 닫힘단정 0(3-요소 구조; tripwire = hard boundary ①); 정확 문구 = WP/구현-게이트.
+- PF-R2 → 이 Plan: C1 = 등록 절 reader 시선 경로 prominent(descriptive) · C3 = 괄호→본문 승격(wording 불변) · S3 = named open question(4 bound); 정확 문구·위치 = WP/구현.
+- PF-R3 → 이 Plan: 5-G 절 형제 realign = 5-G downstream 소유(batch-10 미터치·배너 유지).
+- PF-DAG → 이 Plan: Design DAG·Plan DAG/번호 배선 = 이번 changeset(descriptive).
+- (meta-circular) → rule_docs lifecycle 경유 자체가 처방(E5 bootstrap 동형) — 별도 액션 0.
+- 정확 문구/삽입 위치/어휘 sweep = Work Packet/구현.

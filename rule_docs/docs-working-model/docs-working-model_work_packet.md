@@ -255,7 +255,7 @@ An incubating candidate may state its identity by contrast with an existing conc
 
 ## Phase-1 작업노트 — 5-E: enforcement (settled 모델 강제/게이트)
 
-> 5-E Plan(batch-8) 승인결정을 line-level 편집 + 초안 + test 케이스로. round-scoped(승인 아님·Spec 대체 아님·실행기록 금지→log/). **rule/스크립트 미편집 — 구현이 이 초안을 다듬어 반영.** final single-home = live 산출물(check/checklists/template/rule). closeout 시 삭제.
+> 5-E Plan(batch-8) 승인결정을 line-level 편집 + 초안 + test 케이스로. round-scoped(Spec 대체 아님·실행기록 금지→log/). **rule/스크립트 미편집 — 구현이 이 초안을 다듬어 반영.** final single-home = live 산출물(check/checklists/template/rule). closeout 시 삭제.
 
 ### 편집 대상 (파일/절/라인 → 편집)
 | ID | 대상 | tier | 편집 |
@@ -334,3 +334,47 @@ An incubating candidate may state its identity by contrast with an existing conc
 - **5E-c2**: FN-4 WP-checklist 가 Plan checklist(WP 선언)·closeout(WP 흡수/삭제)·promotion(E4-not-WP)과 *다른 명제*(WP 파일 content) — 중복 owner-tier 0 확인.
 - verify-ps1(BOM+CRLF) + full Pester(신규 케이스) + `docs-working-model-check` 현-repo PASS.
 - retire: closeout 시 이 5-F 노트 삭제.
+
+## batch-10 — 5-PF Work Packet (pending-form governance clarify; round-scoped)
+
+> 5-PF Plan(batch-10) settle 후. round-scoped — 편집 지점 분류 + C1/C2/C3/S3 삽입 초안 + PF-R1 tripwire 대조표 + 폐기-framing 어휘 sweep 목록. 흡수 = rule 편집(자기 spec-of-record) / retire = closeout(이 노트 삭제). final wording single-home = live rule.
+
+### 편집 대상 (rule `docs-working-model.md` terminology 절만; glossary·check·checklists·templates 무변경)
+| id | 대상(현행) | Design 항목 | 종류 |
+|---|---|---|---|
+| PF-1 | L97 conditional-registration bullet 도입부 — 주어 한정 "a candidate introduces" 가 문장 안에 묻힘 | C1 | reword — candidate-scope 를 bullet 헤더로 승격 + 타-source 는 scope-밖 명시 + form-note 포인터 |
+| PF-2 | L103 owner-pending bullet 의 form-note — "(their thin-vs-fuller form is governed elsewhere)" dangling 괄호 + split-axis 진술 | C2·C3·S3 | rewrite — split-axis 진술 본문 승격(wording 불변) + 부분-home 식별(L96 cap + L97 candidate-thin) + 비-candidate gap = named open question |
+| PF-3 | L96(meaning-home/cap)·L101(thin 필드)·L102(finalization)·L104(transition) | frozen | 무변경 *확인*(대조만) |
+
+### 삽입 초안 (영어 — 구현 출발 텍스트; final = live rule)
+
+**[PF-1] L97 도입부 교체.**
+> - **Terminology registration is conditional (not mandatory-at-anchoring) — and this conditional thin-reservation clause governs terms *a candidate introduces*.** A `pending` term from any other source (the *Meaning-home division* above names several — a candidate's incubation is only one such source) is outside this clause's scope; what form such an entry takes within the *Meaning-home division* cap is addressed, as an explicitly open question, in the *Owner-pending registration* bullet's form note below. A *meaning-bearing* term a candidate introduces is registered in the glossary as a thin `pending` reservation **only when it is exposed or collision-prone**: (…이하 기존 sub-bullet 불변)
+
+**[PF-2] L103 form-note 문장 교체.**
+> This does **not** change the content rule for `pending` entries themselves, and **the `pending` ↔ `owner-pending` split is only the *finalization-owner-live* axis** — a status split that decides no entry's form. A `pending` entry's form is governed **in part**: the *Meaning-home division* above caps every glossary entry at a one-line meaning + classification, and the conditional-registration clause above fixes a **candidate-introduced** `pending` term to the thin reservation form ("define no meaning"). **Whether a `pending` term from a non-candidate source stays thin or may carry a one-line meaning within that cap is a question this rule deliberately leaves open** — a named open question (capped by the *Meaning-home division* either way), to be settled as a separate normative decision at the first actual non-candidate `pending` registration (not settled by this rule's landing, and not to be inferred from the candidate clause).
+
+### PF-R1 tripwire 대조표 (각 초안 문장 분류 — establish 발견 시 즉시 stop/Stage rewind; 판정 = 의미 기준)
+| 초안 문장 | 분류 | 판정 |
+|---|---|---|
+| PF-1 "governs terms a candidate introduces" | 식별(기존 L97 주어 한정의 surface — 새 제한 아님) | 통과 |
+| PF-1 "outside this clause's scope … addressed as an explicitly open question … below" | 식별 + 포인터(form 결론 0) | 통과 |
+| PF-2 "split is only the finalization-owner-live axis" | 명시(C3 — 기존 wording 불변 승격) + "decides no entry's form"(직교성 명시) | 통과 |
+| PF-2 "governed in part: cap + candidate-thin" | 부분-home 식별("complete" 단정 0) | 통과 |
+| PF-2 "deliberately leaves open — named open question … first actual … registration" | gap 명시 + S3 bound(천장-cap·trigger; timeless instance-count 진술 0) | 통과 |
+| **(폐기 기록)** PF-1 1차 초안 "is not bound to this clause's thin form" | **S2-suggestive**("thin 아니어도 됨" 함의 = 의미상 establish) | **자가-tripwire 폐기 → scope-밖+포인터로 교체** |
+| **(구현 blind fix — PF-2b)** wrong-go-live 정정 문장 "returns … to `pending` *status* … (candidate-introduced = thin 복원·meaning drop / non-candidate = status 만 정정, form 은 form note 의 open question 유지)" | source-별 분기 = 식별(candidate 경로는 기존 L97/L101 재확인) + gap 보존(non-candidate 경로 form 미결정) | 통과 — 구 문장("reduces to the `pending` reservation form" 무조건 thin)이 S3 gap 을 한 경로에서 닫던 것을 해소(구현 blind concern-1 fix) |
+
+### 게이트 발견 residual (5-PF 밖 — 추적 기록)
+- **L102↔L103 status/close 과단정** (구현 blind concern-2; pre-existing·이 changeset diff 무접촉): L102 는 finalization-owner close 에서 carry-forward(→owner-pending)를 허용하는데, L103 괄호("a rule-candidate promotion's terminal landing is … the finalization-owner close, so its terms finalize there rather than going owner-pending")는 그 선택지를 과단정으로 배제하는 것처럼 읽힘. **form 축 아님(status/close 축) = batch-10 hard boundary "5-G 소관 침범 0" 대상 → 5-G downstream 의 close-condition desync 인벤토리로 defer**(5-G Plan-readiness 가 file:line 전수 인벤토리를 mandate — 그 sweep 대상). blind 의 deferred observations 2건(glossary L8 "pending is candidate vocabulary"·L66 필드 설명)도 동일 5-G downstream(blind 스스로 분류).
+
+### 폐기-framing 어휘 sweep 목록 (구현 diff 에 재등장 0 확인)
+bijection · form=f(status) · deliberate invariant · 허용 조합표(allowed-combination table) · (a)/(b) 라벨쌍 · schema-home · glossary-격하 계열. (식별 목적 언급 = planning 배너/boundary 열거에 한정 — 새 산문은 간접 지칭.)
+
+### Edge / 정합 (구현 시 확인)
+- frozen 대조: L96 cap 불변 · L97/L101 candidate=thin 불변 · owner-pending⟹meaning(one-line) 불변 · L102 finalization·L104 transition 불변.
+- "governed elsewhere" dangling 잔존 0(PF-2 가 대체; 같은 구 타 절 grep).
+- S3 trigger 문구가 timeless instance-count 를 진술하지 않음(relay-B 보정 — landing-anchor 불요 형태 채택: trigger-정의만).
+- planning↔rule N-axis 대조(canonical 전 self-sweep): C1/C2/C3/S3 각각 ↔ Plan batch-10 close 문구(3-요소 tripwire·4-bound·wording-불변·5-G 소관 침범 0) 1:1.
+- 삽입 후 docs-working-model-check PASS · EOL LF · newly-fail 0. glossary/check/checklists/templates 무변경 확인.
+- retire: closeout 시 이 5-PF 노트 삭제.
