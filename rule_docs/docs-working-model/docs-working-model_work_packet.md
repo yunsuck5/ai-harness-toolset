@@ -100,7 +100,7 @@ An incubating candidate may state its identity by contrast with an existing conc
 
 ## batch-3 작업노트 — promotion incubation 처분 정합 (E4-centered)
 
-> orchestration(relay-A→relay-B→blind→재조율→re-blind→relay-B[Plan]) 검증 방향. 아래는 *구현이 다듬을 출발 텍스트*(영어로 `docs-working-model.md` 반영). 강도 = Plan hard boundary 준수. **rule 미편집 — 이건 초안 노트.**
+> orchestration(relay-A→relay-B→blind→재조율→re-blind→relay-B[Plan]) 검증 방향. 아래는 *구현이 다듬을 출발 텍스트*(영어로 `docs-working-model.md` 반영). 강도 = Plan hard boundary 준수. **rule 미편집 — 이건 초안 노트.** **★ 구현됨 — batch-3 편집은 rule 에 반영 landed(커밋 = git history); 이하 historical.**
 
 ### 편집 대상 절 (`docs-working-model.md`)
 | 편집 | 대상 절 | 종류 |
@@ -255,7 +255,7 @@ An incubating candidate may state its identity by contrast with an existing conc
 
 ## Phase-1 작업노트 — 5-E: enforcement (settled 모델 강제/게이트)
 
-> 5-E Plan(batch-8) 승인결정을 line-level 편집 + 초안 + test 케이스로. round-scoped(Spec 대체 아님·실행기록 금지→log/). **rule/스크립트 미편집 — 구현이 이 초안을 다듬어 반영.** final single-home = live 산출물(check/checklists/template/rule). closeout 시 삭제.
+> 5-E Plan(batch-8) 승인결정을 line-level 편집 + 초안 + test 케이스로. round-scoped(Spec 대체 아님·실행기록 금지→log/). **rule/스크립트 미편집 — 구현이 이 초안을 다듬어 반영.** final single-home = live 산출물(check/checklists/template/rule). closeout 시 삭제. **★ 구현됨(`78e3a17`) — 이하 historical.**
 
 ### 편집 대상 (파일/절/라인 → 편집)
 | ID | 대상 | tier | 편집 |
@@ -297,7 +297,7 @@ An incubating candidate may state its identity by contrast with an existing conc
 
 ## batch-9 — 5-F Work Packet (enforcement-hardening; round-scoped)
 
-> 5-F Plan(batch-9) settle 후. round-scoped 작업문서 — 편집대상 분류 + check 로직 *초안* + test 케이스 + WP-checklist 문구·배선 + GUARDED feasibility. **흡수 = 구현 / retire = closeout(이 5-F 노트 삭제).** 정확 final 코드는 구현 산출(이 WP 는 출발 초안). `.ps1` UTF-8 BOM+CRLF + verify-ps1 + full Pester.
+> 5-F Plan(batch-9) settle 후. round-scoped 작업문서 — 편집대상 분류 + check 로직 *초안* + test 케이스 + WP-checklist 문구·배선 + GUARDED feasibility. **흡수 = 구현 / retire = closeout(이 5-F 노트 삭제).** 정확 final 코드는 구현 산출(이 WP 는 출발 초안). `.ps1` UTF-8 BOM+CRLF + verify-ps1 + full Pester. **★ 구현됨(`a0801dd`) — 채택 subset 반영 완료(GUARDED 항목의 최종 채택 여부는 landed check/tests 가 기준); 이하 historical.**
 
 ### 독립 gap 인벤토리 (codex relay-A landscape + Claude 독립 lens 병합; Plan 이 WP 로 이연)
 항목별 {rule locus · current check coverage · file:line}. (출처 = 이 세션 relay-A landscape 서브에이전트 + 내 독립 reading; 전수 대조됨.)
@@ -337,7 +337,7 @@ An incubating candidate may state its identity by contrast with an existing conc
 
 ## batch-10 — 5-PF Work Packet (pending-form governance clarify; round-scoped)
 
-> 5-PF Plan(batch-10) settle 후. round-scoped — 편집 지점 분류 + C1/C2/C3/S3 삽입 초안 + PF-R1 tripwire 대조표 + 폐기-framing 어휘 sweep 목록. 흡수 = rule 편집(자기 spec-of-record) / retire = closeout(이 노트 삭제). final wording single-home = live rule.
+> 5-PF Plan(batch-10) settle 후. round-scoped — 편집 지점 분류 + C1/C2/C3/S3 삽입 초안 + PF-R1 tripwire 대조표 + 폐기-framing 어휘 sweep 목록. 흡수 = rule 편집(자기 spec-of-record) / retire = closeout(이 노트 삭제). final wording single-home = live rule. **★ 구현됨(`304855b`) — [PF-1]/[PF-2]·PF-2b 반영 완료, 이하 historical.**
 
 ### 편집 대상 (rule `docs-working-model.md` terminology 절만; glossary·check·checklists·templates 무변경)
 | id | 대상(현행) | Design 항목 | 종류 |
@@ -378,3 +378,123 @@ bijection · form=f(status) · deliberate invariant · 허용 조합표(allowed-
 - planning↔rule N-axis 대조(canonical 전 self-sweep): C1/C2/C3/S3 각각 ↔ Plan batch-10 close 문구(3-요소 tripwire·4-bound·wording-불변·5-G 소관 침범 0) 1:1.
 - 삽입 후 docs-working-model-check PASS · EOL LF · newly-fail 0. glossary/check/checklists/templates 무변경 확인.
 - retire: closeout 시 이 5-PF 노트 삭제.
+
+## batch-11 — 5-G Work Packet (terminology-registration 잔여 정렬; round-scoped)
+
+> 5-G Plan(batch-11) settle 후. round-scoped — 착수 인벤토리(3-lens sweep + codex relay-A 독립 landscape, 인용 전수 검증) 정리 + 편집 지점 분류 + 삽입 초안 + tripwire 대조표 + rule 관찰 per-item 판정표 + 폐기-framing sweep 목록 + landed-마커 hygiene 목록. 흡수 = glossary/rule/Design 편집 / retire = closeout(이 노트 삭제). final wording single-home = live rule·glossary.
+
+### 인벤토리 (확증 desync — file:line 전수; 처분 병기)
+| # | 위치(착수 시점) | 어긋남 | 처분 |
+|---|---|---|---|
+| 1 | glossary:8 | "is *candidate vocabulary*" 단정 ↔ rule:96/:97/:103 비-candidate 출처 인정(L17 "typical case" 와 파일 내 수위차·L66 헤더 괄호 3수위) | 편집 G-1(+G-3) |
+| 2 | glossary:17 | "closed at its owner's promotion / closeout" ↔ rule:102 close = decision point(finalize or carry-forward) | 편집 G-2 |
+| 3 | glossary:66 | 필드명 `owner`/`promotion target` ↔ rule:101 `candidate`/`eventual-owner-surface`(같은 파일 :88 은 rule 명명 사용 — 한 파일 2체계) | 편집 G-3 |
+| 4 | glossary:66 | status 별 단일 필드셋 일반 서술 = rule:103 named open question(비-candidate pending form)을 사실상 봉합하는 형태 | 편집 G-3 (S3 봉합 0 최우선) |
+| 5 | glossary:66 | owner-pending 열거에 조건부 `carry-forward reason` 부재 + "(it is past promotion)" 근거가 rule:103 owner-pending 발생원(promotion 비경유)과 불일치 | 편집 G-3 |
+| 6 | glossary:138 | close 확정-종결형 서술(L17 과 형제) + carry-forward 경로 전면 부재 | 편집 G-4 |
+| 7 | glossary:138 vs rule:102 | 'closed'/'not adopted' 종결 기록 ↔ "exactly accepted/awb/rejected" 열거 — 관계 미서술 | 편집 G-4(관계 descriptive 명시; outcome/status 신설 0) |
+| 8 | glossary:11 ↔ :139 | "records meaning and classification only" ↔ "records classification and close conditions only" — 두 'only' 열거 상호 배제 | 편집 G-5(+:139 의 stale `run diagnostics` 예시 제거 — :138 이 closed 로 기록) |
+| 9 | glossary:34 | Work Packet 위치 = docs/<domain>/ 만 ↔ rule:77 rule_docs 위치 병존 | 편집 G-6 |
+| 10 | glossary:36 | "candidate-only `rule_docs/` space" ↔ rule:87–94 per-rule persistent(existing-rule revision·idle 포함) | 편집 G-7 |
+| 11 | glossary:129 | rejected lead "1:1-bound to a specific rule candidate" ↔ rule:94 "a rule or candidate id"(같은 entry 후속 3-state 서술은 정합 — 문장 간 수위차) | 편집 G-8 |
+| 12 | rule:103 괄호 | "so its terms finalize there rather than going owner-pending" ↔ rule:102 decision-point·carry-forward (5-PF defer ①; `304855b` parent 에 이미 존재 = pre-existing, word-diff 확인) | 편집 R-1 |
+| 13 | rule:99 | collision-class 열거 (accepted/pending/rejected) 에 owner-pending(+awb) 누락 — 규칙 자신이 :96/:102 에 세운 상태 | 편집 R-2 |
+| 14 | design 5-G 절(:365–414) | superseded coupling-특성화 잔존 high 10곳(:372·:374·:375["1:1 잠금 유지"=S1-establish 방향]·:381·:392·:398·:399·:406·:408·:414) + 제목 framing + rule-landed 로 stale 된 결함 서술 4곳(:373·:380·:386·:387) | 편집 D-1(전수 realign) |
+| 15 | planning stale-status | 5-PF Design 절·WP batch-10 절·WP 5-E/5-F/batch-1·3 노트의 landed 마커 부재/현재형 잔존 | 편집 H-1(hygiene) |
+| 16 | rule 관찰(비편집 후보) | L97 modality·L103 "decides no entry's form"·L102 promote-경로·L96 열거들·L113 'promotion target' 일반-어구·glossary:145 | 아래 per-item 판정표 |
+
+### 편집 대상 (glossary + rule + Design + planning; candidate-도입 pending entry 본문 L70–81 무변경)
+| id | 대상(현행) | Plan scope | 종류 |
+|---|---|---|---|
+| G-1 | glossary L8 서두 사용법 pending 문장 | ① | reword — 출처 단정 완화(rule 미러) |
+| G-2 | glossary L17 Status vocab pending close 서술 | ①③ | reword — decision-point 미러 |
+| G-3 | glossary L66 Pending/owner-pending preamble | ②④ | rewrite — 필드명 정렬 + candidate-한정 기술 + transition 명시 + carry-forward reason + 근거 정정 |
+| G-4 | glossary L138 Term ownership close 문장 + closed/not-adopted 관계 | ③④ | reword + 관계문 추가(descriptive) |
+| G-5 | glossary L11 ↔ L139 "only" 열거 | ④ | harmonize(동일 열거) + stale 예시 제거 |
+| G-6 | glossary L34 Work Packet entry 위치 | ④ | 위치 병기 |
+| G-7 | glossary L36 rule-candidate incubation entry | ④ | reword — "candidate-only" 제거·per-rule workspace 정합 |
+| G-8 | glossary L129 rejected lead 문장 | ④ | reword — "a rule or rule candidate" |
+| R-1 | rule L103 괄호(terminal-landing 문장) | ⑤ | reword — 선택지-배제만 해소, 사실 유지 |
+| R-2 | rule L99 collision-class 열거 | ⑥ | descriptive completion |
+| D-1 | design 5-G 절 전체(:365–414) | ⑧ | rewrite — 5-PF 위 downstream 재기술(아래 outline) |
+| H-1 | planning landed-마커 hygiene | ⑨ | 마커 추가(아래 목록) |
+
+### 삽입 초안 (영어 = glossary/rule 대상; 구현 출발 텍스트 — final = live 파일)
+
+**[G-1] glossary L8 교체.**
+> - A **pending** term is one whose finalization-owner is **not yet at live authority** (a pre-promotion candidate is the typical — but not the only — source); an **owner-pending** term has a *live* finalization-owner but deferred finalization, so it carries a live one-line meaning yet is **not** final. Do not use either as if it were settled; each is decided at its named owner's close condition.
+
+**[G-2] glossary L17 교체.**
+> - **pending** — a term whose **finalization-owner is not yet at live authority** (a pre-promotion candidate is the typical case); not final; decided at its finalization-owner's close under a stated close condition (a decision point — finalized to an outcome, or explicitly carried forward as `owner-pending`).
+
+**[G-3] glossary L66 preamble 교체.**
+> Nothing here is finalized. Two states share this section, split by whether a term's **finalization-owner is at live authority yet** (see *Status vocabulary*); the split classifies **status** only — what an entry may carry is governed by the docs-working-model rule's terminology clauses, not by this section. A **candidate-introduced `pending`** entry names its `candidate` / `facet` / `not-this` / `eventual-owner-surface` (optional if not yet known), plus `collision-note` only for a collision-prone reservation (the entries below predate this field naming and keep their original labels and fuller content until each candidate's realigning changeset, per that rule's transition clause); an **`owner-pending`** entry carries a one-line meaning + `finalization-owner` (an owner id or a tracked owner-surface path, never an `_incubation` / `log/**` / out-of-repo pointer) / `facet` / `close-condition` / `not-this` (plus a short `carry-forward reason` only when carried past a finalization-owner close), and no `eventual-owner-surface` (its finalization-owner is already live and named). This section *classifies* these terms; it does **not** rewrite their existing repo usage — that is each owner's work.
+
+**[G-4] glossary L138 첫 문장 교체 + 관계문 추가.**
+> - **Pending** and **owner-pending** terms are decided at their finalization-owner's close — finalized to an outcome or explicitly carried forward as `owner-pending` — each under its stated close condition. (The records below also use two endings that are **not** glossary finalization outcomes — those are exactly accepted / accepted-with-owner-boundary / rejected: **closed** marks a tracked sub-question resolved with no standing term entry, and **not adopted** marks a naming proposal dropped with no entry and no do-not-revive burden.) (…기존 괄호 기록들 불변)
+
+**[G-5] L11·L139 'only' 열거 통일.**
+> L11: "This glossary records meaning, classification, and (for non-final terms) close conditions **only**." / L139: "This glossary records meaning, classification, and (for non-final terms) close conditions only. It does **not** rewrite the existing repo usage of any pending / owner-pending token — that wording cleanup belongs to each owner domain, not to this glossary." (stale `run diagnostics` 예시 괄호 제거)
+
+**[G-6] L34 위치 병기.** "…living at `docs/<domain>/<domain>_work_packet.md` (for a domain) or `rule_docs/<id>/<id>_work_packet.md` (for a rule / rule candidate) as a **committed temporary document**…"
+
+**[G-7] L36 공간 서술 교체.** "…housed in that candidate's folder within the per-rule planning workspace `rule_docs/` (a space that also serves existing-rule revisions — not candidate-only), separate from the domain-scoped `docs/` tree; the candidate's folder holds only items 1:1-bound to that specific rule candidate (terminal output = a rule file)…" (이하 불변)
+
+**[G-8] L129 lead 교체.** "`rule_docs/` holds only folders 1:1-bound to a specific **rule or rule candidate** whose terminal output is a rule file (`rules/` or `snippets/rules/`); …" (이하 불변)
+
+**[R-1] rule L103 괄호 교체.**
+> (the rule is authoritative on landing while its closeout is a separate, possibly deferred event; a *rule-candidate* promotion's terminal landing is instead itself the finalization-owner close, so its terms meet that close's per-term decision there — finalized, or explicitly carried forward as `owner-pending` — rather than being registered `owner-pending` by the landing itself)
+
+**[R-2] rule L99 열거 교체.** "…either against a glossary-registered term (accepted — with or without an owner boundary — / pending / owner-pending / rejected) or against another candidate's term…"
+
+**[D-1] design 5-G 절 realign outline** (전문 재작성; 정확 문구는 구현):
+- 제목 → "## 5-G: terminology-registration 잔여 정렬 — cross-surface desync 정합 (5-PF 위 downstream; Design, direction-level)".
+- 배너 교체 → REALIGNED(batch-11) 선언: coupling-특성화는 5-PF supersede(권위 = 5-PF 절 + landed rule), 원 절 전문 lineage = git history(`9fa415c`), 이 절은 잔여-정렬 direction 만.
+- 고정 불변식 → 유지·재기술 = glossary 권위(구 5G-c5)·candidate-agnostic/transition/시간축(구 5G-c6) + frozen 상속(L96 천장·candidate=thin·owner-pending⟹meaning·P0) + **S3 open question 보존**; 제거 = 구 c1/c3/c4 의 coupling-특성화(S1-establish 방향 진술 포함).
+- Header/결함/방향 → 비-coupling desync 4축(출처-수위·필드/서술·close-조건·필드명)로 재기술; rule-landed 로 소멸한 옛 결함 서술(직교성 묻힘·governed-elsewhere dangling) 제거.
+- Open risk → 5G-R1 재정의·R2 확정(clarification)·R3 소멸 기록·R4·R5 = batch-11 Plan close 를 기술.
+
+### PF-R1-형 tripwire 대조표 (각 초안 문장 분류 — establish 발견 시 즉시 stop/Stage rewind; 판정 = 의미 기준)
+| 초안 문장 | 분류 | 판정 |
+|---|---|---|
+| G-1 "typical — but not the only — source" | 식별(rule:96 "only one such source" 미러) | 통과 |
+| G-1/G-2/G-4 "decided at … finalized, or explicitly carried forward" | 식별(rule:102 decision-point 미러) | 통과 |
+| G-3 "the split classifies status only — what an entry may carry is governed by the rule's terminology clauses" | 식별(rule:103 C3 미러) + route(form 결론 0 — 참조처가 open question 을 보유) | 통과 |
+| G-3 "A candidate-introduced pending entry names its `candidate`/…" | 식별(rule:101 미러; **비-candidate entry 형식엔 침묵 = gap 보존**) | 통과 |
+| G-3 "(the entries below predate … until each candidate's realigning changeset)" | 식별(rule:104 transition 미러) | 통과 |
+| G-4 "closed … not adopted … are **not** glossary finalization outcomes" | 명시(관계 기술; outcome/status 신설 0) | 통과 |
+| R-1 "meet that close's per-term decision there … rather than being registered `owner-pending` by the landing itself" | 식별(rule:102 재확인 + "landing ≠ 자동 등록 트리거" 사실 유지) | 통과 |
+| R-2 상태 열거 확장 | 식별(규칙 자신이 :96/:102 에 세운 상태의 나열) | 통과 |
+| **(구현 blind fix — G-3b)** 1차 구현의 candidate-도입 필드 열거에 `close condition` 잔존(옛 preamble 관성) | rule:101 "use only these, no others" **위반 = 신규 스키마 desync** — 위 G-3 행의 "rule:101 미러" 판정은 이 필드에 관해 **오판(retraction 기록)** | 제거 + 조건부 `collision-note` 로 교체(충실 미러) — fix 반영 |
+| **(구현 relay-B 관찰 — G-2b)** glossary L18 owner-pending "Closed at …" 확정-종결형 잔존 | 형제 3수위 sweep(L8/L17/L138)에서 **owner-pending 축(L18) 누락** — decision-point 정렬의 형제 미완 | decision-point 수위로 정합(carry-forward reason 경로 포함) — fix 반영 |
+| **(re-blind fix — G-3c)** 필드 미러의 `eventual-owner-surface` optional 조건("optional if not yet known") 누락 — G-3b 정정 후에도 같은 클래스(닫힌-스키마 미러 충실도) 잔여 | 필드 *이름*만 정렬하고 *조건*(optional·conditional)을 빠뜨리면 미러가 rule 보다 강한 요구로 읽힘 | 조건 병기 + rule:101 대비 token-by-token 전수 대조로 자가검증 — fix 반영 |
+
+### rule 관찰 per-item 판정표 (Plan ⑦ — 원칙: 5-PF landed wording 재-litigate 금지·실증 결함만 최소 편집·나머지 기록)
+| 관찰 | 판정 | 처분 |
+|---|---|---|
+| rule:97 modality("is registered … only when" vs :100 "may proactively / reviewer may require") | :97=등록 *조건*(when)·:100=행위자 *재량*(who) — 정면 모순 아닌 수위 관찰 | 기록(무편집) |
+| rule:103 "a status split that decides no entry's form" 긴장 후보(owner-pending⟹meaning 은 status 연동으로 보임) | 문맥상 "split 분류 자체는 form 을 결정하지 않으며 form 은 별개 조항(cap·candidate-thin·owner-pending 등록 조항)이 지배"로 독해 가능 — 5-PF 산출 문구·게이트 통과분·실증 결함 미확증 | 기록(무편집; boundary ③) |
+| rule:102 "a candidate may promote while … stays pending/owner-pending" vs :103 carve-outs | R-1 이 carry-forward 경로를 복원하면 핵심 긴장 해소; 잔여는 표현-관찰 | 기록(R-1 후 재관찰) |
+| rule:96 열거들(live-authority 예시의 sync-required 한정 vs finalization-owner 정의의 일반 live Spec; retirement 괄호 2갈래; 기록시점 문장쌍) | pre-existing·5-PF 무관·실증 결함 미확증(괄호=대표 예시 독해 가능) | 기록(무편집) |
+| rule:113 'promotion target' 일반-어구 ↔ glossary 필드명 이중화 | G-3 정렬로 glossary 필드명에서 'promotion target' 소멸(신규 용법) → 이중화 해소·잔존 = L70–81 transition 구간뿐 | 기록(무편집; G-3 로 구조 해소) |
+| glossary:145 pending/owner-pending 묶음 경고 | L8 재서술(G-1)이 owner-pending 의 live-but-not-final 을 이미 보유 — 묶음 경고는 유효 | 기록(무편집) |
+| rule:104 full-binding 시점(changeset conform vs closeout binding) | 두 문장은 conform-시점(편집)과 binding-시점(closeout)의 별개 축 독해 가능 | 기록(무편집) |
+
+### landed-마커 hygiene 목록 (H-1 — 전부 descriptive 1줄 마커; 본문 무수정)
+- design.md 5-PF 절 배너(:337 인근): "★ 구현됨 — batch-10 `304855b` 가 C1/C2/C3/S3 를 rule 에 반영(이 절 = direction 기록)" 추가.
+- WP batch-10 절 blockquote(:328): "★ 구현됨(`304855b`) — [PF-1]/[PF-2]·PF-2b 반영 완료, 이하 historical" 추가.
+- WP 5-E 절 blockquote(:258 인근): "★ 구현됨(`78e3a17`)" 추가. WP 5-F 절 상단 동형("★ 구현됨(`a0801dd`)"; GUARDED 3건 실결과 1줄 병기). WP batch-3 노트(:103 인근) "★ 구현됨" 동형.
+- design.md batch-1 절(:16·:21 "현행 규칙" 서술): 절 상단 landed 마커 존재 여부 확인 후 없으면 1줄 보강(본문 무수정 — 역사 기록).
+- (plan.md 번호줄 batch-10 landed 마커 = batch-11 Plan 편집에서 기 반영.)
+
+### 폐기-framing 어휘 sweep 목록 (구현 diff 재등장 0 확인; 식별 목적 = 배너/열거 한정)
+bijection · form=f(status) · deliberate invariant(의도된 불변식) · 허용 조합표(allowed-combination table) · (a)/(b) 라벨쌍 · schema-home · glossary-격하 계열 · "governed-elsewhere home 명명"(처방 지위로의 재등장 금지 — lineage 식별 언급만).
+
+### Edge / 정합 — 구현 시 수행할 체크 항목 (체크의 *수행 결과* 기록은 WP 가 아니라 `log/**`[이 라운드: log/evidence 의 validation-evidence] 소관 — WP content boundary)
+- frozen 대조를 확인: L96 cap · L97/L101 candidate=thin · owner-pending⟹meaning · L102 · L104 가 불변인지(R-1 은 L103 괄호만 터치).
+- S3 봉합 0 의미-검사를 확인: G-1/G-3/G-4 전 문장 + D-1 재작성 절 전수(tripwire 표 기준, 동등 표현 포함).
+- 형제 재서술(L8/L17/L18/L66)의 상호 일관과, 필드명 신규 용법 잔존 여부를 grep 으로 확인(`promotion target`·`owner =` — L70–81 transition 구간 제외·일반-어구 용법 구분).
+- 폐기-framing 어휘(위 목록)의 diff 재등장 여부 · D-1 후 S1-establish 잔존 여부를 확인.
+- 기계 검증의 수행(docs-working-model-check·EOL·newly-fail·Pester scope 판단[.md-only class — batch-10 동일 근거]·check `.ps1`/tests 무변경 확인)과 그 **결과 기록 = log/evidence 소관** — 이 노트에는 결과를 기록하지 않는다.
+- planning↔surface N-axis 대조를 확인: Plan scope ①~⑨ ↔ 실제 편집(G-1~8 · R-1~2 · D-1 · H-1) 1:1.
+- retire: closeout 시 이 batch-11 노트 삭제.

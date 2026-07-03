@@ -4,9 +4,9 @@
 
 ## Header
 
-- **무엇의 Plan 인가.** docs-working-model 규칙 revision(cs1 + 그 continuation)의 batch·경계·검증 결정 — 초기 coordinated 변경 **batch-1·2**(incubation↔terminology lifecycle 정정[Design (A)~(F)] · rule_docs 모델 일반화+3-state check), 추가 정합 **batch-3·4**(promotion 처분 · owner-pending), **Phase-1 규칙 settle batch-5~10**(5-D·5-K·5-B·5-E·5-F·5-PF — 아래 각 절).
+- **무엇의 Plan 인가.** docs-working-model 규칙 revision(cs1 + 그 continuation)의 batch·경계·검증 결정 — 초기 coordinated 변경 **batch-1·2**(incubation↔terminology lifecycle 정정[Design (A)~(F)] · rule_docs 모델 일반화+3-state check), 추가 정합 **batch-3·4**(promotion 처분 · owner-pending), **Phase-1 규칙 settle batch-5~11**(5-D·5-K·5-B·5-E·5-F·5-PF·5-G — 아래 각 절).
 - **체인이 끝나면 무엇이 되는가.** `docs-working-model.md` 가 각 batch 의 변경을 반영한 상태로 수정되고(rule = 자기 spec-of-record), `docs-working-model-check.ps1`(+tests)·checklists 가 settled 모델의 구조/의미 subset 을 강제하며, Design/Plan/Work Packet 은 closeout 에서 retire.
-- **이 문서가 아닌 것.** candidate 콘텐츠(4 stashed 파일) 재정렬 아님(cs2) · glossary 용어항목 realignment 아님(cs2) · 별도 `_spec.md` 생성 아님(rule 은 자기 spec-of-record) · **incubation↔terminology 의 terminology-registration 검사 enablement 아님(cs2, transition-aware)**. (**rule_docs 3-state check 는 cs1 포함** — batch-2.)
+- **이 문서가 아닌 것.** candidate 콘텐츠(4 stashed 파일) 재정렬 아님(cs2) · glossary 의 candidate-도입 pending entry 본문(L70–81) realignment 아님(cs2/L104 transition; 그 외 glossary 정합 — 서두·Status vocab·preamble·accepted/rejected entry 서술 — 은 batch-11 소관) · 별도 `_spec.md` 생성 아님(rule 은 자기 spec-of-record) · **incubation↔terminology 의 terminology-registration 검사 enablement 아님(cs2, transition-aware)**. (**rule_docs 3-state check 는 cs1 포함** — batch-2.)
 
 ## Batch 순서와 의존
 
@@ -73,8 +73,8 @@
 
 ### batch 순서/번호 (이 Plan 의 결정)
 - **실행 DAG**: 5-D(토대·최선두) → 5-K → 5-B → 5-X; **5-PF(pending-form governance root-fix)는 5-G 앞** — 5-G coupling-특성화를 supersede 한 root 라 5-G(coupling-element downstream 정렬 + 비-coupling desync)는 5-PF 뒤(5-G 의 5-K-독립성은 유지, 순서만 5-PF 뒤로 갱신); 5-T 는 5-K 뒤; 5-E 는 본문 settle 후; **5-F(enforcement-hardening)는 5-E 뒤 — 5-E 의 deferred 잔여 closer, terminology-enforcement subset 은 5-G blocked-by**(Design 5-F 절).
-- **번호 = landing 순서 기준**: batch-5 = 5-D · batch-6 = 5-K · batch-7 = 5-B · batch-8 = 5-E(landed) · batch-9 = 5-F(landed) · **batch-10 = 5-PF** (이후 5-G·5-X·5-T 는 그 시점에 부여). **한 changeset 에 여러 item JOIN 안 함**(SPLIT lock — 5-K↔5-B 분리 결정 계승).
-- **per-item lifecycle**: 각 item = Design(완료) → Plan → (Work Packet) → rule 편집 → closeout. **5-D landing 후 그 규칙이 후속 item Plan 작성을 규율**(5-D Plan 자신은 bootstrap 수동 적용 — E5 동형). (첫 산출 세션 = 5-D Plan+WP; 이후 5-K/5-B/5-E/5-F Plan 이 동일 패턴으로 추가·landed.)
+- **번호 = landing 순서 기준**: batch-5 = 5-D · batch-6 = 5-K · batch-7 = 5-B · batch-8 = 5-E(landed) · batch-9 = 5-F(landed) · batch-10 = 5-PF(landed `304855b`) · **batch-11 = 5-G** (이후 5-X·5-T 는 그 시점에 부여). **한 changeset 에 여러 item JOIN 안 함**(SPLIT lock — 5-K↔5-B 분리 결정 계승).
+- **per-item lifecycle**: 각 item = Design(완료) → Plan → (Work Packet) → rule 편집 → closeout. **5-D landing 후 그 규칙이 후속 item Plan 작성을 규율**(5-D Plan 자신은 bootstrap 수동 적용 — E5 동형). (첫 산출 세션 = 5-D Plan+WP; 이후 5-K/5-B/5-E/5-F/5-PF Plan 이 동일 패턴으로 추가·landed.)
 
 **batch-5 — 5-D: lifecycle artifact content/altitude 할당 + detail-flow 원칙**
 - **목적(한 줄).** Design 에 content/altitude 경계를 부여하고 계층-횡단 detail-flow 원칙을 명문화해 "Design=방향, detail 은 아래로, 구현 직전 확정"을 규칙으로 강제(현재 Design 만 경계 부재).
@@ -233,3 +233,44 @@
 - PF-DAG → 이 Plan: Design DAG·Plan DAG/번호 배선 = 이번 changeset(descriptive).
 - (meta-circular) → rule_docs lifecycle 경유 자체가 처방(E5 bootstrap 동형) — 별도 액션 0.
 - 정확 문구/삽입 위치/어휘 sweep = Work Packet/구현.
+
+**batch-11 — 5-G: terminology-registration 잔여 정렬 (clarified 규칙(5-PF) 위 downstream)**
+
+> 5-G Design(direction-level; `9fa415c` — 부분 superseded: coupling-특성화는 5-PF 가 supersede[그 절 배너], 비-coupling 부분[L8 status-axis·L66 route·필드명·close-조건]은 유효) + 5-PF(Design `e0e9657`·구현 `304855b`) 위에서. **이 Plan 의 일 = batch 단위·scope·hard boundary 확정 + 5-G open(5G-R1~R5)의 5-PF-이후 재정의 close + 착수-인벤토리 신규 발견의 fold 결정(사용자 승인 2026-07-03) + 배선(batch-11 번호·landed 마커 현행화).** 정확 문구·삽입 위치·per-hit 처분 = WP/구현 — gate-confirmed 는 방향/구조까지만, 정확 wording 은 구현-게이트가 검증(자기인증 금지). cs1 닫지 않음. 운용 = mode-2 + full-scope orchestration.
+
+- **목적(한 줄).** 5-PF 가 명세한 clarified 규칙 위에서 rule↔glossary↔planning 의 잔여 desync 를 정합하고(5-G 절의 superseded coupling-특성화 realign 포함), S3 named open question 을 어느 표면에서도 봉합하지 않은 채 cross-surface 를 일관되게 해, 5-F terminology-enforcement 의 blocked-by(5F-c3) 전제를 해소한다.
+- **batch 단위 = 단일 batch(batch-11).** glossary 정합·rule 소폭 정정·Design 5-G 절 realign·planning 현행화는 한 정합의 4갈래 — 쪼개면 문서 간 일시 자기모순(glossary 만 새 표현·Design 은 옛 특성화 등). SPLIT lock(한 changeset 한 item) 유지. 편집 파일 = glossary·rule·Design·이 Plan(+WP 노트).
+- **scope.**
+  - *glossary* (`rules/terminology-glossary.md` — candidate-도입 pending entry 본문[L70–81]만 미터치[L104 transition/cs2]; owner-pending entry 본문[L86–89]은 이미 rule-정합이라 편집 예정 0[desync hit 발견 시 per-hit WP 판정]; 서두·Status vocabulary·preamble[L66]·accepted/rejected entry 의 서술 정정은 scope 에 포함):
+    ① **L8 완화** — "candidate vocabulary" 단정을 rule 현행 미러(비-candidate 출처 인정·candidate=typical)로 — **meaning-preserving clarification**(사용자 판정 2026-07-03; rule 이 이미 settle 한 status-축 사실의 표현 미러 — 경량 Design 불요). 같은 축 형제 3수위(L8 단정·L17 hedge·L66 헤더 괄호) 일관화.
+    ② **L66 preamble 재서술** — 필드명 rule 정렬(`owner`→`candidate` · `promotion target`→`eventual-owner-surface`; 방향 = glossary→rule, L88 이 이미 rule 명명 사용) · pending 필드셋 서술을 *candidate-도입 reservation 의 기술*로 한정하고 비-candidate pending form 은 rule 의 named open question 을 미러(**form-고정 서술 해소 — S3 봉합 0**) · owner-pending 열거에 조건부 `carry-forward reason` 반영 · "(it is past promotion)" 근거를 owner-pending 발생원 정의(finalization-owner-live 축)로 정정.
+    ③ **close-조건 정합** — L17·L138 의 확정-종결형 서술을 rule L102 의 decision-point(finalize or carry-forward) 의미로 정합.
+    ④ **신규 fold**(사용자 승인 2026-07-03): L36/L129 rule_docs "candidate-only" stale → per-rule persistent 정합 · L34 Work Packet 위치 열거에 rule_docs 병기 · L11↔L139 "only" 열거 상호 정합 · 'closed'/'not adopted' 종결 기록과 rule 의 exactly-3 finalization outcome 의 관계를 descriptive 로 정합(다른 종류의 기록임을 명시하는 방향 — outcome/status 신설 0; per-hit 판정 WP) · L145 pending/owner-pending 묶음 경고의 owner-pending live-meaning 반영(경미; 판정 WP).
+  - *rule* (`rules/docs-working-model/docs-working-model.md` — 최소 편집 원칙):
+    ⑤ **L103 괄호 과단정 완화**(5-PF defer ① close) — "so its terms finalize there rather than going owner-pending" 이 L102 decision-point(carry-forward 선택지)를 배제하는 것으로 읽히는 것을 해소; "rule-candidate terminal landing = finalization-owner close" 라는 사실은 유지, 선택지-배제 wording 만 정정. (이 괄호 문구는 `304855b` parent 에 이미 존재 — word-diff 확인된 pre-existing, 5-PF diff 무접촉 → hard boundary ③과 양립.)
+    ⑥ **L99 collision-class 열거 보정** — 규칙 자신이 세운 owner-pending 상태의 열거 누락(descriptive completion; 사용자 fold 승인).
+    ⑦ **기타 rule 관찰의 per-item 판정 = WP 대조표** — 인벤토리 관찰(L97 modality·L103 "decides no entry's form" 긴장 후보·L102 promote-경로·L96 열거들·L113 의 'promotion target' 일반-어구 ↔ glossary 필드명 이중화[필드명 정렬 본체는 L101↔L66 = scope ②/5G-R4 소관; L113 은 관찰 기록] 등)은 원칙 하에 처분: **5-PF landed wording 재-litigate 금지 · 실증 결함(게이트 확증)만 최소 편집 · 나머지 잔여 기록**(no silent drop).
+  - *Design* (`docs-working-model_design.md`):
+    ⑧ **5-G 절 형제 전수 realign**(PF-R3 이행) — 절 정체성을 "5-PF 위 잔여 정렬"로 재기술: coupling-특성화 잔존(고정불변식 5G-c1/c3/c4 해당부·Header (a)(b)·방향 조합표·Owner/Open-risk 의 home 명명·S1-establish 방향 진술["1:1 잠금 유지" 류])을 제거/재작성하고, lineage 는 배너+간접 지칭으로 보존; 전제-소멸 fork(5G-R3)·rule-landed 로 stale 된 결함 서술(직교성 묻힘·governed-elsewhere dangling)은 close 근거와 함께 정리. 제목 포함(제목/표/열거 전수 — semantic sweep).
+    ⑨ **planning 현행화**(descriptive hygiene) — 5-PF Design 절 landed 마커 · WP batch-10 절 landed 마커 · WP 5-E 노트 등 stale-status 마커의 일괄 정합(이 Plan 번호줄 batch-10 landed 마커는 이 절과 같은 changeset 에서 이미 반영); 대상 목록 = WP.
+  - *안 다루는 것* = S1/S2 settle(사용자 future 결정 — S3 유지) · candidate entry 본문(glossary L70–81; L104 transition/cs2) · terminology check 기계화(unblock 선언까지 — check `.ps1`·tests 무변경) · 5-X/5-T 본체 · taxonomy.
+- **hard boundary(불가침).** ① **S3 봉합 0** — 어느 표면(특히 glossary L8/L66)에서도 비-candidate pending 의 천장-안 form 을 결정하는 문구(S1/S2 establish — **의미 기준**, 동등 표현 포함)가 등장하면 즉시 stop/Stage rewind. ② **폐기 framing 권위-재도입 0**(batch-10 boundary ② 상속 — 식별 목적 언급 = 배너/열거 한정, 새 산문은 간접 지칭). ③ **5-PF landed wording 재-litigate 금지** — L97/L103 의 5-PF 산출 문구는 실증 결함(게이트 확증) 없이 재편집하지 않음. ④ candidate entry 본문(L70–81) 미터치. ⑤ frozen 상속 — L96 천장 불변 · candidate=thin(L97/L101) 불변 · owner-pending⟹meaning 불변 · candidate-agnostic(P0-6) · taxonomy 불변(P0-1) · rule=자기 spec-of-record(P0-3). ⑥ **glossary 권위 보존** — status vocab·분류의 home 은 glossary, rule 은 등록 lifecycle 절차(소비자-격하 부활 금지). ⑦ check `.ps1`·tests 무변경 · docs-working-model-check 현 repo PASS(newly-fail 0). ⑧ `.md` EOL LF.
+- **open decision close(이 Plan 이 닫음).**
+  - **5G-R1 → 재정의 close.** rule-측 축-구분 surface 는 5-PF C1/C3 로 소진 — 잔여 = glossary Status vocabulary/preamble 이 rule 현행을 미러하는 표현 정합만(새 축-선언·invariant·조합표 없음). 정확 문구 = WP.
+  - **5G-R2 → close = meaning-preserving clarification**(사용자 확인 2026-07-03). rule 이 이미 settle 한 status-축 사실(비-candidate 출처 인정)의 glossary 미러 — 경량 Design 불요; S3 봉합 0 tripwire 적용(form 은 어느 쪽으로도 미결 유지).
+  - **5G-R3 → close = 질문 소멸.** 5-PF C2 가 부분-home 식별 + gap 명시로 dangling 을 해소 — "governed-elsewhere home 위치" fork 는 전제가 사라짐(별도 home 명명 없음). Design realign(⑧)이 이 소멸을 기록.
+  - **5G-R4 → close.** 필드명 = glossary→rule 정렬(`candidate` · `eventual-owner-surface`); spec(L66) = 이번 batch, entry(L70–81) = transition(realigning changeset). 최종 token·잔존 grep = WP.
+  - **5G-R5 → close.** 이 정합으로 5F-c3 의 blocked-by 전제가 해소됨을 선언 — terminology check 의 기계화 subset 산정·구현은 5-F residual catalogue 가 이미 소유한 별도 후속(이 batch 는 check 무변경).
+  - **신규 fold → close**(사용자 승인 2026-07-03): glossary 급 = scope ④ 반영 · rule-text 급 = scope ⑤⑥ + ⑦ 원칙(최소 편집·per-item WP 판정) 하에 반영.
+- **validation expectation.** full-scope blind ∥ relay-B(rule 해당 절 + glossary *전문* + Design 5-G 절 — diff 아님·상호 blind) → fold(fact/framing 분류) → re-blind(evidence-기준 stop) → **canonical dual PASS(구현 close 의 load-bearing gate)** · docs-working-model-check 현 repo PASS(newly-fail 0) · `.md` EOL LF · full Pester = 생략을 명시(.md-only class·check 무변경 — batch-10 동일 근거).
+- **review focus.** S3 봉합 0(최우선 — 특히 L66 preamble 재서술·L8 완화가 form 을 결정하지 않는가; 의미 기준) · L8/L66/close-조건 정합이 rule 미러이지 신규 normative 아님 · 필드명 정렬의 전수성(L66 외 잔존 grep·L88 정합) · Design realign 후 S1-establish 잔존 0 + 폐기 framing 권위-재도입 0 · L103 fix 가 L102 의미 보존 + "terminal landing = close" 사실 유지 · entry 본문 미터치 · 형제 3수위(L8/L17/L66) 일관.
+- **Work Packet 필요 = 예.** 목적 = 착수-인벤토리(멀티-lens)의 file:line 전수 정리 + 편집 지점 분류 + 삽입 문구 초안 + tripwire 대조표(각 초안 문장 = 식별/명시/establish; S3-suggestive 자가폐기 기록) + rule 관찰 per-item 판정표(편집/기록 처분) + 폐기-framing 어휘 sweep 목록 + landed-마커 hygiene 목록. 흡수 대상 = glossary/rule/Design 편집. retire 조건 = closeout 시 반영 후 삭제.
+
+### Open decision close 지점 (5-G)
+- 5G-R1 → 이 Plan: 재정의(rule-측 소진 — 5-PF C1/C3; 잔여 = glossary 미러 표현만); 문구 = WP.
+- 5G-R2 → 이 Plan: meaning-preserving clarification(사용자 2026-07-03); S3 봉합 0 tripwire.
+- 5G-R3 → 이 Plan: 질문 소멸(5-PF C2 가 전제 해소); Design realign 이 기록.
+- 5G-R4 → 이 Plan: glossary→rule(`candidate` · `eventual-owner-surface`); entry 는 transition; token = WP.
+- 5G-R5 → 이 Plan: 5F-c3 unblock 선언까지(기계화 subset·구현 = 5-F residual catalogue 소유 별도 후속).
+- 신규 fold(glossary ④ · rule ⑤⑥) → 이 Plan: 사용자 승인 2026-07-03; rule 잔여 관찰 = per-item WP 판정(최소 편집 원칙 ⑦).
+- 정확 문구/삽입 위치/per-hit 처분/hygiene 목록 = Work Packet/구현.

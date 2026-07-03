@@ -12,7 +12,7 @@
 
 ## 왜 바꾸는가 / 무엇을 바꾸는가
 
-**문제(현행 규칙).**
+**문제(현행 규칙 — Design-작성 시점 기준; ★ batch-1 은 이후 landed, 이하 historical).**
 1. **False coupling.** `Mandatory terminology registration` 이 *Incubation tier 섹션의 하위 bullet* 로 박혀 있어 규칙이 "용어집 변경 ⟸ incubation" 으로 묶는다. 그러나 glossary 변경 source 는 다양하다(기존 기능/rule 개선 · 순수 운용개념 변화 · rejected term 추가 · accepted owner-boundary 조정 · 명명 정리). 용어집은 독립된 중립 표면이어야 한다.
 2. **Finalization 오배치.** 규칙은 용어를 "promotion 시 확정" 한다. 그러나 같은 규칙의 *Spec identity* 상 Spec 은 **closeout(구현과 1:1 sync)에서야 live authority** 를 가진다(그 전엔 청사진). 의미를 담을 Spec 이 초안인데 용어가 먼저 확정되는 모순. 게다가 현 문장 안에 "promotion 확정"·"promotion·discard 확정"·"아무 때나 decouple" 세 타이밍이 정리 안 된 채 공존.
 3. **귀결 = 교착.** incubating 후보 3개를 인코딩하는데 integration 리뷰가 "glossary second owner"·"cross-domain restatement" 를 반복 차단. 닫힌 정규 도메인 strictness 를 *incubating* 후보에 적용한 데서 옴.
@@ -129,13 +129,13 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 
 ### Phase-1 DAG (방향 선언만 — detail 은 각 batch 자기 단계에서 lock)
 
-> 아래는 *순환 아님*(DAG) — **item-label + 의존성**만 선언한다. 구체 **batch 번호·실행순서는 Plan 소관**("Plan — batch order"; Design 에 번호 박으면 그 자체가 altitude 누수). 이 선언은 **direction-level** 이며 각 item 의 detail 은 그 item 의 Plan/Work Packet 에서 잠근다(detail front-load 금지). 이 Design 의 본체는 **5-D + 5-K + 5-B** 의 direction-level Design 으로 시작했고, 이후 **5-E**(별도 절, landed `78e3a17`)·**5-F**(이 절 하단 — 5-E 잔여 closer)·**5-G**(이 절 하단 — pending 축-구분 정합; coupling-특성화는 5-PF 가 supersede)·**5-PF**(이 절 하단 — 5-G coupling 의 root-fix, landed `e0e9657`)가 동형으로 추가됐다; **5-X/5-T** 는 후속 phase-iteration 에서 동형으로 설계한다.
+> 아래는 *순환 아님*(DAG) — **item-label + 의존성**만 선언한다. 구체 **batch 번호·실행순서는 Plan 소관**("Plan — batch order"; Design 에 번호 박으면 그 자체가 altitude 누수). 이 선언은 **direction-level** 이며 각 item 의 detail 은 그 item 의 Plan/Work Packet 에서 잠근다(detail front-load 금지). 이 Design 의 본체는 **5-D + 5-K + 5-B** 의 direction-level Design 으로 시작했고, 이후 **5-E**(별도 절, landed `78e3a17`)·**5-F**(이 절 하단 — 5-E 잔여 closer)·**5-G**(이 절 하단 — 5-PF 위 잔여 정렬, batch-11 에서 REALIGNED; coupling-특성화는 5-PF 가 supersede)·**5-PF**(이 절 하단 — 5-G coupling 의 root-fix, landed `e0e9657`+`304855b`)가 동형으로 추가됐다; **5-X/5-T** 는 후속 phase-iteration 에서 동형으로 설계한다.
 
 - **5-D (foundational; 가장 이른 settle)** — lifecycle artifact 별 *content/altitude 할당* + 계층-횡단 *detail-flow* 원칙. Design 에 content/altitude 경계 부여(현재 Plan/Spec/WP 만 경계 보유) + "각 계층 자기 altitude·detail 흘러내림·구현직전 확정(domain=Spec / rule_docs=rule 파일, Spec 없음)" 명문화. **dogfood 산**(이번 Design 의 altitude-drift 가 이 gap 의 표면화). 모든 lifecycle 문서 작성법을 규정하므로 *토대* — 5-K 보다 앞/병렬. **(이 Design 본체 #1 — 아래.)**
 - **5-K (keystone)** — promotion-transition atomicity(transition event vs promoted lifecycle; E3/E4 를 *entry promoted artifact* 기준으로 고정; + transient 봉합 fallback 한 줄). **(이 Design 본체 #2 — 아래.)**
 - **5-B (5-K 뒤)** — swap 이 낳는 promoted-but-not-live 상태머신: 상태 marker · 2층 discovery(governance vs implementation-authority) · de-promotion(history-preservation 축) · open-Q routing. 상태가 swap 산출이라 5-K 의존. **(이 Design 본체 #3 — 아래.)**
 - **5-PF (5-G coupling 의 root; 5-G 보다 앞; landed `e0e9657`)** — 규칙 pending-form governance clarify(under-specification 해소): *비-candidate 출처* pending 의 천장-안 form 미명세(L97 candidate-scope·L103 governed-elsewhere 무명 유보)를 C1(scope surface)·C2(부분 home 식별+gap 명시)·C3(직교성 본문화)·S3(명시 bound-defer)로 명세. 5-G coupling-특성화(5G-c1 bijection·5G-c3 deliberate-invariant)를 supersede — 5-G coupling-element 는 이 위 downstream. **(이 Design 절 — 하단.)**
-- **5-G (5-K 와는 독립; 순서는 5-PF 뒤)** — terminology-registration 정합의 **잔여 정렬**: 비-coupling desync fix(L8 status-axis · L66 route · 필드명 L101↔L66 · close-condition desync) + coupling-element 의 5-PF-위 downstream 정렬(축-구분 surface 는 5-PF C1/C3 가 처리) + 5-G 절 형제 전수 realign(5-PF Plan 의 PF-R3 배정). rule↔glossary **cross-surface**. → 별도 item. **(이 Design 절 — 하단; 원 진단["pending"의 status/form 한-단어-상관 토대 모호함]은 그 절이 담되, 그중 coupling-특성화[5G-c1/c3 및 의존 형제]는 **5-PF 가 supersede**[5-G 절 배너 참조] — R2 모델 유지·1차 framing-오염[schema-home·glossary 격하] 폐기의 lineage 는 그 절이 보존.)**
+- **5-G (5-K 와는 독립; 순서는 5-PF 뒤)** — terminology-registration 정합의 **잔여 정렬**: 비-coupling desync fix(L8 status-axis · L66 route · 필드명 L101↔L66 · close-condition desync) + coupling-element 의 5-PF-위 downstream 정렬(축-구분 surface 는 5-PF C1/C3 가 처리) + 5-G 절 형제 전수 realign(5-PF Plan 의 PF-R3 배정). rule↔glossary **cross-surface**. → 별도 item. **(이 Design 절 — 하단, batch-11 에서 REALIGNED 재기술; coupling-특성화는 **5-PF 가 supersede**[권위 = 5-PF 절 + landed rule], 원 진단·폐기 특성화·1차 framing-오염 철회의 lineage 는 git history 가 보존[그 절 REALIGNED 배너 참조].)**
 - **5-X (5-B 뒤)** — promoted canonical → still-incubating sibling 참조 규칙 + 3후보 promotion *순서*(상호 name-ref = E2 순환). 상태/discovery 모델 의존. → 별도 item.
 - **5-T (5-K 뒤)** — 글로벌 `snippets/rules/` universal-core ↔ project-residue split(orchestration 배포용; repo-only 후보 name-ref·codex-binding 혼재). → 별도 item.
 - **5-E (settle-pass 끝의 enforcement; landed `78e3a17`)** — enforcement: `docs-working-model-check.ps1`(E2 스캔 `snippets/` 제외 false PASS·transition-awareness 미구현) + tests + checklists(5-D altitude-게이트 포함) + templates. 규칙 본문 settle 후 그 위에서 기계화. → 별도 item. **(그 deferred 잔여 hardening = 5-F.)**
@@ -334,7 +334,7 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 
 ## 5-PF: 규칙 pending-form governance clarify (under-specification 해소) — Design, direction-level
 
-> 별개 normative lifecycle item·5-G coupling-element 의 root. survey(4 lens)가 표면화하고 게이트(2 lens)가 확증한 *근본* — docs-working-model 규칙이 *비-candidate 출처* pending term 의 form 을 under-specify — 을 세우고 정렬한다. 폐기된 5-G coupling sub-Design(5G-c1 bijection·5G-c3 deliberate-invariant)은 이 근본의 *증상-패치*였고 이 item 이 supersede; 5-G coupling-element 는 clarified 규칙 위 *downstream* 정렬. **direction-level** — 정확 규칙 wording·위치·필드 = Plan/WP/구현(규칙 텍스트 무touch). meta-circular(규칙이 자기 개정) → 자기 규율 엄격. evidence base = 규칙 clause(arbiter); 폐기 framing(bijection·(a)/(b)·deliberate-invariant) 봉인(§0.1/§1.2).
+> 별개 normative lifecycle item·5-G coupling-element 의 root. survey(4 lens)가 표면화하고 게이트(2 lens)가 확증한 *근본* — docs-working-model 규칙이 *비-candidate 출처* pending term 의 form 을 under-specify — 을 세우고 정렬한다. 폐기된 5-G coupling sub-Design(5G-c1 bijection·5G-c3 deliberate-invariant)은 이 근본의 *증상-패치*였고 이 item 이 supersede; 5-G coupling-element 는 clarified 규칙 위 *downstream* 정렬. **direction-level** — 정확 규칙 wording·위치·필드 = Plan/WP/구현(규칙 텍스트 무touch). meta-circular(규칙이 자기 개정) → 자기 규율 엄격. evidence base = 규칙 clause(arbiter); 폐기 framing(bijection·(a)/(b)·deliberate-invariant) 봉인(§0.1/§1.2). **★ 구현됨 — batch-10 `304855b` 가 C1/C2/C3/S3 를 rule 에 반영(이 절 = direction-시점 기록; "규칙 텍스트 무touch" 는 Design-단계 진술).**
 
 ### 진단 (게이트 2 lens 확증 — under-specification, 모순 아님)
 규칙은 form 을 *각각* 명시한다: candidate-introduced pending = thin (L97 "a candidate introduces" scope + L101 "Define no meaning") · 보편 천장 = ≤ one-line meaning + classification (L96 single-home) · owner-pending = one-line meaning (L103). **그러나 *비-candidate 출처*(L96 "several sources … a candidate's incubation is only one such source") pending 의 *천장-안* form(thin 이냐 one-line 이냐)을 어느 절도 결정하지 않는다 = gap.** L97 의 리터럴 scope("a candidate introduces")가 비-candidate 를 제외하고, L103 "thin-vs-fuller form governed elsewhere" 가 *무명으로* 유보 → **모순이 아니라 미명세**(L97↔L103 비충돌; 게이트 Q1 = no-clash-leaves-a-gap 2/2·clause-독립 도출). owner-pending⟹meaning 은 clean.
@@ -362,53 +362,45 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 - **(PF-R3)** 5-G 절 supersede 의 형제 전수 realign(Header/방향/Open-risk) — 이 land 는 *배너*로 1차 차단(비-authoritative 표기), 전수 정합 = 5-G downstream 단계.
 - **(meta-circular)** docs-working-model 자기 normative 개정 = E5 bootstrap → 규칙 자신 lifecycle(rule_docs Design→Plan→landing) 경유.
 
-## 5-G: terminology-registration 정합 — pending status/form 축-구분 (Design, direction-level)
+## 5-G: terminology-registration 잔여 정렬 — cross-surface desync 정합 (5-PF 위 downstream; Design, direction-level)
 
-> ★★ SUPERSEDED (부분) — 2026-07-01: 이 절의 *coupling-특성화*(5G-c1 form=f(status) bijection · 5G-c3 deliberate-invariant 선언 · 의존 형제 "허용 조합표"·"governed-elsewhere home 명명")는 survey(4 lens)+게이트(2 lens)가 *오염된 증상-패치*로 확인 → **5-PF(규칙 pending-form governance clarify)가 supersede**(권위 = 5-PF: 진단=under-specification·C1/C2/C3·S3 bound-defer). 아래 coupling 진술은 lineage 로 보존하되 *비-authoritative*. 5-G 의 *비-coupling* 부분(L8 status-axis·L66 route·필드명·close-condition desync)은 유효하며 clarified 규칙(5-PF) 위 *downstream* 으로 정렬.
+> ★★ REALIGNED (batch-11) — 이 절의 원본은 "pending status/form 축-구분" Design(`9fa415c`)이었다. 그 coupling-특성화(superseded coupling sibling set — 열거는 5-PF 절·Plan batch-10 hard boundary ② 참조)는 survey+게이트가 *오염된 증상-패치*로 확인해 **5-PF 가 supersede** 했고(권위 = 5-PF 절 + landed rule `304855b`), batch-11 이 이 절을 **clarified 규칙(5-PF) 위 downstream(잔여 정렬)** 으로 재기술했다. 원 절 전문(원 진단·폐기 특성화 포함)과 1차 framing-오염 Design 의 폐기·철회 lineage 는 git history(`9fa415c`~`304855b` 구간)가 보존한다.
 
-> Phase-1 의 5-K 병렬·독립 item(roadmap 위). **tier1~2 토대(docs-working-model rule + terminology-glossary)에서 "pending"이 status축과 form축을 *한 단어 상관*으로 묶어(conceptual coupling) 전달하는 토대 모호함을, 현 thin-pending 결합 모델(R2)을 *유지*한 채 status/form 축-구분 명시 + cross-surface desync 정합으로 닫는다.** 5-F 가 terminology field-schema enforcement 를 **5-G blocked-by**(5F-c3)로 명시했으므로 이 정합이 그 선행조건(5-G 후 unblock). 5-E/5-F 와 동일 운용(mode-2 + full-scope orchestration + canonical) · 동일 lifecycle(`rule_docs/docs-working-model/`). 정합 = **normative·비수렴**(측정이 답 아님 — normative §1) ≠ enforcement(기계화=5-F-class·후행). **direction-level** — 정확 문구·위치·필드명·regex 는 Plan/WP(detail front-load 금지, 5-D altitude). **rule/glossary(.md) 변경 → `.md` EOL=LF; check `.ps1` 무변경.** ★ **이 절은 framing-오염 1차 Design(schema-home=rule·glossary 격하)을 7-lens(×2 라운드) 재검증으로 *폐기*하고 재작성됨** — 병의 근원은 *status/form coupling 암묵화*이지 schema-home 귀속이 아니며, 1차의 "glossary=소비자 격하"는 철회한다.
+> Phase-1 의 5-PF-후행 item(5-K 와는 독립). **clarified 규칙 위에서 rule↔glossary↔planning 의 잔여 desync 를 정합하고, 이 절 자신을 포함한 5-G 표면을 5-PF 정렬로 재기술한다.** 5-F 가 terminology field-schema enforcement 를 5-G blocked-by(5F-c3)로 명시했으므로 이 정합이 그 선행조건. 정합 = normative·비수렴(normative §1) ≠ enforcement(기계화 = 후속·check 무변경). **direction-level** — 정확 문구·per-hit 처분 = Plan(batch-11)/WP. rule/glossary(.md) 변경 → `.md` EOL=LF.
 
-### 5-G 고정 불변식 (P0-1~6 + 5E-c1/5F-c3 상속; 이 라운드 상수 — normative §3 메타-가드)
-- **5G-c1 — R2 모델 유지(thin-pending 결합 불변).** 현 모델 = pending(owner-not-live)⟹thin / owner-pending(owner-live)⟹meaning-bearing, **form=f(status) 결정론적 파생**(점유 2분면 bijection). 5-G 는 이 결합을 *바꾸지 않는다*. **R1**(owner-not-live + 안정 의미 4분면을 *영구* 개방 = fuller-pending 영구 허용)은 **모델 변경** → divergence 실증 시 **별도 normative item·defer**(normative §2 over-split = 선제 4분면 개방 거부; 현 legacy fuller-pending = L104 transition 잔재이지 모델 결함 증거 아님 — 7-lens codex×3 + 자체중립 L104 confound 확증).
-- **5G-c2 — 진단 = conceptual coupling, *literal overload 아님*.** 텍스트상 "pending"은 *이미 status 전용*(glossary L17), form 은 "thin"으로 *이미 별도 명명*(rule L97/L103 "thin reservation"). 진짜 결함 = (a) **form 축이 first-class 이름 없이** "thin pending reservation" 구(句) 안 형용사로만 표면화 + (b) **rule L103 이 직교성을 *이미 선언***("split is only the finalization-owner-live axis; thin-vs-fuller form governed elsewhere")했는데 owner-pending bullet 괄호에 **묻힘** + (c) "governed *elsewhere*" **dangling**(form 축 home 미특정) + (d) cross-surface/intra-doc desync(L8↔L17 · L66 명세↔L70–81 데이터 · 필드명 L101↔L66).
-- **5G-c3 — 처방 = axis-구분 명시 + deliberate-invariant 선언(clarification, meaning-preserving).** 새 토큰 rename·structural split *아님* — "thin reservation"은 L100/L103 에 *이미 쓰여* **명명 승격**만(어휘 ≈0 증가). status/form 이 별개 축 + 현 1:1 결합이 *의도된 불변식*(owner-live 가 안정 의미를 licence; 파생을 떠받치는 건 E2[조합3 배제]·glossary-purpose[조합4 배제])임을 **독자 시선 경로**에 명시 + L103 직교성 표면화 + governed-elsewhere home 명명 + **허용 조합표 못박기**(분리가 모델 변경처럼 오독되지 않게 — codex 독립기여).
-- **5G-c4 — over-split 금지(normative §2 짝 실패모드).** form 을 status 에서 *자유 독립 축*으로 분리(빈 4분면 명명)=R1=over-split → 거부. 현 form=f(status) bijection 유지. "분리"는 *축-명시*(1:1 잠금 유지·가시화)이지 *축-독립화*(1:1 해제)가 아님 — 7-lens(codex×3 + 자체중립×3) 공통 경계.
-- **5G-c5 — meaning-home(RULE:96) + glossary 권위 복원.** glossary = term 의 *one-line meaning + classification + status vocabulary* 의 home; rule = 등록 *lifecycle 절차/트리거/타이밍/전이조건*. ★ 1차 Design 의 "glossary=schema 소비자 격하" **철회** — status vocab·분류는 glossary 영역, rule 이 침범하지 않는다(rule L100 "Classification disputes are arbitrated by the glossary rule owner" 가 분류 권위를 glossary 에 귀속).
-- **5G-c6 — candidate-agnostic(P0-6) + transition-aware(RULE:104) + 시간축 토대 위생.** candidate entry 본문(L70–81 legacy fuller)의 realign = **deferral**(cs2·realigning changeset; 본문 미터치 = transition-clean). owner-pending 항목·status vocab·모델 진술 = **fix-now**. ★ **tier1~2 토대라 모호함이 *읽기*로 미래 모든 도메인/후보/용어에 상속**(mechanical 아니라 semantic blast radius) → **enforcement 0 = "지금이 가장 싼 교정 창"**("파장 0·저위험" 무효 — 7-lens 2차 재검증 7/7 확증; 사용자 시간축 통찰).
+### 5-G 고정 불변식 (P0-1~6·5F-c3 상속 + 5-PF frozen 상속; 이 라운드 상수)
+- **S3 open question 보존** — 비-candidate pending 의 천장-안 form 은 rule 이 명시로 열어둔 named open question(settle = 실례 등장 시 별도 normative 사용자 결정). 5-G 의 어떤 정합 문구도 이를 어느 쪽으로도 결정하지 않는다(의미 기준 tripwire — Plan batch-11 hard boundary ①).
+- **frozen 상속** — L96 천장 불변 · candidate=thin(L97/L101) 불변 · owner-pending⟹meaning 불변 · taxonomy 불변(P0-1) · rule=자기 spec-of-record(P0-3) · candidate-agnostic(P0-6).
+- **glossary 권위 보존** — glossary = term 의 one-line meaning + classification + status vocabulary 의 home; rule = 등록 lifecycle 절차/트리거/전이조건(rule L100 이 분류 중재를 glossary rule owner 에 귀속). 소비자-격하 계열은 폐기 상태 유지.
+- **transition-aware** — candidate-도입 pending entry 본문(glossary L70–81)의 realign 은 각 candidate 의 realigning changeset(cs2) 소관 — 본문 미터치(newly-broken 0). owner-pending entry(L86–89)는 이미 rule-정합(편집 예정 0).
+- **시간축 토대 위생** — tier1~2 토대 표면의 모호함은 *읽기*로 상속(semantic blast radius) → enforcement 0 이어도 "지금이 가장 싼 교정 창".
 
 ### Header
-- **무엇의 Design 인가.** tier1~2 토대에서 status 라벨 "pending"이 form(thin)을 *상관으로* 함의해 생긴 토대 모호함(form 축 무명 + L103 직교성 묻힘 + governed-elsewhere dangling + cross-surface desync)을, R2 모델 유지한 채 axis-구분 명시로 닫는다. 5-F blocked-by 의 선행 정합.
-- **체인이 끝나면 무엇이 되는가(방향).** (a) status축(pending/owner-pending=owner-live 여부)과 form축(thin reservation/meaning-bearing)이 *별개* + 현 1:1 결합이 deliberate invariant 임을 독자 시선 경로에 명시, (b) L103 직교성 표면화 + governed-elsewhere home 명명, (c) L8↔L17 desync 정합, (d) L66 명세↔L70–81 데이터 desync(legacy=transition 잔재) 명시, (e) 필드명 L101↔L66 정합 — 이 위에서 5-F-class terminology check *기계화 가능*(unblock) + 미래 R1(4분면 개방) 결정 시 *가시적으로* 깨짐(silent overload 방지).
-- **이 문서가 아닌 것.** R1(form 자유 축·fuller-pending 영구)=모델변경=defer · structural split/rename 아님(over-split·5G-c4) · candidate entry 본문 realign 아님(cs2) · enforcement/기계화 아님(5-F) · 별도 `_spec`·taxonomy 변경 아님(P0) · 정확 문구/위치/필드명/regex 아님(Plan/WP).
+- **무엇의 Design 인가.** 5-PF 가 명세한 clarified 규칙(candidate-scope surface·부분-home+gap 명시·직교성 본문·S3 bound-defer) 위에서, 그 규칙과 어긋나게 남은 **잔여 표면**을 정합한다 — glossary 의 출처-단정/close-서술/필드명/form-암시 desync + rule 의 국소 잔여(L103 괄호 과단정·L99 열거 누락) + 이 절 자신의 superseded 특성화.
+- **체인이 끝나면 무엇이 되는가(방향).** rule↔glossary 가 같은 사실(출처·close=decision point·필드 체계·S3 open)을 같은 수위로 진술하고, planning 표면이 landed 상태를 정확히 기술하며, 그 위에서 5-F-class terminology enforcement 가 unblock 된다(5F-c3 전제 해소 — 기계화 자체는 후속).
+- **이 문서가 아닌 것.** S1/S2 settle 아님(S3 유지) · candidate entry 본문 realign 아님(cs2) · enforcement/기계화 아님(후속) · 5-PF landed wording 재-litigate 아님 · taxonomy 변경·별도 `_spec` 아님(P0) · 정확 문구/token 아님(Plan/WP).
 
-### 결함 (방향 수준 — 토대 모호함의 근원 + 표면 desync)
-> 7-lens(×2 라운드: schema-home + tier-토대) 재검증 수렴. file:line 전수 = WP(enumeration front-load 금지, 5-D altitude).
-- **근원 = status/form coupling 암묵화**: status 라벨 "pending"이 form(thin)을 *상관으로* 전달하나 form 축이 first-class 이름 없이 형용사로만("thin pending reservation"); rule L103 직교성 선언이 owner-pending bullet 괄호에 묻혀 *등록하러 온 미래 author 시선 경로에 없음*. tier1~2 토대라 *읽기*로 상속.
-- **L103 "governed elsewhere" dangling**: thin-vs-fuller form home 본문 미특정.
-- **intra-doc/cross-surface desync (표면 증상)**: (a) glossary L8(categorical "is candidate vocabulary") ↔ L17(hedge "typical case"), (b) L66 명세(meaning 필드 미열거) ↔ L70–81 실제 entry(의미 보유 — L104 grandfather legacy), (c) 필드명 rule L101{candidate/eventual-owner-surface} ↔ glossary L66{owner/promotion target}, (d) close-조건(L17/L138 "promotion/closeout" ↔ rule L102 decoupled).
-- (1차 조사 14항목/6그룹은 이 근원의 *표면 증상* — schema-home 귀속 문제가 아니라 status/form coupling 암묵화.)
+### 잔여 결함 (방향 수준 — batch-11 착수 인벤토리가 file:line 전수 확증; 상세 = WP batch-11 절)
+- **glossary 출처-단정 수위차**: 서두(L8)가 pending 을 candidate-전용처럼 단정 — rule 은 비-candidate 출처를 본문으로 인정(3수위 형제: L8 단정·L17 hedge·L66 무-hedge).
+- **glossary close-서술**: 확정-종결형(L17·L138) — rule L102 는 close = decision point(finalize or carry-forward).
+- **glossary 필드 체계 분열**: L66 필드 명명 ↔ rule L101 명명(같은 파일 L88 은 rule 명명 — 한 파일 2체계) + 조건부 carry-forward reason 부재 + "past promotion" 근거가 owner-pending 발생원 정의와 불일치.
+- **L66 form-암시**: status 별 단일 필드셋의 일반 서술이 S3 open question 을 봉합하는 형태로 읽힘.
+- **rule 국소 잔여**: L103 괄호(carry-forward 선택지 배제로 읽힘 — pre-existing)·L99 상태 열거 누락.
+- **planning stale**: landed 마커 부재·rule-landed 로 소멸한 옛 결함 서술의 잔존.
 
-### 방향 (direction — 세부는 Plan/WP)
-- **R2 유지 + axis-구분 명시 (핵심·fix-now)**: status축(pending/owner-pending)·form축(thin reservation/meaning-bearing) 별개 + 현 1:1 결합이 deliberate invariant(owner-live⟹안정 의미 licence; 파생 지지대=E2·glossary-purpose)임을 *독자 시선 경로*(Status vocab·등록 절)에 명시 + L103 직교성 표면화 + governed-elsewhere home 명명 + 허용 조합표. "thin reservation" 명명 승격(어휘≈0).
-- **cross-surface desync fix-now**: L8↔L17 정합 · L66 명세↔데이터(legacy=transition 잔재 명시) · 필드명 L101↔L66 정합 · close-조건 sibling-sweep(L17/L138↔L102).
-- **deferral**: candidate entry 본문(L70–81 legacy fuller) realign = cs2/realigning changeset(본문 미터치) · R1(4분면 개방=fuller-pending 영구) = divergence 실증 시 별도 normative item.
-- candidate-agnostic(P0-6) · transition-aware(candidate 본문 미터치 — newly-broken 0).
+### 방향 (direction — 세부 = Plan batch-11 close·WP)
+- **glossary = rule 현행의 미러로 정합(신규 normative 0)**: 출처-수위(L8 완화 = meaning-preserving clarification, 사용자 확정 2026-07-03) · close = decision point · 필드명 glossary→rule 정렬 · L66 은 candidate-도입 entry 의 기술로 한정 + form 거버넌스는 rule 로 route(S3 봉합 0) · 신규 fold(L34/L36/L129·L11↔L139·closed/not-adopted 관계 — 사용자 승인 2026-07-03, 전부 descriptive).
+- **rule 은 최소 편집**: L103 괄호 완화(사실 유지·선택지-배제만 해소) + L99 descriptive completion; 기타 관찰 = per-item WP 판정(landed wording 재-litigate 금지·no silent drop).
+- **이 절 자신 = 5-PF 위 downstream 재기술** — 이 REALIGNED 절이 그 결과(원문 lineage = git history).
 
-### Owner surface / 수정 대상 (방향)
-- **glossary** `rules/terminology-glossary.md`: Status vocabulary(L13–19 — status축/form축 구분 + deliberate-invariant) · Pending/owner-pending 헤더(L66) · L8(↔L17 정합) · Term ownership(L138). **glossary = 의미+분류+status vocab home**(권위 보존, 5G-c5).
-- **rule** `rules/docs-working-model/docs-working-model.md`: L96–104(meaning-home · L97/L101 thin form=status *결과* 명시 · L103 직교성 표면화 + governed-elsewhere home). **rule = 등록 lifecycle 절차**.
-- **candidate entry 본문(L70–81)** = 미터치(cs2). check `.ps1` 무변경.
+### Owner surface / 수정 대상
+- **glossary** `rules/terminology-glossary.md`: 서두(L8·L11) · Status vocab(L17) · Pending/owner-pending preamble(L66) · Term ownership(L138–139) · accepted/rejected entry 서술(L34·L36·L129). candidate-도입 pending entry 본문(L70–81) 미터치.
+- **rule** `rules/docs-working-model/docs-working-model.md`: L99·L103(괄호만).
+- **planning**: 이 절(realign) + landed-마커 hygiene(WP batch-11 목록). check `.ps1`/tests 무변경.
 
-### non-goals
-- R1(form 자유 축·fuller-pending 영구) · structural split/rename · candidate entry realign(cs2) · enforcement/기계화(5-F) · 새 normative 의미 신설(단 L8↔L17 정합이 normative 면 경량 Design 경유 — 5G-R2) · taxonomy 변경 · 별도 `_spec` · 정확 문구/위치/필드명/regex(Plan/WP).
+### Open risk / fork — batch-11 Plan 이 close
+- **5G-R1** → 재정의 close: rule-측 축-구분 surface 는 5-PF C1/C3 로 소진 — 잔여 = glossary 가 rule 현행을 미러하는 표현 정합만. **5G-R2** → meaning-preserving clarification(사용자 확인 2026-07-03). **5G-R3** → 질문 소멸: 5-PF C2 가 부분-home 식별+gap 명시로 옛 dangling 을 해소 — 별도 form-축 home 명명 작업은 남아 있지 않다(이 기록이 그 close). **5G-R4** → 필드명 glossary→rule(`candidate`·`eventual-owner-surface`); entry 는 transition. **5G-R5** → 5F-c3 unblock 선언까지(기계화 subset·구현 = 5-F residual catalogue 소유 후속).
+- **(meta-circular)** → rule_docs lifecycle 경유(E5 bootstrap 동형) — batch-11 이 그 경유 자체.
 
-### Open risk / direction fork (orchestration adjudicate — 대부분 Plan close)
-- **(5G-R1) axis-구분 명시의 정확 문구·위치** — Status vocab/등록 절 어디에 status·form 축 구분 + deliberate-invariant + 허용 조합표를 박나 + "thin reservation" 명명 승격 형태. close = Plan/WP(문구=detail).
-- **(5G-R2) L8↔L17 정합의 proportionality** — meaning-preserving clarification 인가, *non-candidate pending 허용 여부*를 바꾸는 normative 인가. 후자면 경량 Design→lifecycle(meta-circular E5). close = Plan + 사용자 의도 확인.
-- **(5G-R3) governed-elsewhere home 위치** — form 축 거버넌스를 어디에 명명(single-home 위반·dangling 회피). close = Plan.
-- **(5G-R4) 필드명 L101↔L66 정합 방향** — 어느 이름으로 통일(candidate↔owner · eventual-owner-surface↔promotion target) + close/owner 다의 해소(R2 모델 하 *표현* 정합, 모델 변경 아님). close = Plan/WP.
-- **(5G-R5) 5-F unblock 범위** — schema 정합 후 5-F-class terminology check 중 즉시 기계화 가능분 vs 추가 item. close = Plan + 5F-c3 대조.
-- **(meta-circular)** docs-working-model 자기 normative 개정 = E5 bootstrap 성격 → 규칙 자신의 lifecycle(rule_docs Design→Plan→landing) 경유.
-
-### Plan-readiness (Plan/WP 가 닫을 detail)
-- axis-구분 명시 문구·위치(5G-R1) · L8↔L17 정합 proportionality 판정(5G-R2) · governed-elsewhere home(5G-R3) · 필드명 정합 방향(5G-R4) · 5-F unblock 범위(5G-R5) · **desync 인벤토리 file:line 전수**(7-lens landscape = WP 소관; enumeration front-load 금지, 5-D altitude) · candidate deferral transition 추적문구 + **legacy entry watch**(realigning changeset 이 "thin 환원 가능한가"로 R1 필요성 실증 게이트).
+### Plan-readiness
+- batch-11 Plan(같은 changeset)이 batch 단위·scope·hard boundary·5G-R1~R5 close·신규 fold 를 확정; file:line 전수 인벤토리·삽입 초안·tripwire 대조표·rule 관찰 per-item 판정표·hygiene 목록 = WP batch-11 절.
