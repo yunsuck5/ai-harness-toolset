@@ -5,6 +5,7 @@
 - [ ] Spec ↔ 구현 1:1 sync — **normative 문장 단위 대응 확인이 evidence 로 기록**되어 있는가(방향 1: Spec 문장→구현 확인 / 방향 2: 구현의 외부 관찰 행동·소유 경계→Spec 문장) — 충족/미충족 + evidence 위치 한 줄
 - [ ] Design 의 current-bearing 결정이 Spec(또는 올바른 owner surface)에 표현됨 — 충족/미충족 + evidence 한 줄
 - [ ] Plan 의 still-relevant 결정이 Spec(또는 owner)에 표현됨 — 충족/미충족 + evidence 한 줄
+- [ ] 이 lifecycle 이 배포 tier(`snippets/rules/`)에 rule 콘텐츠를 landing 했으면(candidate 의 terminal landing 또는 기존 배포 rule 의 revision) — universal-core↔project-residue split 이 수행됐고(배포 rule 본문 = tier 입장 기준 통과분만; 기준 본문 = tier README 소관), 이 changeset 이 다루는 모든 residue(rule 파일로 향하던 콘텐츠의 입장-기준 탈락분, 또는 revision 이 rule 파일에서 추출한 잔존분)가 같은 changeset 에서 재-home(repo-side) 또는 명시 discard(근거 = commit message)로 처분되어 planning-doc retire 전에 완결됐는가(silent drop 0); 배포 tier landing 이 없는 변경(도메인 변경·repo-only tier rule)은 N/A — 충족/미충족 + evidence 한 줄
 - [ ] Work Packet 의 current-bearing 내용이 흡수되고 **Work Packet 이 삭제**됨 — 충족/미충족 + evidence 한 줄
 - [ ] Design/Plan 에만 남은 unique live 의미 없음 → **retire(삭제) 수행**(archive/`consumed/` 미사용; 보존 = git history) — 충족/미충족 + evidence 한 줄
 - [ ] inbound reference 갱신/제거(4-class sweep; 닫힌 backlog ID 의 tombstone 예외 판별 포함) — 충족/미충족 + evidence 한 줄
