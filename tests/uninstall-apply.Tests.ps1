@@ -476,10 +476,12 @@ Describe 'uninstall-global.ps1 — canonical expected-area is internal-only (no 
             '-InstallArea',$fx.Area,'-ExpectedInstallArea',$fx.Area,
             '-ClaudeHome',$fx.Claude,'-CodexHome',$fx.Codex)
         $proc.ExitCode | Should -Not -Be 0
-        # PowerShell line-wraps the binding error text, so assert on the wrap-proof identifier tokens:
-        # the unknown parameter name and the NamedParameterNotFound error id.
-        (($proc.Stdout + $proc.Stderr)) | Should -Match 'ExpectedInstallArea'
-        (($proc.Stdout + $proc.Stderr)) | Should -Match 'NamedParameterNotFound'
+        # PowerShell line-wraps the binding error text at the CONSOLE WIDTH, and the wrap can
+        # split a long identifier token itself mid-word (observed: 'Expe\r\nctedInstallArea' under
+        # a narrow console) -- so no bare token is wrap-proof. Strip ALL whitespace before
+        # matching so the assertion is wrap-position-independent.
+        ((($proc.Stdout + $proc.Stderr)) -replace '\s', '') | Should -Match 'ExpectedInstallArea'
+        ((($proc.Stdout + $proc.Stderr)) -replace '\s', '') | Should -Match 'NamedParameterNotFound'
         # Nothing destructive happened: the fixture's managed block + install root are intact.
         (script:Count-MarkerPairs $fx.ClaudeMd).Begin | Should -Be 1
         (Test-Path -LiteralPath $fx.Area) | Should -BeTrue

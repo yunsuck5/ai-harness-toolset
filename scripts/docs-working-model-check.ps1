@@ -323,7 +323,7 @@ foreach ($cf in $canonicalFiles) {
         $normRef = ($match.Value -replace '\\', '/')
         if (-not (Test-CandidateTailMatch -NormRef $normRef -Tails $incTails)) { continue }
         $rel = Resolve-ProjectRelativePath -Path $cf -ProjectRoot $project
-        $violations.Add(('E2 FAIL: canonical surface durably references a candidate _incubation document: {0} -> {1} (a canonical->candidate reference may only be an absorbed-conclusion summary, never a durable path/link)' -f $rel, $match.Value)) | Out-Null
+        $violations.Add(('E2 FAIL: canonical surface durably references a candidate _incubation document: {0} -> {1} (a canonical->candidate document-level reference is admissible only as an absorbed-conclusion summary, never a durable path/link; a name-identity mention is separately governed by the Promoted-artifact sibling reference clause)' -f $rel, $match.Value)) | Out-Null
     }
     # Angle-bracket (pointy-bracket) markdown link destinations [text](<dest>): the
     # main scan's negative lookbehind + concrete-path discriminator intentionally
@@ -345,7 +345,40 @@ foreach ($cf in $canonicalFiles) {
         $normRef = ($destPath -replace '\\', '/')
         if (-not (Test-CandidateTailMatch -NormRef $normRef -Tails $incTails)) { continue }
         $rel = Resolve-ProjectRelativePath -Path $cf -ProjectRoot $project
-        $violations.Add(('E2 FAIL: canonical surface durably references a candidate _incubation document (angle-bracket link): {0} -> {1} (a canonical->candidate reference may only be an absorbed-conclusion summary, never a durable path/link)' -f $rel, $dest)) | Out-Null
+        $violations.Add(('E2 FAIL: canonical surface durably references a candidate _incubation document (angle-bracket link): {0} -> {1} (a canonical->candidate document-level reference is admissible only as an absorbed-conclusion summary, never a durable path/link; a name-identity mention is separately governed by the Promoted-artifact sibling reference clause)' -f $rel, $dest)) | Out-Null
+    }
+}
+
+# ---------------------------------------------------------------------------
+# SIBLING-MENTION (advisory INFO -- never FAILs, never gates the exit code): an
+# inventory of bare NAME-IDENTITY mentions of each DISCOVERED candidate id across
+# the SAME canonical-file set the E2 scan reads. Purpose: a mechanical find-step
+# aid for the rule's life-event sweeps (Candidate lifecycle promotion / discard;
+# State migration -- De-promotion) and for reviewing the Promoted-artifact
+# sibling reference form. Whether a mention is status-honest / within the E4
+# carry cap is a SEMANTIC judgment this check cannot make (a hard FAIL here
+# would false-positive on legitimate mentions, e.g. the rule's own transition
+# clause and the glossary's candidate-introduced pending entries), so this stays
+# a listing: NOT a violation, NOT a discovery index. Token match: the candidate
+# id as a standalone token (boundary excludes [A-Za-z0-9_-] on both sides, so a
+# longer slug does not match); path-shaped occurrences are listed too (the
+# path-vs-name violation judgment belongs to the E1/E2 scans, which run
+# separately and are unchanged by this inventory).
+# ---------------------------------------------------------------------------
+$siblingMentionInfos = New-Object System.Collections.Generic.List[string]
+foreach ($folder in $incubationFolders) {
+    $idPattern = '(?<![A-Za-z0-9_-])' + [regex]::Escape($folder.Name) + '(?![A-Za-z0-9_-])'
+    foreach ($cf in $canonicalFiles) {
+        if (-not (Test-Path -LiteralPath $cf -PathType Leaf)) { continue }
+        $cfLines = (Read-Utf8 -Path $cf) -split "\r?\n"
+        $hitLines = New-Object System.Collections.Generic.List[string]
+        for ($i = 0; $i -lt $cfLines.Count; $i++) {
+            if ([regex]::IsMatch($cfLines[$i], $idPattern)) { $hitLines.Add([string]($i + 1)) | Out-Null }
+        }
+        if ($hitLines.Count -gt 0) {
+            $rel = Resolve-ProjectRelativePath -Path $cf -ProjectRoot $project
+            $siblingMentionInfos.Add(('SIBLING-MENTION INFO: candidate "{0}" name-mention(s) on canonical surface {1} line(s) {2} (advisory inventory only -- NOT a violation, NOT a discovery index; status-honesty / carry-cap conformance under the Promoted-artifact sibling reference clause is a semantic manual/review-gate judgment; life-event sweeps may use this list as their find step)' -f $folder.Name, $rel, ($hitLines -join ','))) | Out-Null
+        }
     }
 }
 
@@ -652,12 +685,18 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
 # Report
 # ---------------------------------------------------------------------------
 Write-Line ('scanned ProjectRoot {0}; found {1} incubation candidate folder(s)' -f $project, $incubationFolders.Count)
-Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every domain backlog docs/<domain>/<domain>_backlog.md carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep only, requires an existing rule output rules/<id>/<id>.md or snippets/rules/<id>.md, else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY). E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
+Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every domain backlog docs/<domain>/<domain>_backlog.md carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep only, requires an existing rule output rules/<id>/<id>.md or snippets/rules/<id>.md, else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY); SIBLING-MENTION = an advisory INFO inventory (non-gating -- never a violation, never affects the exit code) listing bare name-identity mentions of each discovered candidate id (standalone-token match) across the SAME canonical-file set as E2 -- a find-step aid for the life-event sweeps and the Promoted-artifact sibling reference review; whether a mention is status-honest / within the carry cap is a semantic judgment NOT mechanically checked, and the inventory is not a discovery index. E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
 
 if ($violations.Count -gt 0) {
     foreach ($v in $violations) {
         Write-Line $v
     }
+}
+
+# SIBLING-MENTION advisory inventory (never FAILs): emitted after violations so
+# a FAIL run still leads with its violations.
+foreach ($smi in $siblingMentionInfos) {
+    Write-Line $smi
 }
 
 # E4 (advisory only — never FAILs): absorption-content completeness is a

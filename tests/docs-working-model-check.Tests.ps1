@@ -994,3 +994,39 @@ Describe 'docs-working-model-check FN-7 backlog next-ID floor' {
         $result.Output | Should -Match 'not above the max present'
     }
 }
+
+Describe 'docs-working-model-check sibling-mention advisory inventory' {
+    It 'AC-DWM-SM-1: a bare candidate name mention on a canonical surface emits an INFO line and stays PASS' {
+        $project = script:New-CaseRoot -CaseName 'sm-info'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/somerule/somerule.md') -Content "# some rule`n`nthis rule may mention the still-incubating scopeguard candidate by name.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'SIBLING-MENTION INFO'
+        $result.Output | Should -Match 'candidate "scopeguard"'
+        $result.Output | Should -Match 'somerule\.md line\(s\) 3'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-SM-2: a longer slug containing the candidate id does not match (standalone-token boundary)' {
+        $project = script:New-CaseRoot -CaseName 'sm-boundary'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/somerule/somerule.md') -Content "# some rule`n`nscopeguard-extended and scopeguardian and my_scopeguard are different ids.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'SIBLING-MENTION INFO'
+    }
+
+    It 'AC-DWM-SM-3: no mention anywhere emits no inventory line and the inventory never gates the exit code' {
+        $project = script:New-CaseRoot -CaseName 'sm-none'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/somerule/somerule.md') -Content "# some rule`n`nno mentions here.`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'SIBLING-MENTION INFO'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+}
