@@ -4,7 +4,7 @@
 
 ## Header
 
-- **무엇의 Plan 인가.** docs-working-model 규칙 revision(cs1 + 그 continuation)의 batch·경계·검증 결정 — 초기 coordinated 변경 **batch-1·2**(incubation↔terminology lifecycle 정정[Design (A)~(F)] · rule_docs 모델 일반화+3-state check), 추가 정합 **batch-3·4**(promotion 처분 · owner-pending), **Phase-1 규칙 settle batch-5~12**(5-D·5-K·5-B·5-E·5-F·5-PF·5-G·5-X — 아래 각 절).
+- **무엇의 Plan 인가.** docs-working-model 규칙 revision(cs1 + 그 continuation)의 batch·경계·검증 결정 — 초기 coordinated 변경 **batch-1·2**(incubation↔terminology lifecycle 정정[Design (A)~(F)] · rule_docs 모델 일반화+3-state check), 추가 정합 **batch-3·4**(promotion 처분 · owner-pending), **Phase-1 규칙 settle batch-5~13**(5-D·5-K·5-B·5-E·5-F·5-PF·5-G·5-X·5-T — 아래 각 절).
 - **체인이 끝나면 무엇이 되는가.** `docs-working-model.md` 가 각 batch 의 변경을 반영한 상태로 수정되고(rule = 자기 spec-of-record), `docs-working-model-check.ps1`(+tests)·checklists 가 settled 모델의 구조/의미 subset 을 강제하며, Design/Plan/Work Packet 은 closeout 에서 retire.
 - **이 문서가 아닌 것.** candidate 콘텐츠(4 stashed 파일) 재정렬 아님(cs2) · glossary 의 candidate-도입 pending entry 본문(L70–81) realignment 아님(cs2/L104 transition; 그 외 glossary 정합 — 서두·Status vocab·preamble·accepted/rejected entry 서술 — 은 batch-11 소관) · 별도 `_spec.md` 생성 아님(rule 은 자기 spec-of-record) · **incubation↔terminology 의 terminology-registration 검사 enablement 아님(cs2, transition-aware)**. (**rule_docs 3-state check 는 cs1 포함** — batch-2.)
 
@@ -73,8 +73,8 @@
 
 ### batch 순서/번호 (이 Plan 의 결정)
 - **실행 DAG**: 5-D(토대·최선두) → 5-K → 5-B → 5-X; **5-PF(pending-form governance root-fix)는 5-G 앞** — 5-G coupling-특성화를 supersede 한 root 라 5-G(coupling-element downstream 정렬 + 비-coupling desync)는 5-PF 뒤(5-G 의 5-K-독립성은 유지, 순서만 5-PF 뒤로 갱신); 5-T 는 5-K 뒤; 5-E 는 본문 settle 후; **5-F(enforcement-hardening)는 5-E 뒤 — 5-E 의 deferred 잔여 closer, terminology-enforcement subset 은 5-G blocked-by**(Design 5-F 절).
-- **번호 = landing 순서 기준**: batch-5 = 5-D · batch-6 = 5-K · batch-7 = 5-B · batch-8 = 5-E(landed) · batch-9 = 5-F(landed) · batch-10 = 5-PF(landed `304855b`) · batch-11 = 5-G(landed `968b199`) · **batch-12 = 5-X**(Design landed `9188b4e`; Plan+WP = 선행 changeset, rule/checklist 편집 = 후속 changeset — 아래 절) (이후 5-T 는 그 시점에 부여). **한 changeset 에 여러 item JOIN 안 함**(SPLIT lock — 5-K↔5-B 분리 결정 계승).
-- **per-item lifecycle**: 각 item = Design(완료) → Plan → (Work Packet) → rule 편집 → closeout. **5-D landing 후 그 규칙이 후속 item Plan 작성을 규율**(5-D Plan 자신은 bootstrap 수동 적용 — E5 동형). (첫 산출 세션 = 5-D Plan+WP; 이후 5-K/5-B/5-E/5-F/5-PF/5-G Plan 이 동일 패턴으로 추가·landed; batch-12[5-X] Plan = 이 changeset 에서 추가 — landed 목록은 landing 시 갱신.)
+- **번호 = landing 순서 기준**: batch-5 = 5-D · batch-6 = 5-K · batch-7 = 5-B · batch-8 = 5-E(landed) · batch-9 = 5-F(landed) · batch-10 = 5-PF(landed `304855b`) · batch-11 = 5-G(landed `968b199`) · batch-12 = 5-X(landed `63d2f4b` — rule/checklist 편집까지 완료) · **batch-13 = 5-T**(Design landed `0e138b6`; Plan+WP = 선행 changeset, tier-README/rule/closeout-checklist 편집 = 후속 changeset — 아래 절). **한 changeset 에 여러 item JOIN 안 함**(SPLIT lock — 5-K↔5-B 분리 결정 계승).
+- **per-item lifecycle**: 각 item = Design(완료) → Plan → (Work Packet) → rule 편집 → closeout. **5-D landing 후 그 규칙이 후속 item Plan 작성을 규율**(5-D Plan 자신은 bootstrap 수동 적용 — E5 동형). (첫 산출 세션 = 5-D Plan+WP; 이후 5-K/5-B/5-E/5-F/5-PF/5-G/5-X Plan 이 동일 패턴으로 추가·landed; batch-13[5-T] Plan = 이 changeset 에서 추가 — landed 목록은 landing 시 갱신.)
 
 **batch-5 — 5-D: lifecycle artifact content/altitude 할당 + detail-flow 원칙**
 - **목적(한 줄).** Design 에 content/altitude 경계를 부여하고 계층-횡단 detail-flow 원칙을 명문화해 "Design=방향, detail 은 아래로, 구현 직전 확정"을 규칙으로 강제(현재 Design 만 경계 부재).
@@ -308,3 +308,40 @@
 - 5X-R4 → 이 Plan: 재검토 트리거 3 + 기록된 Plan-level 재결정만.
 - 5X-R5 → 이 Plan: **순서 확정 C→B→O**(approval-target); durable home = 이 Plan carry → cs1-closeout roadmap-migration + promote 커밋 메시지 기록.
 - 정확 문구/삽입 위치/per-hit 처분 = Work Packet/후속 구현.
+
+**batch-13 — 5-T: 배포 tier universal-core ↔ project-residue split 판별 기준 (Plan+WP 선행 changeset → tier-README/rule/closeout-checklist 편집 후속 changeset)**
+
+> 5-T Design(direction-level; landed `0e138b6`) settle 후 그 위에서. **이 Plan 의 일 = batch 단위·changeset 분할·scope·hard boundary 확정 + 5-T open(5T-R1~R6 + 방향 (2) tier 배치 + canonical SC 이월 조건) close + WP 선언 + 배선(batch-13 번호·Header 열거·lifecycle 줄 현행화).** 정확 문구·삽입 위치 = WP/구현 — tier README/rule/checklist 편집은 **후속 changeset**(이 changeset 은 Plan+WP 만 — batch-12 분할 선례 동형). cs1 닫지 않음. 운용 = lean mode-2 + canonical.
+
+- **목적(한 줄).** Design 5-T 절의 방향(판별축 (a)~(f)·terminal-landing 의무·residue 3-way 처분·배포-경계 참조 단방향)을 승인-대상 결정으로 확정하고, 후속 편집 changeset 의 경계·검증 기대를 고정해 그 changeset 이 이 Plan 만으로 착수 가능하게 한다.
+- **batch 단위 = batch-13 단일 item, changeset 2분할.** ① 선행 = 이 Plan 절 + WP batch-13 절 + planning 현행화(표면 = planning 만) ② 후속 = `snippets/rules/README.md` + rule *Candidate lifecycle* + closeout checklist 편집(같은 batch-13; SPLIT lock 유지 — 다른 item 과 JOIN 없음). 분할 근거 = batch-12 동형(Plan/WP 선행 landed 위의 구현; rule/README 는 후속 changeset 전까지 현행 그대로 — 신규 문장이 없을 뿐 모순 아님).
+- **scope.**
+  - *tier README* (`snippets/rules/README.md` — 후속 changeset; 초안 = WP): **T-1 — 입장 판별 기준 정밀화**: "What belongs here / NOT" 위에 ⓐ 1차 판별 질문("adopter 가 이 repo 를 전혀 모르는 환경에서 성립·실행 가능한가") ⓑ 하위 판별축 — vendor/tool-binding(**규범-요건 바인딩만 해당** — 툴셋이 *지원하는 대상 표면*의 열거[예: 관리 대상 instruction-file 경로]는 비해당; canonical SC 이월 조건의 오독-차단) · 프로젝트 validation-절차 바인딩 · repo-governance 결합 · 측정/실험 흔적 반입 금지 · 기존 public-safe/self-contained/`docs/`-무의존 재확인 · 배포-형태 라우팅(rules/skill/template/script — 기존 "What belongs here" 선언 재사용) ⓒ **generic-example 예외**(도구/벤더명은 명시적 비규범 예시로만 — global-file-mutation-boundary 선례 재사용) ⓓ **배포-경계 참조 단방향**(배포 rule 은 repo 표면[`rules/`·`rule_docs/`·`docs/`·repo glossary]을 **의미-원천/runtime 의존으로** 참조 0 — tier 자기-설명의 방향-안내 문구["repo-development 규칙은 repo-only tier 로" 류]는 비해당·용어 self-contained·타-도메인 이름-참조는 같은 배포본 내에서만 + interface-not-semantics; Design 방향 (4)의 "참조 0" 을 의미-의존 축으로 정밀화 — blind 중의성 지적 반영).
+  - *rule* (`rules/docs-working-model/docs-working-model.md` *Candidate lifecycle* — 후속 changeset; 초안 = WP): **T-2 — terminal-landing 분기 문장 신규 추가**(기존 문장 교체 0): terminal output 이 배포 tier 인 rule candidate 의 terminal-landing changeset 은 core/residue split 을 수행하고(배포 rule 본문 = tier 입장 기준 통과분만 — 기준 본문은 tier README route·재서술 0), 모든 residue 를 같은 changeset 에서 재-home(repo-only `rules/` 또는 해당 운용 표면) 또는 명시 discard(근거 = commit message)로 처분한다 — promoted-lifecycle closeout 의 planning-doc retire=deletion *전에* 완결(silent drop 0). **E4 문구·기존 terminal-output 서술 원문 불변.**
+  - *checklist* (closeout checklist — 후속 changeset; 초안 = WP): **T-3 — 배포-tier terminal-landing 항목 1 추가**(split 수행·residue 처분·기준 대조의 evidence 확인 — 기준 재서술 0). **promotion checklist 무변경**(아래 tier-배치 close).
+  - *planning* (이 changeset): batch-13 번호줄·Header 열거·lifecycle 줄 현행화 + 이 절 + WP batch-13 절.
+  - *안 다루는 것* = 후보 문서 3종·glossary 전체 무편집 · promotion/split 실행 · snippet bootstrap(`CLAUDE_SNIPPET`/`AGENTS_SNIPPET`) · 기존 배포 rule 3파일(global-file-mutation-boundary·no-background-or-hidden-state·repository-change-safety) 본문 · check `.ps1`/tests(판별축 기계화 = 5-F-class 후속 인벤토리 후보) · 5-X 소관 재론(sibling 참조 형식·promotion 순서) · S1/S2 settle · adopter-override 일반화(5T-R5 대상-외) · 메모리/외부 workspace 콘텐츠의 배포 tier 흡수 실행.
+- **hard boundary(불가침).** ① S3 봉합 0(의미 기준 tripwire) ② 폐기 framing 권위-재도입 0 ③ 후보 문서·glossary candidate entry(L70–81) 미터치 ④ frozen 상속 — P0-1~6 + 5T-c1~c4; **편집 3표면(tier README·rule·checklist)에 후보명 0**(5T-c2) ⑤ **E1~E5 문구 원문 불변(E4 포함 — T-2 는 인접 신규 문장 추가만)** + E2/E3 약화 0 ⑥ 기존 배포 rule 3파일 본문 무변경 ⑦ check `.ps1`/tests 무변경·docs-working-model-check 현 repo PASS(newly-fail 0) ⑧ `.md` EOL LF.
+- **open decision close(이 Plan 이 닫음).**
+  - **5T-R1 → close.** 판별축 본문(1차 질문·하위 축·generic-example 예외·참조 단방향)의 single home = **`snippets/rules/README.md`**(tier 자기-정의); rule *Candidate lifecycle* = terminal-landing **절차 의무만** 소유(판별 기준 재서술 0 — tier README route); checklist = 수행 증거 점검(기준 재서술 0). 정확 문구 = WP/구현.
+  - **5T-R2 → close.** generic-example 예외 채택(global-file-mutation-boundary "a generic example explicitly marked as such" 선례 재사용 — 새 메커니즘 0) + **vendor/tool-binding 의 정의 한정 = "특정 벤더 도구를 rule 준수의 *요건*으로 삼는 것"** — 툴셋이 지원하는 *대상 표면*의 열거(기존 배포 rule 이 Claude/Codex instruction-file 경로를 대상으로 명명하는 것)는 vendor-binding 이 아님을 판별축 문구에 명시(**canonical SC 이월 조건 close** — dwm-5t-design-20260704 SC Counter-argument 의 오독 위험 차단).
+  - **5T-R3 → close.** 배포 rule 의 용어 = rule 자기 문장으로 self-contained(같은 배포본에 실리는 표면 참조 가능·repo glossary 의존 0). repo-측 glossary 등록/finalization 은 기존 terminology 조항 그대로(배포 rule 은 landed rule 로서 finalization-owner 가 될 수 있음 — *Meaning-home division* 기존 허용; 새 기계 0).
+  - **5T-R4 → close.** 표현-강도 규정 신설 0 — 기존 배포 rule 문체 선례(no-background-or-hidden-state 의 MUST/운영-지침 병기·hard-gate 무주장)를 따르며, 각 promote 되는 rule 의 문체는 그 rule 의 lifecycle 소관(5-T 는 판별축·의무까지만).
+  - **5T-R5 → close(대상-외 선언).** adopter-override 관계("strengthen-not-weaken")의 rules-tier 일반화는 5-T scope 밖 — 새 normative 이고 필요성 미실증. global-file-mutation-boundary 의 기존 조항은 그 rule 한정으로 불변. 재평가 조건 = 실제 promote 이후 adopter-측 override 충돌 실사례 발생 시 별도 item.
+  - **5T-R6 → close.** T-2 = *Candidate lifecycle* 의 terminal-output 서술 **인접 신규 문장 추가만**(기존 문장·E4 교체 0); proportionality 정직 판정 = **bounded normative**(T-1 판별축 명문화·T-2 절차 의무 신설 — 5X-c1 동형의 명시적·검토된 신설; 기존-선언 재확인분[public-safe 재확인·배포-형태 라우팅]은 descriptive — 축별 판정 = WP tripwire 표). 정확 삽입 위치 = WP/구현.
+  - **방향 (2) tier 배치 → close.** 의무 문장 = rule 본문(*Candidate lifecycle* — PCG-급 의무 존재) / 점검 항목 = **closeout checklist**(terminal landing = closeout 국면의 이벤트 — 기존 "Design/Plan current-bearing 이 올바른 owner surface 에 표현" 항목의 배포-tier 특수화가 자연 위치; **promotion checklist 는 boundary-event[promotion·discard·de-promotion] 전용으로 유지** — 대상 열거 확장 없음, checklist 정체성 보존). 의무-존재와 점검-수행은 다른 명제(5X-R3·5E-c2 정합).
+  - **5-X "5-T 선행" 전제의 충족 조건 → close.** subagent-work-orchestration promote 의 "5-T 선행"(5-X 방향 (3) 근거 (a); Phase-2 promote 시점 조건 — Phase-1 내 batch 의존 아님) 은 **batch-13 후속 changeset 의 landing**(판별 기준 T-1·terminal-landing 의무 T-2·점검 항목 T-3 이 live)으로 충족된다 — 그 시점부터 O 후보의 promote 는 그 기준·의무 하에서 가능하다(promote 실행 자체는 여전히 별도 결정·이 batch 비대상).
+- **validation expectation.** *이 changeset*(.md-only Plan+WP): docs-working-model-check PASS(newly-fail 0) · `.md` EOL LF · `git diff --check` clean · full Pester 생략 명시(.md-only class — batch-12 동일 근거) + blind∥relay-B(상호 blind·full current state) → fold → re-check(evidence-기준 stop) → **canonical dual PASS**. *후속 tier-README/rule/checklist changeset*: 동일 게이트 + 편집 3표면 full-scope + `rules/README.md`(repo-only tier index)와의 two-tier 형제-정합 확인 + tripwire 대조(S3/frozen) + 폐기-framing 어휘 diff 재등장 0 + 후보명 0 grep.
+- **review focus.** 5T-R1~R6·tier-배치 close 의 완결성 · SC 이월 조건(vendor-binding 정의 한정)의 오독-차단 실효성 · T-1 이 기존 tier 선언을 재정의가 아닌 정밀화로 유지 · T-2 가 E4·기존 문장을 원문 불변으로 두는지 · T-3 가 기준을 재서술하지 않는지 · WP 인벤토리 사실 정확성(file:line) · 편집 표면 후보명 0 · batch 분할이 transient 자기-모순을 안 만듦.
+- **Work Packet 필요 = 예.** 목적 = 편집 대상 표면 현행 문면 file:line 인벤토리(tier README·rule terminal-output 문장·closeout checklist) + 동기-사례 혼재 실측(O 후보의 도구-binding·타-후보 이름-참조 file:line — batch-12 WP 인벤토리 A 재사용 + codex-token 보완) + 삽입 초안(T-1~T-3) + tripwire 대조표 + 폐기-framing sweep 목록 + Edge/정합 체크 항목. 흡수 대상 = 후속 편집 changeset. retire 조건 = closeout 시 삭제.
+
+### Open decision close 지점 (5-T)
+- 5T-R1 → 이 Plan: 판별축 single home = tier README / rule = 절차 의무만(route) / checklist = 증거 점검.
+- 5T-R2 → 이 Plan: generic-example 예외 + vendor-binding 정의 한정(지원-대상 표면 열거 비해당 — SC 이월 조건 close).
+- 5T-R3 → 이 Plan: 배포 rule 용어 self-contained; repo-측 glossary 는 기존 조항 그대로.
+- 5T-R4 → 이 Plan: 표현-강도 규정 신설 0(기존 문체 선례·각 rule lifecycle 소관).
+- 5T-R5 → 이 Plan: 대상-외 선언(재평가 조건 = override 충돌 실사례).
+- 5T-R6 → 이 Plan: 인접 신규 문장 추가만·bounded normative 정직 인정(축별 판정 = WP tripwire).
+- 방향 (2) tier 배치 → 이 Plan: 의무 = rule / 점검 = closeout checklist(promotion checklist 무변경).
+- 5-X "5-T 선행" 충족 조건 → 이 Plan: batch-13 후속 changeset landing 으로 충족(promote 실행은 별도 결정).
+- 정확 문구/삽입 위치 = Work Packet/후속 구현.

@@ -591,3 +591,68 @@ bijection · form=f(status) · deliberate invariant · 허용 조합표 · (a)/(
 - 기계 검증 수행(docs-working-model-check·EOL·newly-fail 0·Pester scope 판단·check/tests 무변경 확인) — 결과 기록 = log/evidence.
 - planning↔surface N-axis 대조: Plan scope ①②③/checklist/planning ↔ 실제 편집(X-1·X-2·X-3a·X-3b·X-4·배선) 1:1.
 - retire: closeout 시 이 batch-12 노트 삭제.
+
+## batch-13 — 5-T Work Packet (배포 tier universal-core ↔ project-residue split 판별 기준; round-scoped)
+
+> 5-T Plan(batch-13) settle 후. round-scoped — 편집 대상 표면 현행 문면 인벤토리 + 동기-사례 혼재 실측 + 삽입 초안(T-1~T-3) + tripwire 대조표 + 폐기-framing sweep 목록 + Edge. 흡수 = 후속 tier-README/rule/checklist 편집 changeset / retire = closeout(이 노트 삭제). final wording single-home = live tier README·rule·checklist. 약칭(batch-12 승계): **O** = `rule_docs/subagent-work-orchestration/subagent-work-orchestration_incubation.md` · **RULE** = `rules/docs-working-model/docs-working-model.md` · **SRR** = `snippets/rules/README.md` · **RRR** = `rules/README.md` · **GFMB** = `snippets/rules/global-file-mutation-boundary.md` · **CCHK** = closeout checklist.
+
+### 인벤토리 D — 편집 대상 표면 현행 문면 (file:line; 재-grep 재검증 2026-07-04)
+| 표면 | 위치 | 현행 문면 요지 (T-편집과의 관계) |
+|---|---|---|
+| SRR | :5–7 | snippet↔rules-tier 관계(bootstrap·trigger gate) — T-1 무접촉(입장 기준 아님) |
+| SRR | :9–13 "What belongs here" | reusable/vendor-neutral/always-on(:11) · public-safe·no machine/user-specific·no docs/ 의존(:12) · one-rule-group-per-file(:13) — **T-1 의 정밀화 대상**(rules/skill/template/script 라우팅은 :11 이 이미 선언 → (f) 축은 재사용) |
+| SRR | :15–19 "What does NOT belong here" | repo-development-only → repo-only tier(:17) · skill/template/script 흡수(:18) · rationale/design record 는 docs/(:19) — T-1 은 이 구분 위에 *혼재-분리 판별*을 더함(재정의 0) |
+| RULE | :95 (*Candidate lifecycle* bullet) | "a rule candidate writes its terminal rule file via Design → Plan → rule" · terminal output = `rules/` or `snippets/rules/` · E4 흡수(→entry `_design`) · discard 경로 — **T-2 삽입 지점 = 이 bullet 인접**(위치 후보: :95 bullet 내 terminal-output 서술 뒤 신규 문장 vs :95 직후 신규 bullet — 구현 판단; 기존 문장 교체 0) |
+| RULE | :86–94 | promotion transition·promoted-but-not-live 문맥(T-2 가 전제하는 기존 모델 — 무접촉) · :151–160 *Lifecycle closeout — absorption and retire*(retire=deletion :158·promoted-lifecycle closeout :160 — T-2 의 "retire 전 완결" 이 참조하는 기존 사실; :149 는 reduced two-level gate 의 Level-2 설명이라 비해당 — blind 정정 반영) |
+| CCHK | :6–7 | "Design 의 current-bearing 결정이 Spec(또는 올바른 owner surface)에 표현" · "Plan still-relevant → owner" — **T-3 = 이 클래스의 배포-tier 특수화 항목**(인접 삽입; 기존 항목 무수정) |
+| GFMB | :22–29 / :31–33 | "Global layer carries no project-specific content" + generic-example 예외 / "Project layer does not weaken" — T-1 이 *정합해야 할 선례*(중복 정의 금지 — T-1 은 rules-tier 판별축, GFMB 는 snippet-payload 조항; 서로 참조-route 는 구현 판단) |
+| RRR | :5–8 | two-tier 구분(global-distribution vs repo-only) — 편집 0; 후속 changeset 에서 형제-정합 확인만(T-1 신설 문구와 모순 없어야) |
+
+### 인벤토리 E — 동기-사례 혼재 실측 (O 후보; 판별축 (a)~(d) 대응 file:line — 재-grep 2026-07-04)
+- **(a) vendor/tool-binding**: O:7(선행 실험 codex 리뷰 서술)·O:22("codex review skill 또는 blind")·O:27("codex 등")·O:79(open-Q "codex review-to-pass 바인딩") — 전부 *규범-요건형*(rule 준수 절차에 특정 도구 내장) 또는 그 경계 사례. ※ 판별축의 "지원-대상 표면 열거는 비해당" 한정(5T-R2)이 가르는 반대편 예 = GFMB:3(Claude/Codex instruction-file 경로 열거 — 합법).
+- **(b) 프로젝트 validation-절차 바인딩 + 타-후보 이름-참조**: O:48(consultation/blind/canonical 이름)·O:51–52(절차 단계·evidence 필드에 blind/canonical 내장)·O:54(finding-shape 결합)·O:83–85(open-Q 가 sibling semantics 와 얽힘) — batch-12 인벤토리 A 의 O→B(7)·O→C(5) hit 와 정합(재사용).
+- **(c) repo-governance 결합**: O:68–72(Vocabulary 절 — glossary pending 등록 모델)·O:5,9,11–18(Header/lifecycle — incubation tier 어휘) — 후보 문서 자체의 governance 표면(promote 시 rule 본문 반입 부적격 클래스의 예).
+- **(d) 측정/실험 흔적**: O:7(n=1 실측 서술)·O:13(pilot 3회 review-date)·O:74–76(§Measurement — ship 안 함 기선언).
+- **후보 자신의 기존 자기-분리 선언**(T 판별축과 정합 — 재정의 아님 확인): O:16("배포 rule 은 universal core 만")·O:57–64(Regime-2/재귀 배포 제외).
+- ※ 이 인벤토리는 *판별축의 실측 예시*(후속 changeset 의 review-근거)이지 후보 문서 편집 목록이 아니다(후보 무편집 — promote 시 처분은 그 promote changeset 소관).
+
+### 편집 대상 분류 (후속 changeset; 초안 = 아래 T-1~T-3)
+| id | 대상 | Plan scope | 종류 |
+|---|---|---|---|
+| T-1 | SRR "What belongs here/NOT" 정밀화(판별 질문·하위 축·generic-example 예외·참조 단방향) | tier README | **establish(bounded normative — 판별축·단방향 명문화)** + 명시(기존 선언 재확인분: public-safe/self-contained 재확인·배포-형태 라우팅[:11 재사용]) |
+| T-2 | RULE:95 인접 terminal-landing 분기 문장(신규 추가) | rule | **establish(bounded normative — 신규 절차 의무)** |
+| T-3 | CCHK 배포-tier terminal-landing 항목 1 | checklist | 명시(rule 의무의 점검화 — 새 의미 0·기준 재서술 0) |
+
+### 삽입 초안 (영어 = SRR/RULE/CCHK 대상; 구현 출발 텍스트 — final = live 파일)
+
+> round-scoped 구현 노트(후속 changeset 이 다듬을 출발 텍스트) — durable wording 의 home 은 live 파일(batch-12 초안 관행 동일).
+
+**[T-1] SRR — "What belongs here" 아래 신규 소절(입장 판별) + 참조 단방향.**
+> **Admission test for mixed content.** The primary test for content bound for this tier: **could an adopter who knows nothing about this repository read and follow the rule?** Content is project-residue (keep it out of the distributed rule; re-home it repo-side or discard it with recorded rationale) when it: (a) requires a specific vendor tool as a **compliance requirement** — naming a *supported target surface* (e.g. a vendor instruction-file path this toolset manages) is not such a binding, and a generic example explicitly marked as such is allowed (the same exception the managed-block boundary rule declares); (b) binds the rule to this repository's own validation procedure or review domain; (c) depends on this repository's governance (candidate lifecycle, planning folders, the repo glossary); (d) carries measurement / pilot traces (those live in the promote record and git history, not in a distributed rule).
+> **Reference direction across the distribution boundary.** A distributed rule never **depends on** this repository's surfaces (`rules/`, `rule_docs/`, `docs/`, the repo glossary) **as a meaning source or runtime reference** — its terms are self-contained in its own text or in surfaces shipped in the same distribution. (An orientation note that *routes content away* — like this README's own "repo-development-only rules go to the repo-only tier" guidance — is not such a dependency.) Repo-side surfaces may reference distributed rules (the installed payload is assumed). A distributed rule names another domain only when that domain ships in the same distribution — and then interface, not semantics.
+
+**[T-2] RULE:95 인접 신규 문장(기존 문장 교체 0).**
+> When a rule candidate's terminal output is the global distribution tier (`snippets/rules/<id>.md`), the changeset that lands the terminal rule file also completes the **universal-core ↔ project-residue split**: the rule file carries only content that passes the distribution tier's own admission criteria (`snippets/rules/README.md` — the single home of those criteria, not restated here), and every project-residue item the promoted lifecycle carried is, in that same changeset, either re-homed to its correct repo-side surface (the repo-only rules tier, or the operating skill / script surface it belongs to) or explicitly discarded with the rationale recorded in the commit message — never silently dropped when the closeout later deletes the planning docs.
+
+**[T-3] CCHK 항목 초안(1; 기존 항목 인접 삽입).**
+> - [ ] terminal output 이 배포 tier(`snippets/rules/`)인 rule 이면 — terminal-landing changeset 이 universal-core↔project-residue split 을 수행했고(배포 rule 본문 = tier 입장 기준 통과분만; 기준 = tier README 소관), 모든 residue 가 같은 changeset 에서 재-home 또는 명시 discard(근거 = commit message)로 처분되어 planning-doc retire 전에 완결됐는가(silent drop 0) — 충족/미충족 + evidence 한 줄
+
+### tripwire 대조표 (각 초안 문장의 저작-시점 분류 = 식별/명시/establish + 접촉-표면 사실; **판정 아님** — 최종 확인은 후속 구현 changeset 의 검증·게이트 소관·수행 결과 기록 = `log/**`)
+| 초안 | 분류 | 접촉-표면 사실 (분류 근거) |
+|---|---|---|
+| T-1 admission test | **establish(bounded normative — 판별축 명문화; 5T-R6 정직 인정)** + (a) 내 표면-열거 한정 = 명시(GFMB 선례·SC 이월 조건의 오독-차단) | 후보명 0 · 기존 SRR 선언 재정의 0(:11 라우팅 재사용·:12 재확인) · pending form/S3 무접촉 · E1~E5 무접촉 |
+| T-1 reference direction | establish(단방향 명문화) | GFMB:22–29 와 중복-정의 아님(rules-tier 축 vs snippet-payload 조항 — 별개 fact) · Cross-domain semantics restriction 재사용(재서술 0) |
+| T-2 | **establish(bounded normative — 신규 절차 의무)** | RULE:95 기존 문장·E4 문구 교체 0(인접 추가만) · 판별 기준 재서술 0(SRR route) · 후보명 0 · taxonomy 무접촉 |
+| T-3 | 명시(T-2 의무의 SC 점검화 — 새 의미 0) | CCHK 기존 항목 무수정 · 기준 재서술 0 |
+
+### 폐기-framing 어휘 sweep 목록 (후속 diff 재등장 0 확인)
+batch-10/11/12 목록 승계(bijection · form=f(status) · deliberate invariant · 허용 조합표 · (a)/(b) 라벨쌍 · schema-home · glossary-격하 계열); 5-T 신규 추가 없음.
+
+### Edge / 정합 — 후속 구현 시 수행할 체크 항목 (수행 *결과* 기록 = `log/**` 소관 — WP content boundary)
+- E4·RULE:95 기존 문장 원문 불변 대조(T-2 = 추가만) + E2/E3 약화 0.
+- 편집 3표면 후보명 0 grep(5T-c2; `consultation`/`blind-advisory`/`subagent-work-orchestration` standalone-token — SIBLING-MENTION 인벤토리 활용 가능).
+- SRR↔RRR two-tier 형제-정합(T-1 신설 문구가 RRR:5–8 구분과 모순 0) + T-1↔GFMB 중복-정의 0(별개 fact 경계 유지).
+- T-3 이 기준을 재서술하지 않고 route 만 하는지 + CCHK 헤더 문구와 정합.
+- planning↔surface 대조: Plan scope T-1/T-2/T-3/planning ↔ 실제 편집 1:1.
+- 기계 검증 수행(docs-working-model-check·EOL LF·newly-fail 0·diff-check·Pester scope 판단[.md-only 여부는 후속 changeset 의 실제 표면으로 재판정]·check/tests 무변경 확인) — 결과 기록 = log/evidence.
+- retire: closeout 시 이 batch-13 노트 삭제.
