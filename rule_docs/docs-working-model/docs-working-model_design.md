@@ -129,7 +129,7 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 
 ### Phase-1 DAG (방향 선언만 — detail 은 각 batch 자기 단계에서 lock)
 
-> 아래는 *순환 아님*(DAG) — **item-label + 의존성**만 선언한다. 구체 **batch 번호·실행순서는 Plan 소관**("Plan — batch order"; Design 에 번호 박으면 그 자체가 altitude 누수). 이 선언은 **direction-level** 이며 각 item 의 detail 은 그 item 의 Plan/Work Packet 에서 잠근다(detail front-load 금지). 이 Design 의 본체는 **5-D + 5-K + 5-B** 의 direction-level Design 으로 시작했고, 이후 **5-E**(별도 절, landed `78e3a17`)·**5-F**(이 절 하단 — 5-E 잔여 closer)·**5-G**(이 절 하단 — 5-PF 위 잔여 정렬, batch-11 에서 REALIGNED; coupling-특성화는 5-PF 가 supersede)·**5-PF**(이 절 하단 — 5-G coupling 의 root-fix, landed `e0e9657`+`304855b`)·**5-X**(이 절 하단 — promoted→incubating 참조 규칙 + 3후보 promotion 순서)가 동형으로 추가됐다; **5-T** 는 후속 phase-iteration 에서 동형으로 설계한다.
+> 아래는 *순환 아님*(DAG) — **item-label + 의존성**만 선언한다. 구체 **batch 번호·실행순서는 Plan 소관**("Plan — batch order"; Design 에 번호 박으면 그 자체가 altitude 누수). 이 선언은 **direction-level** 이며 각 item 의 detail 은 그 item 의 Plan/Work Packet 에서 잠근다(detail front-load 금지). 이 Design 의 본체는 **5-D + 5-K + 5-B** 의 direction-level Design 으로 시작했고, 이후 **5-E**(별도 절, landed `78e3a17`)·**5-F**(이 절 하단 — 5-E 잔여 closer)·**5-G**(이 절 하단 — 5-PF 위 잔여 정렬, batch-11 에서 REALIGNED; coupling-특성화는 5-PF 가 supersede)·**5-PF**(이 절 하단 — 5-G coupling 의 root-fix, landed `e0e9657`+`304855b`)·**5-X**(이 절 하단 — promoted→incubating 참조 규칙 + 3후보 promotion 순서)·**5-T**(이 절 하단 — 배포 tier universal-core↔project-residue split 판별 기준)가 동형으로 추가됐다.
 
 - **5-D (foundational; 가장 이른 settle)** — lifecycle artifact 별 *content/altitude 할당* + 계층-횡단 *detail-flow* 원칙. Design 에 content/altitude 경계 부여(현재 Plan/Spec/WP 만 경계 보유) + "각 계층 자기 altitude·detail 흘러내림·구현직전 확정(domain=Spec / rule_docs=rule 파일, Spec 없음)" 명문화. **dogfood 산**(이번 Design 의 altitude-drift 가 이 gap 의 표면화). 모든 lifecycle 문서 작성법을 규정하므로 *토대* — 5-K 보다 앞/병렬. **(이 Design 본체 #1 — 아래.)**
 - **5-K (keystone)** — promotion-transition atomicity(transition event vs promoted lifecycle; E3/E4 를 *entry promoted artifact* 기준으로 고정; + transient 봉합 fallback 한 줄). **(이 Design 본체 #2 — 아래.)**
@@ -137,7 +137,7 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 - **5-PF (5-G coupling 의 root; 5-G 보다 앞; landed `e0e9657`)** — 규칙 pending-form governance clarify(under-specification 해소): *비-candidate 출처* pending 의 천장-안 form 미명세(L97 candidate-scope·L103 governed-elsewhere 무명 유보)를 C1(scope surface)·C2(부분 home 식별+gap 명시)·C3(직교성 본문화)·S3(명시 bound-defer)로 명세. 5-G coupling-특성화(5G-c1 bijection·5G-c3 deliberate-invariant)를 supersede — 5-G coupling-element 는 이 위 downstream. **(이 Design 절 — 하단.)**
 - **5-G (5-K 와는 독립; 순서는 5-PF 뒤)** — terminology-registration 정합의 **잔여 정렬**: 비-coupling desync fix(L8 status-axis · L66 route · 필드명 L101↔L66 · close-condition desync) + coupling-element 의 5-PF-위 downstream 정렬(축-구분 surface 는 5-PF C1/C3 가 처리) + 5-G 절 형제 전수 realign(5-PF Plan 의 PF-R3 배정). rule↔glossary **cross-surface**. → 별도 item. **(이 Design 절 — 하단, batch-11 에서 REALIGNED 재기술; coupling-특성화는 **5-PF 가 supersede**[권위 = 5-PF 절 + landed rule], 원 진단·폐기 특성화·1차 framing-오염 철회의 lineage 는 git history 가 보존[그 절 REALIGNED 배너 참조].)**
 - **5-X (5-B 뒤)** — promoted canonical → still-incubating sibling 참조 규칙 + 3후보 promotion *순서*(상호 name-ref = E2 순환). 상태/discovery 모델 의존. → 별도 item. **(이 Design 절 — 하단.)**
-- **5-T (5-K 뒤)** — 글로벌 `snippets/rules/` universal-core ↔ project-residue split(orchestration 배포용; repo-only 후보 name-ref·codex-binding 혼재). → 별도 item.
+- **5-T (5-K 뒤)** — 글로벌 `snippets/rules/` universal-core ↔ project-residue split(orchestration 배포용; repo-only 후보 name-ref·codex-binding 혼재). 5-X 순서 근거의 "5-T 선행"은 Phase-2 promote 시점의 선행 조건이지 Phase-1 내 5-X 와의 batch 의존이 아니다(그 정합 확인 = 5-T 절 Plan-readiness). → 별도 item. **(이 Design 절 — 하단.)**
 - **5-E (settle-pass 끝의 enforcement; landed `78e3a17`)** — enforcement: `docs-working-model-check.ps1`(E2 스캔 `snippets/` 제외 false PASS·transition-awareness 미구현) + tests + checklists(5-D altitude-게이트 포함) + templates. 규칙 본문 settle 후 그 위에서 기계화. → 별도 item. **(그 deferred 잔여 hardening = 5-F.)**
 - **5-F (5-E 뒤; enforcement-hardening)** — 5-E 의 채택된 yes-with-risk(deferred enforcement 잔여)를 닫는 **named closer**: 정적-강제 가능·hermetic·저위험 subset(E2 precision·docs/ purity·durable-pointer 일반 scan·WP-content checklist·EN-2 fence test·backlog next-ID)만 강제하고 나머지는 **residual 보존**(bounded subset — 사용자 결정). **terminology-enforcement subset 은 5-G 에 blocked-by**(schema 미정합). → 별도 item. **(이 Design 절 — 하단.)**
 - **의존 요약(DAG):** 5-D → 5-K → 5-B → 5-X; **5-PF → 5-G**(5-PF = 5-G coupling-element 의 root-fix 선행; 5-G 는 5-K 와는 독립); 5-T 는 5-K 뒤; 5-E 는 본문 settle 후; **5-F 는 5-E 뒤(잔여 closer), 단 terminology-enforcement subset 은 5-G 에 blocked-by**. (batch 번호 부여·세부 순서 = Plan.)
@@ -448,3 +448,48 @@ Plan 으로 내려가도 됨(방향·경계 확정, 2회 적대평가 수렴). o
 
 ### Plan-readiness (Plan/WP 가 닫을 detail)
 - 참조 형식의 정확 문구·표기 방법(5X-R2) · 적용 표면 열거(5X-R1) · sweep 의 tier·항목 문구(5X-R3) · 순서 재검토 조건(5X-R4) · 순서 결정의 durable home 배선(5X-R5) · promotion checklist 항목 초안 · subagent-work-orchestration 후보 문서의 폴더-fate pre-existing desync 처분 route(결함 5 — cs2 소관 명시) · 착수 인벤토리의 file:line 전수 정리(상호참조 지도·시나리오 판정표·생애-이벤트 미커버 목록)는 Plan 단계의 Work Packet 소관(enumeration front-load 금지 — 5-D altitude).
+
+## 5-T: 글로벌 배포 rules tier universal-core ↔ project-residue split 판별 기준 — Design (direction-level)
+
+> Phase-1 의 5-K-후행 item(DAG 5-K 뒤; Phase-1 유일 배포-관련 item). **direction-level** — 판별축의 정확 문구·durable home 배분·checklist 항목·표면 열거는 Plan/WP 소관(**rule/tier-README 미편집 — 이 절은 방향만**).
+
+### 5-T 고정 불변식 (P0-1~6 상속; 이 라운드 상수)
+- **5T-c1 — 두-tier 구조·기존 경계 선언은 재정의 아닌 정밀화 대상.** 글로벌 배포 tier(`snippets/rules/`)와 repo-only tier(`rules/`)의 이원 구조, 기존 tier 자기-정의(입장 성질: reusable·vendor-neutral·always-on·public-safe·self-contained·`docs/`-무의존)는 불변 — 이 item 은 그 위에 *혼재-콘텐츠 판별축*을 더한다. 새 tier·새 placement·새 registry 신설 0.
+- **5T-c2 — candidate-agnostic.** 판별 기준은 *배포-tier terminal output 을 갖는 임의 rule candidate* 의 일반 기준으로 settle 한다(P0-6). subagent-work-orchestration 은 동기 사례일 뿐 — 이 phase 에서 그 본문을 편집하지 않으며, 편집 대상 표면(rule·tier README·checklist)에 후보명을 박지 않는다(5X-c2 동형). promotion/split 실행도 비대상.
+- **5T-c3 — 새 머신 금지, 기존 장치 정렬.** 판별 기준은 기존 장치 — tier README 경계 선언·*Candidate lifecycle* 의 promote/terminal-output 서술·promotion checklist·*Cross-domain semantics restriction*(interface-not-semantics)·배포 rule 기존 선례(global-file-mutation-boundary 의 "Global layer carries no project-specific content" + generic-example 명시 예외) — 의 정렬/정밀화로 만든다.
+- **5T-c4 — frozen 상속.** taxonomy 불변(P0-1) · single-home(P0-2 — 판별축 본문은 한 집, 나머지 표면은 route) · rule=자기 spec-of-record(P0-3) · E1~E5 정신 불변(P0-4 — E4 완전성 요건 불변; 이 item 은 promote 이후 lifecycle 이 운반한 내용의 *terminal-landing 시점 목적지 분기*를 명시할 뿐 흡수 요건을 완화하지 않는다) · landed 모델 불변(P0-5).
+
+### Header
+- **무엇의 Design 인가.** rule candidate 의 terminal output 이 글로벌 배포 tier(`snippets/rules/`)일 때 — 후보 콘텐츠에 혼재된 **universal-core**(adopter-universal 로 배포 가능한 것)와 **project-residue**(이 repo 에만 의미 있는 것)를 가르는 **판별 기준**과, 그 **집행 시점**(promoted lifecycle 의 terminal landing)·**residue 처분 방향**·**배포-경계 참조 방향성**의 규칙 gap 을 메운다.
+- **체인이 끝나면 무엇이 되는가(방향).** (1) 배포-tier 입장 판별축이 durable home 에 명문화되고 (2) terminal-landing 시점의 split·residue-처분 의무가 candidate lifecycle 에 배선되며 (3) checklist 가 그 수행 증거를 점검한다(기준 재서술 없이 route). 정확 배분 = Plan(5T-R1).
+- **이 문서가 아닌 것.** 후보 본문 수정 아님(cs2) · promotion/split 실행 아님(각 promote·landing changeset 소관) · snippet bootstrap(`CLAUDE_SNIPPET`/`AGENTS_SNIPPET`) 개정 아님 · 기존 배포 rule 3파일 본문 개정 아님 · glossary 편집 아님 · 정확 문구/판별표/checklist 항목 잠금 아님(Plan/WP).
+
+### 결함 (방향 수준)
+1. **혼재-분리 판별 기준 결여.** 두-tier 경계 선언은 *성질 열거*(무엇이 이 tier 에 속하나)이지 *혼재 콘텐츠의 분리 판별축*(한 후보 안의 universal 요소와 프로젝트-특정 요소를 어떻게 가르나)이 아니다. 미정의 축: vendor-neutral 과 도구명-예시의 경계 · 운영 invariant 와 프로젝트 validation-절차 바인딩의 경계 · repo-governance 요소(후보 lifecycle·glossary·`rule_docs/` 구조 의존 서술)의 배포 rule 반입 가능성. rule candidate subagent-work-orchestration 의 open question("universal core ↔ 프로젝트-특정 분리 경계의 최종 형태")이 이 gap 의 실측 표면이다.
+2. **split 집행 시점·의무 미배선 (retire=deletion 과의 결합 위험).** rule candidate 의 promoted lifecycle 은 terminal rule 파일 landing 으로 끝나고 closeout 이 `_design`/`_plan`/`_work_packet` 을 삭제(retire)한다 — 그런데 terminal landing 시 planning 문서가 들고 있는 콘텐츠 중 배포 rule 본문에 갈 수 없는 project-residue 의 처분 기준·의무가 어디에도 없어, retire=deletion 과 결합하면 **silent drop**(residue 유실) 또는 반대로 **과운반**(residue 가 배포 rule 본문에 실려 배포 오염) — 양쪽 오독이 열려 있다. (E4 흡수[→entry `_design`]는 단일 목적지라 이 결함의 대상이 아니다 — 결함은 그 *다음* 단계인 terminal landing 에 있다.)
+3. **residue 의 목적지·형태 미정.** 프로젝트-특정 잔여(도구/벤더 바인딩·프로젝트 validation 절차·repo-governance 결합 서술)의 처분 방향이 없다 — 미정이면 split 판단 자체가 매번 ad-hoc 이 되고 silent drop 위험이 상존한다.
+4. **배포-경계 참조 방향성 미정의.** 배포 rule 은 adopter 환경에서 이 repo(`rules/`·`rule_docs/`·`docs/`·glossary)를 모른다 — core→repo 참조가 구조적으로 불가하다는 단방향성이 명문화되어 있지 않다. 특히 용어: 배포 rule 이 쓰는 용어의 의미를 repo glossary(repo-only tier — 배포되지 않음)에 의존할 수 없다.
+5. **(부수 — 정합 대상 선례)** global-file-mutation-boundary 가 *snippet payload* 에 대해 같은 종류의 경계("Global layer carries no project-specific content" + generic-example 명시 예외)를 이미 선언 — 5-T 판별축은 이 선례와 정합해야 하며 같은 fact 의 중복 정의(P0-2)를 피한다.
+
+### 방향 (direction — 세부는 Plan/WP)
+- **(1) 판별축 명문화.** 1차 판별 질문 = **"adopter 가 이 repo 를 전혀 모르는 환경에서 그 rule 이 성립·실행 가능한가."** 하위 판별축(방향 수준): (a) **vendor/tool-binding** — 특정 도구·벤더를 규범 요건으로 요구하면 core 부적격(비규범 예시 허용 여부 = 5T-R2) (b) **프로젝트 validation-절차 바인딩** — 이 repo 의 특정 리뷰/검증 도메인에 묶인 절차 규정은 residue (c) **repo-governance 결합** — 후보 lifecycle·glossary·`rule_docs/` 구조 등 이 repo 거버넌스에 의존하는 서술은 core 부적격 (d) **측정/실험 흔적** — pilot count·단발 실측·measurement scaffolding 은 rule 본문 반입 금지(rationale 은 promote 기록/git history 소관) (e) **public-safe·self-contained·`docs/`-무의존**(기존 선언 재확인) (f) **배포-형태 라우팅** — core 로 판정된 내용이라도 rules tier 자동 적격은 아니다: always-on invariant 만 rules tier, intent-triggered procedure 는 skill, artifact shape 는 template, deterministic behavior 는 script(기존 tier README "What belongs here" 선언의 재확인 — 새 라우팅 신설 아님). 판별축 명문화가 기존 선언의 descriptive 정밀화인지 bounded normative 인지는 저작 시점에 규칙 자기-정의(proportionality)에 대조해 정직 판정한다.
+- **(2) 집행 시점 = terminal-landing 의무 배선.** 배포-tier terminal output 을 갖는 rule candidate 의 promoted lifecycle 에서 — core/residue *분류·확정*은 그 lifecycle 의 Design/Plan 단계가 자기 altitude 대로 소유하고, **terminal rule landing changeset 이 residue 처분(재-home 또는 명시 discard + 근거)을 같은 changeset 에서 완결**한다(closeout 의 retire=deletion 전에 residue home 확보 — silent drop 금지). 5-X 생애-이벤트 sweep 과 동형의 이벤트-시점 의무 패턴. 이 항은 방향-선언(deciding target-state invariant)이다 — 의무 문구의 최종 강도·tier 배치(PCG closeout gate vs SC checklist — promotion checklist 확장 vs closeout checklist) = Plan.
+- **(3) residue 처분 방향.** repo-development 규율 → repo-only `rules/` tier(또는 기존 rule 의 해당 절) / 운용 mechanic → 해당 운용 표면(스킬·스크립트 등 active surface) / 어디에도 맞지 않으면 명시 discard(negative evidence 기록). 정확 매핑 기준 = Plan.
+- **(4) 배포-경계 참조 단방향 원칙.** 배포 rule → repo 표면 참조 0(self-contained — 용어 의미도 배포 rule 자기 문장 또는 같은 배포본에 실리는 표면으로 완결; repo glossary 의존 금지). repo residue → 배포 rule 참조는 허용(설치본 전제). 배포 rule 간 타-도메인 이름-참조는 그 도메인이 **같은 배포본에 실릴 때만** + interface-not-semantics(*Cross-domain semantics restriction* 정합).
+
+### Owner surface / 수정 대상 절 (방향)
+- `snippets/rules/README.md`(tier 자기-정의 — 판별축·입장 기준의 1차 후보 위치) · `docs-working-model.md` *Candidate lifecycle*(rule candidate 의 terminal-output 서술 인접 — terminal-landing split·residue-처분 의무 배선) · promotion checklist 또는 closeout 게이트 표면(수행 증거 점검 — 기준 재서술 금지). **판별축 본문의 single home 배분**(tier README vs rule)과 신규 절 신설 여부 = Plan(5T-R1). check `.ps1` 는 이 item 에서 무변경.
+
+### non-goals
+- 후보 본문·후보 realign(cs2) · promotion/split 실행 · snippet bootstrap 개정 · 기존 배포 rule 3파일(global-file-mutation-boundary·no-background-or-hidden-state·repository-change-safety) 본문 개정 · glossary 편집 · 새 tier/placement/registry 신설 · taxonomy 변경 · terminology-enforcement 기계화(5-F residual) · 5-X 소관 재론(sibling 참조 형식·promotion 순서) · 메모리/외부 workspace 콘텐츠의 배포 tier 흡수 실행(각자의 후속 작업 소관 — 이 item 은 그 진입 기준만 세운다).
+
+### Open risk / direction fork (Plan 이 close)
+- **(5T-R1) 판별축의 durable home 배분** — tier README(입장 기준)와 rule *Candidate lifecycle*(집행 의무) 사이 무엇이 어디에(한 fact 한 집; 다른 쪽은 route). close = Plan.
+- **(5T-R2) 도구명 비규범-예시 허용 여부** — global-file-mutation-boundary 의 "generic example explicitly marked as such" 예외를 rules tier 판별축에도 적용할지, 전부 추상화(generic interface 명명)할지. close = Plan.
+- **(5T-R3) 용어 처분** — 후보-local 용어가 배포 rule 로 갈 때: rule 자기 문장의 self-contained 정의 vs 일반어로 풀기; repo glossary 와의 관계(배포 rule 용어의 repo-측 glossary 등록이 별도로 필요한가). close = Plan.
+- **(5T-R4) 강제 불가 지침의 표현 강도** — hook-금지 환경에서 배포 rule 이 담는 운영 지침의 MUST/nudge 표현 기준(no-background-or-hidden-state 의 기존 문체 선례와 정합). close = Plan.
+- **(5T-R5) adopter override 관계의 일반화 여부** — "project layer may strengthen, not weaken"(global-file-mutation-boundary 선례)을 rules tier 일반 원칙으로 승격할지 — 새 normative 일 수 있어 proportionality 판정 필요(필요 시 대상-외 선언). close = Plan.
+- **(5T-R6) terminal-landing 분기 문장의 rule-텍스트 터치 범위** — *Candidate lifecycle* 의 "a rule candidate writes its terminal rule file via Design → Plan → rule" 서술에 배포-tier 분기(split·residue-처분)를 더할 때, 그것이 기존 서술의 정밀화인지 새 절차 의무(normative)인지의 proportionality 판정과 터치 최소화 경계(E4 문구 자체는 불변 — 5T-c4). close = Plan.
+
+### Plan-readiness (Plan/WP 가 닫을 detail)
+- 판별축 정확 문구·판별표 · tier-README↔rule 분업 경계(5T-R1) · checklist/게이트 항목 초안과 tier 배치(방향 (2)) · terminal-landing 과 promoted-lifecycle closeout 의 관계 명확화(residue home 확보 증거가 planning-doc retire 전에 서도록) · 예시 정책(5T-R2) · 용어 처분 정책(5T-R3) · 표현 강도 기준(5T-R4) · override 관계 판정(5T-R5) · terminal-landing 분기 문장 범위(5T-R6) · 편집 대상 표면 열거 · 5-X 순서 결정과의 정합 확인(subagent-work-orchestration promote 의 "5-T 선행" 전제가 무엇으로 충족되는지 명시).
