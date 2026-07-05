@@ -1260,4 +1260,26 @@ Describe 'docs-working-model-check TERM-RESERVE terminology registration' {
         $result.Output | Should -Match 'TERM-RESERVE FAIL'
         $result.Output | Should -Match 'durable pointer'
     }
+
+    It 'AC-DWM-TR-19: a bound subagent-work-orchestration candidate entry still in pre-model form fails (bound-candidate regression)' {
+        $project = script:New-CaseRoot -CaseName 'tr-swo-premodel'
+        $entry = '- **`foo`** ' + $script:Em + ' the old fuller definition text. owner = the `subagent-work-orchestration` incubation candidate; facet = x; not-this = y; close = on promotion; promotion target = z.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'pre-model label form'
+    }
+
+    It 'AC-DWM-TR-20: a durable pointer inside a bound subagent-work-orchestration entry fails (bound-candidate regression)' {
+        $project = script:New-CaseRoot -CaseName 'tr-swo-pointer'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `subagent-work-orchestration`; facet = x; not-this = y; eventual-owner-surface = log/swo/runs.md.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'durable pointer'
+    }
 }

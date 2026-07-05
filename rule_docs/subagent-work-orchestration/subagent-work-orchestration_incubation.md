@@ -4,18 +4,18 @@
 
 **이 문서는 무엇인가.** `subagent-work-orchestration` **rule candidate** 의 단일·자족 planning home 이다 — docs-working-model 의 *Incubation tier*(pre-promotion candidate stage)에 있는 **rule candidate** 가, branching-agnostic 운영 규율로서 글로벌 배포 rule 로 승격할지 dogfood 로 검증하는 동안 쓰는 유일한 committed-temporary 문서다. **이 문서 하나만 읽고 작업을 시작할 수 있도록 자족적으로 적는다**(별도 seed 문서 불요).
 
-**무엇을 해결하는가(problem).** 도메인/서페이스가 다른 독립 작업을 메인 세션 한 곳에서 직렬 처리하면 (a) 컨텍스트 오염·용량, (b) 작업속도(리뷰가 순수 작업보다 무거움)가 필연적 병목이 된다. 한 선행 실험(서브에이전트 오케스트레이션 측정 기록)이 서브에이전트가 작업+codex 리뷰를 prepare→run→fix→pass 까지 자율 완주하고, perspective별 병렬 리뷰가 간섭·재시도 0, 병렬 단축 37~46%, 컨텍스트 오프로드됨을 실증했다 — 단 **n=1**(단일 세션·머신·reviewer, 통제 벤치마크 아님). 그 실측이 이 candidate 의 motivating evidence 이며, 원 실험 lineage 는 git history / Brief 로 추적한다(committed doc 은 out-of-repo 경로를 durable pointer 로 두지 않는다). 이 candidate 는 그 실험을 **"메인=오케스트레이터/감독, 서브=실행자"** 기본 운영 규율로 정식화할지 검증한다.
+**무엇을 해결하는가(problem).** 도메인/서페이스가 다른 독립 작업을 메인 세션 한 곳에서 직렬 처리하면 (a) 컨텍스트 오염·용량, (b) 작업속도(리뷰가 순수 작업보다 무거움)가 필연적 병목이 된다. 한 선행 실험(서브에이전트 오케스트레이션 파일럿)이 이 오케스트레이션(서브 위임 + perspective별 병렬 codex 리뷰)의 실현가능성·컨텍스트 오프로드·가드 유지를 **n=1**(단일 세션·머신·reviewer, 통제 벤치마크 아님)로 실증했다 — 그 실측이 이 candidate 의 motivating evidence 다. 측정 상세(병렬 단축률·재시도 수 등 수치)는 measurement `log/**` 소관이고, 원 실험 lineage 는 git history / Brief 로 추적한다(committed doc 은 out-of-repo 경로를 durable pointer 로 두지 않는다). 이 candidate 는 그 실험을 **"메인=오케스트레이터/감독, 서브=실행자"** 기본 운영 규율로 정식화할지 검증한다.
 
-**non-authoritative.** canonical authority 없음(form early / authority late). canonical rules/indexes 는 이 문서를 durable reference 하지 않으며(E2), 이 문서를 읽어야만 동작하는 canonical 표면은 없다(E1/E3). 본문 결정은 후보 수준이고 정규 authority 는 promote 시점에야 생긴다.
+**non-authoritative.** canonical authority 없음(form early / authority late). canonical rules/indexes 는 이 문서를 durable reference 하지 않으며(E2), 이 문서를 읽어야만 동작하는 canonical 표면은 없다(E1/E3). 본문 결정은 후보 수준이고, promote 시점엔 `_design` active lifecycle 로 진입하되 정규 authority 는 그 뒤 **terminal rule landing**(`snippets/rules/subagent-work-orchestration.md`)에서 생긴다.
 
 **owner / review-date / discard.**
 - **owner** = 사용자.
 - **review-date** = orchestration pilot **3회** 누적 후 첫 판정(promote / discard / continue; count=트리거지 자동종료 아님; continue 시 **새 review-date 필수**).
 - **discard 기준** = §Measurement 의 실패 기준이 반복 관측될 때(메인이 실제 감독 못 하고 요약만 신뢰 / join 시간이 절감분 잠식 / 단일세션 대비 wall-clock 미감소 / out-of-scope·권한경계 위반 / 작은 작업에도 의례적 overhead).
 
-**promote 시 무엇이 되는가.** promote 되면 이 문서의 current-bearing 내용이 E4 로 흡수되어 **글로벌 배포 rule `snippets/rules/subagent-work-orchestration.md`**(branching-agnostic; Design → Plan → rule, **별도 Spec 없음** — rule 은 자기 자신이 spec-of-record)로 들어간 뒤, 이 `_incubation.md`(및 `rule_docs/subagent-work-orchestration/` 폴더)는 삭제된다. **배포 rule 은 universal core 만** 담는다 — branching / Regime-2 / 재귀는 배포 제외(§Regime 2).
+**promote 시 무엇이 되는가.** promote 되면 이 문서의 current-bearing 내용이 **E4 로 entry 승격 아티팩트(`_design.md`)에 흡수**된다 — promotion transition 은 `_incubation.md` 를 제거하며 `_design.md` 를 쓰는 하나의 atomic swap 이고(그것이 candidate-lifecycle closeout), 이후 **Design → Plan → 글로벌 배포 rule `snippets/rules/subagent-work-orchestration.md`**(branching-agnostic; **별도 Spec 없음** — rule 은 자기 자신이 spec-of-record)로 진행한다. `rule_docs/subagent-work-orchestration/` 폴더는 promote 시 삭제되지 않고 now-existing rule 의 planning home 으로 존속한다(promoted-lifecycle closeout 에서 planning docs 삭제 후 idle `.gitkeep`). **배포 rule 은 universal core 만** 담는다 — branching / Regime-2 / 재귀는 배포 제외(§Regime 2).
 
-**discard 시.** 이 문서가 흡수 없이 삭제되고, 폐기 사유(끝낸 negative evidence)는 discard commit message 에 남겨 git history 가 보존한다.
+**discard 시.** 이 문서와 `rule_docs/subagent-work-orchestration/` 폴더 전체가 흡수 없이 삭제되고(discard 된 candidate 는 rule 이 되지 않으므로 idle 폴더도 남기지 않는다), 폐기 사유(끝낸 negative evidence)는 discard commit message 에 남겨 git history 가 보존한다.
 
 ## 목표 상태 (Regime-1 운영 모델)
 
@@ -65,7 +65,7 @@
 
 ## Vocabulary (domain-local 정의 — 후보)
 
-> 용어의 **full domain-local 정의는 incubation 동안 여기** 있고, 최종 의미의 single home 은 **promote 시** `rules/terminology-glossary.md` 가 된다. anchoring 시점에 meaning-bearing 용어는 glossary 에 **`pending` reservation**(owner / facet / close / not-this / promotion-target)으로 등록한다 — full 정의는 여기, glossary 는 예약(meaning-home 이전 아님). 등록 대상 = `subagent-work-orchestration` / `orchestrator stance` / `executor stance`. `Regime 1/2`·계층·calibrated supervision 등은 **seed-local**(과등록 금지).
+> 용어의 **full domain-local 정의는 incubation 동안 여기** 있다. glossary(`rules/terminology-glossary.md`)는 용어의 **one-line meaning + classification** 의 single home 이고, full semantics 는 finalization-owner — 이 rule candidate 의 경우 promote 후 terminal rule `snippets/rules/subagent-work-orchestration.md` — 가 소유하며, term 의 finalization 은 그 **terminal rule landing changeset** 에서 결정된다(promote 시점 아님). meaning-bearing 용어는 **exposed(후보 자신의 문서 밖 tracked surface 에 노출)이거나 collision-prone 일 때만** glossary 에 thin **`pending` reservation**(candidate / facet / not-this / eventual-owner-surface; collision-prone 이면 collision-note; **define-no-meaning**)으로 등록한다 — full 정의는 여기, glossary 는 name-level 예약(meaning-home 이전 아님). 현재 등록된 용어 = `subagent-work-orchestration` / `orchestrator stance` / `executor stance`(전부 exposed). `Regime 1/2`·계층·calibrated supervision 등 문서-내부 전용 용어는 **미등록**(과등록 금지).
 
 - **subagent-work-orchestration** — 위 §목표 상태 / Operating model 의 운영 규율(메인=오케스트레이터/감독, 서브=실행자; Regime-1, branching-agnostic). `architecture` / `policy` broad bucket 아님.
 - **orchestrator stance** — operator 세션이 분해·의존판정·감독·통합검증·사용자 정렬을 수행하는 stance. top-level role(operator/reviewer/supervisor) 아님.
