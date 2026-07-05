@@ -242,9 +242,10 @@ Describe 'docs-working-model-check advisories' {
         $result.Output | Should -Match 'all \.md under snippets/rules/'
         $result.Output | Should -Match 'snippets/rules/ IS now mechanically scanned for E2'
         $result.Output | Should -Match 'NOT mechanically scanned'
-        $result.Output | Should -Match 'PASS \(no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/file violations in the mechanically-scanned subset\)'
+        $result.Output | Should -Match 'PASS \(no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/candidate-backlog/file violations in the mechanically-scanned subset\)'
         $result.Output | Should -Match 'DOCS-PURITY = every PROMOTED docs domain'
-        $result.Output | Should -Match 'BACKLOG-NEXTID = every domain backlog'
+        $result.Output | Should -Match 'BACKLOG-NEXTID = every backlog'
+        $result.Output | Should -Match 'rule backlog rule_docs/<id>/<id>_backlog.md'
         $result.Output | Should -Match 'TERM-RESERVE = the transition-aware terminology-registration check'
     }
 
@@ -993,6 +994,162 @@ Describe 'docs-working-model-check FN-7 backlog next-ID floor' {
         $result.ExitCode | Should -Be 1 -Because $result.Output
         $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
         $result.Output | Should -Match 'not above the max present'
+    }
+}
+
+Describe 'docs-working-model-check rule backlog (A4 allowed / A19 overlay carve-out / A20 next-ID scan)' {
+    It 'AC-DWM-RULEBL-1: an idle rule folder (.gitkeep + <id>_backlog.md) backed by an existing rule passes (A4 allowed + A19 overlay stays idle)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-idle-ok'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/swo/swo.md') -Content "# swo rule`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/.gitkeep') -Content ''
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_backlog.md') -Content "# swo backlog`n`nnext ID: SWO-B-05`n`n| ID | item | cond |`n|---|---|---|`n| SWO-B-01 | x | y |`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'RULE_DOCS-.*FAIL'
+        $result.Output | Should -Not -Match 'BACKLOG-NEXTID FAIL'
+    }
+
+    It 'AC-DWM-RULEBL-2: a backlog overlay does NOT let an idle folder evade the orphan check (A19: .gitkeep + backlog, no rule output -> ORPHAN)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-orphan'
+        # No rules/swo/swo.md and no snippets/rules/swo.md: the .gitkeep + backlog folder is idle
+        # with no backing rule. Before the carve-out the backlog would misclassify it as active
+        # lifecycle work (the else-branch set $hasLifecycle=$true) and skip the orphan check; the
+        # $hasBacklog carve-out keeps ORPHAN firing.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/.gitkeep') -Content ''
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_backlog.md') -Content "# swo backlog`n`nnext ID: SWO-B-05`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'RULE_DOCS-ORPHAN FAIL'
+        $result.Output | Should -Match 'swo'
+    }
+
+    It 'AC-DWM-RULEBL-3: a backlog overlay on active lifecycle work (_design + backlog) passes for an existing rule (A3 overlay on active state)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-active-overlay'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/swo/swo.md') -Content "# swo rule`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_design.md') -Content "# swo design`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_backlog.md') -Content "# swo backlog`n`nnext ID: SWO-B-05`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'RULE_DOCS-.*FAIL'
+        $result.Output | Should -Not -Match 'E3 FAIL'
+    }
+
+    It 'AC-DWM-RULEBL-4: a rule backlog next-ID floor not above the max present row id fails BACKLOG-NEXTID (A20 rule_docs scan)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-nextid-fail'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/swo/swo.md') -Content "# swo rule`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/.gitkeep') -Content ''
+        # Floor SWO-B-05 is NOT above the present SWO-B-09 row -> a real violation that only fires
+        # if the rule backlog tree is actually scanned (A20 extended the scan to rule_docs/).
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_backlog.md') -Content "# swo backlog`n`nnext ID: SWO-B-05`n`n| ID | item | cond |`n|---|---|---|`n| SWO-B-09 | x | y |`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'not above the max present'
+    }
+
+    It 'AC-DWM-RULEBL-5: a rule backlog with no next-ID header fails BACKLOG-NEXTID (A20 rule_docs scan, malformed)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-noheader'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/swo/swo.md') -Content "# swo rule`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/.gitkeep') -Content ''
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_backlog.md') -Content "# swo backlog`n`n| ID | item | cond |`n|---|---|---|`n| SWO-B-01 | x | y |`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'BACKLOG-NEXTID FAIL'
+        $result.Output | Should -Match 'no "next ID:" header'
+    }
+
+    It 'AC-DWM-RULEBL-6: a candidate-incubation folder carrying a backlog (no rule output) fails RULE_DOCS-CANDIDATE-BACKLOG (A16 mechanical guard)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-candidate-incubation'
+        # A backlog must NOT be created during candidate incubation (no rule exists yet).
+        # The state stays candidate incubation (_incubation.md discriminator), but the
+        # state-independent guard flags the backlog because there is no rule output.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_backlog.md') -Content "# swo backlog`n`nnext ID: SWO-B-01`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'RULE_DOCS-CANDIDATE-BACKLOG FAIL'
+        $result.Output | Should -Match 'no corresponding rule output'
+    }
+
+    It 'AC-DWM-RULEBL-7: a promoted-candidate folder (_design + backlog) with no rule output yet fails RULE_DOCS-CANDIDATE-BACKLOG (A16 mechanical guard, pre-terminal-landing)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-promoted-candidate'
+        # A promoted candidate is in active-lifecycle state (_design present) but its terminal
+        # rule file has NOT landed yet (no rules/swo/swo.md, no snippets/rules/swo.md), so it
+        # is not yet an existing rule and must not carry a backlog. The state (active lifecycle
+        # work) would `continue` without an orphan check, so ONLY the state-independent guard
+        # catches this -- the exact rule-vs-check delta the guard closes.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_design.md') -Content "# swo design`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_backlog.md') -Content "# swo backlog`n`nnext ID: SWO-B-01`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'RULE_DOCS-CANDIDATE-BACKLOG FAIL'
+        $result.Output | Should -Match 'no corresponding rule output'
+    }
+
+    It 'AC-DWM-RULEBL-8: a backlog-only folder (no .gitkeep anchor) is a no-valid-state PURITY FAIL even for an existing rule (coverage-gap regression)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-backlog-only'
+        # An existing rule (so the state-independent backlog guard does NOT fire), but the
+        # folder carries ONLY a backlog with no .gitkeep anchor -> not a recognized idle shape
+        # (idle REQUIRES .gitkeep, the backlog is an overlay) -> no-valid-state PURITY FAIL.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/swo/swo.md') -Content "# swo rule`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_backlog.md') -Content "# swo backlog`n`nnext ID: SWO-B-01`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'RULE_DOCS-PURITY FAIL'
+        $result.Output | Should -Match 'is in no valid state'
+        # The existing rule output means the backlog guard must NOT fire here.
+        $result.Output | Should -Not -Match 'RULE_DOCS-CANDIDATE-BACKLOG FAIL'
+    }
+
+    It 'AC-DWM-RULEBL-9: a FLAT repo-only rule (rules/<id>.md) idle+backlog folder passes (SC blocking: flat rule output is recognized)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-flat-idle'
+        # A flat repo-only rule (rules/<id>.md, no <id>/ package folder) -- the real shape of
+        # rules/powershell-and-file-encoding.md / rules/terminology-glossary.md. Its rule_docs
+        # idle+backlog folder must be recognized (not falsely orphaned / candidate-flagged).
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/pafe.md') -Content "# flat repo-only rule`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/pafe/.gitkeep') -Content ''
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/pafe/pafe_backlog.md') -Content "# pafe backlog`n`nnext ID: PAFE-B-05`n`n| ID | item | cond |`n|---|---|---|`n| PAFE-B-01 | x | y |`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'RULE_DOCS-.*FAIL'
+        $result.Output | Should -Not -Match 'BACKLOG-NEXTID FAIL'
+    }
+
+    It 'AC-DWM-RULEBL-10: a FLAT repo-only rule active-lifecycle folder (_design + backlog) passes (SC blocking: flat rule output is recognized)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-flat-active'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/pafe.md') -Content "# flat repo-only rule`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/pafe/pafe_design.md') -Content "# pafe design`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/pafe/pafe_backlog.md') -Content "# pafe backlog`n`nnext ID: PAFE-B-05`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'RULE_DOCS-.*FAIL'
+    }
+
+    It 'AC-DWM-RULEBL-11: a candidate+backlog with NO rule output in any of the three forms still fails CANDIDATE-BACKLOG (boundary held)' {
+        $project = script:New-CaseRoot -CaseName 'rulebl-flat-boundary'
+        # No rules/pafe/pafe.md (package), no rules/pafe.md (flat), no snippets/rules/pafe.md
+        # (distributed): the flat-form extension must not weaken the guard when NO rule exists.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/pafe/pafe_incubation.md') -Content "# pafe incubation`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/pafe/pafe_backlog.md') -Content "# pafe backlog`n`nnext ID: PAFE-B-01`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'RULE_DOCS-CANDIDATE-BACKLOG FAIL'
+        $result.Output | Should -Match 'no corresponding rule output'
     }
 }
 

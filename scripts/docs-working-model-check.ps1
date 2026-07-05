@@ -149,9 +149,11 @@ foreach ($base in @(
 # per-rule, 1:1 rule-bound planning workspace. Each direct child rule_docs/<id>/
 # is a PERSISTENT per-rule folder snapshot-distinguishable into exactly THREE
 # valid states (docs-working-model rule, Incubation tier > rule_docs purity):
-#   - idle              = files are EXACTLY {.gitkeep}; valid ONLY if a
-#                         corresponding existing rule output file exists
-#                         (rules/<id>/<id>.md OR snippets/rules/<id>.md).
+#   - idle              = .gitkeep present with no lifecycle-work docs (optionally an
+#                         <id>_backlog.md OVERLAY); valid ONLY if a corresponding
+#                         existing rule output file exists (rules/<id>/<id>.md package
+#                         form OR rules/<id>.md flat repo-only form OR
+#                         snippets/rules/<id>.md distributed form).
 #                         No corresponding rule output -> RULE_DOCS-ORPHAN
 #                         (a discarded candidate's / deleted rule's folder left behind).
 #   - candidate incubation = contains <id>_incubation.md (may also carry a round-scoped
@@ -159,8 +161,12 @@ foreach ($base in @(
 #                         siblings); valid, need NOT have a rule output yet.
 #   - active lifecycle work = contains one or more of
 #                         <id>_design.md / <id>_plan.md / <id>_work_packet.md; valid.
+# The <id>_backlog.md is a STATE OVERLAY (a not-yet-started future-work queue), NOT a
+#   work-state file: it is carved out of the state determination so a .gitkeep+backlog
+#   or a backlog-only folder is not misread as active-lifecycle work (which would skip
+#   the orphan check). It may overlay an idle or an active-lifecycle-work folder.
 # Allowed files in a child: ONLY .gitkeep or
-#   <id>_{incubation,design,plan,work_packet}.md (.md only). Anything else
+#   <id>_{incubation,design,plan,work_packet,backlog}.md (.md only). Anything else
 #   (README / archive / consumed / old / misc / mismatched-id / non-.md) is a
 #   RULE_DOCS-FILE violation; a subfolder is a RULE_DOCS-FILE violation. A loose
 #   file DIRECTLY under rule_docs/ (not inside a <id>/ child) is RULE_DOCS-PURITY.
@@ -183,7 +189,8 @@ if (Test-Path -LiteralPath $ruleDocsDir -PathType Container) {
             ($id + '_incubation.md'),
             ($id + '_design.md'),
             ($id + '_plan.md'),
-            ($id + '_work_packet.md'))
+            ($id + '_work_packet.md'),
+            ($id + '_backlog.md'))
         $cmp = [System.StringComparison]::OrdinalIgnoreCase
 
         # Enumerate the folder's direct entries. No subfolders allowed; every file
@@ -192,11 +199,12 @@ if (Test-Path -LiteralPath $ruleDocsDir -PathType Container) {
         $hasIncubation = $false
         $hasLifecycle  = $false
         $hasGitkeep    = $false
+        $hasBacklog    = $false
         $allowedFileCount = 0
         foreach ($entry in $entries) {
             $entryRel = Resolve-ProjectRelativePath -Path $entry.FullName -ProjectRoot $project
             if ($entry.PSIsContainer) {
-                $violations.Add(('RULE_DOCS-FILE FAIL: disallowed subfolder under rule_docs/{0}/: {1} (a per-rule folder holds only .gitkeep or {0}_{{incubation,design,plan,work_packet}}.md; no subfolders)' -f $id, $entryRel)) | Out-Null
+                $violations.Add(('RULE_DOCS-FILE FAIL: disallowed subfolder under rule_docs/{0}/: {1} (a per-rule folder holds only .gitkeep or {0}_{{incubation,design,plan,work_packet,backlog}}.md; no subfolders)' -f $id, $entryRel)) | Out-Null
                 continue
             }
             $isAllowed = $false
@@ -204,41 +212,82 @@ if (Test-Path -LiteralPath $ruleDocsDir -PathType Container) {
                 if ([string]::Equals($entry.Name, $an, $cmp)) { $isAllowed = $true; break }
             }
             if (-not $isAllowed) {
-                $violations.Add(('RULE_DOCS-FILE FAIL: disallowed file under rule_docs/{0}/: {1} (allowed: .gitkeep or {0}_{{incubation,design,plan,work_packet}}.md, .md only; no README/archive/consumed/old/misc or mismatched-id files)' -f $id, $entryRel)) | Out-Null
+                $violations.Add(('RULE_DOCS-FILE FAIL: disallowed file under rule_docs/{0}/: {1} (allowed: .gitkeep or {0}_{{incubation,design,plan,work_packet,backlog}}.md, .md only; no README/archive/consumed/old/misc or mismatched-id files)' -f $id, $entryRel)) | Out-Null
                 continue
             }
             $allowedFileCount++
             if ([string]::Equals($entry.Name, '.gitkeep', $cmp)) { $hasGitkeep = $true }
             elseif ([string]::Equals($entry.Name, ($id + '_incubation.md'), $cmp)) { $hasIncubation = $true }
+            elseif ([string]::Equals($entry.Name, ($id + '_backlog.md'), $cmp)) { $hasBacklog = $true }
             else { $hasLifecycle = $true }  # _design / _plan / _work_packet
         }
 
-        # State determination on the ALLOWED files present.
+        # rule output presence -- THREE forms, because "one file per rule" covers every
+        # rules tier: a repo-only rule in PACKAGE form (rules/<id>/<id>.md, e.g.
+        # rules/docs-working-model/docs-working-model.md) OR in FLAT form (rules/<id>.md,
+        # the flat repo-only rules tier, e.g. rules/powershell-and-file-encoding.md /
+        # rules/terminology-glossary.md), OR a global-distribution rule
+        # (snippets/rules/<id>.md). Computed ONCE here and shared by the state-independent
+        # backlog guard and the idle orphan check below (both invariants are "this folder
+        # must map to an EXISTING rule"); recognizing the flat form keeps a flat rule's
+        # rule_docs/<id>/ idle folder or backlog from being falsely orphaned / flagged.
+        $ruleOutputNested = Join-Path -Path (Join-Path -Path $rulesDir -ChildPath $id) -ChildPath ($id + '.md')
+        $ruleOutputFlat = Join-Path -Path $rulesDir -ChildPath ($id + '.md')
+        $ruleOutputSnippet = Join-Path -Path (Join-Path -Path $ruleDocsDir -ChildPath '..') -ChildPath ('snippets/rules/' + $id + '.md')
+        $ruleOutputSnippet = [System.IO.Path]::GetFullPath($ruleOutputSnippet)
+        $hasRuleOutput = (Test-Path -LiteralPath $ruleOutputNested -PathType Leaf) -or (Test-Path -LiteralPath $ruleOutputFlat -PathType Leaf) -or (Test-Path -LiteralPath $ruleOutputSnippet -PathType Leaf)
+
+        # A16 mechanical enforcement (STATE-INDEPENDENT): an <id>_backlog.md is the
+        # future-work queue of an EXISTING rule ONLY. The rule text forbids creating it
+        # during candidate incubation, and a promoted candidate has no rule until its
+        # terminal rule file lands -- in both cases there is NO rule output, and the
+        # candidate's deferred questions belong in its _design/_plan, not a backlog
+        # (docs-working-model *Incubation tier* / *Future-work queue*). So a backlog
+        # present with no rule output is a violation regardless of the folder's
+        # idle/incubation/active state -- this is the mechanical guard that keeps the
+        # check from being looser than the rule (which otherwise let a
+        # _incubation.md+_backlog.md or a promoted _design.md+_backlog.md pass).
+        if ($hasBacklog -and (-not $hasRuleOutput)) {
+            $violations.Add(('RULE_DOCS-CANDIDATE-BACKLOG FAIL: rule_docs/{0}/ carries an {0}_backlog.md but has no corresponding rule output (expected rules/{0}/{0}.md, rules/{0}.md, or snippets/rules/{0}.md): {1} (a rule backlog is the future-work queue of an EXISTING rule; a candidate in incubation or a promoted candidate before its terminal rule lands must keep deferred questions in its _design/_plan, not a backlog)' -f $id, $rel)) | Out-Null
+        }
+
+        # State determination on the ALLOWED files present. The <id>_backlog.md is a
+        # STATE OVERLAY (docs-working-model *Future-work queue* / the rule_docs
+        # three-state model), NOT a work-state file: it is carved out of $hasLifecycle
+        # so a .gitkeep+backlog or a backlog-only folder is NOT misread as active
+        # lifecycle work (which would wrongly skip the existing-rule orphan / backlog
+        # guard). A backlog may overlay an idle folder (an existing rule's future-work
+        # queue) or an active-lifecycle-work folder (an in-flight revision's queued
+        # items); either way it does not change which of the three states the folder is
+        # in.
         if ($hasIncubation -or $hasLifecycle) {
-            # candidate incubation OR active lifecycle work -> valid; need not have
-            # a rule output yet (incubation) or is a normal existing-rule revision.
+            # candidate incubation OR active lifecycle work (with or without a backlog
+            # overlay) -> valid STATE; need not have a rule output yet (incubation) or is
+            # a normal existing-rule revision. (A backlog with no rule output was already
+            # flagged above by the state-independent guard.)
             continue
         }
 
-        # No incubation and no lifecycle work. The only remaining valid state is
-        # idle = EXACTLY {.gitkeep}. A corresponding existing rule output must back it.
-        $isIdleExact = ($hasGitkeep -and $allowedFileCount -eq 1)
-        if ($isIdleExact) {
-            $ruleOutputNested = Join-Path -Path (Join-Path -Path $rulesDir -ChildPath $id) -ChildPath ($id + '.md')
-            $ruleOutputSnippet = Join-Path -Path (Join-Path -Path $ruleDocsDir -ChildPath '..') -ChildPath ('snippets/rules/' + $id + '.md')
-            $ruleOutputSnippet = [System.IO.Path]::GetFullPath($ruleOutputSnippet)
-            $hasRuleOutput = (Test-Path -LiteralPath $ruleOutputNested -PathType Leaf) -or (Test-Path -LiteralPath $ruleOutputSnippet -PathType Leaf)
+        # No incubation and no lifecycle-work docs. The remaining valid state is idle:
+        # .gitkeep present, optionally with an <id>_backlog.md overlay. An idle folder
+        # (with or without the backlog overlay) is valid ONLY for an EXISTING rule --
+        # the orphan check is preserved through the overlay (the backlog carve-out
+        # above is exactly what keeps a .gitkeep+backlog / backlog-bearing folder from
+        # evading it). A backlog WITHOUT a .gitkeep anchor is not a recognized idle
+        # shape and falls through to the no-valid-state branch below.
+        $isIdle = ($hasGitkeep -and (($allowedFileCount - [int]$hasBacklog) -eq 1))
+        if ($isIdle) {
             if (-not $hasRuleOutput) {
-                $violations.Add(('RULE_DOCS-ORPHAN FAIL: idle rule_docs/{0}/ (.gitkeep-only) has no corresponding rule output (expected rules/{0}/{0}.md or snippets/rules/{0}.md): {1} (an idle folder is valid only for an EXISTING rule; a discarded candidate or deleted rule must remove its folder)' -f $id, $rel)) | Out-Null
+                $violations.Add(('RULE_DOCS-ORPHAN FAIL: idle rule_docs/{0}/ (.gitkeep, optionally + {0}_backlog.md overlay) has no corresponding rule output (expected rules/{0}/{0}.md, rules/{0}.md, or snippets/rules/{0}.md): {1} (an idle folder is valid only for an EXISTING rule; a discarded candidate or deleted rule must remove its folder; a backlog overlay does not exempt it)' -f $id, $rel)) | Out-Null
             }
             continue
         }
 
-        # Neither a recognized work state nor an exact idle .gitkeep folder: an empty
-        # folder, or one carrying only stray/disallowed files (those are already
-        # reported above) with no .gitkeep and no recognized state file. Flag the
-        # folder itself so it is not silently accepted.
-        $violations.Add(('RULE_DOCS-PURITY FAIL: rule_docs/{0}/ is in no valid state: {1} (must be idle [.gitkeep only, with an existing rule output], candidate incubation [{0}_incubation.md], or active lifecycle work [{0}_design.md/_plan.md/_work_packet.md])' -f $id, $rel)) | Out-Null
+        # Neither a recognized work state nor an idle .gitkeep(+backlog) folder: an empty
+        # folder, a backlog-only folder with no .gitkeep anchor, or one carrying only
+        # stray/disallowed files (those are already reported above) with no .gitkeep and
+        # no recognized state file. Flag the folder itself so it is not silently accepted.
+        $violations.Add(('RULE_DOCS-PURITY FAIL: rule_docs/{0}/ is in no valid state: {1} (must be idle [.gitkeep, optionally + {0}_backlog.md overlay, with an existing rule output], candidate incubation [{0}_incubation.md], or active lifecycle work [{0}_design.md/_plan.md/_work_packet.md])' -f $id, $rel)) | Out-Null
     }
 }
 
@@ -589,10 +638,13 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
 }
 
 # ---------------------------------------------------------------------------
-# BACKLOG-NEXTID (mechanical, hard FAIL): a domain future-work queue
-# docs/<domain>/<domain>_backlog.md must carry a "next ID:" header whose per-prefix
+# BACKLOG-NEXTID (mechanical, hard FAIL): every future-work queue -- a per-domain
+# backlog docs/<domain>/<domain>_backlog.md AND a per-rule backlog
+# rule_docs/<id>/<id>_backlog.md -- must carry a "next ID:" header whose per-prefix
 # floor is strictly ABOVE every present row id of that prefix (ID-reuse prevention --
-# docs-working-model *Future-work queue*). The header may list one OR several
+# docs-working-model *Future-work queue*; the rule-level backlog reuses the same
+# one-line + next-ID-floor form, so the SAME validation binds both trees). The header
+# may list one OR several
 # per-prefix floors separated by middots (the real install-update backlog carries
 # two: IU-B / IU-D). The floor and the row scan use the SAME leading-token parser
 # (Get-LeadingIdToken) so they stay symmetric:
@@ -613,11 +665,25 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
 # is NOT detected -- a deliberate NSE limit; this is a floor check, not full
 # monotonicity.)
 # ---------------------------------------------------------------------------
+# Collect every future-work queue file to validate: a per-domain backlog
+# docs/<domain>/<domain>_backlog.md AND a per-rule backlog
+# rule_docs/<id>/<id>_backlog.md (docs-working-model *Future-work queue* -- the
+# rule-level backlog reuses the same one-line + next-ID-floor form, so the SAME
+# BACKLOG-NEXTID validation binds both trees).
+$backlogFiles = New-Object System.Collections.Generic.List[string]
 if (Test-Path -LiteralPath $docsDir -PathType Container) {
     foreach ($domainDir in @(Get-ChildItem -LiteralPath $docsDir -Directory -ErrorAction SilentlyContinue)) {
-        $domain = $domainDir.Name
-        $backlogPath = Join-Path -Path $domainDir.FullName -ChildPath ($domain + '_backlog.md')
-        if (-not (Test-Path -LiteralPath $backlogPath -PathType Leaf)) { continue }
+        $p = Join-Path -Path $domainDir.FullName -ChildPath ($domainDir.Name + '_backlog.md')
+        if (Test-Path -LiteralPath $p -PathType Leaf) { $backlogFiles.Add($p) | Out-Null }
+    }
+}
+if (Test-Path -LiteralPath $ruleDocsDir -PathType Container) {
+    foreach ($ruleDir in @(Get-ChildItem -LiteralPath $ruleDocsDir -Directory -ErrorAction SilentlyContinue)) {
+        $p = Join-Path -Path $ruleDir.FullName -ChildPath ($ruleDir.Name + '_backlog.md')
+        if (Test-Path -LiteralPath $p -PathType Leaf) { $backlogFiles.Add($p) | Out-Null }
+    }
+}
+foreach ($backlogPath in $backlogFiles) {
         $rel = Resolve-ProjectRelativePath -Path $backlogPath -ProjectRoot $project
         $backlogText = Read-Utf8 -Path $backlogPath
         $backlogLines = $backlogText -split "\r?\n"
@@ -628,7 +694,7 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
             if ($line -match '^\s*next ID:') { $nextIdLine = $line; break }
         }
         if ($null -eq $nextIdLine) {
-            $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog has no "next ID:" header line: {0} (a future-work queue must carry one "next ID: <PREFIX>-NN" header line for ID-reuse prevention)' -f $rel)) | Out-Null
+            $violations.Add(('BACKLOG-NEXTID FAIL: backlog has no "next ID:" header line: {0} (a future-work queue must carry one "next ID: <PREFIX>-NN" header line for ID-reuse prevention)' -f $rel)) | Out-Null
             continue
         }
         # The declared floor of each middot-separated segment is its LEADING id token
@@ -640,14 +706,14 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
             $tok = Get-LeadingIdToken -Text $seg
             if ($null -eq $tok) { continue }
             if ($tok.Overflow) {
-                $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog next-ID floor id number is too large to parse: {0} (id "{1}-..." overflows a 64-bit integer; use a sane sequential id)' -f $rel, $tok.Prefix)) | Out-Null
+                $violations.Add(('BACKLOG-NEXTID FAIL: backlog next-ID floor id number is too large to parse: {0} (id "{1}-..." overflows a 64-bit integer; use a sane sequential id)' -f $rel, $tok.Prefix)) | Out-Null
                 $floorMalformed = $true
                 continue
             }
             if ((-not $floors.ContainsKey($tok.Prefix)) -or ($tok.Number -gt $floors[$tok.Prefix])) { $floors[$tok.Prefix] = $tok.Number }
         }
         if (($floors.Count -eq 0) -and (-not $floorMalformed)) {
-            $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog "next ID:" header holds no valid "<PREFIX>-NN" token: {0} (the header is present but malformed; it must declare at least one "next ID: <PREFIX>-NN" floor)' -f $rel)) | Out-Null
+            $violations.Add(('BACKLOG-NEXTID FAIL: backlog "next ID:" header holds no valid "<PREFIX>-NN" token: {0} (the header is present but malformed; it must declare at least one "next ID: <PREFIX>-NN" floor)' -f $rel)) | Out-Null
             continue
         }
 
@@ -661,7 +727,7 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
             $tok = Get-LeadingIdToken -Text $cells[1]
             if ($null -eq $tok) { continue }
             if ($tok.Overflow) {
-                $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog row id number is too large to parse: {0} (id "{1}-..." overflows a 64-bit integer; use a sane sequential id)' -f $rel, $tok.Prefix)) | Out-Null
+                $violations.Add(('BACKLOG-NEXTID FAIL: backlog row id number is too large to parse: {0} (id "{1}-..." overflows a 64-bit integer; use a sane sequential id)' -f $rel, $tok.Prefix)) | Out-Null
                 $rowOverflow = $true
                 continue
             }
@@ -671,14 +737,13 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
 
         foreach ($rp in $rowMax.Keys) {
             if (-not $floors.ContainsKey($rp)) {
-                $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog has rows with prefix {1} but no matching next-ID floor: {0} (each row-id prefix must be tracked by a "next ID: {1}-NN" floor)' -f $rel, $rp)) | Out-Null
+                $violations.Add(('BACKLOG-NEXTID FAIL: backlog has rows with prefix {1} but no matching next-ID floor: {0} (each row-id prefix must be tracked by a "next ID: {1}-NN" floor)' -f $rel, $rp)) | Out-Null
                 continue
             }
             if ($floors[$rp] -le $rowMax[$rp]) {
-                $violations.Add(('BACKLOG-NEXTID FAIL: domain backlog next-ID floor {1}-{2} is not above the max present {1} row id {1}-{3}: {0} (next ID must be strictly greater than every present row id of that prefix; id reuse/regression is forbidden)' -f $rel, $rp, $floors[$rp], $rowMax[$rp])) | Out-Null
+                $violations.Add(('BACKLOG-NEXTID FAIL: backlog next-ID floor {1}-{2} is not above the max present {1} row id {1}-{3}: {0} (next ID must be strictly greater than every present row id of that prefix; id reuse/regression is forbidden)' -f $rel, $rp, $floors[$rp], $rowMax[$rp])) | Out-Null
             }
         }
-    }
 }
 
 # ---------------------------------------------------------------------------
@@ -797,7 +862,7 @@ if (Test-Path -LiteralPath $glossaryPath -PathType Leaf) {
 # Report
 # ---------------------------------------------------------------------------
 Write-Line ('scanned ProjectRoot {0}; found {1} incubation candidate folder(s)' -f $project, $incubationFolders.Count)
-Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every domain backlog docs/<domain>/<domain>_backlog.md carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep only, requires an existing rule output rules/<id>/<id>.md or snippets/rules/<id>.md, else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY); SIBLING-MENTION = an advisory INFO inventory (non-gating -- never a violation, never affects the exit code) listing bare name-identity mentions of each discovered candidate id (standalone-token match) across the SAME canonical-file set as E2 -- a find-step aid for the life-event sweeps and the Promoted-artifact sibling reference review; whether a mention is status-honest / within the carry cap is a semantic judgment NOT mechanically checked, and the inventory is not a discovery index; TERM-RESERVE = the transition-aware terminology-registration check on rules/terminology-glossary.md -- for each BOUND candidate (bound so far: consultation, blind-advisory, subagent-work-orchestration; each candidate is bound by its own realigning changeset per the rule''s transition clause) every candidate-introduced entry under the ''### Pending'' subsection must use ONLY the licensed reservation-field labels (candidate / facet / not-this / eventual-owner-surface, plus collision-note as the last field in its fixed wording) with candidate/facet/not-this present, no pre-model labels (owner= / close= / promotion target=), no unlabeled definition segment (the mechanical approximation of define-no-meaning), and no durable pointer (_incubation.md / log/ / polishing/ / absolute path); an UNBOUND candidate''s entries, non-candidate pending terms, and the Owner-pending subsection are NOT validated by TERM-RESERVE (the registration trigger -- exposure / collision-prone -- and few-word-marker growth stay semantic manual judgments), and a missing glossary file is a TERM-RESERVE no-op. E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
+Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every backlog -- a domain backlog docs/<domain>/<domain>_backlog.md AND a rule backlog rule_docs/<id>/<id>_backlog.md -- carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep, optionally + <id>_backlog.md overlay, requires an existing rule output rules/<id>/<id>.md [package] or rules/<id>.md [flat repo-only] or snippets/rules/<id>.md [distributed], else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- the <id>_backlog.md is a STATE OVERLAY (a not-yet-started future-work queue carved out of the state determination so it cannot misclassify the folder as active-lifecycle and evade the orphan check; may accompany idle or active-lifecycle work) that -- STATE-INDEPENDENTLY -- REQUIRES an existing rule output (rules/<id>/<id>.md [package] or rules/<id>.md [flat repo-only] or snippets/rules/<id>.md [distributed]), else RULE_DOCS-CANDIDATE-BACKLOG (a backlog is an EXISTING rule''s queue; a candidate in incubation or a promoted candidate before its terminal rule lands must not carry one) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet,backlog}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY); SIBLING-MENTION = an advisory INFO inventory (non-gating -- never a violation, never affects the exit code) listing bare name-identity mentions of each discovered candidate id (standalone-token match) across the SAME canonical-file set as E2 -- a find-step aid for the life-event sweeps and the Promoted-artifact sibling reference review; whether a mention is status-honest / within the carry cap is a semantic judgment NOT mechanically checked, and the inventory is not a discovery index; TERM-RESERVE = the transition-aware terminology-registration check on rules/terminology-glossary.md -- for each BOUND candidate (bound so far: consultation, blind-advisory, subagent-work-orchestration; each candidate is bound by its own realigning changeset per the rule''s transition clause) every candidate-introduced entry under the ''### Pending'' subsection must use ONLY the licensed reservation-field labels (candidate / facet / not-this / eventual-owner-surface, plus collision-note as the last field in its fixed wording) with candidate/facet/not-this present, no pre-model labels (owner= / close= / promotion target=), no unlabeled definition segment (the mechanical approximation of define-no-meaning), and no durable pointer (_incubation.md / log/ / polishing/ / absolute path); an UNBOUND candidate''s entries, non-candidate pending terms, and the Owner-pending subsection are NOT validated by TERM-RESERVE (the registration trigger -- exposure / collision-prone -- and few-word-marker growth stay semantic manual judgments), and a missing glossary file is a TERM-RESERVE no-op. E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
 
 if ($violations.Count -gt 0) {
     foreach ($v in $violations) {
@@ -820,9 +885,9 @@ Write-Line 'E4 INFO: absorption-content completeness (adopted conclusion / rejec
 Write-Line 'E5 INFO: this rule''s own incubation-tier addition is a one-time bootstrap (incubation cannot incubate itself), not mechanically checked and not a precedent.'
 
 if ($violations.Count -gt 0) {
-    Write-Line ('FAIL ({0} E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
+    Write-Line ('FAIL ({0} E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/candidate-backlog/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
     exit 1
 }
 
-Write-Line 'PASS (no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/file violations in the mechanically-scanned subset)'
+Write-Line 'PASS (no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/candidate-backlog/file violations in the mechanically-scanned subset)'
 exit 0
