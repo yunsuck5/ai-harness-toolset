@@ -43,7 +43,7 @@ The placement criterion is **how a document is read**, not how many topics it to
 
 Briefly: an always-on-for-every-task rule belongs on an always-on surface outside `docs/`; otherwise a doc goes in the single layer (§5) matching its access pattern, partitioned to avoid pulling unrelated scope and kept consolidated to avoid a dense reference chain.
 
-A **rule** being added or revised does **not** keep its planning under `docs/` — it uses the sibling top-level **`rule_docs/<rule>/`** tree: an in-repo, per-rule planning workspace holding that rule's lifecycle docs (`<rule>_incubation.md` for a new-rule candidate; `_design` / `_plan` / `_work_packet` during the add/revise), persisting as an idle `.gitkeep` anchor between changes (no orientation README of its own). The output stays in `rules/<rule>/<rule>.md` (or `snippets/rules/<rule>.md`) — a rule is its own spec-of-record, so `rule_docs/` holds no spec. Placement, the 3-state purity, and lifecycle are owned by `rules/docs-working-model/docs-working-model.md` (*Incubation tier* — the `rule_docs/` workspace bullet); this note is the orientation pointer only.
+A **rule** being added or revised does **not** keep its planning under `docs/` — it uses the sibling top-level **`rule_docs/<rule>/`** tree: an in-repo, per-rule planning workspace holding that rule's lifecycle docs (`<rule>_incubation.md` for a new-rule candidate; `_design` / `_plan` / `_work_packet` during the add/revise), persisting as an idle `.gitkeep` anchor (optionally carrying an `<rule>_backlog.md` future-work overlay) between changes (no orientation README of its own). The output stays in `rules/<rule>/<rule>.md`, the flat `rules/<rule>.md`, or `snippets/rules/<rule>.md` — a rule is its own spec-of-record, so `rule_docs/` holds no spec. Placement, the 3-state purity, and lifecycle are owned by `rules/docs-working-model/docs-working-model.md` (*Incubation tier* — the `rule_docs/` workspace bullet); this note is the orientation pointer only.
 
 → Operative rule (binding placement + transition): `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*).
 
@@ -58,7 +58,7 @@ This file is the single orientation home: §5 above is the placement map; the ta
 | Brief save / restore | `docs/brief/brief_spec.md` + `snippets/claude-skills/ai-harness-brief/SKILL.md` |
 | current progress / what to do next | on-demand briefing — `rules/docs-working-model/docs-working-model.md` (*On-demand status-briefing model*); no committed project-current mirror |
 | decision records | the relevant owner surface / domain spec (historical decisions in git history) |
-| open backlog / deferred items | the per-domain `<domain>_backlog.md` (review · install-update · brief) |
+| open backlog / deferred items | the per-domain `<domain>_backlog.md` (review · install-update · brief) or a revised rule's `rule_docs/<id>/<id>_backlog.md` |
 | docs change / closeout / placement | `rules/docs-working-model/docs-working-model.md` |
 | instruction-surface / skill architecture | active owners: `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` + `snippets/rules/README.md` + `rules/README.md` (rules tiers) + root `CLAUDE.md` / `AGENTS.md` (repo-local surface); design / migration history in git history |
 
@@ -66,7 +66,7 @@ Removed-legacy "do not use" identifiers and historical bodies are not re-listed 
 
 ## 8. How humans should navigate docs
 
-Start from `README.md` (repo root) for the high-level overview and the day-to-day natural-language UX. For "what is done / what remains / what to do next," ask the agent for an on-demand status briefing (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*) or read the per-domain spec/backlog files (`docs/brief/` · `docs/review/` · `docs/install-update/`) directly; there is no committed project-current summary file.
+Start from `README.md` (repo root) for the high-level overview and the day-to-day natural-language UX. For "what is done / what remains / what to do next," ask the agent for an on-demand status briefing (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*) or read the per-domain spec/backlog files (`docs/brief/` · `docs/review/` · `docs/install-update/`) and any revised rule's `rule_docs/<id>/<id>_backlog.md` directly; there is no committed project-current summary file.
 
 ## 9. What not to do (orientation)
 
