@@ -1183,4 +1183,81 @@ Describe 'docs-working-model-check TERM-RESERVE terminology registration' {
         $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
         $result.Output | Should -Match 'docs-working-model-check: PASS'
     }
+
+    It 'AC-DWM-TR-12: a durable pointer with log/ (forward slash) inside a bound entry fails' {
+        $project = script:New-CaseRoot -CaseName 'tr-pointer-log-fwd'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y; eventual-owner-surface = log/blind/runs.md.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'durable pointer'
+    }
+
+    It 'AC-DWM-TR-13: a durable pointer with log\ (backslash) inside a bound entry fails' {
+        $project = script:New-CaseRoot -CaseName 'tr-pointer-log-back'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y; eventual-owner-surface = log\blind\runs.md.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'durable pointer'
+    }
+
+    It 'AC-DWM-TR-14: a durable pointer with polishing/ (forward slash) inside a bound entry fails' {
+        $project = script:New-CaseRoot -CaseName 'tr-pointer-pol-fwd'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y; eventual-owner-surface = polishing/toolset_direction/x.md.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'durable pointer'
+    }
+
+    It 'AC-DWM-TR-15: a durable pointer with polishing\ (backslash) inside a bound entry fails' {
+        $project = script:New-CaseRoot -CaseName 'tr-pointer-pol-back'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y; eventual-owner-surface = polishing\toolset_direction\x.md.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'durable pointer'
+    }
+
+    It 'AC-DWM-TR-16: a durable pointer with a drive-letter absolute path inside a bound entry fails' {
+        $project = script:New-CaseRoot -CaseName 'tr-pointer-drive'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y; eventual-owner-surface = C:\work\x.md.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'durable pointer'
+    }
+
+    It 'AC-DWM-TR-17: a bound blind-advisory candidate entry still in pre-model form fails (bound-candidate regression)' {
+        $project = script:New-CaseRoot -CaseName 'tr-blind-premodel'
+        $entry = '- **`foo`** ' + $script:Em + ' the old fuller definition text. owner = the `blind-advisory` incubation candidate; facet = x; not-this = y; close = on promotion; promotion target = z.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'pre-model label form'
+    }
+
+    It 'AC-DWM-TR-18: a durable pointer inside a bound blind-advisory entry fails (bound-candidate regression)' {
+        $project = script:New-CaseRoot -CaseName 'tr-blind-pointer'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `blind-advisory`; facet = x; not-this = y; eventual-owner-surface = log/blind/runs.md.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'durable pointer'
+    }
 }
