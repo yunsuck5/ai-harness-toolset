@@ -682,10 +682,122 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
 }
 
 # ---------------------------------------------------------------------------
+# TERM-RESERVE (mechanical, hard FAIL; transition-aware): the terminology-
+# registration check required by the docs-working-model rule's transition
+# clause (Incubation tier -> "Terminology registration is conditional" ->
+# Transition) -- enabled per candidate by that candidate's realigning
+# changeset. It binds ONLY the candidate-introduced PENDING reservations of
+# the candidates listed in $termReserveBoundCandidates; every other
+# candidate's entries keep the rule's per-candidate exemption (pre-model
+# labels) until their own realigning changeset, and are skipped here. For a
+# BOUND candidate's entry line under the glossary's "### Pending" subsection
+# the check verifies the thin reservation FORM only:
+#   - the field list (the text after the first " <em-dash> " separator) holds
+#     ONLY the licensed labels candidate / facet / not-this /
+#     eventual-owner-surface / collision-note ("use only these, no others");
+#     an unlabeled segment is flagged -- which doubles as the mechanical
+#     approximation of "define no meaning" (a positive definition sentence
+#     cannot parse as a licensed field);
+#   - the required labels candidate / facet / not-this are present
+#     (eventual-owner-surface is optional-if-not-yet-known);
+#   - a pre-model-label entry (owner = the `id` ...) is flagged as a whole;
+#     a stray close= / promotion target= inside a new-form entry surfaces via
+#     the unlabeled-segment branch;
+#   - collision-note, when present, must be the LAST field and carry the
+#     rule's fixed wording (the fixed form itself contains semicolons, so the
+#     whole remainder after the label is read as its value);
+#   - the entry carries no durable pointer into the candidate workspace or a
+#     runtime/scratch area (_incubation.md, log/, polishing/, a drive-letter
+#     absolute path).
+# WHAT IT DOES NOT CHECK (semantic -- manual / review-gate judgments): whether
+# an entry's registration TRIGGER (exposure / collision-prone) actually holds,
+# whether facet/not-this stay few-word markers rather than grown definitions,
+# any UNBOUND candidate's entry, any non-candidate pending term (its form is
+# the rule's named open question), and the Owner-pending subsection (a
+# different licensed field set). Text before the first em-dash separator (the
+# term token and any annotation) is not scanned, and the scan is line-based
+# (glossary entries are single lines). A missing glossary file is a no-op
+# (synthetic test trees carry none).
+# ---------------------------------------------------------------------------
+$termReserveBoundCandidates = @('consultation')
+$glossaryPath = Join-Path -Path $rulesDir -ChildPath 'terminology-glossary.md'
+if (Test-Path -LiteralPath $glossaryPath -PathType Leaf) {
+    $glossRel = Resolve-ProjectRelativePath -Path $glossaryPath -ProjectRoot $project
+    $glossLines = (Read-Utf8 -Path $glossaryPath) -split "\r?\n"
+    $emDashSep = ' ' + [string][char]0x2014 + ' '
+    $trAllowedLabelPattern = '^(candidate|facet|not-this|eventual-owner-surface)\s*='
+    $trCollisionFixedPattern = '^Potential collision with .+; defines no semantics; see this reservation''s candidate\.?\s*$'
+    $trDurablePointerPattern = '_incubation\.md|(?<![A-Za-z0-9_-])log[/\\]|(?<![A-Za-z0-9_-])polishing[/\\]|[A-Za-z]:[\\/]'
+    $inPendingSubsection = $false
+    for ($i = 0; $i -lt $glossLines.Count; $i++) {
+        $line = $glossLines[$i]
+        if ($line -match '^###\s+Pending\b') { $inPendingSubsection = $true; continue }
+        if ($line -match '^#{1,6}\s') { $inPendingSubsection = $false; continue }
+        if (-not $inPendingSubsection) { continue }
+        if ($line -notmatch '^\s*-\s+\*\*') { continue }
+        # Identify the owning candidate: reservation-field form "candidate = `id`",
+        # or the pre-model form "owner = the `id` ... candidate".
+        $entryCandidate = $null
+        $entryIsPreModel = $false
+        if ($line -match 'candidate\s*=\s*`?([A-Za-z0-9_-]+)`?') {
+            $entryCandidate = $matches[1]
+        }
+        elseif ($line -match 'owner\s*=\s*the\s+`?([A-Za-z0-9_-]+)`?') {
+            $entryCandidate = $matches[1]
+            $entryIsPreModel = $true
+        }
+        if ($null -eq $entryCandidate) { continue }
+        if ($termReserveBoundCandidates -notcontains $entryCandidate) { continue }
+        $lineNo = $i + 1
+        if ($entryIsPreModel) {
+            $violations.Add(('TERM-RESERVE FAIL: bound candidate "{0}" has a pending entry still in the pre-model label form: {1} line {2} (a realigned candidate''s reservation must use the reservation-field labels candidate / facet / not-this / eventual-owner-surface, plus collision-note only for a collision-prone reservation; owner= / close= / promotion target= are pre-model labels)' -f $entryCandidate, $glossRel, $lineNo)) | Out-Null
+            continue
+        }
+        if ($line -match $trDurablePointerPattern) {
+            $violations.Add(('TERM-RESERVE FAIL: bound candidate "{0}" pending entry carries a durable pointer into a candidate workspace or runtime/scratch area: {1} line {2} (a thin reservation names owner identity only -- never an _incubation.md / log/ / polishing/ / absolute path)' -f $entryCandidate, $glossRel, $lineNo)) | Out-Null
+        }
+        $sepIdx = $line.IndexOf($emDashSep)
+        if ($sepIdx -lt 0) {
+            $violations.Add(('TERM-RESERVE FAIL: bound candidate "{0}" pending entry has no reservation-field list (missing the em-dash separator before the fields): {1} line {2}' -f $entryCandidate, $glossRel, $lineNo)) | Out-Null
+            continue
+        }
+        $fieldText = $line.Substring($sepIdx + $emDashSep.Length)
+        $segments = $fieldText -split ';'
+        $seenLabels = New-Object System.Collections.Generic.List[string]
+        for ($s = 0; $s -lt $segments.Count; $s++) {
+            $seg = $segments[$s].Trim()
+            if ($seg -eq '') { continue }
+            if ($seg -match '^collision-note\s*=\s*(.*)$') {
+                $seenLabels.Add('collision-note') | Out-Null
+                $restParts = New-Object System.Collections.Generic.List[string]
+                $restParts.Add($matches[1]) | Out-Null
+                for ($t = $s + 1; $t -lt $segments.Count; $t++) { $restParts.Add($segments[$t]) | Out-Null }
+                $collisionValue = ($restParts -join ';').Trim()
+                if ($collisionValue -notmatch $trCollisionFixedPattern) {
+                    $violations.Add(('TERM-RESERVE FAIL: bound candidate "{0}" pending entry has a collision-note without the fixed wording: {1} line {2} (required form: "Potential collision with X; defines no semantics; see this reservation''s candidate"; collision-note must be the last field)' -f $entryCandidate, $glossRel, $lineNo)) | Out-Null
+                }
+                break
+            }
+            if ($seg -notmatch $trAllowedLabelPattern) {
+                $segShown = if ($seg.Length -gt 60) { $seg.Substring(0, 60) + '...' } else { $seg }
+                $violations.Add(('TERM-RESERVE FAIL: bound candidate "{0}" pending entry holds a segment that is not a licensed reservation field: {1} line {2} segment "{3}" (licensed labels: candidate / facet / not-this / eventual-owner-surface, plus collision-note as the last field; an unlabeled definition segment is likewise not licensed -- "define no meaning")' -f $entryCandidate, $glossRel, $lineNo, $segShown)) | Out-Null
+                continue
+            }
+            $seenLabels.Add((($seg -split '=')[0]).Trim()) | Out-Null
+        }
+        foreach ($required in @('candidate', 'facet', 'not-this')) {
+            if ($seenLabels -notcontains $required) {
+                $violations.Add(('TERM-RESERVE FAIL: bound candidate "{0}" pending entry is missing the required reservation field "{3}": {1} line {2} (required: candidate / facet / not-this; eventual-owner-surface is optional-if-not-yet-known)' -f $entryCandidate, $glossRel, $lineNo, $required)) | Out-Null
+            }
+        }
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Report
 # ---------------------------------------------------------------------------
 Write-Line ('scanned ProjectRoot {0}; found {1} incubation candidate folder(s)' -f $project, $incubationFolders.Count)
-Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every domain backlog docs/<domain>/<domain>_backlog.md carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep only, requires an existing rule output rules/<id>/<id>.md or snippets/rules/<id>.md, else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY); SIBLING-MENTION = an advisory INFO inventory (non-gating -- never a violation, never affects the exit code) listing bare name-identity mentions of each discovered candidate id (standalone-token match) across the SAME canonical-file set as E2 -- a find-step aid for the life-event sweeps and the Promoted-artifact sibling reference review; whether a mention is status-honest / within the carry cap is a semantic judgment NOT mechanically checked, and the inventory is not a discovery index. E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
+Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every domain backlog docs/<domain>/<domain>_backlog.md carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep only, requires an existing rule output rules/<id>/<id>.md or snippets/rules/<id>.md, else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY); SIBLING-MENTION = an advisory INFO inventory (non-gating -- never a violation, never affects the exit code) listing bare name-identity mentions of each discovered candidate id (standalone-token match) across the SAME canonical-file set as E2 -- a find-step aid for the life-event sweeps and the Promoted-artifact sibling reference review; whether a mention is status-honest / within the carry cap is a semantic judgment NOT mechanically checked, and the inventory is not a discovery index; TERM-RESERVE = the transition-aware terminology-registration check on rules/terminology-glossary.md -- for each BOUND candidate (bound so far: consultation; each candidate is bound by its own realigning changeset per the rule''s transition clause) every candidate-introduced entry under the ''### Pending'' subsection must use ONLY the licensed reservation-field labels (candidate / facet / not-this / eventual-owner-surface, plus collision-note as the last field in its fixed wording) with candidate/facet/not-this present, no pre-model labels (owner= / close= / promotion target=), no unlabeled definition segment (the mechanical approximation of define-no-meaning), and no durable pointer (_incubation.md / log/ / polishing/ / absolute path); an UNBOUND candidate''s entries, non-candidate pending terms, and the Owner-pending subsection are NOT validated by TERM-RESERVE (the registration trigger -- exposure / collision-prone -- and few-word-marker growth stay semantic manual judgments), and a missing glossary file is a TERM-RESERVE no-op. E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
 
 if ($violations.Count -gt 0) {
     foreach ($v in $violations) {
@@ -708,9 +820,9 @@ Write-Line 'E4 INFO: absorption-content completeness (adopted conclusion / rejec
 Write-Line 'E5 INFO: this rule''s own incubation-tier addition is a one-time bootstrap (incubation cannot incubate itself), not mechanically checked and not a precedent.'
 
 if ($violations.Count -gt 0) {
-    Write-Line ('FAIL ({0} E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/rule_docs-purity/orphan/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
+    Write-Line ('FAIL ({0} E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
     exit 1
 }
 
-Write-Line 'PASS (no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/rule_docs-purity/orphan/file violations in the mechanically-scanned subset)'
+Write-Line 'PASS (no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/file violations in the mechanically-scanned subset)'
 exit 0
