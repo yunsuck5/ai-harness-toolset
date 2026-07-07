@@ -1522,4 +1522,45 @@ Describe 'docs-working-model-check SPEC-TEMPLATE-SCHEMA spec-template form' {
         $result.Output | Should -Match 'docs-working-model-check: PASS'
         $result.Output | Should -Not -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
     }
+
+    It 'AC-DWM-STS-6: a spec template with an EXTRA top-level "## " section fails SPEC-TEMPLATE-SCHEMA (exact-schema)' {
+        $project = script:New-CaseRoot -CaseName 'sts-extra-section'
+        # All eight required headings + all three markers are present, but an extra
+        # "## Extra" top-level section is added -- the closed-eight schema is violated.
+        $extraSection = $script:GoodSpecTemplate + "`n## Extra`n`nunexpected section.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project $script:SpecTemplateRel) -Content $extraSection
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
+        $result.Output | Should -Match 'unexpected top-level "## Extra" section'
+        $result.Output | Should -Match 'fixed to exactly the eight Spec-identity sections'
+    }
+
+    It 'AC-DWM-STS-7: a spec template with a DUPLICATED top-level "## " section fails SPEC-TEMPLATE-SCHEMA (exact-schema)' {
+        $project = script:New-CaseRoot -CaseName 'sts-duplicate-section'
+        # All eight required headings + all three markers are present, but "## Header"
+        # appears twice -- each Spec-identity section must appear exactly once.
+        $dupSection = $script:GoodSpecTemplate + "`n## Header`n`nduplicate header section.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project $script:SpecTemplateRel) -Content $dupSection
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
+        $result.Output | Should -Match 'duplicated top-level "## Header" section'
+        $result.Output | Should -Match 'each Spec-identity section appears exactly once'
+    }
+
+    It 'AC-DWM-STS-8: a "### " level-3 subheading does NOT count as a top-level section (no SPEC-TEMPLATE-SCHEMA violation)' {
+        $project = script:New-CaseRoot -CaseName 'sts-level3-subheading'
+        # Exactly the eight "## " sections plus one "### Subheading" (level-3): the
+        # level-2-only collection must skip "### ", so the closed-eight schema holds.
+        $withSubheading = $script:GoodSpecTemplate + "`n### Subheading`n`nlevel-3 detail inside a section.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project $script:SpecTemplateRel) -Content $withSubheading
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
+    }
 }
