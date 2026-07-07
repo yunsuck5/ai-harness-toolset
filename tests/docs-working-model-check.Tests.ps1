@@ -124,7 +124,10 @@ Describe 'docs-working-model-check E2 canonical reference' {
     It 'AC-DWM-E2-2: a bare "_incubation" rule-concept token is NOT a violation' {
         $project = script:New-CaseRoot -CaseName 'e2-bare-token'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
-        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/docs-working-model/docs-working-model.md') -Content "# rule`n`nThe _incubation document is a class-2 lifecycle role.`n"
+        # Carrier file is arbitrary to E2 (E2 scans all .md under rules/); use a neutral
+        # rule name (matching siblings E2-1/3/4) so it does not trip the SPEC-TEMPLATE-SCHEMA
+        # guard, which requires a spec template only when the docs-working-model rule is present.
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/some-rule/some-rule.md') -Content "# rule`n`nThe _incubation document is a class-2 lifecycle role.`n"
 
         $result = script:Invoke-Check -ProjectRoot $project
         $result.ExitCode | Should -Be 0 -Because $result.Output
@@ -242,11 +245,12 @@ Describe 'docs-working-model-check advisories' {
         $result.Output | Should -Match 'all \.md under snippets/rules/'
         $result.Output | Should -Match 'snippets/rules/ IS now mechanically scanned for E2'
         $result.Output | Should -Match 'NOT mechanically scanned'
-        $result.Output | Should -Match 'PASS \(no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/candidate-backlog/file violations in the mechanically-scanned subset\)'
+        $result.Output | Should -Match 'PASS \(no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/SPEC-TEMPLATE-SCHEMA/rule_docs-purity/orphan/candidate-backlog/file violations in the mechanically-scanned subset\)'
         $result.Output | Should -Match 'DOCS-PURITY = every PROMOTED docs domain'
         $result.Output | Should -Match 'BACKLOG-NEXTID = every backlog'
         $result.Output | Should -Match 'rule backlog rule_docs/<id>/<id>_backlog.md'
         $result.Output | Should -Match 'TERM-RESERVE = the transition-aware terminology-registration check'
+        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA = the docs-working-model spec template'
     }
 
     It 'AC-DWM-ADVISORY-2: E4/E5 advisories do not change a failing exit code' {
@@ -1438,5 +1442,84 @@ Describe 'docs-working-model-check TERM-RESERVE terminology registration' {
         $result.ExitCode | Should -Be 1 -Because $result.Output
         $result.Output | Should -Match 'TERM-RESERVE FAIL'
         $result.Output | Should -Match 'durable pointer'
+    }
+}
+
+Describe 'docs-working-model-check SPEC-TEMPLATE-SCHEMA spec-template form' {
+    BeforeAll {
+        # The docs-working-model spec template path, relative to a synthetic ProjectRoot.
+        # This is a rules/<id>/templates/<id>_spec_template.md-shaped path (NOT a produced
+        # docs/<domain>/<domain>_spec.md, which would be EN-2's territory and would give a
+        # false test signal here).
+        $script:SpecTemplateRel = 'rules/docs-working-model/templates/docs-working-model_spec_template.md'
+
+        # A conformant template: all EIGHT "## " Spec-identity section headings and all THREE
+        # bolded lifecycle markers (**prelive** / **sync-required** / **live**).
+        $script:GoodSpecTemplate = "# {{DOMAIN}} Spec`n`n## Header`n`nwhat this is.`n`n## 목표 상태`n`nnormative sentences.`n`n## Owner surface 지도`n`nowner map.`n`n## Durable boundary`n`nboundaries.`n`n## Cross-domain interface`n`ninterfaces only.`n`n## Validation expectation`n`nsuites.`n`n## Review focus`n`nreview points.`n`n## Lifecycle state`n`nmarker: **prelive** | **sync-required** | **live**.`n"
+    }
+
+    It 'AC-DWM-STS-1: a spec template with all eight headings and all three markers has no SPEC-TEMPLATE-SCHEMA violation (PASS)' {
+        $project = script:New-CaseRoot -CaseName 'sts-conform'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project $script:SpecTemplateRel) -Content $script:GoodSpecTemplate
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
+    }
+
+    It 'AC-DWM-STS-2: a spec template missing one required heading (Review focus) fails SPEC-TEMPLATE-SCHEMA' {
+        $project = script:New-CaseRoot -CaseName 'sts-missing-heading'
+        # Drop the "## Review focus" heading; all three markers stay present, so the ONLY
+        # SPEC-TEMPLATE-SCHEMA violation is the missing heading.
+        $missingHeading = "# {{DOMAIN}} Spec`n`n## Header`n`nwhat this is.`n`n## 목표 상태`n`nnormative sentences.`n`n## Owner surface 지도`n`nowner map.`n`n## Durable boundary`n`nboundaries.`n`n## Cross-domain interface`n`ninterfaces only.`n`n## Validation expectation`n`nsuites.`n`n## Lifecycle state`n`nmarker: **prelive** | **sync-required** | **live**.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project $script:SpecTemplateRel) -Content $missingHeading
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
+        $result.Output | Should -Match 'missing the required Spec-identity section heading'
+        $result.Output | Should -Match '## Review focus'
+    }
+
+    It 'AC-DWM-STS-3: a spec template missing one lifecycle marker (**live**) fails SPEC-TEMPLATE-SCHEMA' {
+        $project = script:New-CaseRoot -CaseName 'sts-missing-marker'
+        # All eight headings present; drop the **live** marker, so the ONLY SPEC-TEMPLATE-SCHEMA
+        # violation is the missing bolded lifecycle marker.
+        $missingMarker = "# {{DOMAIN}} Spec`n`n## Header`n`nwhat this is.`n`n## 목표 상태`n`nnormative sentences.`n`n## Owner surface 지도`n`nowner map.`n`n## Durable boundary`n`nboundaries.`n`n## Cross-domain interface`n`ninterfaces only.`n`n## Validation expectation`n`nsuites.`n`n## Review focus`n`nreview points.`n`n## Lifecycle state`n`nmarker: **prelive** | **sync-required** only.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project $script:SpecTemplateRel) -Content $missingMarker
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
+        $result.Output | Should -Match 'missing the required bolded lifecycle marker'
+        # The diagnostic must state presence-anywhere, matching the .Contains enforcement
+        # (no false "in its Lifecycle state section" section-scoping claim).
+        $result.Output | Should -Match 'present anywhere in the template'
+    }
+
+    It 'AC-DWM-STS-4: rule present + required template MISSING fails SPEC-TEMPLATE-SCHEMA' {
+        # The spec template is a REQUIRED package form of the docs-working-model rule.
+        # A ProjectRoot that adopts the rule (carries rules/docs-working-model/docs-working-model.md)
+        # but is missing the template has evaded the package-form machine-check -> FAIL.
+        $project = script:New-CaseRoot -CaseName 'sts-rule-present-template-missing'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/docs-working-model/docs-working-model.md') -Content "# docs-working-model rule`n`nSpec identity fixes the eight sections and three lifecycle markers.`n"
+        # Deliberately NO rules/docs-working-model/templates/docs-working-model_spec_template.md.
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
+        $result.Output | Should -Match 'required spec template is missing while the docs-working-model rule is present'
+    }
+
+    It 'AC-DWM-STS-5: rule ABSENT + template missing stays a SPEC-TEMPLATE-SCHEMA no-op (no violation)' {
+        # A ProjectRoot that does not adopt docs-working-model (no rule file, no template)
+        # has nothing to validate: a missing template is a no-op, not a FAIL.
+        $project = script:New-CaseRoot -CaseName 'sts-rule-absent-template-missing'
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
     }
 }

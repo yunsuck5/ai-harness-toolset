@@ -572,6 +572,79 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
 }
 
 # ---------------------------------------------------------------------------
+# SPEC-TEMPLATE-SCHEMA (mechanical, hard FAIL): the docs-working-model rule's
+# spec TEMPLATE file must embody the Spec-identity FORM the rule fixes -- a
+# "rule requirement now" package-form machine-check (docs-working-model
+# *Spec identity*: the template "fixes these as its eight sections"; and
+# *Closeout -- Package-form sync*, which extends the listed Level-2 surfaces to
+# a rule package's own forms + validation surfaces). The single target is
+# EXACTLY rules/docs-working-model/templates/docs-working-model_spec_template.md;
+# it must carry ALL EIGHT Spec-identity "## " section headings AND ALL THREE
+# bolded lifecycle markers (**prelive** / **sync-required** / **live**). An edit
+# that drops a required heading or a marker from the template is a FAIL.
+#
+# This is TEMPLATE-PATH-ONLY and deliberately does NOT overlap EN-2: EN-2
+# validates a PRODUCED domain Spec docs/<domain>/<domain>_spec.md for EXACTLY
+# ONE lifecycle marker; this check binds only the template file, requires ALL
+# THREE markers (the template offers all three choices), and never scans
+# docs/**. The spec template is a REQUIRED package form of the docs-working-model
+# rule, so a MISSING template is a no-op ONLY when the rule itself is absent (a
+# ProjectRoot that does not adopt docs-working-model has nothing to validate);
+# when the docs-working-model rule file IS present but the required template is
+# missing (deleted/renamed), that evades the package-form machine-check and is a
+# FAIL. The real repo carries both the rule and a conformant template, so this
+# check PASSes on the real tree.
+# ---------------------------------------------------------------------------
+$specTemplatePath = Join-Path -Path $rulesDir -ChildPath 'docs-working-model/templates/docs-working-model_spec_template.md'
+$dwmRulePath = Join-Path -Path $rulesDir -ChildPath 'docs-working-model/docs-working-model.md'
+if (Test-Path -LiteralPath $specTemplatePath -PathType Leaf) {
+    $stRel = Resolve-ProjectRelativePath -Path $specTemplatePath -ProjectRoot $project
+    $stText = Read-Utf8 -Path $specTemplatePath
+    $stLines = $stText -split "\r?\n"
+    # The eight Spec-identity section headings the rule enumerates (single-home:
+    # rules/docs-working-model/docs-working-model.md *Spec identity*), each matched
+    # as a "## <heading>" line (a deeper "### " or a "# " level does not count).
+    $stRequiredHeadings = @(
+        'Header',
+        '목표 상태',
+        'Owner surface 지도',
+        'Durable boundary',
+        'Cross-domain interface',
+        'Validation expectation',
+        'Review focus',
+        'Lifecycle state')
+    $stHeadingList = ($stRequiredHeadings -join ' / ')
+    foreach ($stHeading in $stRequiredHeadings) {
+        $stHeadingPattern = '^##\s+' + [regex]::Escape($stHeading) + '\s*$'
+        $stFound = $false
+        foreach ($stLine in $stLines) {
+            if ($stLine -match $stHeadingPattern) { $stFound = $true; break }
+        }
+        if (-not $stFound) {
+            $violations.Add(('SPEC-TEMPLATE-SCHEMA FAIL: spec template is missing the required Spec-identity section heading "## {1}": {0} (the docs-working-model spec template must carry all eight "## " Spec-identity section headings: {2})' -f $stRel, $stHeading, $stHeadingList)) | Out-Null
+        }
+    }
+    # The three bolded lifecycle markers (single-home: the same *Spec identity*
+    # enumeration + *Live-Spec update*). Presence anywhere in the template is
+    # required (a template offers all three); EN-2's exactly-one rule is for a
+    # produced Spec, not for the template.
+    $stRequiredMarkers = @('**prelive**', '**sync-required**', '**live**')
+    foreach ($stMarker in $stRequiredMarkers) {
+        if (-not $stText.Contains($stMarker)) {
+            $violations.Add(('SPEC-TEMPLATE-SCHEMA FAIL: spec template is missing the required bolded lifecycle marker "{1}" (present anywhere in the template): {0} (the docs-working-model spec template must carry all three bolded lifecycle markers **prelive** / **sync-required** / **live**)' -f $stRel, $stMarker)) | Out-Null
+        }
+    }
+} elseif (Test-Path -LiteralPath $dwmRulePath -PathType Leaf) {
+    # Rule present, required template absent: a REQUIRED package form of the
+    # docs-working-model rule is missing (deleted/renamed), which would silently
+    # evade the schema check above -- FAIL. (When the rule is ABSENT the block
+    # above is skipped and no FAIL is raised: a ProjectRoot that does not adopt
+    # docs-working-model has no template to require.)
+    $stRel = Resolve-ProjectRelativePath -Path $specTemplatePath -ProjectRoot $project
+    $violations.Add(('SPEC-TEMPLATE-SCHEMA FAIL: required spec template is missing while the docs-working-model rule is present: {0}' -f $stRel)) | Out-Null
+}
+
+# ---------------------------------------------------------------------------
 # DOCS-PURITY (mechanical, hard FAIL): structural purity of a PROMOTED docs domain
 # folder -- the docs/ sibling of the rule_docs/ purity check, but TRANSITION-AWARE
 # and looser (docs/ also holds in-flight candidates + legacy residue). It binds a
@@ -862,7 +935,7 @@ if (Test-Path -LiteralPath $glossaryPath -PathType Leaf) {
 # Report
 # ---------------------------------------------------------------------------
 Write-Line ('scanned ProjectRoot {0}; found {1} incubation candidate folder(s)' -f $project, $incubationFolders.Count)
-Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every backlog -- a domain backlog docs/<domain>/<domain>_backlog.md AND a rule backlog rule_docs/<id>/<id>_backlog.md -- carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep, optionally + <id>_backlog.md overlay, requires an existing rule output rules/<id>/<id>.md [package] or rules/<id>.md [flat repo-only] or snippets/rules/<id>.md [distributed], else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- the <id>_backlog.md is a STATE OVERLAY (a not-yet-started future-work queue carved out of the state determination so it cannot misclassify the folder as active-lifecycle and evade the orphan check; may accompany idle or active-lifecycle work) that -- STATE-INDEPENDENTLY -- REQUIRES an existing rule output (rules/<id>/<id>.md [package] or rules/<id>.md [flat repo-only] or snippets/rules/<id>.md [distributed]), else RULE_DOCS-CANDIDATE-BACKLOG (a backlog is an EXISTING rule''s queue; a candidate in incubation or a promoted candidate before its terminal rule lands must not carry one) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet,backlog}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY); SIBLING-MENTION = an advisory INFO inventory (non-gating -- never a violation, never affects the exit code) listing bare name-identity mentions of each discovered candidate id (standalone-token match) across the SAME canonical-file set as E2 -- a find-step aid for the life-event sweeps and the Promoted-artifact sibling reference review; whether a mention is status-honest / within the carry cap is a semantic judgment NOT mechanically checked, and the inventory is not a discovery index; TERM-RESERVE = the transition-aware terminology-registration check on rules/terminology-glossary.md -- for each BOUND candidate (bound so far: consultation, blind-advisory, subagent-work-orchestration; each candidate is bound by its own realigning changeset per the rule''s transition clause) every candidate-introduced entry under the ''### Pending'' subsection must use ONLY the licensed reservation-field labels (candidate / facet / not-this / eventual-owner-surface, plus collision-note as the last field in its fixed wording) with candidate/facet/not-this present, no pre-model labels (owner= / close= / promotion target=), no unlabeled definition segment (the mechanical approximation of define-no-meaning), and no durable pointer (_incubation.md / log/ / polishing/ / absolute path); an UNBOUND candidate''s entries, non-candidate pending terms, and the Owner-pending subsection are NOT validated by TERM-RESERVE (the registration trigger -- exposure / collision-prone -- and few-word-marker growth stay semantic manual judgments), and a missing glossary file is a TERM-RESERVE no-op. E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
+Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every backlog -- a domain backlog docs/<domain>/<domain>_backlog.md AND a rule backlog rule_docs/<id>/<id>_backlog.md -- carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep, optionally + <id>_backlog.md overlay, requires an existing rule output rules/<id>/<id>.md [package] or rules/<id>.md [flat repo-only] or snippets/rules/<id>.md [distributed], else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- the <id>_backlog.md is a STATE OVERLAY (a not-yet-started future-work queue carved out of the state determination so it cannot misclassify the folder as active-lifecycle and evade the orphan check; may accompany idle or active-lifecycle work) that -- STATE-INDEPENDENTLY -- REQUIRES an existing rule output (rules/<id>/<id>.md [package] or rules/<id>.md [flat repo-only] or snippets/rules/<id>.md [distributed]), else RULE_DOCS-CANDIDATE-BACKLOG (a backlog is an EXISTING rule''s queue; a candidate in incubation or a promoted candidate before its terminal rule lands must not carry one) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet,backlog}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY); SIBLING-MENTION = an advisory INFO inventory (non-gating -- never a violation, never affects the exit code) listing bare name-identity mentions of each discovered candidate id (standalone-token match) across the SAME canonical-file set as E2 -- a find-step aid for the life-event sweeps and the Promoted-artifact sibling reference review; whether a mention is status-honest / within the carry cap is a semantic judgment NOT mechanically checked, and the inventory is not a discovery index; TERM-RESERVE = the transition-aware terminology-registration check on rules/terminology-glossary.md -- for each BOUND candidate (bound so far: consultation, blind-advisory, subagent-work-orchestration; each candidate is bound by its own realigning changeset per the rule''s transition clause) every candidate-introduced entry under the ''### Pending'' subsection must use ONLY the licensed reservation-field labels (candidate / facet / not-this / eventual-owner-surface, plus collision-note as the last field in its fixed wording) with candidate/facet/not-this present, no pre-model labels (owner= / close= / promotion target=), no unlabeled definition segment (the mechanical approximation of define-no-meaning), and no durable pointer (_incubation.md / log/ / polishing/ / absolute path); an UNBOUND candidate''s entries, non-candidate pending terms, and the Owner-pending subsection are NOT validated by TERM-RESERVE (the registration trigger -- exposure / collision-prone -- and few-word-marker growth stay semantic manual judgments), and a missing glossary file is a TERM-RESERVE no-op. SPEC-TEMPLATE-SCHEMA = the docs-working-model spec template rules/docs-working-model/templates/docs-working-model_spec_template.md must carry all EIGHT "## " Spec-identity section headings (Header / 목표 상태 / Owner surface 지도 / Durable boundary / Cross-domain interface / Validation expectation / Review focus / Lifecycle state) AND all THREE bolded lifecycle markers (**prelive**/**sync-required**/**live**); this is template-path-only and does NOT overlap EN-2 (which validates a produced docs/<domain>/<domain>_spec.md for exactly one marker); a missing template file is a SPEC-TEMPLATE-SCHEMA no-op ONLY when the docs-working-model rule (rules/docs-working-model/docs-working-model.md) is ABSENT (a ProjectRoot that does not adopt docs-working-model has nothing to validate), but when that rule IS present a missing required template is instead a SPEC-TEMPLATE-SCHEMA violation (reported, not a no-op). E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
 
 if ($violations.Count -gt 0) {
     foreach ($v in $violations) {
@@ -885,9 +958,9 @@ Write-Line 'E4 INFO: absorption-content completeness (adopted conclusion / rejec
 Write-Line 'E5 INFO: this rule''s own incubation-tier addition is a one-time bootstrap (incubation cannot incubate itself), not mechanically checked and not a precedent.'
 
 if ($violations.Count -gt 0) {
-    Write-Line ('FAIL ({0} E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/candidate-backlog/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
+    Write-Line ('FAIL ({0} E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/SPEC-TEMPLATE-SCHEMA/rule_docs-purity/orphan/candidate-backlog/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
     exit 1
 }
 
-Write-Line 'PASS (no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/rule_docs-purity/orphan/candidate-backlog/file violations in the mechanically-scanned subset)'
+Write-Line 'PASS (no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/TERM-RESERVE/SPEC-TEMPLATE-SCHEMA/rule_docs-purity/orphan/candidate-backlog/file violations in the mechanically-scanned subset)'
 exit 0
