@@ -162,7 +162,7 @@ Delivery disciplines that keep the External CLI adapter read-only, byte-safe, an
 
 - **review** — consultation connects only as review's **optional advisory preflight**; review does not own consultation's semantics. The operator hands over neutralized material in the form of review's own preflight-input interface (if that form changes, review's definition governs). Consultation references it and does not restate its internals. Review-skill integration is the last step on the roadmap.
 - **subagent-work-orchestration** (still an incubating rule candidate — its formal owner surface exists only after promotion, and it is not a discovery / authority target today) — its close-the-loop JOIN guarantee is **name-referenced only**; its semantics are not restated here.
-- **blind advisory** (still an incubating domain candidate — not a live layer) — a separate layer. Consultation does **not** take blind output as its input; the two combine only inside the operator synthesis (input-independent). `재조율` provides framing and blind removes framing, so their operating principles are opposite.
+- **blind advisory** — a separate layer. Consultation does **not** take blind output as its input; the two combine only inside the operator synthesis (input-independent). `재조율` provides framing and blind removes framing, so their operating principles are opposite.
 
 ## Boundaries of this skill
 
