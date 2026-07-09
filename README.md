@@ -90,6 +90,7 @@ Claude skill mirror는 다음 위치에 생성됩니다.
 ```text
 %USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md
 %USERPROFILE%\.claude\skills\ai-harness-brief\SKILL.md
+%USERPROFILE%\.claude\skills\ai-harness-consultation\SKILL.md
 ```
 
 Codex의 경우 `%CODEX_HOME%` 또는 `AGENTS.override.md`가 있는 환경에서는 해당 effective destination을 따릅니다. 자세한 install / update / uninstall contract는 `INSTALL.md`가 self-contained operative contract입니다.
