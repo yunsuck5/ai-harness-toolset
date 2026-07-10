@@ -10,7 +10,7 @@ These are **repo-development** instructions for the `ai-harness-toolset` repo it
 
 - **Adopter-universal ai-harness invariants** (managed-block adoption discipline, hard boundaries, verdict vocabulary, ToolRoot/ProjectRoot topology, role/reviewer-mode) are delivered by the **global managed block** an operator adopts into their `%USERPROFILE%\.claude\CLAUDE.md` / Codex user-global `AGENTS.md` (source: `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`). This file does **not** restate them and does **not** embed that block.
 - **Where to read first** for any subsystem — the orientation / routing map — is `docs/**`; this file only says **when to read which doc**, never duplicating doc bodies. These are read-first routing / context pointers, **not** active-behavior authority (per the *Final hard rule*). Start orientation (placement + question routing) at `docs/README.md`.
-- **Skill discovery** (review / Brief / consultation workflows) is owned by each skill's own `description` (`snippets/claude-skills/ai-harness-review`, `snippets/claude-skills/ai-harness-brief`, `snippets/claude-skills/ai-harness-consultation`); this file is **not** a skill index, routing table, or trigger fallback.
+- **Skill discovery** (review / Brief / consultation / blind-advisory workflows) is owned by each skill's own `description` (`snippets/claude-skills/ai-harness-review`, `snippets/claude-skills/ai-harness-brief`, `snippets/claude-skills/ai-harness-consultation`, `snippets/claude-skills/ai-harness-blind-advisory`); this file is **not** a skill index, routing table, or trigger fallback.
 
 ## Docs trigger map
 

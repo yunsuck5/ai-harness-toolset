@@ -132,5 +132,5 @@
 
 - lifecycle 문서: 없음 — batch I closeout 에서 design / plan 은 retire(삭제)되었고 work packet 은 삭제되었다; 기록은 git history 가 보존한다.
 - spec ↔ implementation: **live** — behavior 표면(lifecycle scripts·lib·tests·config·templates·snippets)과 문서 표면(routing·backlog·inbound pointer·배포 표면의 install-update-문서 self-containment)이 이 spec 과 1:1 동기화되어 있다. 이후의 변경은 live-Spec 갱신(sync-required 전이) 규칙을 따른다.
-- 도메인 성숙도: install/update/uninstall/activation lifecycle 구현·실호스트 검증·self-adoption 완료 — **LTS maintenance**(이력·ledger 는 git history). 현재 동봉 source skill 3종(ai-harness-review·ai-harness-brief·ai-harness-consultation — concrete activation surface 5).
+- 도메인 성숙도: install/update/uninstall/activation lifecycle 구현·실호스트 검증·self-adoption 완료 — **LTS maintenance**(이력·ledger 는 git history). 현재 동봉 source skill 4종(ai-harness-review·ai-harness-brief·ai-harness-consultation·ai-harness-blind-advisory — concrete activation surface 6).
 - future work: open·deferred·idea-only 항목과 ID 발번(next ID)의 single home 은 `install-update_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
