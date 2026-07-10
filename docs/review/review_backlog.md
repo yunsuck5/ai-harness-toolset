@@ -1,6 +1,6 @@
 # review Backlog
 
-next ID: RV-B-17
+next ID: RV-B-18
 
 | ID | item | reopen / start condition |
 |---|---|---|
@@ -16,3 +16,4 @@ next ID: RV-B-17
 | RV-B-14 | (deferred 결정) reviewer-execution-boundary / validation-oracle 개선 — reviewer(Codex)가 review 중 `Invoke-Pester` / `verify-ps1.ps1` 를 직접 실행해 validation 을 재현(현행 verdict 는 operator 가 제공한 validation 텍스트에 의존). **reconcile**: 이 row 는 `review_spec.md` Durable boundary 의 "deterministic validation runner 미도입" 경계를 뒤집지 않는다 — 도입 결정이 아니라 open candidate 일 뿐이다 | reviewer-exec 경계 재검토를 정당화하는 구체 증거(operator-validation 의존이 unsound verdict 를 낳은 사례) + 사용자 별도 결정 + 별도 scoped goal |
 | RV-B-15 | (milestone-tracking) adoption smoke test · actual reviewer workflow test · actual development workflow usage test 는 서로 분리된 milestone 이다(한 번에 닫히지 않는 별개 검증 단계) | 해당 milestone 중 하나를 실제 착수할 때 + 별도 scoped goal |
 | RV-B-16 | advisory preflight interface boundary — repo 밖 consultation / blind-advisory pilot 결과를 canonical review input/reporting 경계로 반영할지 판단(consultation/blind 의미·artifact·status 는 review 가 소유하지 않음) | canonical-linked 시너지 실측 + 사용자 결정 + 별도 scoped goal |
+| RV-B-17 | reviewer config 의 categoryPolicy 재검토 — 카테고리 항목 구성과 카테고리별 model·effort 값 조정 논의(현행 = 전 카테고리 동일 model + xhigh safe-floor; 최신모델 일괄 갱신은 2026-07-11 선행 완료) | O(subagent-work-orchestration) promote 완료 후 + 사용자 별도 결정 + 별도 scoped goal |
