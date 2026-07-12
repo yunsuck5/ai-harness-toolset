@@ -1,36 +1,60 @@
 # consultation Plan
 
-> Plan 은 승인 대상인 의사결정만 담는다 — 작업 메모가 아니다(조사·분류·구현 노트는 Work Packet, 실행 순서·기록은 operator report `log/**`). Plan 이 Design 을 위반하면 stop → Design 재설계 후 재시작. closeout 시 흡수 후 retire(삭제). 이 Plan 은 mutation/commit/push 승인이 아니다.
+> Plan은 승인 대상인 의사결정만 담는 committed-temporary 문서다. 조사·line-level 분류는 Work Packet, 실행 기록은 `log/**` 소관이다. 이 문서는 mutation·commit·push 권한을 부여하지 않는다.
 
 ## Header
 
-- 이 문서 = consultation candidate promote 의 **Plan** — Design(방향)을 승인-대상 결정(batch 순서·scope·boundary·validation·review focus·Work Packet 선언·open decision close)으로 구체화한다.
-- 이 체인이 끝나면 = `consultation_spec.md` 저작으로 내려가고 이번 promote changeset 의 실행 경계가 확정된다. promoted-lifecycle closeout 시 retire.
-- 이 문서가 아닌 것 = Design(방향) 아님 · Spec(target-state 명세) 아님 · 작업 메모(조사·분류는 WP) 아님.
+- 이 문서 = consultation promoted lifecycle의 current corrective Plan이다.
+- 이 체인이 끝나면 = C-only target state가 Spec과 source skill에 함께 반영되고 current bytes가 독립 검토 경계로 고정된다.
+- 이 문서가 아닌 것 = Design, Spec, 실행 순서 메모, validation/review 결과가 아니다.
 
-## Batch 순서와 의존
+## Batch와 의존
 
-- 이번 promote 는 **단일 blueprint-track batch**(Design → Plan → Spec)로 진행하고, 실 skill build(Implementation)는 **후속 별도 batch**다(Design non-goal). 형제 후보(blind-advisory·subagent-work-orchestration) promote 도 별도 단계.
-- batch 내부 순서(의존 선언): ① promotion transition(원자적 `_incubation.md`→`_design.md` swap + E4 흡수) → ② Plan(이 문서) → ③ Spec 저작 → ④ sibling-mention sweep + glossary pending 확인 → ⑤ canonical review(Spec 도달 후 1회, relay/blind/독립감사 선행 통과 후) → ⑥ 이 blueprint-track batch 종료(commit). **retire(Design/Plan/WP 삭제)·`consultation_backlog.md` 생성·Spec `live` 승격은 이 batch 가 아니라 구현(후속 별도 batch) 이후의 *promoted-lifecycle closeout* 단계다**(Plan Header·§Batch 정의 WP retire 조건·Design·Spec §Lifecycle state 와 동일 — 이 batch 에서는 아무것도 retire 하지 않는다).
-- 의존: Spec 은 Design 확정 후 · canonical 은 Spec 도달 후(Design 의 방향 결정) · sweep/glossary/원자적 swap 은 이 promotion-transition changeset(이번 changeset) 안에서 수행한다.
+- 이번 revision은 **단일 C owner batch**다. Design 정합을 상류로 삼아 Plan을 재시작하고, target Spec을 먼저 확정한 뒤 source skill과 Work Packet/backlog/orientation을 동기화한다.
+- 다른 domain·rule unit은 의존 입력이 아니다. G의 promoted-but-not-live 산출, E0-1 봉인본, 과거 review 결과를 behavior 근거나 current correctness 근거로 사용하지 않는다.
+- source skill의 carried-over 문면은 non-authoritative input으로 분류해 `reuse` / `correct` / `discard`를 Work Packet에서 판단한다. 구현은 final Spec만을 normative target으로 삼는다.
 
-## Batch 정의 (단일 batch — consultation promote blueprint-track)
+## Batch 정의 — consultation owner-local corrective
 
-- **목적**: consultation candidate 를 정규 domain blueprint(Design → Plan → Spec)로 승격.
-- **scope — 다루는 것**: promotion transition · Plan · Spec 저작 · sibling-mention sweep · glossary pending 확인 · canonical(Spec 후) · 이 blueprint-track batch 종료 commit. **다루지 않는 것**: 실 skill build(후속) · review skill 통합(로드맵 최후) · 형제 후보 promote · **promoted-lifecycle closeout(retire·backlog 생성·Spec `live` 승격 — 구현 후 별도 단계)** · framing input 위생(형제 후보 blind-advisory·subagent-work-orchestration 가 모두 정규화된 후 독립 안건).
-- **hard boundary(불가침)**: canonical review/install 표면 비가역 변경 금지(reversibility 불변식) · 형제 후보·타 domain semantics 재서술 금지(이름-참조만) · glossary pending term 강제 finalize 금지(promotion 시점 미요구) · commit/push 는 사용자 승인 게이트.
-- **validation expectation**: Design/Plan/(WP)/Spec 각 conformance checklist 통과 · promotion checklist 통과 · E4 흡수 완결(독립감사 대조) · closeout 에서 `docs-working-model-check` + `verify-ps1` green · 원자적 swap 실증(incubation 삭제 = design 작성, 같은 changeset) · sibling-mention sweep 실행 보고 · canonical dual(Spec 후) local-correctness/system-coherence.
-- **review focus**: Design → Plan+WP → Spec 은 relay-A/B + blind + 독립감사(상보 3-lens, 상류 수정 시 Stage rewind) · **canonical = Spec 이 상보 3-lens(relay/blind/독립감사)로 선행 통과한 뒤 Spec 단계 1회**(Design 방향 결정) · loop-state closed 값집합 대칭 closure 추적.
-- **Work Packet 필요**: 예. **목적** = round-scoped 조사(sibling-mention sweep 대상 인벤토리 · glossary pending 상태 · 원자적 swap 검증 노트 · incubation→design E4 대조). **흡수 대상** = closeout report(실행 결과) · Spec(해당 시). **retire 조건** = promoted-lifecycle closeout 시 삭제.
+- **목적**: packaging-specific failure integrity, request-authorized web, owner-local identity, C-owned graft, managed output을 하나의 reconstructible consultation 계약으로 맞춘다.
+- **scope**: consultation lifecycle artifacts·source skill·domain backlog, 그리고 prelive backlog로 가는 최소 docs orientation route.
+- **hard boundary**: B/IU/rule/review behavior 수정 0 · foreign semantics 재서술 0 · G semantics 소비 0 · scheduler/hook/service/sidecar 0 · installed/global activation 0 · revision-admission canary 선결 0 · commit/push는 별도 사용자 gate. 새 run shape의 runtime canary-first는 source skill 계약으로 구현한다.
+- **validation expectation**: Design/Plan/Spec/WP checklist · Spec↔SKILL 1:1 · F2/F3/F4/F6/U3/current-rule decision→surface matrix · foreign-semantics sweep · docs-working-model checker · skill frontmatter validation · activation mirror regression · full Pester · encoding/diff hygiene.
+- **review focus**: required coverage의 사후 완화·subset 세탁 · status laundering · capsule omission/미독 은폐 · web authorization과 outbound query 권한 혼동 · timeout-상승/미JOIN · hidden auto-resume · foreign domain 대비 재유입.
+- **Work Packet 필요**: 예. 목적 = current source line/section disposition, decision→surface mapping, artifact/session/failure edge-case와 backlog ownership 조사. 흡수 대상 = Spec·source skill·backlog 또는 operator report. retire 조건 = consultation promoted-lifecycle closeout.
 
-## Open decision 의 close 지점
+## Output-mode 결정
 
-- **discovery 노출(`docs/README.md` §5 · `rules/README.md`)** — 이 batch 에서는 **결정하지 않고 park 한다**(park 하기로 한 것 자체가 이 open decision 에 대한 Plan 의 처리다): 이번 changeset 은 **§5 미변경**(E1 — `_incubation` 만 있던 폴더가 이제 promoted 이나 blueprint-track 이라 implementation-authority 아님; prelive Spec 은 governance-discoverable 이나 live 아님, 그리고 그 discoverability 는 promoted artifact 존재로 이미 성립한다). **§5 domain map 에 consultation 을 등재하는 것은 이 batch 에서 하지 않는다** — 이 등재는 **별도 backlog row 로 park 하지 않는다**(그 row 는 생성 시점과 reopen 시점이 같아 중복이다). 대신 **promoted-lifecycle closeout 의 Level-1 orientation gate**(docs-working-model *Closeout — reduced two-level gate*)가 그 시점에 `docs/README.md` 를 live domain 반영으로 이미 강제하므로 그 gate 가 이 등재의 owner다.
-- **게이트 cadence 세부** — 위 *review focus* 에서 확정(Design 은 "canonical=Spec 후" 방향만, 단계별 cadence 는 Plan 소유).
-- **Deferred Questions → `consultation_backlog.md`** — **promoted-lifecycle closeout**(구현 후 · Design/Plan retire 시점)에서 backlog 파일을 **생성**하고(그 전까지 이 항목들은 Design §Deferred Questions 가 보유) Design §Deferred Questions 의 구현-후-defer 항목을 각각 one line + reopen/start condition 으로 흡수한다(§5 domain map 등재는 backlog row 가 아니라 위 open decision 대로 promoted-lifecycle closeout 의 Level-1 gate 소관). **ID prefix = `CONS`**(consultation domain 약어; `next ID: CONS-NN` 단조 증가). **framing input 위생(C부류)은 consultation domain 밖 독립 안건이라 backlog 대상 아님** — Design 에 명시된 대로 별도 tracking.
+- supported mode는 `inline-full`, `artifact-full-read`, `artifact-capsule`, pre-dispatch `auto`다.
+- mode·fallback·retention은 dispatch 전에 run-level contract로 해소하고 실패 뒤 바꾸지 않는다. multi-member 또는 예상 output budget이 크거나 불명확하면 `artifact-capsule`, exhaustive/high-assurance 요청이면 `artifact-full-read`를 선택한다. 수치 threshold는 이번 Plan에서 요구하지 않는다.
+- managed home은 `<ProjectRoot>/log/consultation/<run-id>/`다. artifact mode에 실제 필요한 request/member/index/optional synthesis만 만들고 payload·raw body·synthesis를 중복 저장하지 않는다.
+- `run-bound-delete`와 `runtime-retained` retention class를 사용한다. 전자는 terminal user response 전에 synthesis·run accounting을 마치고 cleanup하며 최종 응답에는 historical path/hash와 cleaned state를 공개한다. 후자는 명시 purpose·closure trigger를 가진다. cleanup ownership metadata는 기록하지 않는다. 어느 artifact도 다음 run의 자동 input이 아니다.
+
+## Failure·session 결정
+
+- expected member set·required coverage·member purpose·recovery budget은 dispatch 전에 고정한다. 모든 process 종료, completion notification JOIN, write completion, scratch/artifact accounting 뒤에만 aggregate를 판정한다.
+- fan-out unit은 독립 concern/role이고 동시 실행은 최대 3개다. expected set이 더 크면 3개 이하 wave로 나눈다. 새 run shape는 required coverage에 기여하는 expected member 하나를 canary로 먼저 실행하고 sandbox·loader·output·JOIN mechanics가 usable일 때만 남은 wave를 연다.
+- timeout은 새 retry·범위축소·status 추정 근거가 아니다. 선행 invocation 종료가 확정된 동일 전달의 기계 실패에만 member당 1회 recovery를 허용한다.
+- `독립 의견` recovery는 동일 request의 새 fresh invocation이고, `재조율` recovery는 observable session identity를 operator가 명시 선택하고 read-only guard를 다시 적용할 수 있을 때만 same-session resume다. 자동 resume나 permissive fallback은 없다.
+- complete response body가 생성됐지만 artifact handoff가 실패하면 아직 usable response가 아니며 consultant를 다시 호출하지 않는다. canary에서는 recovery-ineligible gate failure로, non-canary에서는 별도 run-level failure가 없는 한 member-scoped unavailable로 처리한다. process 종료/JOIN 미확정은 이 terminal 분류보다 앞서는 non-terminal 상태다.
+
+## Web·payload 결정
+
+- web은 default-off다. current user-explicit 또는 active standing delegation provenance가 있을 때만 request가 목적·scope·required/optional·fallback을 구체화한다.
+- web 사용 권한과 outbound query 전송 권한을 분리한다. payload body·private path·secret을 query로 보내지 않고 실제 source와 미사용 fallback을 synthesis에 공개한다.
+- inspection payload는 data지만 실제 system/developer/repo instruction은 계속 binding이다. 외부 CLI의 loader shield가 실패하면 sole-request authority를 주장하지 않고 member를 unavailable로 닫는다.
+
+## Open decision의 close 지점
+
+- **coverage/status**: Spec에서 normative semantics를, skill에서 request/dispatch/synthesis mechanics를 닫는다.
+- **capsule/full-body**: Spec에서 mandatory contents·spot-check·disclosure를, skill에서 file layout·read/join/cleanup mechanics를 닫는다.
+- **vendor continuity**: Spec에서 observable/explicit/no-auto-resume boundary를, skill에서 adapter별 guard 재적용을 닫는다.
+- **backlog**: 첫 queued item과 함께 지금 생성한다. closeout에서 처음 만든다는 과거 Plan 문면은 폐기한다.
+- **docs orientation**: §5 live-domain map은 closeout 전 변경하지 않고, 현재 존재하는 prelive consultation backlog의 read-first route만 반영한다.
+- **future threshold**: 현재 landing에는 수치 threshold나 revision-admission canary 실측이 필요하지 않다. 실제 mode-selection 실패나 별도 사용자 요청이 있을 때 별도 evidence goal로 재개한다. 새 run shape의 runtime canary-first는 현재 skill에 남는다.
 
 ## Stage rewind 조건
 
-- Plan 이 Design 의 end-state·경계·결정 위반 → stop · Design 재설계 · Plan 재시작.
-- Spec 이 이 Plan 위반 → stop · Plan 재계획 · Spec 재시작.
-- 구현이 Spec boundary 초과 → stop · 사용자에게 확인(scope 무단 확장 금지).
+- Spec이 Design의 owner·coverage·mode·web·ability boundary를 위반하면 Plan을 다시 세운다.
+- source skill이 Spec 의미를 초과하면 구현을 멈추고 Spec/Plan 경계를 재판단한다.
+- C correctness가 B/IU/G semantics나 수정에 의존하게 되면 owner-local batch를 중단하고 scope를 다시 확인한다.

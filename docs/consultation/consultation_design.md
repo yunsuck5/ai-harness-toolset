@@ -1,75 +1,67 @@
 # consultation Design
 
-> Design 은 변경의 방향성 문서다 — 영구 live 아님: closeout 시 current-bearing 내용이 Spec(또는 올바른 owner surface)으로 흡수된 뒤 retire(삭제). 이 Design 은 mutation/commit/push 승인이 아니다.
+> Design은 변경 방향을 소유하는 committed-temporary 문서다. closeout에서 current-bearing 결정을 Spec 또는 올바른 owner surface로 흡수한 뒤 retire한다. 이 문서는 mutation·commit·push 권한을 부여하지 않는다.
 
 ## Header
 
-- 이 문서 = `consultation` candidate 의 **promote Design**(entry promoted artifact) — incubation 에서 정규 domain 으로 승격하는 Design → Plan → Spec lifecycle 의 첫 산출. promotion transition 의 원자적 `_incubation.md` → `_design.md` swap 으로 landing 하고, **promoted-lifecycle closeout 시 retire**.
-- 이 체인이 끝나면 = `docs/consultation/` 가 domain home 으로 성립하고 `consultation_spec.md` 가 target-state blueprint 가 된다. **live domain authority 는 이 promote 가 아니라 implementation closeout 시 성립**(blueprint track 진입 ≠ live authority).
-- 이 문서가 아닌 것 = Spec 아님 · 작동 skill 아님(skill build 은 final Spec 의 Implementation, 후속) · operating model 최종 규범 명세 아님(loop 제어 MUST·필드 정의는 Spec).
+- 이 문서 = 아직 closeout되지 않은 `consultation` promoted lifecycle의 corrective Design이다.
+- 이 체인이 끝나면 = owner-local consultation 계약과 source skill이 같은 target state를 가리키고, domain은 `prelive` 상태에서 후속 운용 검증을 받을 수 있다.
+- 이 문서가 아닌 것 = live Spec, 실행 기록, review 결과, 다른 advisory domain의 의미 정의가 아니다.
 
 ## 왜 바꾸는가 / 무엇을 바꾸는가
 
-- **문제(신규 domain — 기존 live Spec 없음).** consultation 은 임시 실험 도구로 pilot 돼 왔고, incubation Admission 이 명시한 gap — "operator 가 판정·승인·변경 *전에* 복수 AI 의 read-only 관점·반론·조사를 수집하고 이를 비권위 advisory 입력으로 다루는 단일 규칙 home 이 없다" — 은 review(verdict gate)·blind advisory(결함 prefilter)·brief·install-update·docs-working-model 어디에도 흡수되지 않는다. 방치되면 그 활동이 review 로 오인돼 승인 효과를 갖거나 임의 sub-agent 관행으로 흩어져 권한 경계가 불명확해진다.
-- **판단을 바꾼 evidence(유형).** ① canonical gate 가 통과시킨 대상에서 독립 advisory 층이 결함성 지적을 내는 관측(판정 *전* 비권위 계층이 기존 review gate 로 환원되지 않음). ② pre-focus 독립 호출(`독립 의견`)과 stance-공유 반론 호출(`재조율`)이 각각 다른 종류 기여(질문 밖 새 축 발굴 vs 입장의 실질 반박·정밀화)를 내는 반복 관측. (결과 기록은 runtime 소관 — 여기서는 승격을 정당화한 *증거 유형*.)
-- **무엇을(큰 그림).** 이 advisory workflow 거버넌스를 정규 domain 으로 승격한다: read-only 자문 수집 → operator synthesis 종합, verdict 없음, framing 축 2 operation(`독립 의견`/`재조율`)과 packaging 축의 직교 구조. **정밀 boundary·invariant·operating model 최종 명세는 Spec 이 소유.**
-- **단일 닻(scope guard).** "AI 에게 묻는 모든 것"·"모든 sub-agent orchestration"·"general research" 로 확장하지 않고 **판정 없는 read-only 자문 호출의 거버넌스** 하나에만 닻을 박는다(broad-bucket 확장 = discard 기준).
-- **정체성(domain vs rule 재확인).** consultation 은 **domain** 이다(owner surface = skill, home = `docs/consultation/`). 내용 일부가 운영 규율에 가깝다는 관점이 있으나, 자연어 UX·advisory workflow 를 소유하는 skill-first surface 와 domain-local closure 로 domain 선택이 정합적이다(규칙 *End-state placement* 의 domain 계열).
+- **현재 문제.** source skill은 이미 구현되어 있지만 기존 Design/Plan은 skill build 이전 blueprint를 전제로 한다. 현행 구현은 multi-member 일부 실패를 packaging 의미와 무관하게 처리할 여지가 있고, web 권한의 근원·실제 열람 범위·status 발동 조건이 닫혀 있지 않다. 또한 큰 응답을 모두 main context로 재게시하는 경로와 timeout 상승 문면은 현재 운용 요구 및 active execution rule과 맞지 않는다.
+- **domain 독립성 문제.** consultation의 정체성은 자기 operation·request·synthesis 계약으로 닫혀야 한다. 다른 advisory domain의 framing mechanics를 대비 문장으로 재서술하면 그 domain의 변경에 종속되므로, 외부 domain은 bare name과 consultation이 수행하거나 입력으로 소비하지 않는다는 자기 negative boundary로만 남긴다.
+- **semantic target.** consultation은 read-only 의견을 수집해 operator synthesis로 정직하게 종합하는 domain이다. run은 dispatch 전에 목적·expected member set·required coverage·output mode·외부 전송 권한을 고정한다. 모든 member의 종료·JOIN과 member output 검증 뒤 coverage를 판정하고, 성공이면 synthesis와 필요한 run artifact를 완성한 뒤 retention 계약을 이행해야만 terminal aggregate를 보고한다. 성공 응답을 보존하면서도 required coverage 미충족을 정상 status로 세탁하지 않는다.
+- **managed output 방향.** inline을 유일 매체로 강제하지 않는다. `inline-full` / `artifact-full-read` / `artifact-capsule`과 이를 dispatch 전에 해소하는 `auto`를 closed mode set으로 채택한다. artifact mode는 `<ProjectRoot>/log/consultation/<run-id>/`의 purpose-isolated, write-once 산출만 사용하며 source·global·user surface를 건드리지 않는다.
+- **web 방향.** web은 default-off다. 현재 사용자의 명시 요청 또는 active standing delegation만 authorization source가 될 수 있고, operator request는 그 provenance와 목적·범위·required/optional·fallback·별도 outbound query 경계를 구체화한다. consultation external-adapter의 상세 non-web redaction/transmission mechanics는 별도 future work다.
+
+## 승계하는 domain 방향
+
+- consultation은 판정 없는 read-only advisory workflow이며 review verdict나 행동 권한을 발행하지 않는다.
+- framing-axis operation은 `독립 의견`(`independent`)과 `재조율`(`reconcile`) 두 개다. packaging axis는 `single-consultant` / `parallel-consultation` / `role-split-consultation` / `counterpoint` 네 개이며 두 축은 직교한다.
+- `독립 의견`은 fresh one-shot이고 `재조율`은 operator가 circuit-breaker인 multi-round operation이다. session continuity는 operation 목적이지 숨은 sidecar나 자동 resume 허가가 아니다.
+- operator synthesis는 모든 usable response와 한계를 왜곡 없이 표면화한다. consultant는 truth oracle이 아니고, factual claim은 operator가 원문으로 재확인한다.
+- broad AI orchestration, general research, implementation delegation, canonical review, approval gate로 확장하지 않는다.
 
 ## Owner surface model
 
-- **owner surface = skill(정규).** 자연어 UX + read-only advisory workflow 가 핵심이라 script-heavy 로 시작하지 않는다; invocation adapter 안정화 후 script/config 로 낮출 수 있다.
-- **rules 는 behavior 를 흡수하지 않는다** — class/invariant/approval boundary(read-only·advisory·no-verdict·vocab 분리)만 명명하고 실제 동작은 skill surface 가 소유(root *Final hard rule*).
-- **JOIN/책임선(이름-참조만).** review(live domain)의 preflight-input interface 와 subagent-work-orchestration(아직 incubating rule candidate — 정규 owner surface 는 promote 후에야 성립하며 지금은 discovery/authority 대상이 아니다)의 close-the-loop JOIN guarantee 는 각자 owner surface 가 소유하고, consultation 은 이를 status-honest name-identity 로 **이름-참조**만 한다(그 semantics 를 여기서 재서술하지 않는다 — 계약 내용은 각 owner surface 소유; 형제 candidate 참조는 authority/discovery 함의 없음). consultation 은 자기 산출(advisory 의견·operator synthesis)만 소유.
-- **reversibility 불변식.** 첫 build target 은 *삭제가능 skill* 이며 canonical review/install 표면을 비가역 변경하지 않는다(review 통합은 로드맵 최후·실험 namespace 유지).
+- **source skill이 behavior owner다.** request 구성, dispatch, member JOIN, recovery, output-mode 실행, operator synthesis와 user-facing delivery를 소유한다.
+- **Spec은 durable target-state owner다.** coverage/status/web/session/artifact 경계를 명세하고 skill과 의미 수준 1:1을 이룬다. rules나 `docs/**`가 runtime behavior를 대신하지 않는다.
+- **active execution rule은 execution safety interface다.** parallel/background member는 명시 goal 안에서 read-only로 실행되고 각자 isolated output만 쓰며 expected set 전부를 completion notification으로 JOIN한다. timeout은 validity나 범위축소 근거가 아니다.
+- **runtime artifact는 authority가 아니다.** retained artifact도 다음 run의 자동 input·결정 근거·owner state가 되지 않으며, request가 정한 retention purpose·closure trigger만 따른다. cleanup ownership이나 person/operator/machine identity를 artifact metadata로 만들지 않는다.
+- **외부 interface는 이름과 경계만 참조한다.** review handoff 형식은 review owner가 실제로 정의한 경우에만 따르고, 그 전에는 operator의 중립화된 수동 전달만 가능하다. `blind-advisory` workflow는 consultation이 수행하거나 request input으로 소비하지 않는다.
+
+## 결정-grade target
+
+- **required coverage.** dispatch 전에 run-level contract로 고정하고 기본값을 썼으면 `default applied`로 드러낸다. `single-consultant`는 그 member, `parallel-consultation`은 usable member 1개 이상(사전 상향 가능), `role-split-consultation`은 선언된 distinct role 전부, `counterpoint`는 명시 target에 대한 usable counterpoint 1개 이상을 기본으로 한다.
+- **failure integrity.** coverage 미충족은 aggregate status 없이 unavailable이다. coverage가 충족되면 usable response를 모두 종합하고 unavailable member·role·reason과 실제 열람 범위를 공개한다. partial 전용 status는 만들지 않는다.
+- **status identity.** 성공 aggregate는 `synthesized` / `needs-follow-up` / `conflicting-opinions` / `insufficient-context` 중 정확히 하나다. 기계 실패와 coverage 미충족은 이 집합 밖이다.
+- **bounded execution.** fan-out unit은 파일 수가 아니라 독립 concern/role이고 동시 실행 member는 최대 3개다. expected set이 더 크면 3개 이하 wave로 실행한다. adapter·output mode·invocation posture/working root·artifact layout 조합이 새로운 run shape이면 required coverage에 기여하는 첫 expected member를 canary로 먼저 실행해 loader·sandbox·output·JOIN mechanics를 검증한 뒤 남은 wave를 연다.
+- **output basis.** artifact member file은 bounded capsule과 full body를 함께 가진다. `artifact-capsule`에서 main은 모든 capsule을 읽고 decision-changing/rejected/conflicting item과 member당 최소 anchor 하나를 full body로 대조한다. exhaustive assurance는 `artifact-full-read`가 소유한다.
+- **framing ability boundary.** 양방향 질문·fresh run·framing-pressure self-report는 완화 수단이지 질문틀 밖으로 나갈 시점을 보장하지 않는다. consultation은 framing-breaker가 아니다.
+- **counterpoint target.** operator stance뿐 아니라 request가 식별한 제3자 문면·주장·가설도 target이 될 수 있으나 general debate로 확장하지 않는다.
 
 ## 수정 대상
 
-- **생성**: `docs/consultation/` 정규 domain(Design → Plan → Spec lifecycle 진입). 신규 domain 이라 수정할 기존 live Spec 이 없다.
-- **삭제(promotion transition, 같은 changeset)**: `consultation_incubation.md` — E4 흡수(아래)를 전제조건으로 제거. *삭제(파일 전환)* 와 *흡수(내용 이전)* 는 별개 축.
-- **이름-참조(수정 아님)**: subagent-work-orchestration(아직 incubating rule candidate) close-the-loop JOIN guarantee · review(live domain) preflight-input interface(review 표면은 로드맵 최후라 불변경). 형제 candidate 는 status-honest name-identity 참조로만(authority/discovery 함의 없음).
-- **discovery(`docs/README.md` §5·`rules/README.md`)**: blueprint 단계 노출 여부·표기는 **이 batch 에서 결정/등재하지 않는 open decision**(promotion 후 governance-discoverable 이나 implementation-authority 아님 — E1 two-layer; governance-discoverability 는 promoted artifact 존재로 이미 성립하고, §5 map 등재는 promoted-lifecycle closeout 의 Level-1 orientation gate 소관이지 별도 backlog row 가 아니다).
-- **sibling-mention sweep(같은 changeset)**: canonical 표면의 consultation 이름-참조 상태문구 갱신(candidate→promoted 전환) + 형제 후보(blind-advisory·subagent-work-orchestration)의 consultation 이름-참조 전수 확인.
-- **glossary**: consultation 소유 pending term(`consultation`·`operator synthesis`·`consultation status vocabulary`·`독립 의견`·`재조율`)은 domain 의 finalization-owner close(Spec/implementation closeout)에서 finalize; promotion 시점엔 **final terminology 미요구**(pending 유지 정당) — sweep 과 별개의 per-term 결정.
+- 같은 promoted lifecycle의 Design·Plan·Spec·Work Packet을 현재 결정에 맞게 재정렬한다.
+- source consultation skill을 final Spec과 1:1로 동기화한다.
+- 첫 실제 future item을 consultation backlog에 두고, orientation에는 prelive backlog read-first 경로만 더한다.
+- glossary pending term, install/activation surface, 다른 domain 파일은 이 change의 수정 대상이 아니다.
 
-## 하지 않을 것 (non-goals)
+## 하지 않을 것
 
-- canonical review(verdict gate) · blind advisory(framing 제거·별개 레이어) · implementation delegation · 모든 sub-agent orchestration 전반 · 모든 외부 AI 호출 전반 · general research/debate · 모든 operator 의사결정 보조 · evidence/validation/approval 대체 — 전부 아니다.
-- **rejected coinage do-not-revive(E4 ②에서 승계)**: `consultation verdict`·`consultation pass`·`multi-reviewer consensus`·`consensus gate`·`AI review council`·`AI approval`·`soft review`·`review-lite`·`pre-review approval`·`recommendation gate`·`council/panel decision` 류(verdict/approval 함의를 advisory 에 이식). glossary 미등재·domain-local 소유.
-- 이번 promote scope 밖(연기): 실 skill build(Implementation 후속) · review skill 통합(로드맵 최후) · blind-advisory·subagent-work-orchestration promote(별도 단계).
-- broad cleanup · scope creep 금지.
-
-## E4 absorption (promote — "왜 살아남았나" raw-link 없이 재검토 가능)
-
-- **① adopted conclusion**: 위 §왜 바꾸는가·§Owner surface model + operation 2축(framing `독립 의견`/`재조율` · packaging `single-consultant`/`parallel-consultation`/`role-split-consultation`/`counterpoint`) · status vocabulary(`synthesized`/`needs-follow-up`/`conflicting-opinions`/`insufficient-context`) · loop state(`재조율` 소유: `needs_reply`/`converged`/`human_residual`; `독립 의견`=one-shot terminal — closed 값집합·정체성은 Design, 어느 조건→어느 상태 전이 MUST 는 Spec) · no-file 런타임 · 7 정체 불변식(read-only 기본[mutation/승인 필요가 드러나면 그 지점에서 멈추고 operator escalate — read-only 경계의 절차 결정; 구체 escalation 절차는 Spec]·advisory only·operator synthesis 필수·consultant≠truth oracle·secret 경계·vocab 분리·타domain interface만) · **consultation↔blind 입력-독립**(consultation 은 blind 산출을 입력으로 받지 않고 두 레이어는 operator synthesis 에서만 결합) · advisory-항목 shape(confidence+assumption). **최종 규범 명세·필드 정의·loop 제어 MUST 는 Spec 소유**(여기선 존재·구별·closed 값집합 결정까지). 정밀 구분 보존: loop state ≠ status vocabulary(별 필드) · `needs_reply`(loop) ≠ `needs-follow-up`(status) · `counterpoint`(packaging) ≠ review `Counter-argument` 절 · `재조율`(framing 제공) ↔ blind(framing 제거) 정반대 동작원리.
-- **② rejected alternatives**: `not-run` 상태 기각 · per-run runtime 저장 기각 · review-흡수/consultation-흡수 기각 · 위 rejected coinage do-not-revive.
-- **③ 판단을 바꾼 evidence type**: 위 §왜의 유형 ①② + [실측 검증] decision-grade 판단(빠른 무저항 수렴=경계신호 · 사실-frame 제공≠결론 주입 · request 가 inspection scope 소유 · run 지속성 purpose-bound · consultant≠truth oracle · 양방향 질문 구성). raw 결과는 log 소관.
-- **④ scope**: 좁은 single-home(판정 없는 read-only 자문 거버넌스) + broad-bucket 명시 제외.
-- **⑤ failure(discard) criteria**: 독립가치 미입증 · advisory 경계 붕괴 · scope broad 확장 · cross-cutting 흩어짐 · consultation↔blind 구분 불명 · domain-local closure 실패 · read-only 주장뿐.
-- **⑥ negative evidence**: 현재 치명적 negative evidence 없음 — 단 잔여 한계 동반(tooling-only pilot 수준 · 측정이 gitignored runtime 이라 durable 재검토 제한). 임시스킬 운용·프로젝트 메모리 노하우·6경로 회고(non-durable 원천 — 결론만 흡수, raw 는 log/git-history 소관)의 outcome(mode A/B 독립가치·canonical 비용 절감·경계 견고성)이 위 evidence type 을 뒷받침하고, read-only 준수·경계 견고성(위반 시 즉각 교정)은 ⑤ discard criteria 의 반증으로 관측됐다.
+- `blind-advisory`·review·install-update·rule domain의 behavior 또는 schema를 정의하거나 수정하지 않는다.
+- shared helper/registry/umbrella status vocabulary를 만들지 않는다.
+- managed artifact를 canonical evidence, verdict, 자동 다음-run memory, hidden per-user state로 승격하지 않는다.
+- scheduler·hook·service·daemon·sidecar를 추가하지 않는다.
+- exact byte threshold를 Design invariant로 만들거나 source revision의 landing을 사전 canary 실측에 결박하지 않는다. 다만 deployed flow가 새 run shape를 실제로 처음 사용할 때 수행하는 runtime canary-first 계약은 이번 target state에 포함한다.
+- global installed copy, activation, Brief/handoff, promoted-lifecycle closeout를 이 batch에 포함하지 않는다.
 
 ## Plan readiness / open risks
 
-- **Plan 진행 가능**: 방향(read-only advisory 거버넌스를 별도 domain 으로)은 incubation dogfood + promote-readiness 검증(6경로) + operator promote 판정으로 정합. **operator promote 판정 기록**: incubation lifecycle-state 의 `continue`/review-date 2026-08-01 은 이 세션의 operator promote 결정(6경로 evidence 종합 근거)으로 supersede 되며, 이 Design landing 이 그 판정의 실행이다.
-- **Design 확정 / Spec 위임 경계**: operation 2축·loop state·status vocabulary·packaging 의 *존재·구별·closed 값집합* 은 Design 결정(taxonomy 자체가 결정). 그 *운용 MUST·필드 위치/이름·round-by-round loop 제어 명세* 는 Spec 소유.
-- **지금 resolve(Design 확정)**:
-  - domain vs rule 정체성 → domain 확정(위 §왜).
-  - secret/redaction **최소 원칙** → 외부 상용 AI 호출 시 "무엇을 consultant 에 보내면 안 되나(민감정보)·중립화·전송 경계"의 최소 원칙은 전역 security 규율과 interface 하며 consultation 이 넓게 소유하지 않는다; 최소 경계는 Spec 이 명세, 세부 구현은 Deferred.
-  - consultation **종료 조건의 존재(정체성)** → advisory 는 미결 권고로 상주하지 않는다: `재조율` 은 종료 상태(operator=circuit-breaker)를 가지고 `독립 의견` 은 one-shot terminal 이라는 *정체성 결정*까지가 Design 소관이며, 그 loop 제어 MUST(어느 조건에서 어느 상태로 전이하는지)는 Spec 소관.
-- **canonical 당김 금지(방향 결정)**: 이번 promote lifecycle 에서 canonical review 는 Design 단계로 당기지 않고 **Spec 도달 후** 배치한다(이 transition 의 hard boundary). 단계별 검토 cadence·게이트 배치의 실행 세부는 Plan 이 소유한다(validation expectation/review focus). 상류 문서 수정 필요 시 Stage rewind.
-
-## Deferred Questions (backlog 부재 → 여기 fallback; Plan 이 `consultation_backlog.md` 로 흡수)
-
-각 항목 = 열린 질문 + 처리 시점 사유(blocker 아님 = 지금 안 닫아도 live 차단 아님). (판단 근거가 된 조사 결론은 아래 각 항목·§E4 에 자기완결로 흡수됐고, raw 조사자료는 non-durable[대화·gitignored log·git history]이라 durable pointer 를 두지 않는다.)
-
-- **구현(Spec/skill) 후 defer**:
-  - operator synthesis 최소 산출 형태(concern/question/assumption 재분류 수준) — skill surface 구현 시.
-  - approval 오용 방지 표면(상태명/출력 라벨이 approval 냄새 회피) — skill surface 구현 시.
-  - secret/redaction 세부 구현(전송 승인 필요 여부·full paste vs 경로+발췌 기본값) — A 의 최소 원칙 위에 Spec/구현.
-  - 독립 의견 request 의 framing self-report 기본 포함 여부 — request template 설계 시.
-  - close-the-loop/subagent-work-orchestration 계약 경계 안정화 — **O(subagent-work-orchestration) promote 와 맞물림 → O promote 후**.
-  - no-file 런타임의 조직 학습(익명화 실패유형 수집) 여부 — 운영 데이터 축적 후.
-  - 기존 open questions: sub-agent only vs 외부 CLI/API adapter · output vocabulary 세부 naming · review skill 자동 preflight 호출 조건(로드맵 최후).
-  - 미흡수 원료(name-level 8건 — 각각 열린 결정이며 blocker 아님): presentation 형식 · ownership map/seam · 자연어 UX · full preflight pipeline 순서 · advisory preflight chain-owner 문장 · operator synthesis 별칭 · synergy 측정 어휘 · 초기 packaging 지원 범위. **처리 시점** = 각 항목이 걸리는 하류 단계(skill surface 설계 → skill · operating-model 명세 → Spec · 그 외 → `consultation_backlog.md`)에서 착수 시 결정(현 단계 미결정).
-- **완전 독립 안건(consultation 과 형제 후보 blind-advisory·subagent-work-orchestration 가 모두 정규화된 후 — consultation domain 밖)**:
-  - **framing input 위생 문제**: operator framing 이 검토 input 을 오염시켜 relay·blind·**canonical review 모두**가 그 framing 안에서만 검증하는 한계(6경로 조사에서 caller-frame 을 어느 lens 도 단독으로 못 깬 반복 관측). 세 도구 공통 문제라 별도 독립 안건으로 처리 예정 — 이번 promote/구현 대상 아님.
+- **Plan 진행 가능.** operation·packaging·coverage·mode·web authority·owner 경계가 decision grade로 닫혔다. Plan은 C-only corrective batch, validation, review focus, Work Packet과 backlog 처분을 고정할 수 있다.
+- **capsule residual.** capsule이 full body의 의미를 완전 증명하지는 않는다. Spec/skill은 mandatory spot-check와 미완독 disclosure를 닫고, 고보증 요청은 full-read mode로 보낸다.
+- **vendor continuity residual.** observable session identity와 guard 재적용을 제공하지 못하는 adapter는 `재조율` continuity를 제공할 수 없다. Spec에서 fail-closed 계약을, skill에서 concrete adapter 조건을 닫는다.
+- **threshold residual.** qualitative mode selection으로 시작한다. 실제 threshold가 필요하다는 관측이 생길 때만 별도 측정으로 재개하며 현재 source landing을 막지 않는다. runtime new-shape canary는 threshold 측정이 아니라 실행 안전 gate다.
+- **future work.** consultation external-adapter의 non-web redaction/transmission, `roundtable`, `council` naming만 domain backlog에 둔다. review integration·cross-domain 관계 home·general rule revision은 각 외부 owner의 single home을 따른다.
