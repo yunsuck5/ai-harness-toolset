@@ -1244,8 +1244,8 @@ Describe 'docs-working-model-check TERM-RESERVE terminology registration' {
         $result.Output | Should -Match 'docs-working-model-check: PASS'
     }
 
-    It 'AC-DWM-TR-3: an unbound candidate entry keeps its pre-model form (transition exemption)' {
-        $project = script:New-CaseRoot -CaseName 'tr-exempt'
+    It 'AC-DWM-TR-3: an unbound candidate entry keeps its pre-model form until its own realigning changeset' {
+        $project = script:New-CaseRoot -CaseName 'tr-unbound'
         $entry = '- **`bar`** ' + $script:Em + ' the old fuller definition text. owner = the `scopeguard` incubation candidate; facet = x; not-this = y; close = on promotion; promotion target = z.'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
 
@@ -1266,9 +1266,9 @@ Describe 'docs-working-model-check TERM-RESERVE terminology registration' {
         $result.Output | Should -Match 'not a licensed reservation field'
     }
 
-    It 'AC-DWM-TR-5: a positive definition segment before the fields fails (define no meaning)' {
+    It 'AC-DWM-TR-5: an unlabeled positive definition after explicit candidate provenance fails (define no meaning)' {
         $project = script:New-CaseRoot -CaseName 'tr-definition'
-        $entry = '- **`foo`** ' + $script:Em + ' the read-only advisory workflow that does things. candidate = `consultation`; facet = x; not-this = y.'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; the read-only advisory workflow that does things; facet = x; not-this = y.'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
 
         $result = script:Invoke-Check -ProjectRoot $project
@@ -1333,7 +1333,7 @@ Describe 'docs-working-model-check TERM-RESERVE terminology registration' {
         $result.Output | Should -Match 'docs-working-model-check: PASS'
     }
 
-    It 'AC-DWM-TR-11: bound conformant and unbound pre-model entries coexist as a PASS (the real transition shape)' {
+    It 'AC-DWM-TR-11: a bound conformant and unbound pre-model entry coexist until the latter realigns' {
         $project = script:New-CaseRoot -CaseName 'tr-mixed'
         $bound = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = a sample facet; not-this = **not** something else; eventual-owner-surface = the promoted `consultation` domain.'
         $exempt = '- **`bar`** ' + $script:Em + ' the old fuller definition text. owner = the `scopeguard` incubation candidate; facet = x; not-this = y; close = on promotion; promotion target = z.'
@@ -1442,6 +1442,442 @@ Describe 'docs-working-model-check TERM-RESERVE terminology registration' {
         $result.ExitCode | Should -Be 1 -Because $result.Output
         $result.Output | Should -Match 'TERM-RESERVE FAIL'
         $result.Output | Should -Match 'durable pointer'
+    }
+
+    It 'AC-DWM-TR-21: a post-model rule-conflict candidate entry in pre-model form fails under default-strict scope' {
+        $project = script:New-CaseRoot -CaseName 'tr-g-premodel'
+        $entry = '- **`foo`** ' + $script:Em + ' the old fuller definition text. owner = the `rule-conflict-and-revision-routing` incubation candidate; facet = x; not-this = y; close = on promotion; promotion target = z.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'pre-model label form'
+    }
+
+    It 'AC-DWM-TR-22: a post-model rule-conflict candidate entry in thin reservation form passes' {
+        $project = script:New-CaseRoot -CaseName 'tr-g-conform'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `rule-conflict-and-revision-routing`; facet = x; not-this = y; eventual-owner-surface = the promoted rule.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-23: non-candidate Pending owner and candidate prose is not treated as candidate provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-noncandidate-provenance'
+        $entry = '- **`future owner note`** ' + $script:Em + ' a one-line meaning whose owner = the `future-rule` surface and whose prose later says candidate = future-rule; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-24: known-candidate text after a positive definition is not inferred as provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-known-prose'
+        $entry = '- **`foo`** ' + $script:Em + ' a positive definition. candidate = `consultation`; facet = x.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-25: lifecycle knowledge does not turn a promoted-candidate mention inside prose into provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-domain-promoted'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_design.md') -Content "# scopeguard Design`n"
+        $entry = '- **`foo`** ' + $script:Em + ' a positive definition. candidate = `scopeguard`; facet = x.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-26: an unknown candidate label cannot short-circuit exact legacy candidate provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-legacy-after-unknown'
+        $entry = '- **`foo`** ' + $script:Em + ' a note. candidate = `bogus`; owner = the `consultation` incubation candidate; facet = x; not-this = y; close = on promotion; promotion target = z.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'pre-model label form'
+    }
+
+    It 'AC-DWM-TR-27: a non-candidate label containing the candidate substring is not provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-not-candidate-token'
+        $entry = '- **`future owner note`** ' + $script:Em + ' a one-line meaning whose not-candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-28: an unknown candidate-shaped token inside prose is not inferred as provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-unknown-prose'
+        $entry = '- **`future owner note`** ' + $script:Em + ' a one-line meaning. candidate = `future-rule`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-29: explicit candidate fields without the em-dash separator fail' {
+        $project = script:New-CaseRoot -CaseName 'tr-missing-separator'
+        $entry = '- **`foo`** candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'missing or malformed em-dash separator'
+    }
+
+    It 'AC-DWM-TR-30: an empty leading segment before the candidate field fails' {
+        $project = script:New-CaseRoot -CaseName 'tr-leading-empty'
+        $entry = '- **`foo`** ' + $script:Em + ' ; candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'empty reservation segment'
+    }
+
+    It 'AC-DWM-TR-31: candidate provenance may follow another licensed field in a pure field-list' {
+        $project = script:New-CaseRoot -CaseName 'tr-field-reorder'
+        $entry = '- **`foo`** ' + $script:Em + ' facet = x; candidate = `consultation`; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-32: collision-note cannot swallow an unlicensed semicolon-delimited field' {
+        $project = script:New-CaseRoot -CaseName 'tr-collision-injection'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y; collision-note = Potential collision with bar; owner = hidden; defines no semantics; see this reservation''s candidate.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'collision-note without the fixed wording'
+    }
+
+    It 'AC-DWM-TR-33: an empty unattributable candidate value stays outside the bound hard gate' {
+        $project = script:New-CaseRoot -CaseName 'tr-empty-candidate'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = ; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-34: duplicate reservation labels fail' {
+        $project = script:New-CaseRoot -CaseName 'tr-duplicate-label'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; candidate = `blind-advisory`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'duplicates the reservation field "candidate"'
+    }
+
+    It 'AC-DWM-TR-35: present-but-empty required marker fields fail' {
+        $project = script:New-CaseRoot -CaseName 'tr-empty-marker'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = ; not-this ='
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'empty reservation field "facet"'
+    }
+
+    It 'AC-DWM-TR-36: reservation field labels are case-sensitive' {
+        $project = script:New-CaseRoot -CaseName 'tr-label-case'
+        $entry = '- **`foo`** ' + $script:Em + ' Candidate = `consultation`; FACET = x; NOT-THIS = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'not a licensed reservation field'
+    }
+
+    It 'AC-DWM-TR-37: collision-note fixed wording is case-sensitive' {
+        $project = script:New-CaseRoot -CaseName 'tr-collision-case'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y; collision-note = potential collision with bar; defines no semantics; see this reservation''s candidate.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'collision-note without the fixed wording'
+    }
+
+    It 'AC-DWM-TR-38: a POSIX-rooted token remains outside the narrow pointer subset' {
+        $project = script:New-CaseRoot -CaseName 'tr-pointer-posix'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y; eventual-owner-surface = /work/private/x.md.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-39: a UNC token remains outside the narrow pointer subset' {
+        $project = script:New-CaseRoot -CaseName 'tr-pointer-unc'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y; eventual-owner-surface = \\server\share\x.md.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-40: a slash-command term token is not scanned as field-text pointer provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-slash-term'
+        $entry = '- **`/review`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-41: a slash-command exclusion marker is not a common durable pointer' {
+        $project = script:New-CaseRoot -CaseName 'tr-slash-marker'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = **not** /review.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-42: a field-list with no candidate provenance stays a manual semantic check' {
+        $project = script:New-CaseRoot -CaseName 'tr-no-candidate-provenance'
+        $entry = '- **`future owner note`** ' + $script:Em + ' facet = x; not-this = y; eventual-owner-surface = a future surface.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-43: an opening-only candidate backtick fails' {
+        $project = script:New-CaseRoot -CaseName 'tr-candidate-open-backtick'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'one-sided-backtick candidate field value'
+    }
+
+    It 'AC-DWM-TR-44: a closing-only candidate backtick fails' {
+        $project = script:New-CaseRoot -CaseName 'tr-candidate-close-backtick'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'one-sided-backtick candidate field value'
+    }
+
+    It 'AC-DWM-TR-45: an underscore label before candidate remains field-list provenance and fails as unlicensed' {
+        $project = script:New-CaseRoot -CaseName 'tr-underscore-label'
+        $entry = '- **`foo`** ' + $script:Em + ' owner_name = x; candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'not a licensed reservation field'
+    }
+
+    It 'AC-DWM-TR-46: an em dash inside the bold term does not steal the real separator' {
+        $project = script:New-CaseRoot -CaseName 'tr-term-dash'
+        $entry = '- **`foo — marker`** ' + $script:Em + ' candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-47: a no-space em-dash separator is parsed but rejected as malformed' {
+        $project = script:New-CaseRoot -CaseName 'tr-tight-dash'
+        $entry = '- **`foo`** —candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'missing or malformed em-dash separator'
+    }
+
+    It 'AC-DWM-TR-48: a hyphen separator is parsed but rejected as malformed' {
+        $project = script:New-CaseRoot -CaseName 'tr-hyphen-separator'
+        $entry = '- **`foo`** - candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'missing or malformed em-dash separator'
+    }
+
+    It 'AC-DWM-TR-49: an unbound one-sided-backtick candidate stays outside the bound hard gate' {
+        $project = script:New-CaseRoot -CaseName 'tr-unbound-candidate-open-backtick'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `future-rule; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-50: an unbound candidate before a bound candidate cannot mask duplicate provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-unbound-before-bound-candidate'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `future-rule`; candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'duplicates the reservation field "candidate"'
+    }
+
+    It 'AC-DWM-TR-51: an unbound candidate token cannot mask a later bound complete-legacy entry' {
+        $project = script:New-CaseRoot -CaseName 'tr-unbound-before-bound-legacy'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `future-rule`; owner = the `consultation` incubation candidate; facet = x; not-this = y; close = on promotion; promotion target = z.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'pre-model label form'
+    }
+
+    It 'AC-DWM-TR-52: an em dash inside a field value cannot substitute for the entry separator' {
+        $project = script:New-CaseRoot -CaseName 'tr-value-dash-is-not-separator'
+        $entry = '- **`foo`** candidate = `consultation`; facet = a — b; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'missing or malformed em-dash separator'
+    }
+
+    It 'AC-DWM-TR-53: an underscore-leading unlicensed label cannot mask later bound provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-underscore-leading-label'
+        $entry = '- **`foo`** ' + $script:Em + ' _owner = x; candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'not a licensed reservation field'
+    }
+
+    It 'AC-DWM-TR-54: an empty segment after bound provenance cannot evade structural validation' {
+        $project = script:New-CaseRoot -CaseName 'tr-empty-after-candidate'
+        $entry = '- **`foo`** ' + $script:Em + ' candidate = `consultation`;; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'empty reservation segment'
+    }
+
+    It 'AC-DWM-TR-55: collision-note before a bound candidate cannot mask its last-field violation' {
+        $project = script:New-CaseRoot -CaseName 'tr-collision-before-candidate'
+        $entry = '- **`foo`** ' + $script:Em + ' collision-note = Potential collision with x; defines no semantics; see this reservation''s candidate; candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'collision-note without the fixed wording'
+    }
+
+    It 'AC-DWM-TR-56: a not-owner label is not complete-legacy owner provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-not-owner-legacy-token'
+        $entry = '- **`future owner note`** ' + $script:Em + ' not-owner = the `consultation` incubation candidate; facet = x; not-this = y; close = on promotion; promotion target = z.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-57: positive prose between fields keeps a later candidate token outside explicit provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-positive-prose-breaks-prefix'
+        $entry = '- **`future owner note`** ' + $script:Em + ' facet = x; a positive definition; candidate = `consultation`; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Not -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+    }
+
+    It 'AC-DWM-TR-58: an unbound complete legacy entry cannot mask a later bound complete legacy entry' {
+        $project = script:New-CaseRoot -CaseName 'tr-unbound-before-bound-complete-legacy'
+        $entry = '- **`foo`** ' + $script:Em + ' owner = the `future-rule` incubation candidate; facet = x; not-this = y; close = c; promotion target = z; owner = the `consultation` incubation candidate; facet = x; not-this = y; close = c; promotion target = z.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'pre-model label form'
+    }
+
+    It 'AC-DWM-TR-59: a malformed collision-note cannot swallow a following bound candidate field' {
+        $project = script:New-CaseRoot -CaseName 'tr-malformed-collision-before-candidate'
+        $entry = '- **`foo`** ' + $script:Em + ' collision-note = bogus; candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'collision-note without the fixed wording'
+    }
+
+    It 'AC-DWM-TR-60: a case-variant malformed collision-note cannot mask bound provenance' {
+        $project = script:New-CaseRoot -CaseName 'tr-case-collision-before-candidate'
+        $entry = '- **`foo`** ' + $script:Em + ' Collision-Note = bogus; candidate = `consultation`; facet = x; not-this = y.'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/terminology-glossary.md') -Content (script:New-GlossaryContent -PendingEntries @($entry))
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 1 -Because $result.Output
+        $result.Output | Should -Match 'TERM-RESERVE FAIL'
+        $result.Output | Should -Match 'not a licensed reservation field'
     }
 }
 
