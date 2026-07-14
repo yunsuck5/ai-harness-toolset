@@ -235,13 +235,43 @@ Describe 'verify-ps1 Step F tests/** raw native stderr-capture lint' {
         $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-pragma'
         $body = @(
             '# pragma-exempted capture site',
-            '$combined = & powershell.exe @procArgs 2>&1   # verify-ps1-allow: documented-known-site'
+            '$combined = & powershell.exe @procArgs 2>&1   # verify-ps1-allow: documented-known-site' # verify-ps1-allow: lint-self-test-fixture (the actual source-line comment exempts this positive fixture; the fake repo receives the reason-bearing pragma inside the string)
         ) -join "`n"
         script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/pragma-allowed.Tests.ps1' -Body $body
 
         $r = script:Invoke-VerifyPs1Copy -Repo $repo
         $r.ExitCode | Should -Be 0 -Because $r.Output
         $r.Output | Should -Not -Match 'FAIL Step F'
+    }
+
+    It 'AC-VPS1-F-PRAGMA-REASON-FAIL: bare or whitespace-only pragma does not exempt a capture' {
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-pragma-reason-required'
+        $body = @(
+            '# missing-reason pragma capture sites',
+            '$bare = & powershell.exe @procArgs 2>&1   # verify-ps1-allow:'  # verify-ps1-allow: lint-self-test-fixture (bare pragma written into the fake repo to prove that a reason is required)
+            '$spaces = & powershell.exe @procArgs 2>&1   # verify-ps1-allow:    '  # verify-ps1-allow: lint-self-test-fixture (whitespace-only pragma written into the fake repo to prove that a reason is required)
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/pragma-missing-reason.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL Step F'
+        $r.Output | Should -Match 'tests[\\/]pragma-missing-reason\.Tests\.ps1:2:'
+        $r.Output | Should -Match 'tests[\\/]pragma-missing-reason\.Tests\.ps1:3:'
+    }
+
+    It 'AC-VPS1-F-PRAGMA-STRING-LITERAL-FAIL: marker text inside command data does not exempt a capture' {
+        $repo = script:Initialize-FakeSourceRepoForVerify -CaseName 'f-pragma-string-literal'
+        $body = @(
+            '# marker text inside a command argument is not a pragma',
+            '$combined = & powershell.exe -Command ''Write-Output "# verify-ps1-allow: fake-reason"'' 2>&1' # verify-ps1-allow: lint-self-test-fixture (the actual source-line comment exempts this fixture authoring line; the fake repo receives only the string-internal marker)
+        ) -join "`n"
+        script:Add-TestsFixtureFile -Repo $repo -RelativePath 'tests/pragma-string-literal.Tests.ps1' -Body $body
+
+        $r = script:Invoke-VerifyPs1Copy -Repo $repo
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'FAIL Step F'
+        $r.Output | Should -Match 'tests[\\/]pragma-string-literal\.Tests\.ps1:2:'
     }
 
     It 'AC-VPS1-F-INLINE-CAPTURE-FAIL: ((& <exe> 2>&1) -join ...) inline capture is a violation' {

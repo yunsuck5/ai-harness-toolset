@@ -108,7 +108,16 @@ if (Test-IsSourceRepoRoot -Path $repoRoot) {
             for ($i = 0; $i -lt $tfLines.Count; $i++) {
                 $tfLine = $tfLines[$i]
                 if ($tfLine -notmatch '2>&1') { continue }
-                if ($tfLine -match '#\s*verify-ps1-allow\s*:\s*\S') { continue }   # pragma must carry a non-empty reason after the colon to remain accountable
+                $parseErrors = $null
+                $lineTokens = @([System.Management.Automation.PSParser]::Tokenize($tfLine, [ref] $parseErrors))
+                $hasReasonedPragma = $false
+                foreach ($token in $lineTokens) {
+                    if ($token.Type -eq 'Comment' -and $token.Content -match '^#\s*verify-ps1-allow\s*:\s*\S') {
+                        $hasReasonedPragma = $true
+                        break
+                    }
+                }
+                if ($hasReasonedPragma) { continue }   # actual same-line comment pragma; marker text inside command data is not an exemption
                 if ($tfLine -match '^\s*#') { continue }
                 if ($tfLine -notmatch '&\s+[A-Za-z][\w.-]*') { continue }
                 if ($tfLine -match '\$null\s*=\s*&\s+[A-Za-z][\w.-]*.*2>&1') { continue }
