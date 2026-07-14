@@ -1,6 +1,6 @@
 # review Backlog
 
-next ID: RV-B-18
+next ID: RV-B-19
 
 | ID | item | reopen / start condition |
 |---|---|---|
@@ -17,3 +17,4 @@ next ID: RV-B-18
 | RV-B-15 | (milestone-tracking) adoption smoke test · actual reviewer workflow test · actual development workflow usage test 는 서로 분리된 milestone 이다(한 번에 닫히지 않는 별개 검증 단계) | 해당 milestone 중 하나를 실제 착수할 때 + 별도 scoped goal |
 | RV-B-16 | advisory preflight interface boundary — repo 밖 consultation / blind-advisory pilot 결과를 canonical review input/reporting 경계로 반영할지 판단(consultation/blind 의미·artifact·status 는 review 가 소유하지 않음) | canonical-linked 시너지 실측 + 사용자 결정 + 별도 scoped goal |
 | RV-B-17 | reviewer config 의 categoryPolicy 재검토 — 카테고리 항목 구성과 카테고리별 model·effort 값 조정 논의(현행 = 전 카테고리 동일 model + xhigh safe-floor; 최신모델 일괄 갱신은 2026-07-11 선행 완료) | O(subagent-work-orchestration) promote 완료 후 + 사용자 별도 결정 + 별도 scoped goal |
+| RV-B-18 | canonical review input UTF-8 stdin fidelity — Windows PowerShell 5.1에서 `review-run.ps1`의 non-ASCII `input.md` payload를 reviewer에게 byte-faithful하게 전달하도록 교정 | current native-process byte-stdin unit closeout + actual runner-path raw-byte reproduction(non-ASCII corruption / ASCII control) + 사용자 별도 결정 + 별도 scoped goal |
