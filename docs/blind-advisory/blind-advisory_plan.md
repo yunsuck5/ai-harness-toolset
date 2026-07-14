@@ -1,41 +1,92 @@
 # blind-advisory Plan
 
-> Plan 은 승인 대상인 의사결정만 담는다 — 작업 메모가 아니다(조사·분류·구현 노트는 Work Packet, 실행 순서·기록은 operator report `log/**`). Plan 이 Design 을 위반하면 stop → Design 재설계 후 재시작. closeout 시 흡수 후 retire(삭제). 이 Plan 은 mutation/commit/push 승인이 아니다.
+> Plan은 승인 대상 결정만 담는다. 조사·대조는 Work Packet, 실행 결과는 `log/**`의 operator report가 소유한다. 이 Plan은 mutation/commit/push 승인이 아니다.
 
 ## Header
 
-- 이 문서 = `blind-advisory` candidate promote 의 **Plan** — Design(방향)을 승인-대상 결정(batch 순서·scope·boundary·validation·review focus·Work Packet 선언·open decision close)으로 구체화한다.
-- 이 체인이 끝나면 = `blind-advisory_spec.md` 저작으로 내려가고 이번 promote changeset 의 실행 경계가 확정된다. promoted-lifecycle closeout 시 retire.
-- 이 문서가 아닌 것 = Design(방향) 아님 · Spec(target-state 명세) 아님 · 작업 메모(조사·분류는 WP) 아님.
+- 이 문서는 아직 closeout되지 않은 `blind-advisory` promoted lifecycle의 corrective Plan이다.
+- Design이 정한 제한된 blindness, B-owned delivery fallback, failure closure를 Spec과 skill에 1:1로 반영한다.
+- 기존 promotion 단계의 실행 순서나 과거 완료 주장을 승계하지 않는다.
 
-## Batch 순서와 의존
+## Batch order and dependency
 
-- 이번 promote 는 **단일 blueprint-track batch**(Design → Plan → Spec)로 진행하고, 실 skill build(Implementation)와 배포 배선은 **후속 별도 batch** 다(Design non-goal). 형제 후보 `subagent-work-orchestration` 의 promote 도 별도 단계.
-- batch 내부 순서(의존 선언): ① promotion transition(원자적 `_incubation.md`→`_design.md` swap + E4 흡수) → ② Plan(이 문서) → ③ Spec 저작 → ④ candidate-status 문구 갱신 + glossary pending 확인 → ⑤ canonical review(Spec 도달 후 1회, 상보 lens 선행 통과 후) → ⑥ 이 blueprint-track batch 종료(commit).
-- **retire 의 두 층을 구분한다.** **promoted-lifecycle artifact 의 retire**(Design/Plan/WP 삭제)·`blind-advisory_backlog.md` 생성·Spec `live` 승격은 이 batch 가 아니라 구현(후속 별도 batch) 이후의 *promoted-lifecycle closeout* 단계다. 반면 candidate 의 `_incubation.md` 삭제는 **이 changeset 안의 candidate-lifecycle closeout**(promotion)이며 E4 흡수를 전제조건으로 수행된다. 즉 이 batch 는 promoted-lifecycle artifact 를 하나도 retire 하지 않되, candidate 문서는 dispose 한다.
-- 의존: Spec 은 Design 확정 후 · canonical 은 Spec 도달 후(Design 의 방향 결정) · sweep/glossary/원자적 swap 은 이 promotion-transition changeset(이번 changeset) 안에서 수행한다.
+이번 corrective는 한 owner-local batch이며 별도 batch 사이의 선후 의존은 없다. 제한된 blindness, 입력 fidelity, result transport와 failure closure가 하나의 Spec↔skill 계약이므로 분리하면 중간 상태가 서로 다른 의미를 갖게 되어 단일 batch로 묶는다.
 
-## Batch 정의 (단일 batch — blind-advisory promote blueprint-track)
+상류 의미가 바뀌면 하류 문서와 skill의 선행 판단은 stale이다. Design 변경은 Plan부터, Plan 변경은 Spec부터, Spec 변경은 skill부터 다시 대조한다.
 
-- **목적**: blind-advisory candidate 를 정규 domain blueprint(Design → Plan → Spec)로 승격.
-- **scope — 다루는 것**: promotion transition · Plan · Spec 저작 · sibling-mention sweep(실행) · glossary pending 확인 · canonical(Spec 후) · 이 blueprint-track batch 종료 commit. **다루지 않는 것**: 실 skill build 와 activation 배선(후속) · review skill 통합(로드맵 최후) · 형제 후보 promote · **promoted-lifecycle closeout(retire·backlog 생성·Spec `live` 승격 — 구현 후 별도 단계)** · blind-at-close scope 확장(Design §Deferred Questions) · framing input 위생(형제 후보가 모두 정규화된 후 독립 안건).
-- **hard boundary(불가침)**: canonical review/install 표면 비가역 변경 금지(reversibility 불변식) · 형제 후보·타 domain semantics 재서술 금지(이름-참조만) · glossary pending term 강제 finalize 금지(promotion 시점 미요구) · **건드리는 표면은 blind-advisory 의 candidate-status 진술에 한정**하며 타 domain 의 normative 내용·lifecycle-state·owner surface 정의를 바꾸지 않는다 · **배포된 skill 의 문구 수정은 sibling-mention sweep 의무가 아니라 active surface 의 stale status 정정으로 수행**하며 그 domain 의 behavior 를 바꾸지 않는다(의미 보존) · commit/push 는 사용자 승인 게이트 · **배포된 skill 파일의 수정이 이 changeset 에 포함되더라도 설치본 재배포(activation apply)는 이 batch 밖의 별도 사용자 승인**이다.
-- **validation expectation**: Design/Plan/(WP)/Spec 각 conformance checklist 통과 · promotion checklist 통과 · E4 흡수 완결(독립 lens 대조) · closeout 에서 `docs-working-model-check` + `verify-ps1` green · full Pester green · 원자적 swap 실증(incubation 삭제 = design 작성, 같은 changeset) · **sibling-mention sweep 의 실행 보고**(각 대상마다 `updated` 또는 `checked — no change required`, 조용한 생략 0) · 갱신된 표면이 status-honest 인지 재확인 · canonical dual(Spec 후) local-correctness/system-coherence.
-- **review focus**: Design → Plan+WP → Spec 은 재조율 + blind + 독립감사(상보 3-lens, 상류 수정 시 Stage rewind) · **canonical = Spec 이 상보 3-lens 로 선행 통과한 뒤 Spec 단계 1회** · canonical 과 **독립 blind 리뷰어를 상호 blind 로 병렬** 배치(오탐 격리·외부감사) · status/severity closed 값집합의 대칭 closure 추적 · sweep 대상의 batch-시점 서술 vs 현재-상태 주장 판별.
-- **Work Packet 필요**: 예. **목적** = round-scoped 조사(sibling-mention sweep 대상 인벤토리와 그 판별축 · glossary pending 상태 · 원자적 swap 검증 노트 · incubation→design E4 대조 대상 · Implementation batch 가 소비할 배선 표면 인벤토리). **흡수 대상** = closeout report(실행 결과) · Spec(해당 시) · Implementation batch(배선 인벤토리). **retire 조건** = promoted-lifecycle closeout 시 삭제.
+## Batch definition
 
-## Open decision 의 close 지점
+- **목적**: B를 결론유도 framing을 제한적으로 제거한 read-only current-state defect-candidate prefilter로 정렬하고, full verbatim 전달이 capability상 불가능한 경우에도 같은 결과를 최소 비용으로 운반한다.
+- **대상**: `blind-advisory_design.md`, `blind-advisory_plan.md`, `blind-advisory_spec.md`, `blind-advisory_work_packet.md`, 새 `blind-advisory_backlog.md`, `ai-harness-blind-advisory/SKILL.md`, `docs/README.md`의 prelive backlog route까지 정확히 7개 path다.
+- **owner**: active behavior는 B skill, durable target은 B Spec, 회차 판단은 Design/Plan/WP, future work는 B backlog가 소유한다.
+- **종료 상태**: 7개 path가 같은 의미를 가지는 uncommitted corrected tree와 검증 근거를 만든다. closeout, live 승격, glossary finalization, activation은 수행하지 않는다.
 
-- **discovery 노출(`docs/README.md` · `rules/README.md`)** — 이 batch 에서는 **결정하지 않고 park 한다**(park 하기로 한 것 자체가 이 open decision 에 대한 Plan 의 처리다): 이번 changeset 은 **domain map 미변경**(E1 — promoted 이나 blueprint-track 이라 implementation-authority 아님; prelive Spec 은 governance-discoverable 이나 live 아니고, 그 discoverability 는 promoted artifact 존재로 이미 성립한다). **domain map 등재는 이 batch 에서 하지 않으며 별도 backlog row 로도 park 하지 않는다**(그 row 는 생성 시점과 reopen 시점이 같아 중복이다). 대신 **promoted-lifecycle closeout 의 Level-1 orientation gate** 가 그 시점에 `docs/README.md` 를 live domain 반영으로 이미 강제하므로 그 gate 가 이 등재의 owner 다.
-- **promoted-but-not-live 형제 artifact 의 수정 허용 범위 — 두 근거로 분리해 승인한다.** 이번 changeset 은 promoted domain `consultation` 의 Spec(상태 `prelive`)과 그 배포 skill 을 건드린다.
-  - **(a) `consultation` 의 promoted artifact 갱신** = 규칙이 promotion 에 부과하는 **sibling-mention sweep 의무**의 이행.
-  - **(b) 배포된 skill 의 같은 문구 갱신** = 그 sweep 의무가 아니라 **active surface 의 stale status 정정**이다(의미 보존·behavior 무변경). skill 은 active implementation surface 이며 canonical sweep 집합의 일원이 아니므로, (a) 의 근거로 (b) 를 정당화하지 않는다.
-  - 두 경우 모두 `consultation` 의 normative 내용·lifecycle-state·owner surface 정의를 바꾸지 않으므로 그 domain 의 lifecycle 을 진행시키지 않는다(그 Spec 은 `prelive` 로 유지). **승인 대상 결정**: 이 범위를 넘는 어떤 `consultation` 내용 변경도 이 batch 에 포함하지 않는다.
-- **게이트 cadence 세부** — 위 *review focus* 에서 확정(Design 은 "canonical=Spec 후" 방향만, 단계별 cadence 는 Plan 소유).
-- **Deferred Questions → `blind-advisory_backlog.md`** — **promoted-lifecycle closeout**(구현 후 · Design/Plan retire 시점)에서 backlog 파일을 **생성**하고(그 전까지 이 항목들은 Design §Deferred Questions 가 보유) Design §Deferred Questions 의 구현-후-defer 항목을 각각 one line + reopen/start condition 으로 흡수한다. **ID prefix = `BA`**(blind-advisory domain 약어; `next ID: BA-NN` 단조 증가). **blind-at-close scope 확장**은 Design 이 reopen 조건과 함께 명시 deferral 했으므로 그 조건이 충족되는 시점에 backlog row 또는 별도 scoped Design 으로 재개한다. **framing input 위생은 이 domain 밖 독립 안건이라 backlog 대상 아님.**
+## Approved decisions
 
-## Stage rewind 조건
+### Identity and input
 
-- Plan 이 Design 의 end-state·경계·결정 위반 → stop · Design 재설계 · Plan 재시작.
-- Spec 이 이 Plan 위반 → stop · Plan 재계획 · Spec 재시작.
-- 구현이 Spec boundary 초과 → stop · 사용자에게 확인(scope 무단 확장 금지).
+- blindness는 operator intent/preferred outcome, prior verdict/advisory conclusion, worker self-evaluation, resolved/fixed/complete/clean/almost-done narrative, suspected location, pass/fail expectation, severity hint, test outcome claim을 제거하는 데 한정한다.
+- changed-file 선택, adjacent-evidence 선택, 파일 유형, search class, authority-criteria 선택과 host가 자동 주입하는 user-global instruction은 남는 lens다. 요청은 선택 목록과 rationale 및 자동 authority 목록을, 결과는 실제 inspection 범위와 limitations를 공개한다.
+- current state와 제공된 standing obligation만 판단한다. delta/history 또는 제공 범위 밖 validation evidence가 필요하면 `inconclusive`의 `validation-evidence` trigger로, operator의 scope-membership 판단이 필요하면 `scope-curation` trigger로 닫는다.
+- applicable active instructions/rules는 검토 대상 payload와 분리한 authority criteria로 제공하며 목록을 공개한다. reference host가 자동 주입하는 user-global instruction도 제거됐다고 가정하지 않고 authority manifest에 출처와 함께 공개한다. 필수 authority 선택이나 자동 주입 목록이 불명확하면 누락하지 않고 `inconclusive`로 닫으며 `scope-curation` trigger를 밝힌다.
+- 기계적으로 발견한 caller/interface/reference는 authority가 아닌 disclosed adjacent evidence로 포함할 수 있다. `scope-curation`은 ordinary evidence 탐색이 아니라 standing obligation의 적용 또는 target membership 자체가 operator 판단을 요구할 때만 사용한다.
+- reviewer는 target repo 밖 neutral cwd에서 시작하며, operator가 full current content와 authority criteria를 byte-faithful UTF-8 stdin으로 전달한다. reviewer가 target repo를 cwd로 열거나 그 repo의 project config·instruction을 자동 로드하는 path-list posture는 사용하지 않는다. PowerShell 5.1의 text pipeline처럼 encoding을 암묵 변환하는 carrier는 허용하지 않는다.
+- changed path가 없으면 `unavailable(no-changed-files)`로 닫는다.
+- 입력은 dispatch 시 path와 byte hash로 메모리에 결박한다. 결과 수용 전과 carrier recovery 전에 다시 확인하며 변경됐으면 동일 run을 재사용하지 않는다.
+- deleted path는 현재 tombstone으로, rename은 destination의 현재 내용과 기계적 rename 식별자로 표현한다. 과거 내용이 필요하면 추정하지 않는다.
+- binary 또는 NUL target이 하나라도 있으면 대상 path를 열거하고 `unavailable(binary-or-nul-target)`로 닫는다. skip이나 일반 status는 금지한다.
+
+### Result and transport
+
+- 정상 기본은 reviewer output 전문의 inline verbatim 전달이다.
+- background/parallel execution 또는 recovery가 있었으면 carrier와 무관하게 expected/joined member set을 별도 operator note 한 줄로 공개한다. 이 note는 reviewer 본문을 요약하거나 복제하지 않는다.
+- 전문 inline 전달이 실제 capability상 불가능할 때만 `<ProjectRoot>/log/blind-advisory/<run-id>/result.md`를 사용한다. path는 run별 고유하고 사전에 없어야 하며 overwrite·append하지 않는다.
+- `result.md` 본문은 inline과 같은 완전한 reviewer final message만 담는다. 표지·목차·요약·메타데이터 절·status 복제·finding 재구성·빈 템플릿 절을 만들지 않는다. stdout emitter와 final-message file writer가 terminal newline을 다르게 표현할 수 있으므로 carrier 간 raw byte identity를 요구하지 않는다.
+- artifact mode는 final-message 전용 출력을 파일에 쓰며 process transcript를 보존하지 않는다. inline 보고는 `status` 또는 `unavailable`, path, bytes, SHA-256, retention, failure reason이 필요한 경우의 그 사유만 담는다. reviewer 내용이나 trace를 요약·복제하지 않는다.
+- artifact는 전달을 위해 `retained-for-consumption`으로 명시한다. 소비 전 자동 삭제하지 않으며, 이후 정리는 별도 안전 경계를 따른다.
+- capsule, reducer, synthesis, partial result, 여러 packaging 양식, shared result schema/helper는 도입하지 않는다.
+
+### Result validity and findings
+
+- status closed set은 `no-concerns-reported`, `concerns-reported`, `inconclusive`다. `inconclusive` trigger closed set은 `added-framing`, `scope-curation`, `validation-evidence`다. 정상 결과 첫 줄은 status token 하나와 정확히 같아야 한다. collection·invocation·transport·result-contract failure는 status가 아니며 `unavailable(<reason-id>)` 문법으로 닫는다. reason-id 어휘는 간결하고 정확한 실패 진단을 위한 open set이며 정상-result 의미, 승인 또는 downstream 분기 권한을 만들지 않는다. 응답 구성 실패처럼 처분에 필요한 경우에는 누락 field 같은 최소 실패 사실을 함께 밝힌다.
+- severity closed set은 `blocking`, `non-blocking`, `question`이다.
+- 정상 결과는 exit code 0, stdout/stderr 분리, 선택한 result carrier(inline이면 stdout, artifact면 final-message file)의 완전한 message, 첫 줄의 정확히 한 status, 필수 field, 대상 completeness, 모든 member JOIN을 모두 만족해야 한다. artifact mode에서는 stdout을 결과로 소비하지 않는다. stderr trace·progress는 결과에 합치거나 기본 보존하지 않고 failure classification 뒤 폐기하며, `--json` event stream도 결과 채널로 쓰지 않는다.
+- finding은 location, observation, expected condition 또는 rationale, severity, confidence, assumption을 가진다.
+- `blocking`은 최종 verdict가 아니다. 관찰과 가정이 확인되면 landing을 막을 수 있는 candidate severity다.
+- `no-concerns-reported`는 실제 inspection 범위와 limitations를 동반하며, collection/invocation/transport/result-contract failure나 불충분한 입력을 숨기지 않는다.
+
+### Completion and recovery
+
+- observation yield 만료는 hard timeout도 retry 근거도 아니다. 동일 invocation의 completion notification을 기다리고 JOIN한다.
+- hard timeout이면 기존 실행을 종료하고 JOIN한 뒤 `unavailable(timeout)`으로 닫는다. timeout은 retry를 허가하지 않는다.
+- launch 전에 expected member set을 operator-visible in-memory run state에 기록하고, recovery member는 launch 전에 추가한다. 각 member의 isolated output과 JOIN을 확인하며 sidecar ledger는 만들지 않는다.
+- recovery는 이전 execution의 종료가 기계적으로 확인되고 해당 member가 JOIN된 뒤 input binding이 unchanged임을 재확인한 경우에만 한 번 허용한다. 허용 사유는 이미 확보한 완전한 reviewer message의 carrier 전환, 또는 reviewer reasoning이 시작되지 않았음이 확인된 pre-reasoning launch/input 기계 실패로 한정한다.
+- reviewer가 message를 생성했거나 reasoning 시작 여부가 불명확하면 다시 호출하지 않는다. parse failure, unexpected truncation, abnormal completion은 해당 `unavailable(<reason-id>)`으로 닫는다.
+- background member, 부분 stdout, stale input, 읽지 못한 target을 정상 status로 포장하지 않는다.
+
+## Hard boundary
+
+- canonical review verdict·coverage·pass를 발급하거나 대체하지 않는다.
+- `consultation`은 이름만 언급하고, B가 consultation을 호출하지 않으며 그 output을 소비하지 않는다는 negative boundary만 둔다.
+- 다른 advisory의 synthesis/recovery/status/session 의미, 다른 lifecycle의 promoted-state 의미, wholesale upstream patch, instruction trigger 변경, shared helper/rule, glossary, activation, Brief/handoff 또는 closeout을 포함하지 않는다.
+- prompt file fallback, artifact always-on, output 템플릿, fixed response-size threshold, timeout 상승, 반복 설득 loop를 만들지 않는다.
+- staging, commit, push, install, global/user mutation은 사용자 별도 승인 전 금지한다.
+
+## Validation and review focus
+
+- 문서 checklist와 docs-working-model checker로 lifecycle shape·placement·backlog next ID를 확인한다.
+- Spec↔skill 1:1 대조, closed status/severity, authority/payload 분리, input binding, binary/deleted/rename, inline/artifact, timeout/recovery를 수동·독립 감사한다.
+- fresh dogfood는 최소 inline 성공, artifact fallback, binary/NUL fail-closed, timeout/abnormal/parse failure, stale binding, expected-member JOIN을 대상으로 한다. 결과 파일을 만들기 위한 형식 작업이 dogfood의 주목적이 되어서는 안 된다.
+- affected Pester와 full Pester는 generic regression 근거이며 B 의미 검증을 대신하지 않는다.
+- canonical review는 relay supervisor의 corrected-tree cross-check 뒤 fresh input으로 수행한다. 과거 review는 현재 결합 후보에 사용하지 않는다.
+
+## Work Packet declaration
+
+Work Packet이 필요하다. 이번 회차의 gap matrix, decision→surface mapping, failure-path 대조, 반례·오탐 질문을 보유한다. identity/direction은 Design, 승인 대상 결정은 Plan, standing contract는 Spec, mechanics는 skill, future work는 backlog로 흡수한다. 실행 명령, 실행 결과, readiness, commit 절차는 담지 않으며 위 흡수 확인 뒤 closeout에서 retire한다.
+
+## Stage rewind
+
+- Plan이 Design을 위반하면 Design을 재설계하고 Plan을 재시작한다.
+- Spec이 Plan을 위반하면 Spec을 재작성한다.
+- skill이 Spec을 위반하면 구현과 이후 검증을 stale 처리한다.
+- owner 밖 수정이 필요해지면 확장하지 않고 별도 unit으로 보고한다.

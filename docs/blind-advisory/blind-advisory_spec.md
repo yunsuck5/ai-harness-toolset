@@ -1,66 +1,100 @@
 # blind-advisory Spec
 
-> Spec 은 목표 상태 명세다 — 작성 완료 시 = 구현할 목표 상태의 청사진, closeout 후 = 구현물과 1:1 동기화된 live 명세. 담으면 안 되는 것: 회차 candidate-file 목록·실행 명령 시퀀스·staging 절차·review result·readiness 판정·시점성 작업 상태(분석·분류 → Work Packet, 실행 메커닉·기록 → operator report `log/**`). 승인 경계는 Header 에서 1회만 진술한다.
+> Spec은 목표 상태 명세다. closeout 후 active implementation과 1:1로 유지한다. 회차 파일 목록·실행 기록·review result·readiness·commit 절차는 담지 않는다. 이 Spec은 mutation/commit/push 승인이 아니다.
 
 ## Header
 
-- 이 문서 = `blind-advisory` domain 의 **target-state Spec** — operator framing 을 제거한 변경분에 대해 canonical review *전에* 결함 후보를 거르는 비-판정 prefilter 가 정규 domain 으로서 무엇이어야 하는가의 명세. closeout 시 owner surface(skill)와 1:1 sync.
-- 이 체인이 끝나면 = `blind-advisory` domain 이 live 로 성립하고 skill 이 이 Spec 에 1:1 대조된다. skill 의 Implementation 은 promote 후 단계이고, domain 이 `live` 가 되는 것은 closeout(1:1 sync) 시점이다 — 현 지점의 명명은 §Lifecycle state 소관이다.
-- 이 문서가 아닌 것 = 작동 skill 아님(Spec 은 명세, skill 이 behavior 소유) · 회차 작업 문서 아님 · review verdict·consultation 산출 아님. 이 Spec 은 mutation/commit/push 승인이 아니다.
+- 이 문서는 `blind-advisory` domain의 target-state Spec이다.
+- blind-advisory는 결론유도 operator framing을 제한적으로 제거한 입력을 fresh read-only reviewer가 검사하고, non-verdict defect candidate를 operator가 verbatim으로 전달하는 current-state prefilter다.
+- active behavior는 skill이 소유하며 이 Spec은 그 behavior의 durable 의미와 경계를 명세한다.
 
 ## 목표 상태
 
-blind-advisory 는 operator 가 모든 framing 을 제거한 변경 파일의 현재 상태를 독립 reviewer 에게 전달해, canonical review 전에 결함 후보를 찾는 read-only prefilter 다. 아래 normative 요구가 성립해야 한다:
+blind-advisory run은 다음 계약을 모두 만족해야 한다.
 
-- **read-only.** reviewer 는 제공된 대상을 inspection 만 하고 mutation 하지 않는다.
-- **verdict 미발급.** 이 domain 은 review 의 verdict(`yes`/`no`/`yes with risk`)를 내지 않는다. 산출은 결함 *후보 입력* 이며 어떤 변경도 승인하지 않고(approves nothing), 어떤 요구도 면제하지 않으며(waives nothing), 최종 review 의 scope 를 좁히지 않는다.
-- **framing 제거.** operator 는 입력에서 자신의 의도·이전 verdict·resolved/fixed/clean 서사·의심 지점·pass/fail 기대·severity 힌트, 그리고 테스트의 통과/미통과 여부를 제거한다(테스트 파일의 존재·변경 여부는 기계적 식별자라 허용). 사실을 전달해야 하면 "operator claims …" 로 격하해 주장임을 표시한다. 이 framing 제거가 이 domain 의 정체성이며, framing 을 *제공* 하는 advisory 레이어와 정반대 축이다.
-- **operator = transporter.** operator 는 reviewer 의 finding 을 verbatim 으로 전달하고 종합·선별·축약·suppress 하지 않는다. operator 자신의 코멘트는 additive-only 로 분리 표기한다. **다만 transport 와 downstream 중립화는 별개 단계다** — 산출을 review 의 preflight-input 으로 넘길 때 operator 가 수행하는 중립화는 이 domain 의 run *밖* 행위이며 transporter 규율과 충돌하지 않는다.
-- **input contract.** 허용 입력 = 변경 파일의 **현재 상태 전체 내용** + 최소 기계적 범위 식별자(변경 파일 목록 · 언어/유형 · 테스트 파일 존재/변경 여부) + *변경이 촉발한 조건부 의무가 이행돼야 하는* 인접 surface. **anchor 는 출발점이지 scope 울타리가 아니다** — reviewer 는 필요하면 인접 계약을 따라간다. 인접 surface 의 *포함 여부 판단* 에 operator 의 결정이 필요해지면 단정하지 않고 `inconclusive`(scope 큐레이션 트리거)로 보고하고, target set 에 이미 식별돼 든 인접 surface 를 *기계적으로*(sandbox·경로·권한) 읽지 못하면 그것은 수집의 기계 실패다(`unavailable` — 기계-실패 항목). **금지**: suppressive 축소("이 파일만" · "이 concern 은 보지 마라" · "인접 계약은 scope 밖")는 framing 재주입이므로 금지한다. **한정**: 이 허용은 repo 전체에 대한 임의 탐색 권한이 아니며 — 인접 surface 는 *의무가 사는 곳* 이라는 기준으로 한정된다 — 어느 구현에서도 현재상태 전체를 diff delta·history 로 대체하지 않는다. secret·자격증명·대형 generated blob 의 redaction 은 framing 선별이 아니라 별개의 입력 위생 단계이며, 전역 security 규율과 interface 한다(이 domain 이 넓게 소유하지 않는다).
-- **reviewer invocation posture.** 현재 상태 전체를 프롬프트에 inline 동봉하는 방식과, 경로 목록을 주고 전문을 직접 read 하게 하는 방식은 **같은 input contract 의 두 구현** 이며 선택은 payload 규모의 함수다. 어느 쪽도 위 한정을 위반하지 않는다.
-- **status vocabulary(closed).** 정상 종결한 run 은 정확히 하나의 status 를 낸다: `no-concerns-reported` / `concerns-reported` / `inconclusive` (기계 실패로 끝난 실행은 status 를 내지 않는다 — 아래 기계-실패 항목). `concerns-reported` 는 하나 이상의 결함 후보가 finding 으로 뒤따르는 status 다. 이 집합은 review 의 verdict 어휘와도, framing 을 제공하는 advisory 레이어의 status 집합과도 분리된다. **status 의 의미는 제공된 anchor 와 허용된 inspection 범위 안에서만 유효하다** — 따라서 `no-concerns-reported` 는 그 run 이 실제로 본 범위를 함께 진술해야 하며, "충분히 봐서 없음" 과 "범위가 제한돼 못 찾음" 을 하나의 토큰으로 뭉개지 않는다.
-- **기계 실패는 status 가 아니다.** 대상 수집 실패(변경 파일, 또는 target set 에 이미 식별돼 든 인접 surface 를 읽지 못함)·인코딩 손상·timeout·비정상 종료·출력 절단·응답 파싱 실패 등 기계적 실패에서는 — transport 계층의 bounded 복구가 허용돼 있다면 그것이 소진된 뒤 — status 를 추정하지 않고 `unavailable(<reason>)` 로 종료한다. 특히 status 토큰이 검출되지 않거나 모호할 때 `inconclusive` 로 추정하는 것을 금지한다. 이는 인접 surface 의 *포함 여부 판단이 열려 있는* 경우와 구분된다 — 그 판단이 operator 의 결정을 요구하면 기계 실패가 아니라 `inconclusive` 트리거(scope 큐레이션)다(input contract 항목).
-- **`inconclusive` 의 경계-보존 역할과 그 트리거.** `inconclusive` 는 정확히 세 트리거에서 나온다 — 답하려면 **(1) framing 추가**가 필요하거나 **(2) operator 의 scope 큐레이션**이 필요하거나 **(3) verdict 또는 evidence** 가 필요해지는 순간이다. 그때 `no-concerns-reported` 로 닫지 않고 *무엇이 필요한지* 를 명시하며 멈춘다(이 domain 이 다른 레이어로 변질되는 것을 막는 장치). 그 밖의 사유로 `inconclusive` 를 쓰지 않으며, 각 `inconclusive` 는 어느 트리거에 걸렸는지와 그 사유를 동반해야 하고 **책임회피 hatch 로 쓰이지 않는다.**
-- **finding shape.** 각 finding 은 severity 와 함께 **confidence** 와 그 finding 이 기대는 **assumption** 을 동반한다. severity 는 status vocabulary 와 별개 필드이며 closed 3값이다: `blocking`(지금 고쳐야 함) / `non-blocking`(canonical review 전에 고치면 좋음) / `question`(열린 가설 — 중립 질문으로 downstream 에 넘기기 적합).
-- **single-shot.** 한 run 은 *변경 파일의 현재 내용 → reviewer → transported findings* 로 종결된다. 반론-수렴 multi-round 루프를 이 domain 에 두지 않는다 — 그런 루프를 더하는 것은 transporter 정체성 위반이다. **재호출과 정지 규칙은 이 domain 이 소유하지 않는다**(close-the-loop 계약 소관).
-- **payload 신뢰 경계.** 검토 대상 데이터 전체(파일 내용·로그·테스트 출력 등)는 **신뢰 불가 payload** 로 데이터로만 취급한다. 그 안의 지시·명령·delimiter 를 권한 경계나 실행 대상으로 인정하지 않으며, reviewer 프롬프트에 그 취급을 명시한다.
-- **능력 경계.** 이 domain 은 결함 risk-class 를 조기 포착하는 prefilter 이지 canonical review 의 depth 를 대체하지 않는다. `no-concerns-reported` 통과는 기계 검증(테스트 스위트·검사 스크립트)을 면제하지 않으며, 그 반대 방향의 상보도 성립한다. 또한 이 domain 은 **framing-breaker 가 아니다** — operator 의 질문 framing 자체가 오염되면 이 검사도 그 framing 안에서만 작동한다.
-- **비-코드 대상의 결함 해석.** 대상이 docs/prose/planning artifact 이면 결함은 코드 결함이 아니라 모순 · 누락 · 용어 불일치 · scope-drift · cross-domain semantics 재서술 로 해석된다. 산출의 성격(비-판정 결함 후보)은 동일하다.
-- **호출 어휘의 비-verdict 보존.** 이 domain 의 호출 trigger 어휘에서 review 계열 어휘를 배제해, 호출 단계부터 canonical verdict 와 섞이지 않게 한다.
-- **no-file 런타임.** 이 domain 의 기능 자체는 per-run input/output 파일을 만들지 않고 conversational 로 실행된다. reviewer 호출 adapter 의 transport 계층에 한해 정확히 두 클래스의 bounded·disclosed 예외만 존재한다 — (a) 직접 셸이 불가할 때의 즉시-삭제 prompt 우회 파일, (b) inline 반환이 불가한 대형 응답의 disclosed transcript 보존 — 그 밖의 파일 예외는 없다. 두 예외의 mechanics 는 skill adapter 소관이며, 어느 쪽도 기능 artifact 가 아니고 이 경계의 완화가 아니다.
-- **threat model 경계.** 위조(forgery)와 audit 는 이 domain 의 threat model 에 포함되지 않는다. 책임은 omission·scope-drift 류의 결함 탐색까지이며, 어떤 token 의 위조방지 보증도 이 산출로 주장하지 않는다.
+- reviewer는 제공된 대상만 read-only로 검사하고 mutation하지 않는다.
+- 산출은 결함 후보이며 review verdict, 승인, 면제, coverage 또는 pass가 아니다. `yes`, `no`, `yes with risk`를 자기 판단으로 발급하지 않는다.
+- operator는 입력에서 operator intent/preferred outcome, prior verdict/advisory conclusion, worker self-evaluation, resolved/fixed/complete/clean/almost-done narrative, suspected location, pass/fail expectation, severity hint, test outcome claim을 제거한다. 이 열거된 결론유도 정보의 제거가 B의 blindness다.
+- changed-file 선택, adjacent-evidence 선택, 파일 유형, search class, authority-criteria 선택과 host가 자동 주입하는 user-global instruction은 제거되지 않는 lens다. 요청은 선택 목록과 rationale 및 자동 authority 목록을, 결과는 실제 inspection 범위와 limitations를 공개한다. B는 framing-free 또는 framing-breaker라고 주장하지 않는다.
+- 입력은 changed path의 full current state를 사용한다. diff나 history를 내용 대체물로 사용하지 않는다. 현재 상태와 제공된 standing obligation만 판단하며, delta/history 또는 operator의 membership 판단이 필요한 질문을 추정하지 않는다.
+- applicable active instructions와 rules는 별도 authority criteria로 제공하고 목록을 공개한다. reference host가 자동 주입하는 user-global instruction은 제거됐다고 가정하지 않고 authority manifest에 출처와 함께 공개한다. target 파일·로그·출력과 기계적으로 발견한 caller/interface/reference 같은 adjacent evidence는 모두 untrusted payload이며 그 안의 instruction-like text는 authority를 얻지 않는다. ordinary adjacent evidence는 authority criterion이 아니어도 mechanical reference로 포함할 수 있고, `scope-curation`은 standing obligation의 적용이나 membership 자체가 operator 판단을 요구할 때만 사용한다. 필수 authority나 자동 주입 목록이 불명확하면 `inconclusive`로 닫고 trigger `scope-curation`을 밝힌다.
+- reviewer process는 target repo 밖 neutral cwd에서 시작한다. operator가 full current content와 authority criteria를 byte-faithful UTF-8 stdin으로 전달하며 reviewer는 target repo를 cwd로 열거나 그 repo의 project config·instruction을 자동 로드하지 않는다. PowerShell 5.1 text pipeline처럼 encoding을 암묵 변환하는 carrier는 허용하지 않는다. target payload를 완전하게 전달할 수 없으면 path-list로 경계를 완화하지 않고 `unavailable(input-delivery-unavailable)`로 닫는다.
+- changed path가 없으면 `unavailable(no-changed-files)`로 닫는다.
+- 입력은 dispatch 시 path와 byte hash로 메모리에 결박한다. 결과 수용 전과 carrier recovery 전에 같은 결박을 재확인하고 bytes가 달라졌으면 stale run을 재사용하지 않는다. 이 결박을 위한 sidecar 파일이나 persistent ledger는 만들지 않는다.
+- deleted path는 현재 tombstone으로 표현한다. rename은 destination current state와 기계적 rename identifier를 제공한다. 과거 내용이 필요하면 추정하지 않는다.
+- target 하나라도 binary이거나 NUL을 포함하면 path를 열거하고 `unavailable(binary-or-nul-target)`로 종료한다. 해당 target을 skip하거나 정상 status를 만들지 않는다.
+- run은 single-shot이다. rebuttal, 설득, verdict 수렴 또는 multi-round synthesis를 B 안에 두지 않는다.
 
-이 절 + 아래 Owner surface 지도만으로 동일 행동의 blind-advisory 구현을 재작성할 수 있어야 한다(reconstructibility).
+정상 결과의 첫 줄은 다음 closed set 중 정확히 하나다.
+
+| Status | 의미 |
+|---|---|
+| `no-concerns-reported` | 실제로 검사한 범위에서 defect candidate를 보고하지 않았다. |
+| `concerns-reported` | 하나 이상의 defect candidate가 뒤따른다. |
+| `inconclusive` | B가 추가 framing, operator scope curation, 또는 제공된 read-only material 밖의 verdict/기계 validation evidence를 공급해야만 답할 수 있다. |
+
+`inconclusive`의 closed trigger는 `added-framing`, `scope-curation`, `validation-evidence`다. 결과는 firing trigger, 필요한 것, 답을 닫지 못한 이유를 밝힌다. 정상 결과 첫 줄은 status token 하나와 정확히 같아야 한다. collection failure, unreadable target, encoding corruption, timeout, abnormal exit, truncation, parse failure, stale input, 필수 finding/범위/한계 누락 같은 collection·invocation·transport·result-contract failure는 status가 아니며 `unavailable(<reason-id>)` 문법으로 종료한다. reason-id 어휘는 간결하고 정확한 실패 진단을 위한 open set이며 정상-result 의미, 승인 또는 downstream 분기 권한을 갖지 않는다. 처분에 필요한 누락 field나 affected path 같은 최소 실패 사실은 함께 밝히되 trace 전체를 대체 결과로 붙이지 않는다.
+
+각 finding은 location, observation, expected condition 또는 rationale, severity, confidence, assumption을 가진다. severity closed set은 `blocking`, `non-blocking`, `question`이다. `blocking`은 최종 blocker verdict가 아니라 관찰과 가정이 확인되면 landing을 막을 수 있는 candidate severity다.
 
 ## Owner surface 지도
 
-- **skill 이 blind-advisory workflow 의 behavior 를 소유한다**: 대상 수집과 framing 제거 · 입력 패키징(anchor 구성과 인접 surface 판단) · reviewer 호출 · status 와 finding 의 파싱 · verbatim transport · 실패 시 `unavailable` 종료. Spec 은 이 behavior 를 명세하고 skill 과 1:1 로 대조될 뿐이며, authority 는 active surface(skill)에 있다.
-- 첫 build target 은 **삭제가능 skill** 이다(reversibility 불변식 — canonical review·install 표면을 비가역적으로 변경하지 않는다).
-- **rules** 는 class/invariant(read-only·advisory·no-verdict·vocab 분리)만 명명하고 behavior 를 흡수하지 않는다.
-- **이 domain 이 소유하지 않는 것**: 한 run 의 밖에서 언제 재호출하고 언제 멈추는가(close-the-loop 계약 소관) · 산출을 downstream 으로 넘기는 interface 의 형식(review 소관) · 여러 advisory 레이어의 산출을 결합하는 규칙(operator 의 종합 단계 소관).
+- `snippets/claude-skills/ai-harness-blind-advisory/SKILL.md`가 discovery, input collection, framing removal, authority/payload 분리, reviewer invocation, parsing, transport, completion과 failure closure를 소유한다.
+- 이 Spec은 skill과 1:1로 동기화되는 durable target이다. docs는 runtime dependency나 실행 authority가 아니다.
+- Design과 Plan은 변경 방향과 승인 대상 결정을, Work Packet은 회차 분석을, backlog는 아직 시작하지 않은 B future work를 소유한다.
+- `<ProjectRoot>/log/blind-advisory/<run-id>/result.md`는 capability fallback이 실제 발동한 단일 run의 delivery output이다. canonical review record, audit log, 장기 workflow state 또는 기능 source-of-truth가 아니다.
+- operator는 transport까지만 B 역할로 수행한다. downstream owner가 결과를 어떻게 판단·종합·승인하는지는 B가 소유하지 않는다.
 
 ## Durable boundary
 
-- **허용(지속)**: read-only inspection · 비-판정 결함 후보 산출 · verbatim transport · closed status 3값과 `unavailable(<reason>)` · closed severity 3값 · finding 의 confidence·assumption 동반 · no-file conversational 실행 · 인접 surface 를 포함한 현재상태 전체 입력.
-- **금지(지속)**: verdict 발행 · commit/push/release/adoption 승인 · reviewer 의 mutation · 산출을 review 의 invocation/pass/coverage 에 합산 · 산출물을 review 의 runtime 기록 영역에 저장 · 산출을 `Blocking findings` 의 source-of-truth 로 자동 승격 · canonical reviewer 에게 이 산출을 신뢰하라고 지시 · suppressive scope 축소 · 기계 실패를 `inconclusive` 로 세탁 · operator 의 종합(synthesis)을 요구하는 형태로의 변형 · broad-bucket 확장("모든 skeptical review" · "모든 AI 결함 탐색" · "quality gate" 일반 · pre-review 일반).
+정상 delivery는 reviewer final output 전문의 inline verbatim 전달이다. background/parallel execution 또는 recovery가 있었으면 carrier와 무관하게 expected/joined member set을 별도 operator note 한 줄로 공개하되 reviewer 본문을 요약·복제하지 않는다. 전문 inline 전달이 실제 호출 또는 transport capability상 불가능할 때만 다음 artifact delivery로 전환한다.
+
+- path는 `<ProjectRoot>/log/blind-advisory/<run-id>/result.md`이며 run별로 고유하고 작성 전에 존재하지 않아야 한다.
+- 파일은 write-once다. overwrite와 append를 금지한다.
+- 파일 본문은 inline과 같은 완전한 reviewer final message만 담는다. process trace, progress, prompt echo, token usage, 별도 표지, 목차, 요약, verdict/status 복제 절, finding 표 재구성, 메타데이터 절, 빈 템플릿 절을 두지 않는다. stdout emitter와 final-message file writer의 terminal-newline 차이는 carrier framing이며 두 carrier의 raw byte identity를 요구하지 않는다.
+- inline에는 status 또는 `unavailable`, path, bytes, SHA-256, retention과 필요한 failure reason만 보고한다. reviewer 본문의 요약·발췌·재배열은 하지 않는다.
+- retention은 `retained-for-consumption`으로 공개한다. 소비 전 자동 삭제하지 않으며 이후 cleanup은 별도 안전 경계를 따른다.
+- artifact mode는 편의, 길이 추정, 정형 보고서 선호 또는 항상-on 설정으로 선택하지 않는다. fixed byte threshold도 계약으로 만들지 않는다.
+
+정상 결과는 exit code 0, 분리된 stdout/stderr, 선택한 result carrier(inline이면 stdout, artifact면 final-message file)의 완전하고 읽을 수 있는 reviewer message, 정확히 한 first-line status, status별 필수 field, target completeness와 기록된 expected member set 전원의 JOIN을 충족해야 한다. expected set은 operator-visible in-memory run state에 launch 전에 기록하고 sidecar ledger로 만들지 않는다. artifact mode에서는 stdout을 결과로 소비하지 않는다. 기본 non-JSON 실행을 사용하고 event trace를 stdout에 쓰는 JSON mode는 결과 채널로 사용하지 않는다. stderr의 trace·progress·prompt echo·token usage는 결과에 합치거나 기본 보존하지 않고 failure classification 뒤 폐기한다. 실패 때도 필요한 기계 사유만 별도로 보고한다. 조건 하나라도 실패하면 partial output이나 artifact를 정상 결과로 소비하지 않는다.
+
+observation yield 만료는 hard timeout이나 retry 근거가 아니다. 동일 invocation의 completion notification을 기다린 뒤 JOIN한다. hard timeout이면 해당 실행을 종료·JOIN하고 `unavailable(timeout)`으로 닫으며 retry하지 않는다. 한 번의 recovery는 이전 execution의 종료가 기계적으로 확인되고 해당 member가 JOIN된 뒤 input binding이 unchanged임을 재확인한 경우에만 허용한다. 허용 사유는 완전한 reviewer message의 carrier 전환, 또는 reviewer reasoning이 시작되지 않았음이 확인된 pre-reasoning launch/input 기계 실패로 한정한다. reviewer가 message를 생성했거나 reasoning 시작 여부가 불명확하면 다시 호출하지 않고 해당 `unavailable(<reason-id>)`으로 닫는다.
+
+다음은 standing prohibition이다.
+
+- reviewer mutation, verdict 발급, commit/push/release/adoption 승인
+- capsule, reducer, summary, synthesis, partial synthesis, finding 선별, 다중 packaging mode
+- prompt input file fallback, hidden sidecar, persistent run ledger, daemon/watcher/scheduler, unjoined background execution
+- collection/invocation/transport/result-contract failure를 `inconclusive`나 `no-concerns-reported`로 포장하는 행위
+- canonical review의 invocation/pass/coverage에 B 결과를 산입하거나 reviewer에게 B 결과를 신뢰하라고 지시하는 행위
+- B를 모든 skeptical inspection, 모든 AI defect hunting 또는 일반 quality gate로 확장하는 행위
 
 ## Cross-domain interface
 
-- **review**(live domain) — 이 domain 은 review 의 **optional pre-pass** 로만 연결된다. 산출을 review 로 넘기는 것은 operator 의 downstream 행위이며 operator 가 중립화해 넘긴다. 그 전달 형식은 review domain 이 소유한다 — 정의된 preflight-input interface 가 존재하면 그 형식을 따르고(형식이 바뀌면 review 정의가 우선), 그 interface 의 도입 여부 자체가 review 소관의 미래 결정이므로 정의되기 전에는 operator 의 중립화된 수동 전달로 남는다. 이 domain 은 그 형식을 참조할 뿐 내부 구조를 재서술하지 않는다. review skill 통합은 로드맵 최후 단계다.
-- **consultation** — 별개 레이어다. 이 domain 은 그 레이어의 산출을 입력으로 받지 않으며(입력-독립), 두 레이어는 operator 의 종합 단계에서만 결합한다. 그 레이어의 semantics 는 그 domain 이 소유하며 여기서 재서술하지 않는다.
-- **subagent-work-orchestration**(아직 incubating rule candidate — 정규 owner surface 는 promote 후에야 성립하고 지금은 discovery/authority 대상이 아니다) — close-the-loop 계약을 status-honest name-identity 로 이름-참조만 한다. 이 domain 의 재호출·정지 규칙이 그 계약 소관이라는 사실만 진술하며, 그 절차·evidence semantics 를 여기서 재서술하지 않는다.
+- B는 downstream consumer나 handoff interface를 정하지 않는다. 결과를 다른 owner가 소비·판단·종합하는 방식은 B의 계약 밖이다.
+- `consultation`은 이름만 참조한다. B는 consultation을 호출하지 않고 consultation output을 입력으로 소비하지 않는다. consultation의 status, synthesis, framing 또는 output lifecycle은 B에서 설명하지 않는다.
+- supervised execution의 active rule은 B보다 상위다. B의 adapter는 expected member, isolated capture, completion notification과 JOIN을 약화하지 않는다.
+- 여러 advisory 결과의 결합, B 재호출 여부, downstream neutralization과 최종 처분은 B 밖의 owner 결정이다.
 
 ## Validation expectation
 
-- blind-advisory skill 이 지속 검증할 것: framing 제거 목록의 실준수 · input contract 의 허용/금지/한정(현재상태 전체 · 인접 surface · suppressive 축소 0 · diff 대체 0) · status 3값의 배타성과 기계 실패의 `unavailable` 분기 · `inconclusive` 의 사유 동반 · finding 의 severity/confidence/assumption 동반 · verbatim transport(suppress·축약 0) · no-file 실행 · verdict 어휘를 자기 status/judgment 로 발행 0(transported 원문의 인용은 데이터).
-- 구체 suite·조건은 skill 과 closeout 1:1 sync 에서 확정·검증된다. 검증 근거의 기록처는 closeout report / `log/evidence/**` 다.
+- Spec↔skill 1:1 대조는 제한된 blindness, remaining-lens disclosure, authority/payload 분리, current-state binding, status/failure 분리, finding shape, inline/artifact delivery와 recovery를 모두 확인한다.
+- 최소 behavioral evidence는 inline 성공, capability-impossible artifact fallback, binary/NUL fail-closed, unreadable/abnormal/parse failure, hard timeout no-retry, carrier/pre-reasoning recovery boundary, stale binding 거부와 expected-member JOIN을 포함한다.
+- artifact 검증은 본문이 완전한 reviewer final message이고 trace나 추가 section이 없으며, inline run facts의 path·bytes·SHA-256이 실제 artifact bytes와 맞는지를 확인한다. inline stdout과 artifact의 byte hash를 서로 같다고 요구하지 않는다.
+- docs-working-model checker와 affected/full Pester는 lifecycle·placement·generic regression 근거다. 이 green을 B 의미 검증의 대체물로 해석하지 않는다.
+- 검증 evidence와 operator report는 `log/**`가 소유하며 Spec에는 회차 결과를 기록하지 않는다.
 
 ## Review focus
 
-- blind-advisory 변경 시 항상 검토할 것: 비-판정 경계 유지(status 가 승인 신호로 소비된 사례 0) · `no-concerns-reported` 가 "충분히 봐서 없음" 과 "제한된 scope 라 못 찾음" 을 뭉개는 status laundering 방지 · transporter 규율 실준수(operator 가 선별해야만 작동하는 구조 0) · framing 제거의 실효(operator 가 의도·판정·수정 주장을 넣어야 유용해지지 않는가) · false-positive 가 절약분을 잠식하지 않는가 · 이 domain 과 framing-제공 advisory 레이어의 사례-수준 구분 · domain-local closure(이 domain 의 의미가 타 domain semantics 없이 닫히는가) · scope single-home(broad-bucket 확장 압력 감시).
+- B가 실제 defect prefilter인지, 아니면 canonical review의 값싼 복제품·일반 skeptic 역할로 확장됐는지 반례를 찾는다.
+- “framing 제거”가 남은 lens를 숨기는 절대주장으로 되돌아갔는지 확인한다.
+- authority criteria가 target payload와 분리됐는지, 필요한 authority 누락을 정상 status로 세탁하지 않는지 확인한다.
+- `no-concerns-reported`가 제한된 scope, unread target, partial output 또는 missing obligation을 숨기지 않는지 확인한다.
+- `blocking` candidate가 최종 blocker verdict처럼 소비되지 않는지 확인한다.
+- artifact fallback이 inline 불능이라는 실제 capability 조건에만 쓰이고, 결과 문서 작성·중복 요약·형식 충족 비용을 만들지 않는지 확인한다.
+- timeout, recovery, JOIN, input binding이 zombie execution이나 stale result를 남기지 않는지 확인한다.
+- owner-local closure가 유지되고 다른 domain의 semantics나 예외가 B에 이식되지 않았는지 확인한다.
 
 ## Lifecycle state
 
-- **prelive** — 이 Spec 은 promotion 후 작성됐고 closeout(1:1 sync) 전이다. governance-discoverable 이나 implementation-authority 는 아니다(E1 two-layer): 그 존재가 live behavior 의 근거로 소비되어서는 안 된다.
-- lifecycle-doc 존재: `_design` / `_plan` / `_work_packet`(active lifecycle work) — closeout 시 retire/삭제.
-- capability/maturity: 임시 pilot 도구로 dogfood 성숙했고 **정규 skill 구현됨**(closeout 前이라 implementation-authority 아님 — `prelive` 유지).
+- **prelive** — 이 Spec과 skill은 corrective 후 아직 closeout·activation 전이다. 존재만으로 live behavior나 glossary finalization의 근거가 되지 않는다.

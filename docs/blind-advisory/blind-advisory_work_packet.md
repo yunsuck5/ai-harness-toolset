@@ -1,73 +1,91 @@
 # blind-advisory Work Packet
 
-> 회차성 작업 문서 — line-level reference 분류·조사/구현 노트·evidence 제안·edge-case 노트. **승인 대상 아님·live domain 문서 아님·Spec 대체 아님.** 금지 content: 실행 command sequence·staging 절차·review 결과·validation 결과·readiness 판정(이들은 operator report `log/**` 또는 미기록). promoted-lifecycle closeout 시 삭제.
+> 이번 corrective 회차의 조사·분류·대조 packet이다. 승인 대상 결정은 Plan, 목표 상태는 Spec, active behavior는 skill, 실행 결과는 `log/**`가 소유한다. 이 문서는 readiness·명령 시퀀스·review result·commit 절차를 담지 않으며 closeout에서 retire한다.
 
-## blind-advisory 이름-참조 전수 인벤토리 (조사 — 실행 결과 아님)
+## Round purpose and boundary
 
-이 changeset 이 checked / updated 를 판정해야 할 blind-advisory 이름-참조의 *위치*. 실제 실행 보고와 최종 판정은 closeout report 소관이며 여기서는 대상과 그 분류 근거만 기록한다.
+- 목적: 기존 B 의미와 실제 transport/failure 경계 사이의 gap을 좁은 owner-local corrective로 분류한다.
+- 입력 lens: current B Design/Plan/Spec/skill, active execution·git safety rules, Codex CLI의 분리된 final-message/diagnostic 채널, 독립 counter-framing과 failure-path 조사.
+- 숨긴 것: 선행 verdict와 worker completion narrative는 correctness 근거로 사용하지 않는다.
+- 범위: B의 7개 path만. 다른 advisory의 output 소비 개선, canonical result 구조 개선, instruction-trigger·shared-rule·glossary·activation·Brief/handoff는 별도 unit이다.
 
-**전수 근거와 그 단위**: `blind-advisory` · `blind advisory` · `블라인드` 를 대소문자 무시로 검색하되 `log/**`(runtime)과 candidate 자신의 폴더를 제외한 결과 — **11개 파일, 33개 참조 줄**. 여기서 세는 단위는 *참조 줄*(한 문장·한 항목)이지 토큰 occurrence 가 아니다(같은 줄 안의 중복 토큰까지 세면 41 occurrence 이며, 갱신 판정은 줄 단위로 내리므로 줄을 단위로 삼는다). 아래 분류의 합이 그 33 줄을 덮는다.
+## Gap matrix
 
-**분류축 두 개.**
-1. *갱신 필요성*: 그 줄이 blind-advisory 의 **현재 candidacy 를 주장**하는가(이 promote 로 거짓이 됨 → 갱신), 아니면 status 를 주장하지 않는 참조이거나 그것을 쓴 batch 시점의 사실인가(그대로 참 → no-change).
-2. *갱신의 근거*: 그 표면이 규칙의 sibling-mention **sweep 대상**(promoted artifact / canonical index / accepted glossary entry)인가, 아니면 **active surface 의 stale 정정**인가. 두 근거는 다르며 하나로 뭉뚱그리지 않는다.
+| Gap | 기존 상태 | corrective target | B가 넘지 않을 경계 |
+|---|---|---|---|
+| blindness | 모든 operator framing 제거라는 절대주장 | 열거된 conclusion/stance framing만 제거하고 remaining lens 공개 | framing-breaker 일반화 금지 |
+| current-state 판단 | changed-state와 change-triggered obligation을 혼용 | current state와 제공된 standing obligation만 판단 | diff/history 추정 금지 |
+| authority/evidence | authority criteria와 ordinary adjacent evidence 혼용, target-repo config 영향 잔존 | 둘을 분리하고 target-repo config/doc은 neutral cwd로 격리하며 자동 user-global authority는 공개 | target text/config의 authority 승격·ambient authority 은폐 금지 |
+| finding | severity/confidence/assumption만 요구 | location·observation·expected/rationale까지 요구 | final blocker verdict 발급 금지 |
+| trace | final message와 process transcript의 소비 경계가 불명확 | stdout/final-message만 결과, stderr trace는 별도 진단 | trace를 result로 보존·요약 금지 |
+| large delivery | strict no-file 또는 타 domain transcript 선례 | 실제 inline capability 불능일 때만 B-owned raw result | artifact always-on·shared output mode 금지 |
+| result shape | wrapper와 run metadata가 본문에 섞일 여지 | reviewer final message 외 section이 없는 최소 파일 | canonical-style 보고서·template 금지 |
+| timeout | observation window 연장과 retry 혼동 | completion notification/JOIN, hard timeout no-retry | timeout 상승으로 pass 만들기 금지 |
+| recovery | single-shot과 reviewer 재실행을 transport retry로 혼용 | carrier 전환 또는 proven pre-reasoning failure만 한 번 | 병행 retry·두 번째 reasoning run 금지 |
+| target fidelity | deleted/rename/binary/stale bytes 분기 없음 | tombstone·rename identifier·binary fail-closed·in-memory binding | silent skip·sidecar ledger 금지 |
+| supervised membership | JOIN 대상 집합 기록 없음 | launch 전 operator-visible expected set 기록 | untracked member·sidecar ledger 금지 |
+| input encoding | PowerShell 5.1 text pipeline이 CJK stdin을 무음 변환 가능 | UTF-8 no-BOM direct byte-stream | exit 0을 completeness 근거로 오인 금지 |
+| member disclosure | artifact carrier에서만 expected/joined 공개 | background/parallel/recovery면 carrier 공통 한 줄 note | inline recovery 은폐 금지 |
+| cross-domain | 다른 advisory semantics를 대비 설명으로 재서술 | consultation name + B-owned no-invoke/no-consume만 | status/synthesis/output 의미 이식 금지 |
 
-- **A. 현재 candidacy 주장 — 갱신 대상 (2 줄)**
-  - `docs/consultation/consultation_spec.md` §Cross-domain interface — “아직 incubating domain candidate — live 레이어 아님”. **근거 = sweep 의무**(promoted artifact 의 `prelive` Spec).
-  - `snippets/claude-skills/ai-harness-consultation/SKILL.md` §Cross-domain interface — “still an incubating domain candidate — not a live layer”. **근거 = active surface 의 stale status 정정**(sweep 집합 아님; behavior 무변경).
-- **B. status 를 주장하지 않는 참조 — no-change 후보 (9 줄)**
-  - `consultation_spec.md` §목표 상태(vocabulary 분리) · §Review focus(사례-수준 구분) · §Lifecycle state(후속 작업의 이름으로 언급).
-  - `ai-harness-consultation/SKILL.md` frontmatter `description` · §What this is not · §Core invariants(vocabulary separation) · §Loop state and status vocabulary.
-  - `consultation_design.md` §왜 바꾸는가(gap 서술) · §non-goals(레이어 대비).
-- **C. 그것을 쓴 batch 시점의 사실 — no-change 후보 (10 줄)**
-  - `consultation_design.md` §수정 대상(그 batch 의 sweep 열거) · §non-goals scope 밖(형제 promote 는 별도 단계) · §Deferred Questions(“모두 정규화된 후” 미래 조건, O promote 전까지 미충족).
-  - `consultation_plan.md` §Batch 순서 · §Batch 정의 scope.
-  - `consultation_work_packet.md` §sweep 인벤토리.
-  - `rules/docs-working-model/docs-working-model.md` *Incubation tier* Transition 절 — 규칙 landing 시점에 in-flight 였던 candidate 열거(“already in-flight then”). 과거 시점 진술.
-  - `rule_docs/docs-working-model/docs-working-model_backlog.md` — promote 순서 row(세 candidate 가 모두 처리될 때까지 열림) · candidate identity/kind transition row.
-  - `docs/review/review_backlog.md` — repo 밖 pilot 결과의 review-interface 반영 여부 row(pilot 도구는 여전히 repo 밖).
-- **D. glossary `rules/terminology-glossary.md` — per-term 결정 (6 줄)**
-  - blind-advisory 소유 pending 예약 3개(`blind advisory` · `transporter` · `blind-advisory status vocabulary`): 전부 `pending` 상태이며 그 finalization-owner 는 아직 live 가 아니다. 처분은 sweep 과 별개의 per-term 결정이고 그 결정 자체는 Design/Plan 이 소유한다.
-  - consultation 소유 예약이 blind-advisory 를 이름-참조하는 곳(`not-this` · `collision-note`)과 Pending 절 서두의 형식 서술: contrast/collision 성격이라 promote 후에도 유효(no-change 후보).
-- **E. id-키 enforcement binding — 갱신 대상 아님, 조용히 생략하지 않고 열거 (6 줄)**
-  - `scripts/docs-working-model-check.ps1` — glossary 예약 형식을 강제할 candidate id 목록에 blind-advisory 가 있고, scope 안내 문장이 candidate incubation 폴더를 서술한다. 이 binding 은 후보-status 주장이 아니라 *그 id 의 pending 예약이 존재하는 동안* 유효하며, 이 batch 는 그 예약을 finalize 하지 않으므로 목록은 그대로 참이다.
-  - `tests/docs-working-model-check.Tests.ps1` — 위 검사의 회귀 fixture 가 blind-advisory id 를 사용한다. 같은 이유로 그대로 참이다.
-- **F. 참조 0** — `docs/README.md` · `rules/README.md` 에 blind-advisory 참조 없음(E1 claim 유지).
+## Decision-to-surface mapping
 
-## 원자적 swap 검증 노트
+| Decision | Design | Plan | Spec | Skill | Backlog / route |
+|---|---:|---:|---:|---:|---:|
+| bounded blindness + remaining lens | direction | approved | durable | operational | — |
+| authority/payload separation | direction | approved | durable | operational | — |
+| evidence-bearing finding + candidate blocking | absorbed | approved | durable | parser/prompt | — |
+| stdout final-message only, stderr trace excluded | direction | approved | durable | adapter | — |
+| inline-default raw-result fallback | direction | approved | durable | transport | — |
+| minimal `result.md` with no wrapper/template | direction | approved | durable | transport | — |
+| input binding + target edge cases | risk | approved | durable | collection | — |
+| completion/JOIN/recovery | risk | approved | durable | adapter | — |
+| future scope | pointer | boundary | — | — | single home |
 
-- baseline 대조(검증용 스냅샷 — 실행 결과·시점성 상태 판정 아님): **pre-swap committed baseline** = `blind-advisory_incubation.md` 단일. 이 changeset 의 **post-swap committed 상태** = `_design`/`_plan`/`_spec`/`_work_packet`(incubation 삭제).
-- **E3 판정 기준 노트(조사)**: E3 의 non-coexistence 는 *committed state* 를 대상으로 하므로 working tree 의 중간 공존은 그 판정 대상이 아니다. 한편 구조 검사 스크립트의 스캔 대상은 working tree 다 — 두 기준의 대상이 다르다는 것이 이 라운드의 edge-case 다.
+## Failure-path matrix
 
-## incubation → design E4 대조 대상 (조사 — 흡수 *결과* 는 closeout report 소관)
+| Failure observation | Plan/Spec contract point to verify | Counterexample if omitted |
+|---|---|---|
+| no changed paths | no-target failure branch | empty normal run |
+| binary or NUL target | whole-run fail-closed + affected paths | skip, base64/hex generalization |
+| unreadable or invalid-encoding target | mechanical `unavailable` branch | partial target set |
+| deleted/rename needs prior state | `validation-evidence` vs `scope-curation` split | inferred history |
+| bytes change after dispatch | acceptance-time stale binding rejection | recovery on new bytes |
+| nonzero exit | abnormal-exit or narrower mechanical branch | parse partial stdout as result |
+| stdout incomplete/truncated | no second reasoning; truncated failure | tail-only consumption |
+| stdin bytes differ from bound payload | delivery failure before normal result | text-pipeline 변환을 성공으로 수용 |
+| first-line status missing/ambiguous | parse failure without guessed status | assume `inconclusive` |
+| required finding/scope/limitation fact missing | result-contract failure + missing fact | stderr trace로 결과 보충 |
+| observation yield expires | same invocation notification/JOIN | timeout·retry로 해석 |
+| hard timeout | terminate/JOIN and no retry | timeout increase or retry |
+| inline channel cannot preserve full final message | preselected artifact or captured-message carrier transfer | summary, tail-only return |
+| artifact create/verify fails | artifact failure facts only | partial artifact as normal result |
 
-closeout 의 E4 흡수-완결 확인이 대조할 *대상 목록*(무엇을 design 어느 위치와 맞대는지; 확인 결과·판정은 여기 적지 않고 closeout report 로).
+## Minimal-result analysis
 
-- E4 6요소(adopted conclusion / rejected alternatives / evidence type / scope / failure criteria / negative evidence) ↔ design 대응 위치.
-- 정체 불변식 8항 ↔ design E4①.
-- input contract 의 허용/금지 ↔ design E4① 및 §Plan readiness 의 resolve 항목(candidate 문구를 정정한 지점).
-- status vocabulary closed 3값 + `unavailable` 토큰 · severity closed 3값 · finding 의 confidence/assumption ↔ design E4①.
-- 호출 trigger 어휘의 review-계열 배제 결정 ↔ design E4①(구체 문구는 skill 소관으로 deferral).
-- inconclusive 의 경계-보존 역할 + 책임회피 hatch 방지 가드 ↔ design E4①.
-- discard 기준 7개 ↔ design E4⑤. promote-readiness 5개 ↔ design E4⑥ 및 §Plan readiness.
-- open question 4개(reviewer invocation posture / finding 표현 naming / blind-at-close scope / review 자동 preflight) ↔ design §Plan readiness 의 resolve 또는 §Deferred Questions.
-- 미흡수 원료 4개(reloop 수율역학 / fix→re-blind 용도 / at-use 탐색 클래스·입력 구성 mechanic / 측정 dimension) ↔ design 의 소유권 배정(close-the-loop 계약 · skill · 측정 scaffolding).
+- B가 보존할 정보는 reviewer의 final message다. model trace, workdir/model/session metadata, prompt echo, progress, token usage는 reviewer 판단이 아니므로 결과 본문이 아니다.
+- inline과 artifact는 같은 완전한 reviewer message를 전달한다. 차이는 carrier뿐이며 artifact가 더 많은 section이나 설명을 요구하지 않는다. stdout emitter와 file writer의 terminal newline 차이 때문에 carrier 간 raw byte identity는 요구하지 않고, artifact의 bytes/hash만 실제 파일에 결박한다.
+- first-line status와 finding facts는 reviewer message 내부 계약이다. artifact inline pointer에서 status를 다시 알리는 것은 소비자가 파일을 열기 전 run 상태를 식별하기 위한 최소 run fact이며, reviewer 내용을 이중 작성하는 근거가 아니다.
+- 실패 진단은 원문 결과를 대체하지 않는다. 필요한 failure reason만 보고하고 전체 stderr trace를 result에 붙이지 않는다.
 
-## Spec 저작 인수 항목 (Design 이 Spec 으로 위임한 것 — 저작 시 참조)
+## Independent audit questions
 
-- input contract 의 필드(허용 입력의 구성요소 · 금지 framing 목록의 형태)와 인접 surface 판정의 명세.
-- status vocabulary 의 전이 MUST(무엇이 `inconclusive` 를 정당화하는 트리거인가 · 기계 실패가 `unavailable` 로 가는 조건 · `no-concerns-reported` 가 자기 inspection 범위를 함께 진술해야 하는가).
-- severity 각 값의 분류 의미와 finding 동반요소(confidence · assumption)의 필드 위치/이름.
-- payload 신뢰 경계의 최종 normative 문장.
-- transporter 규율의 normative 표현(무엇이 suppress/축약에 해당하는가)과 downstream 중립화 경계.
-- no-file 런타임의 normative 진술.
+- B가 실제로 조기 defect candidate를 찾는가, 아니면 canonical review의 축소 복제품인가?
+- target·authority 선정 lens를 공개했는가, 아니면 “blind” 이름으로 숨겼는가?
+- current-state-only evidence로 delta/history 주장을 만들었는가?
+- `blocking`을 후보 severity가 아닌 최종 verdict처럼 소비할 여지가 있는가?
+- unread target, binary, stale bytes, partial stdout를 정상 status로 세탁하는가?
+- `result.md`를 만들기 위해 표지·요약·중복 section·template filling 비용을 새로 발생시키는가?
+- stdout final message 대신 stderr/JSON event trace나 tail만 소비하는가?
+- artifact fallback이 실제 capability 불능보다 편의·길이 추정·형식 선호에 의해 켜지는가?
+- timeout/recovery가 기존 process를 남기거나 두 reasoning run을 병행시키는가?
+- B의 해결을 위해 다른 owner semantics나 shared helper가 필요하다고 과장하는가?
 
-## 배선 표면 인벤토리 (Implementation batch 가 소비 — 이 batch 의 실행 대상 아님)
+## Absorption and retire
 
-정규 skill 하나를 배포에 편입할 때 갱신이 필요한 표면의 조사 결과. activation resolver 는 generic directory enumeration 이라 스크립트·lib 은 대상이 아니다.
-
-- 진입 아티팩트: `snippets/claude-skills/<skill-name>/SKILL.md` 신설(이 위치의 존재가 install/verify/apply/uninstall 의 generic 파이프라인을 활성화한다).
-- activation surface 의 개수·이름을 산문으로 hardcode 하는 곳: `docs/install-update/install-update_spec.md` · `INSTALL.md`(두 곳) · `README.md` · `templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md`(두 곳).
-- surface count 와 skill 이름을 단언하는 테스트: `tests/activate-global.Tests.ps1`.
-- repo-local 지시 표면의 skill 열거: `CLAUDE.md` / `AGENTS.md`(shared body — mirror-edit 규칙상 동시 수정).
-- **edge-case 노트**: 신규 SKILL.md 는 untracked 상태로 존재하므로, 변경분을 대상으로 하는 whitespace/BOM 계열 검사가 기본적으로 그 파일을 보지 않는다.
+- identity와 방향 판단은 Design에 흡수한다.
+- 승인 대상 결정은 Plan에 흡수한다.
+- standing contract는 Spec에 흡수한다.
+- 실행 mechanics는 skill에 흡수한다.
+- 시작하지 않을 B future work는 backlog로 보낸다.
+- 이 packet은 closeout에서 삭제한다.
