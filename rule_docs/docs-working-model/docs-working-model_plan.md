@@ -11,7 +11,8 @@
 ## Batch 순서와 의존
 
 - **단일 changeset, 단일 sub-change**: E1 절 명확화 문장 추가. 분리할 것이 없다(수정 대상이 한 절).
-- **지배 버전(Self-amendment 절 적용 — governance 조항 개정)**: pre-revision 규칙 텍스트가 **이 revision 자신의 lifecycle 행위**(landing, 그리고 지연된 closeout 의 retire 판단)를 지배한다. B 재리뷰·O promote 는 이 revision 에 속하지 않는 **별개 작업**이며 landing *이후 시작* 행위로서 새 조항이 그 판단 기준이다 — 이 revision 의 closeout 은 그 별개 작업들의 산출을 검증-신호 *입력으로 소비*할 뿐, 그 작업들을 이 changeset 에 편입하지 않는다(순환 없음). 이 선언은 landing 커밋과 closeout 기록 양쪽에 기록한다(closeout-checklist 항목).
+- **지배 버전(Self-amendment 절 적용 — governance 조항 개정)**: pre-revision 규칙 텍스트가 **이 revision 자신의 lifecycle 행위**(landing, 그리고 지연된 closeout 의 retire 판단)를 지배한다. 재작성된 B(blind-advisory) lifecycle의 리뷰 게이트와 O promote는 이 revision 에 속하지 않는 **별개 작업**이며 landing *이후 시작* 행위로서 새 조항이 그 판단 기준이다 — 이 revision 의 closeout 은 그 별개 작업들의 산출을 검증-신호 *입력으로 소비*할 뿐, 그 작업들을 이 changeset 에 편입하지 않는다(순환 없음). 이 선언은 landing 커밋과 closeout 기록 양쪽에 기록한다(closeout-checklist 항목).
+- **retire 조건 개정 상태**: 아래 B leg 재지정은 승인된 지배 조건이다. 승인 주체·시점의 provenance는 이 Plan이 아니라 changeset 기록이 소유한다.
 
 ## Batch 정의
 
@@ -31,7 +32,7 @@
 
 ## Retire(closeout) 조건 — 명시 지연
 
-이 revision 의 promoted-lifecycle closeout(본 Plan·Design 의 retire)은 rule landing 시점에 수행하지 **않는다**. 조건: **B(blind-advisory)·O(subagent-work-orchestration) 실사용 검증 후 + 사용자 명시 지시** — 구체 신호(리뷰 결론을 조건화하지 않는 중립 이벤트): ① B Implementation changeset 의 재리뷰와 ② O 의 promote·Implementation 리뷰 게이트가 각각 **종결**되고(verdict 내용을 이 조건은 지정하지 않는다), 그 과정에서 제기된 E1-관련 finding 이 있으면 각각 evidence 재구성과 명시 처분을 거친 상태 — 처분 = 수정, 또는 blocker 가 아님을 evidence 로 재분류한 뒤의 수용(true blocker 를 수용으로 낮추지 않는다). 판정 = operator 보고 + 사용자 판단. (검증의 실 소비자가 규칙을 밟아본 뒤에 닫는다 — 선행 revision 이 그 전에 닫힌 재발 방지.) **role-slot 점유 명시**: 이 Plan 이 남아 있는 동안 같은 role-slot 의 새 docs-working-model revision 은 *State migration* 절에 따라 이 revision 의 disposition 이 선행돼야 한다 — 수용된 점유다. 조기 closeout 이 필요해지면 게이트 면제가 아니라 **이 retire 조건의 개정(사용자 승인) 후 closeout** 경로를 밟는다.
+이 revision 의 promoted-lifecycle closeout(본 Plan·Design 의 retire)은 rule landing 시점에 수행하지 **않는다**. 조건: **재작성된 B(blind-advisory) lifecycle의 리뷰 게이트와 O(subagent-work-orchestration)의 promote·Implementation 리뷰 게이트가 각각 종결된 뒤 + 사용자 명시 지시** — verdict 내용은 이 조건이 지정하지 않는다. 두 검증 과정에서 제기된 E1-관련 finding 이 있으면 각각 evidence 재구성과 명시 처분을 거친 상태여야 한다 — 처분 = 수정, 또는 blocker 가 아님을 evidence 로 재분류한 뒤의 수용(true blocker 를 수용으로 낮추지 않는다). 판정 = operator 보고 + 사용자 판단. (검증의 두 실 소비자가 규칙을 밟아본 뒤에 닫는다 — 선행 revision 이 그 전에 닫힌 재발 방지.) **role-slot 점유 명시**: 이 Plan 이 남아 있는 동안 같은 role-slot 의 새 docs-working-model revision 은 *State migration* 절에 따라 이 revision 의 disposition 이 선행돼야 한다 — 수용된 점유다. 조기 closeout 이 필요해지면 게이트 면제가 아니라 **이 retire 조건의 개정(사용자 승인) 후 closeout** 경로를 밟는다.
 
 ## Stage rewind 조건
 

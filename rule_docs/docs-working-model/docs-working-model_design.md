@@ -38,5 +38,5 @@
 
 - Plan 으로 내려갈 준비 됨 — 수정 대상이 한 절이고 semantic target 이 사용자 판정으로 확정됨.
 - open risk 1: 문안이 "배포 편입 허용"을 넘어 "배포를 의무화"로 읽히면 과교정 — Plan 의 validation expectation 에서 방지(허용·경로 서술이지 의무 아님).
-- open risk 2: 이 명확화 자체가 실전에서 충분한지는 B 재리뷰·O promote 실사용이 검증한다 — **이 revision 의 closeout(본 Design/Plan retire)은 그 실사용 검증 후로 미룬다**(Plan 의 retire 조건 소관; 선행 revision 이 검증 소비자보다 먼저 닫힌 재발 방지).
+- open risk 2: 이 명확화 자체가 실전에서 충분한지는 재작성된 B(blind-advisory) lifecycle의 리뷰 게이트 종결과 O promote 실사용이 검증한다 — **이 revision 의 closeout(본 Design/Plan retire)은 그 실사용 검증 후로 미룬다**(Plan 의 retire 조건 소관; 선행 revision 이 검증 소비자보다 먼저 닫힌 재발 방지).
 - open risk 3: 배포된 prelive skill 을 소비자가 live 와 구분할 표시 장치는 도입하지 않는다(차단형 gate 와 별개 축인 수동적 표시 — non-goals 의 둘째 항이 미도입 근거[owner surface 가 이 rule 밖 + 필요 미실증]를 보유) — 수용 리스크로 남기며, DWM-B-14 로 추적.

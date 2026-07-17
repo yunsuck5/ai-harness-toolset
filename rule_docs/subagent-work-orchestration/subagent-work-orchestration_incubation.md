@@ -4,7 +4,7 @@
 
 **이 문서는 무엇인가.** `subagent-work-orchestration` **rule candidate** 의 단일·자족 planning home 이다 — docs-working-model 의 *Incubation tier*(pre-promotion candidate stage)에 있는 **rule candidate** 가, branching-agnostic 운영 규율로서 글로벌 배포 rule 로 승격할지 dogfood 로 검증하는 동안 쓰는 유일한 committed-temporary 문서다. **이 문서 하나만 읽고 작업을 시작할 수 있도록 자족적으로 적는다**(별도 seed 문서 불요).
 
-**무엇을 해결하는가(problem).** 도메인/서페이스가 다른 독립 작업을 메인 세션 한 곳에서 직렬 처리하면 (a) 컨텍스트 오염·용량, (b) 작업속도(리뷰가 순수 작업보다 무거움)가 필연적 병목이 된다. 한 선행 실험(서브에이전트 오케스트레이션 파일럿)이 이 오케스트레이션(서브 위임 + perspective별 병렬 codex 리뷰)의 실현가능성·컨텍스트 오프로드·가드 유지를 **n=1**(단일 세션·머신·reviewer, 통제 벤치마크 아님)로 실증했다 — 그 실측이 이 candidate 의 motivating evidence 다. 측정 상세(병렬 단축률·재시도 수 등 수치)는 measurement `log/**` 소관이고, 원 실험 lineage 는 git history / Brief 로 추적한다(committed doc 은 out-of-repo 경로를 durable pointer 로 두지 않는다). 이 candidate 는 그 실험을 **"메인=오케스트레이터/감독, 서브=실행자"** 기본 운영 규율로 정식화할지 검증한다.
+**무엇을 해결하는가(problem).** 도메인/서페이스가 다른 독립 작업을 메인 세션 한 곳에서 직렬 처리하면 (a) 컨텍스트 오염·용량, (b) 작업속도(리뷰가 순수 작업보다 무거움)가 필연적 병목이 된다. 한 선행 실험(서브에이전트 오케스트레이션 파일럿)이 이 오케스트레이션(서브 위임 + perspective별 병렬 codex 리뷰)의 실현가능성·컨텍스트 오프로드·가드 유지를 **n=1**(단일 세션·머신·reviewer, 통제 벤치마크 아님)로 실증했다 — 그 실측이 이 candidate 의 motivating evidence 다. 측정 상세(병렬 단축률·재시도 수 등 수치)는 measurement `log/**` 소관이고, 원 실험 lineage 는 git history 가 보존한다. 이 candidate 는 그 실험을 **"메인=오케스트레이터/감독, 서브=실행자"** 기본 운영 규율로 정식화할지 검증한다.
 
 **non-authoritative.** canonical authority 없음(form early / authority late). canonical rules/indexes 는 이 문서를 durable reference 하지 않으며(E2), 이 문서를 읽어야만 동작하는 canonical 표면은 없다(E1/E3). 본문 결정은 후보 수준이고, promote 시점엔 `_design` active lifecycle 로 진입하되 정규 authority 는 그 뒤 **terminal rule landing**(`snippets/rules/subagent-work-orchestration.md`)에서 생긴다.
 
@@ -19,7 +19,7 @@
 
 ## 목표 상태 (Regime-1 운영 모델)
 
-메인 오퍼레이터 세션 = **오케스트레이터/감독관**. 독립·무거운 작업 단위는 서브에이전트(=실행자)에 위임하고, 각 실행자는 작업 + 가용한 독립 리뷰(이 프로젝트에선 codex review skill 또는 blind)로 **정합성을 갖춰** 반환한다. 메인은 위임 전 기대값 확정 + 의존/분할 판정 + 통합레벨 calibrated 검증 + 사용자 대화 정렬을 한다.
+메인 오퍼레이터 세션 = **오케스트레이터/감독관**. 독립·무거운 작업 단위는 서브에이전트(=실행자)에 위임하고, 각 실행자는 작업 + 범위에 맞는 검증으로 **정합성을 갖춰** 반환한다. 메인은 위임 전 기대값 확정 + 의존/분할 판정 + 통합레벨 calibrated 검증 + 사용자 대화 정렬을 한다.
 
 핵심 invariants:
 - **orchestration-assessment-first (default)** — "항상 서브" 가 아니라, *기본적으로 먼저 분해·병렬가능성을 평가*하고 단위가 독립+무거울 때 서브를 띄운다. 사소·결합·대화성 턴은 메인 직접.
@@ -45,14 +45,13 @@
 
 ## Close-the-loop validation contract (cheap-first; executor 소유)
 
-> 값비싼 canonical review 에만 의존하지 않도록 *값싼 사전검사로 먼저 닫는* 운영 규율. 이 절은 orchestration 이 **언제·어떻게 루프를 닫는가**만 소유하고, 각 cheap 도구(blind 결함 prefilter / consultation 의 `독립 의견`·`재조율`)의 semantics 는 그 도구의 도메인이 소유한다(cross-domain 재서술 금지 — 여기서는 이름으로만 참조).
+> 값비싼 canonical review에만 의존하지 않고 값싼 사전검사로 먼저 닫는다. 이 절은 검증 순서만 소유하며, 각 도구의 semantics는 해당 도메인이 소유한다(여기서는 이름으로만 참조).
 
 - **delegate-by-default.** 실질 validation 은 기본적으로 executor 에 위임한다 — skip-prone 한 operator(main)를 critical path 에서 뺀다. main 직접 validation 은 최소화한다.
-- **executor 가 cheap loop 를 닫고 보고한다.** (이 close-the-loop 은 *changeset 검증*용 절차다; 토론형 advisory operation 은 이 루프에 포함되지 않고 각자 도메인 operating model 이 소유한다.) executor 는 비싼 canonical review *전에* 값싼 사전검사를 먼저 돌려 닫는다(cheap-first): **blind 로 결함을 거르고(concern 보고되면 수정 후 재실행) → 정리되면 canonical review → 반환.** blind 의 입력·status·반복 semantics 는 blind 도메인 소유(여기선 이름으로만 참조; orchestration 은 *순서*[cheap-first → escalate]만 소유). cheap-first 이므로 canonical 의 주의가 obvious 결함이 아니라 hard 문제로 간다.
-- **최소 evidence (대화형, no-file).** executor 반환에 포함한다: `blind 실행 여부` · `blind 결과(보고된 concern 과 그 처리; status 어휘 등 blind semantics 는 blind 도메인 소유)` · `canonical 실행 여부 + verdict, 또는 canonical-only 선택 사유`. 파일 로그가 아니다(no-file / no-hidden-state 정합). *미래 경화(현재 미구현)*: file-free fingerprint-bound return-value token — wrapper 가 호출 시 changeset fingerprint 를 토큰에 박고 done-gate 가 현재 changeset 과 일치 확인. omission·scope-drift 방지용이며, 위조·audit 는 이 threat 밖(= canonical review / 완전 독립 세션의 몫).
-- **main acceptance + JOIN.** main 은 executor 의 intra-unit verdict 를 재심하지 않는다 — evidence 가 present·coherent 한지 확인하고, executor 가 구조적으로 못 보는 cross-unit 통합 정합(JOIN)만 판정한다.
-- **operator-combinable output (JOIN guarantee).** operator reconciliation 대상이 되는 도메인 산출(예: consultation·blind)은 결합·중립화 가능한 shape 로 finding 을 노출해야 한다(해당 시 confidence·assumption 필드 포함). 각 도메인은 *자기 출력 shape* 를 소유하고, 이 계약은 "여러 도메인 산출이 operator 단계에서 결합 가능해야 한다"는 JOIN 규칙만 소유한다(필드 자체를 중앙에서 과소유하지 않는다). **도메인-간 finding 충돌의 표현**은 operator-synthesis 수준(conversational, no-file)이며 — 중앙 conflict schema 를 두지 않는다(탈중앙·no-file 정합) — 각 도메인의 intra-domain 충돌 어휘(예: consultation `conflicting-opinions`)와는 별개 축이다. **결합 대상은 *같은 입력의 병렬 산출*이 아니다** — 각 도메인은 입력·타이밍이 다르다(예: blind = 변경분 post-hoc / consultation = 질문·방향 pre-focus·design-level). JOIN guarantee 는 *operator-synthesis 에서 같은 concern 에 닿는 출력들*이 결합 가능한 shape 를 갖게 보장하는 것이지, 두 도메인이 *동일 입력을 병렬 검토*한다는 보장이 아니다(동일-입력 병렬 가정은 오해).
-- **ceiling 정직.** 이 툴셋은 hook 금지라 어떤 게이트도 *강제 실행*되지 않는다(canonical 포함). 위는 "실행하면 검증 가능하나 호출은 선택"인 review-level *nudge* 이지 hard gate 가 아니다. 실질 완화 = delegate-by-default + 호출명이 오용을 가시화(절차형 호출을 1회로 단축하면 가시적 미완료가 되도록 — 각 operation 의 완료 의미는 해당 도메인이 소유).
+- **cheap-first.** executor 는 비싼 canonical review 전에 값싼 사전검사(예: blind 결함 후보 prefilter)를 먼저 수행한다. 후보가 보고되면 호출자가 판단·수정한 뒤 사전검사를 재실행하고, 정리되면 canonical review를 수행해 반환한다.
+- **최소 evidence.** executor 반환에는 사전검사 실행 여부, 보고된 후보와 그 처리, canonical 실행 여부와 verdict를 포함한다. 이 evidence는 no-file·대화형 작업에도 유지하며, canonical-only를 선택했다면 작업 형태와 무관하게 그 사유를 포함한다.
+- **main acceptance + JOIN.** main 은 executor 의 intra-unit 결론을 그대로 재심하지 않는다 — evidence 가 present·coherent 한지 확인하고, executor 가 구조적으로 못 보는 cross-unit 통합 정합(JOIN)을 판정한다.
+- **ceiling 정직.** 이 툴셋은 hook 금지라 어떤 게이트도 *강제 실행*되지 않는다. 위는 실행 사실과 남은 위험을 가시화하는 운영 규율이며, 각 검증 workflow의 완료 의미는 해당 owner가 소유한다.
 
 ## Regime 2 / 재귀 (이 프로젝트 한정 개념 — 배포 제외)
 
@@ -79,7 +78,5 @@
 - 배포 rule 의 universal core ↔ 프로젝트-특정(codex review-to-pass 바인딩) 분리 경계의 최종 형태.
 - role-partition 로딩(작은 always-visible self-location 프레임 + 역할별 depth)의 물리적 home(부트스트랩 확장 vs 기존 표면).
 - pre-impl 필수 relay 의 scope(substantial only) 정식화 여부.
-- close-the-loop 이 hard gate 아닌 nudge(hook 금지)일 때, 누락된 cheap-validation 을 main 이 accept 가능한 조건·중단권 소재(실 사용 측정으로 성숙).
-- cross-domain JOIN 의 충돌 *탐지·종료*: 도메인 산출 간 'same concern' 매칭(공유 식별자 없이 operator prose 뿐)과 cross-domain 충돌의 closure 신호(consultation 의 `재조율` terminal[consultation 소유]은 intra-consultation 축이라 cross-domain 엔 미적용) — 실측에서 표면화, 실 운용으로 성숙.
-- JOIN 턴의 operator 역할 충돌: 한 operator 가 blind verbatim transport 와 consultation synthesis 를 동시에 수행할 때, 종합이 blind verbatim 을 소급 위반하지 않게 하는 경계.
-- severity·confidence 의 cross-domain 가중: blind 가 다는 severity(예: `blocking`)와 consultation 항목의 confidence 를 operator-synthesis 에서 함께 가중하는 방식(중앙 schema 없이; 각 필드 소유는 해당 도메인).
+- close-the-loop 이 hard gate 아닌 nudge(hook 금지)일 때, executor의 cheap-first 누락을 main 이 accept 가능한 조건·중단권 소재(실사용 측정으로 성숙).
+- multi-unit JOIN 의 충돌 *탐지·종료*: 공유 식별자 없이 서로 다른 executor가 같은 concern에 닿았을 때의 매칭과 closure 신호 — 실측에서 표면화하고 실 운용으로 성숙한다.

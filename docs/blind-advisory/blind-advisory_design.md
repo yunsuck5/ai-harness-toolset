@@ -1,70 +1,78 @@
 # blind-advisory Design
 
-> Design은 변경의 방향성 문서다. 영구 live 문서가 아니며, closeout에서 current-bearing 내용이 Spec 또는 올바른 owner surface로 흡수된 뒤 retire한다. 이 Design은 mutation/commit/push 승인이 아니다.
+> Design은 변경 방향을 정한다. 이 문서는 실행 기록이나 영구 runtime authority가 아니며, closeout에서 current-bearing 내용이 Spec과 skill에 흡수되면 retire한다. 이 Design은 mutation·commit·push 승인이 아니다.
 
 ## Header
 
-- 이 문서 = 아직 closeout되지 않은 `blind-advisory` promoted lifecycle을 현재 규칙과 실제 transport 한계에 맞추는 corrective Design이다.
-- 이 체인이 끝나면 = 결론유도 framing을 제한적으로 제거한 current-state defect prefilter와, capability 실패에서도 verbatim 전달을 보존하는 B-owned delivery 경계가 Spec과 skill에 1:1로 정렬된다.
-- 이 문서가 아닌 것 = canonical verdict 절차·일반 AI 협업 규칙·다른 advisory domain의 의미·실행 기록이 아니다.
+- 선행 blind-advisory lifecycle은 closeout 전 실사용 평가 단계였고, 평가 결과 closeout 조건을 충족하지 못했다. 따라서 같은 role-slot의 미종결 작업을 이 revision에서 계속하되, 사용자 의도와 다르게 비대해진 기존 계약은 폐기하고 원래 의도인 경량 정적 결함 prefilter로 전면 재작성한다.
+- 새 의미의 owner는 얇은 독립 skill이다. Design·Plan·Spec·Work Packet은 그 의미와 회차 판단을 기록할 뿐 runtime dependency가 아니다.
+- canonical review와 consultation의 동작·계약, 일반 협업 규칙, install/update 배포 mechanics는 이 revision의 대상이 아니다. 구 review backlog의 cross-owner 질문은 Blind 절반을 폐기하고 consultation-only review-consumer 질문으로 좁힌다.
 
-## 왜 바꾸는가 / 무엇을 바꾸는가
+## 방향 결정
 
-- **원래 문제.** operator의 완료·해결·검증통과 주장에 기대지 않고 현재 변경 상태에서 결함 후보를 조기에 찾으며, 결과를 승인 효과 없이 verbatim으로 전달하는 단일 owner가 필요하다. 이 활동을 verdict gate나 일반 skeptical review로 흡수하면 권한과 산출 경계가 흐려진다.
-- **현재 정체성 결함.** 현 Design·Spec·skill은 “모든 framing 제거”를 주장하지만 실제 입력은 변경 파일 선택, 인접 surface 포함, 파일 유형과 search class라는 lens를 가진다. framing이 0이라는 절대주장은 input contract 및 “framing-breaker가 아니다”라는 자기 한계와 양립하지 않는다.
-- **현재 transport 결함.** transporter는 full verbatim 전달을 약속하지만, 현 skill은 Codex의 최종 message와 trace/progress를 분리하지 않은 채 대형 응답 transcript를 다른 domain의 선례에 기대고, inline 반환이 불가능할 때의 canonical 위치·무변형성·완전성·retention을 B 스스로 닫지 않는다. 동시에 timeout 때 observation window를 늘리는 문구가 supervised JOIN 규칙과 충돌하고, binary/NUL target은 full-current-state 계약 아래 처리 분기가 없다.
-- **방향 결정.** blind-advisory의 blindness는 **열거된 operator 결론·stance framing을 제거하는 제한된 blindness**다. 제거 목록은 operator intent/preferred outcome, prior verdict/advisory conclusion, worker self-evaluation, resolved/fixed/complete/clean/almost-done narrative, suspected location, pass/fail expectation, severity hint, test outcome claim이다. 남는 mechanical lens, target·adjacent-evidence selection, authority-criteria selection과 실제 inspection 범위는 숨기지 않는다. reviewer는 현재 상태만으로 확인 가능한 결함과 standing obligation만 판단하고, delta/history 또는 operator 판단이 필요한 지점은 추정하지 않는다.
-- **authority/payload 결정.** applicable active instructions와 rules는 reviewer의 판단 기준으로 별도 제공하고 그 목록을 공개한다. 검토 대상 파일·로그·출력과 기계적으로 발견한 caller/interface/reference 같은 adjacent evidence는 untrusted payload다. reviewer process는 target repo 밖의 neutral cwd에서 시작하고 full current content를 stdin으로 받아 target repo의 project config·instruction loading을 target selection과 분리한다. reference Codex host가 자동 주입하는 user-global instruction은 제거됐다고 주장하지 않고, 남는 authority lens로 식별·목록화한다. 이 격리를 “authority가 없다”는 뜻으로 사용하지 않는다.
-- **delivery 결정.** full verbatim inline 전달이 기본이다. Codex 기본 non-JSON 실행에서 최종 message인 stdout만 결과로 소비하고, stderr의 trace·progress·prompt echo·token usage는 결과에서 제외한다. 실제 호출/transport capability 때문에 전문 inline 반환이 불가능할 때만 final-message 전용 출력을 B-owned `log/blind-advisory/<run-id>/result.md`에 write-once로 두고, inline에는 run facts만 전달한다. artifact는 capsule·reducer·summary나 전체 process transcript가 아니라 reviewer final message 자체다. `result.md`에는 별도 표지·목차·요약·메타데이터 절·status 복제·finding 재배열을 두지 않는다. 즉 템플릿을 채우는 문서가 아니라, inline으로 보냈을 같은 완전한 message를 한 번 담는 최소 전달면이다. stdout emitter와 file writer의 terminal-newline 차이는 carrier framing으로 공개하며 두 carrier의 raw byte identity를 주장하지 않는다. background/parallel execution 또는 recovery가 있었으면 carrier와 무관하게 expected/joined member set을 별도 operator note 한 줄로 공개한다.
-- **단일 닻.** 범위는 current changed-state defect-candidate prefilter다. “모든 skeptical review”, 합의 독립성 검사 일반, 모든 AI 결함 탐색, quality gate 일반으로 넓히지 않는다.
+### 얇은 독립 skill을 유지한다
 
-이 작업의 타당성은 합의의 강도가 아니라 위 세 결함이 current owner surface에서 직접 재현되는지로 판단했다. strict no-file 문구를 그대로 두면 capability 실패에서 verbatim 약속과 충돌하고, artifact를 항상 쓰거나 요약을 도입하면 transporter 정체성이 무너진다. 따라서 owner-local한 단일 fallback과 framing 절대주장 축소가 가장 좁은 교정이다.
+두 선택지를 대조했다.
 
-## Owner surface model
+- **얇은 독립 skill**은 사용자가 명시 호출할 수 있고, fresh reviewer 호출·최소 prompt·재귀 차단을 한곳에서 소유한다.
+- **prompt template 또는 상시 rule로 격하**하면 호출 시점과 fresh reviewer 경계를 소유하지 못하거나, ordinary work에 불필요한 규칙을 항상 적재한다.
 
-- **정규 owner surface는 skill이다.** 대상 수집, 결론유도 framing 제거, mechanical lens·target/adjacent-evidence/authority-criteria selection 공개, reviewer 호출, status/finding parsing, verbatim delivery, artifact fallback, failure termination을 소유한다.
-- **Design/Spec은 의미와 durable boundary를 정한다.** active behavior는 skill이 소유하고 문서는 이를 명세·대조한다.
-- **supervised execution rule은 실행 class를 제한한다.** launch 전 operator-visible in-memory expected member set, isolated output, completion notification, 전원 JOIN이라는 상위 조건을 B가 약화하지 않는다. background/parallel execution 또는 recovery가 있었으면 expected/joined set을 carrier 밖의 한 줄 note로 공개한다. sidecar ledger는 만들지 않으며 timeout은 완료나 retry 권한이 아니다.
-- **artifact는 B run의 목적별 output이다.** path·write-once·무변형·완전성·retention 공개는 B가 소유한다. 파일 본문은 reviewer 원문 외의 구조를 갖지 않으며, path·bytes·hash·retention·failure 같은 실행 사실은 파일 밖 인라인 보고에만 둔다. shared schema/helper/registry나 다른 domain의 output mode를 도입하지 않는다.
-- **transport와 downstream 사용은 분리된다.** B는 자기 결과를 verbatim으로 전달하는 데서 끝난다. 다른 owner가 그 결과를 어떻게 소비하는지는 B가 현재 계약으로 가정하거나 재서술하지 않는다.
-- **cross-domain 관계는 name-only negative boundary다.** `consultation`을 호출하지 않고 그 산출을 입력으로 소비하지 않는다는 B 자신의 경계만 남긴다.
+따라서 blind-advisory는 독립 skill로 유지하되, 기능을 아래 최소 계약으로 제한한다. skill은 일반 review 문구나 이름 인용으로 암묵 호출되지 않고 사용자 또는 ordinary caller가 이 skill 실행을 명시적으로 요청한 경우에만 실행한다.
+
+### 새 최소 계약
+
+1. 현재 repo를 직접 읽는 fresh reviewer 한 명을 호출한다.
+2. reviewer는 read-only 정적 검토만 한다. 파일 변경, 테스트 실행, ai-harness-toolset skill 호출을 금지한다.
+3. 입력은 실제 검토 범위를 넣은 첫 줄, 파일 변경·테스트 실행·ai-harness-toolset skill 사용을 금지하는 둘째 줄, 작업 목적 한 줄, 현재 위치 한 줄, 위치와 이유가 붙은 결함 후보 요청 한 줄로 이루어진 6줄 prompt다.
+4. 기본은 단일 reviewer다. 작업량이 클 때만 같은 경계를 받은 ordinary read-only subagent를 한 단계 사용하며 추가 위임하지 않는다.
+5. 자신이 ai-harness-toolset skill 실행으로 생성된 lineage임을 아는 caller는 Blind를 포함한 ai-harness-toolset skill을 다시 호출하지 않는다. Blind reviewer의 자식은 추가 위임하지 않는다.
+6. reviewer final message를 가공하지 않고 그대로 반환한다.
+7. reviewer final message를 얻지 못했거나 금지된 변경·테스트·toolset 재호출이 호스트나 호출자에게 관측되면 `unavailable(<짧은 실제 사유>)`로만 보고한다.
+
+입력에는 worker report, 이전 verdict, 예상 결론, 의심 위치, test 통과·실패 주장처럼 결론을 유도하는 설명을 넣지 않는다. 반면 repo 자체, repo에 적용되는 instruction, 코드와 문서는 reviewer가 직접 읽는다. 별도 authority manifest나 full-content bundle을 조립하지 않는다.
+
+### 출력은 reviewer final message만 남긴다
+
+- reviewer는 host의 final-message-only/no-trace 결과 경로로만 호출한다. 해당 경로를 사용할 수 없으면 reviewer를 시작하지 않고 `unavailable(output-isolation-unavailable)`만 반환한다.
+- reviewer final message를 요약·선별·재구성하지 않고 그대로 반환한다.
+- skill 전용 `result.md`, output template, hash manifest, carrier 상태기계를 만들지 않는다.
+
+## 기존 E4 결정의 전면 폐기
+
+기존 Design E4의 adopted/rejected corpus는 이번 revision의 출발점이나 기본값으로 승계하지 않는다.
+
+- **adopted conclusion**: read-only defect-candidate prefilter, non-verdict, 결론유도 narrative 축소, single-shot, final message 무가공 반환과 실패 비세탁을 새 최소 계약으로 채택한다.
+- **rejected alternatives**: closed status·trigger·severity, finding 필드 gate, authority manifest, neutral cwd·full-content stdin adapter, byte binding, binary/tombstone transport, artifact·hash·retention, timeout·retry·recovery·JOIN 상태기계와 reason catalog를 폐기한다.
+- **judgment-changing evidence type**: 짧은 direct-repo prompt는 위치·이유 후보를 만들었고, 기존 skill 경로는 암묵 중첩·대량 trace·응답 구성 실패·후가공 비용을 만들었다.
+- **scope**: Blind lifecycle 5문서와 source skill을 다시 쓰고, 구 Blind status·출력 계약이 glossary·orchestration candidate·review backlog·docs-working-model planning에 남긴 전용 결박을 제거하며 consultation-only review-consumer 질문은 review backlog에 좁혀 유지한다. orchestration의 generic cheap-first 순서, 이름 기반 install·discovery surface와 일반 candidate 검사는 유지한다.
+- **failure/discard criteria**: ordinary review 암묵 호출, toolset 재귀, 다단 fan-out, canonical급 비용 또는 응답 후가공이 반복되면 이 설계를 다시 줄이거나 폐기한다.
+- **known negative evidence**: direct reviewer도 repo instruction과 모델 편향의 lens를 받으며 correctness·coverage를 보장하지 않는다. optional fan-out은 시간·context 비용을 늘릴 수 있고 vendor별 explicit-trigger 기계 지원도 동일하지 않다.
+
+새 계약의 `read-only`, `non-verdict`, `unavailable`은 기존 계약을 상속한 것이 아니라 사용자 승인 최소 목적에 따라 새로 채택한 결정이다.
 
 ## 수정 대상
 
-- 동일 promoted lifecycle의 `blind-advisory_design.md`를 현재 semantic target에 맞춘다.
-- 기존 promotion Plan을 현재 corrective의 승인 대상 결정으로 재시작한다.
-- `blind-advisory_spec.md`와 repo source `ai-harness-blind-advisory/SKILL.md`를 1:1로 갱신한다.
-- round-scoped 분석은 `blind-advisory_work_packet.md`로 교체한다.
-- 첫 실제 future-work item과 함께 `blind-advisory_backlog.md`를 생성하고, `docs/README.md`에는 prelive backlog route만 추가한다.
+- Blind owner surface: target-state Spec와 source skill을 새 최소 계약에 1:1로 정렬한다.
+- Blind lifecycle support surface: Design·Plan·Work Packet·Backlog를 같은 방향에 맞추고 구 확장 backlog 항목을 제거한다.
+- cross-owner residue surface: glossary·orchestration·canonical-review·docs-working-model에 남은 구 Blind 전용 status·출력 결박만 제거하거나 새 lifecycle gate로 재지정한다.
+- review owner surface: consultation 자료의 canonical intake/reporting 질문을 consultation-only consumer interface로 좁혀 backlog에 유지한다.
 
-## 하지 않을 것 (non-goals)
+기존 backlog의 BA-01·BA-02·BA-03은 구계약 확장 또는 cross-owner 결박이므로 제거하고, 이력 단조성을 위해 `next ID: BA-04`만 유지한다.
 
-- canonical review verdict·coverage·pass를 발급하거나 대체하지 않는다.
-- `consultation`의 동작원리, status, synthesis, output lifecycle을 설명하거나 이식하지 않는다.
-- capsule, reducer, summary, partial synthesis, 다중 packaging mode, shared helper/schema/registry를 만들지 않는다.
-- prompt input file fallback을 새로 만들지 않는다. reference adapter의 prompt는 stdin으로 전달하며, 안전한 stdin delivery가 불가능하면 기계 실패로 닫는다.
-- artifact fallback을 편의상·항상-on으로 사용하지 않는다. full inline verbatim이 실제 capability상 불가능하다는 조건에만 결박한다.
-- retry 수를 늘리거나 timeout을 retry/완료 근거로 쓰지 않는다. background member를 남긴 채 결과를 반환하지 않는다.
-- downstream interface 신설, 다른 owner surface 수정, global activation, install/update, instruction-trigger 변경, shared rule/helper, glossary, Brief/handoff 또는 closeout 작업을 포함하지 않는다.
-- blind-at-close scope 확장과 framing-governance 일반화는 이번 semantic target에 흡수하지 않는다.
+## 하지 않을 것
 
-## E4 absorption — 계속 보존되는 결정과 이번 corrective
+- 기존 Blind의 transport·authority·status machinery를 축소판으로 재도입하지 않는다.
+- diff-only, selected-file bundle, full-content packaging을 기본 검토면으로 만들지 않는다.
+- canonical verdict나 consultation synthesis를 흉내 내지 않는다.
+- 결과 파일, schema, helper, adapter script, registry, telemetry ledger를 추가하지 않는다.
+- reviewer가 테스트를 실행하거나 mutable 작업을 하게 하지 않는다.
+- install/update/uninstall, global mirror, 일반 candidate 검사와 다른 owner의 독자 semantics를 수정하지 않는다.
+- closeout, activation, commit, push를 수행하지 않는다.
 
-- **adopted conclusion**: read-only current-state defect prefilter · non-verdict status · operator=transporter · single-shot · untrusted payload · 정상 result가 성립하지 않는 run/result-validation failure와 `inconclusive` 분리를 유지한다. status closed set은 `no-concerns-reported` / `concerns-reported` / `inconclusive`, `inconclusive` trigger closed set은 `added-framing` / `scope-curation` / `validation-evidence`, severity closed set은 `blocking` / `non-blocking` / `question`이다. collection·invocation·transport·result-contract failure는 `unavailable(<reason-id>)` 문법으로 닫되 reason-id 어휘는 진단 정확성을 위한 open set이며 승인·정상-result 분기 의미를 갖지 않는다. changed path가 없으면 `unavailable(no-changed-files)`로 닫는다. finding은 location/observation/expected condition 또는 rationale/severity/confidence/assumption을 가진다. `blocking`은 최종 blocker 판정이 아니라 관찰과 가정이 확인될 때 landing을 막을 수 있는 defect candidate severity다. 이번 corrective는 blindness를 위 방향 결정의 열거 목록으로 한정하고, remaining lens·selection rationale·actual coverage 공개를 추가한다. delivery는 inline-default이며 capability-impossible일 때만 purpose-isolated raw-result artifact로 전환한다.
-- **rejected alternatives**: `clear`/`issues-found` status · collection/invocation/transport/result-contract failure를 `inconclusive`로 추정 · multi-round rebuttal loop · strict no-file을 유지하며 transcript를 숨기거나 절단 · artifact always-on · capsule/reducer/synthesis · timeout 상승 또는 미종료 실행과 병행한 retry · binary/NUL silent skip · 다른 domain의 semantics나 output modes를 B의 근거로 삼는 방식을 채택하지 않는다.
-- **judgment-changing evidence type**: target 선택 자체가 lens라는 반례, current-state-only 입력으로 delta-trigger를 항상 판별할 수 없다는 반례, 대형 reviewer output의 inline 전문 반환 실패, 현 timeout 문구와 active JOIN rule의 직접 충돌, 비텍스트 target에서 full-current-state 계약이 성립하지 않는 사례다.
-- **scope**: B의 planning artifacts, source skill, B backlog와 prelive route로 닫힌 owner-local corrective다.
-- **failure/discard criteria**: 결론유도 framing을 다시 넣어야만 유용함 · 결과가 승인 신호로 소비됨 · operator가 요약/선별해야만 전달 가능함 · raw artifact가 기능 source-of-truth 또는 장기 hidden state로 변함 · owner-local하게 닫히지 않고 다른 domain 예외를 요구함 · false positive 비용이 조기 발견 가치를 지속적으로 초과함.
-- **known negative evidence**: B는 framing-free나 framing-breaker가 아니다. target·adjacent-evidence·authority-criteria selection과 search class가 만드는 lens를 없애지 못한다. current state만으로 obligation membership을 결정할 수 없는 경우가 있으며 그때는 status를 억지로 만들지 않는다. applicable authority를 operator가 누락할 위험도 남으므로 제공 목록과 limitations를 공개한다. artifact fallback의 실제 필요 빈도와 retention 비용은 아직 운용 측정이 부족하다.
+## Plan readiness
 
-## Plan readiness / open risks
-
-- **Plan으로 진행 가능하다.** 현재 결함은 B owner surface 안에서 재현되고 semantic target은 좁게 닫힌다.
-- Plan은 authority/payload/adjacent-evidence 분리, 자동 user-global authority 공개, neutral-cwd byte-faithful stdin delivery, current-state input binding, evidence-bearing finding shape, artifact fallback 조건·run-fact set·retention disclosure, expected-member 기록/JOIN, carrier 또는 proven pre-reasoning failure에 한정한 1회 recovery와 binary/NUL branch를 승인 대상 결정으로 고정한다.
-- Spec은 target set, adjacent-evidence/authority-criteria selection·remaining-lens disclosure, status/failure branch, raw-result validity와 delivery semantics를 durable normative 문장으로 소유한다.
-- skill은 stdin delivery, prompt shape, artifact mechanics, parse/transport, failure handling을 구현한다.
-- artifact retention 비용과 실제 fallback 빈도는 blocker가 아니다. 기능을 일반화하지 않고 관측 가능한 run facts로 남기며, 반복 사용이나 cleanup burden이 관측될 때만 backlog 조건으로 재개한다.
+방향은 닫혔다. Plan은 위 최소 계약을 문서와 skill에 1:1로 반영하고, 기존 무거운 계약의 잔여 문구가 남지 않았는지를 검증 대상으로 삼는다.
 
 ## Future-work pointer
 
-현재 시작하지 않는 blind-advisory 소유 future work의 단일 home은 `blind-advisory_backlog.md`다. 이 Design은 backlog ID나 item 문구를 복제하지 않는다. cross-domain framing governance와 다른 owner의 interface 도입 여부는 B backlog가 소유하지 않는다.
+현재 시작하지 않는 blind-advisory 소유 future work의 단일 home은 `blind-advisory_backlog.md`다.

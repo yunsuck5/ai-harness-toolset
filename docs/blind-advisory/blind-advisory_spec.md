@@ -1,100 +1,80 @@
 # blind-advisory Spec
 
-> Spec은 목표 상태 명세다. closeout 후 active implementation과 1:1로 유지한다. 회차 파일 목록·실행 기록·review result·readiness·commit 절차는 담지 않는다. 이 Spec은 mutation/commit/push 승인이 아니다.
+> Spec은 목표 상태 명세다. active behavior는 skill이 소유하며, closeout 후 둘은 1:1로 유지된다. 이 Spec은 mutation·commit·push 승인이 아니다.
 
 ## Header
 
-- 이 문서는 `blind-advisory` domain의 target-state Spec이다.
-- blind-advisory는 결론유도 operator framing을 제한적으로 제거한 입력을 fresh read-only reviewer가 검사하고, non-verdict defect candidate를 operator가 verbatim으로 전달하는 current-state prefilter다.
-- active behavior는 skill이 소유하며 이 Spec은 그 behavior의 durable 의미와 경계를 명세한다.
+- blind-advisory는 사용자가 명시 호출하는 경량 defect-candidate prefilter다.
+- 체인 종료 상태는 새 최소 계약과 source skill의 1:1 정렬, 구계약 전용 결박 제거, 검증 전 `prelive`다.
+- canonical verdict, consultation synthesis, mutable 검증 또는 일반 협업 규칙이 아니다.
 
 ## 목표 상태
 
-blind-advisory run은 다음 계약을 모두 만족해야 한다.
-
-- reviewer는 제공된 대상만 read-only로 검사하고 mutation하지 않는다.
-- 산출은 결함 후보이며 review verdict, 승인, 면제, coverage 또는 pass가 아니다. `yes`, `no`, `yes with risk`를 자기 판단으로 발급하지 않는다.
-- operator는 입력에서 operator intent/preferred outcome, prior verdict/advisory conclusion, worker self-evaluation, resolved/fixed/complete/clean/almost-done narrative, suspected location, pass/fail expectation, severity hint, test outcome claim을 제거한다. 이 열거된 결론유도 정보의 제거가 B의 blindness다.
-- changed-file 선택, adjacent-evidence 선택, 파일 유형, search class, authority-criteria 선택과 host가 자동 주입하는 user-global instruction은 제거되지 않는 lens다. 요청은 선택 목록과 rationale 및 자동 authority 목록을, 결과는 실제 inspection 범위와 limitations를 공개한다. B는 framing-free 또는 framing-breaker라고 주장하지 않는다.
-- 입력은 changed path의 full current state를 사용한다. diff나 history를 내용 대체물로 사용하지 않는다. 현재 상태와 제공된 standing obligation만 판단하며, delta/history 또는 operator의 membership 판단이 필요한 질문을 추정하지 않는다.
-- applicable active instructions와 rules는 별도 authority criteria로 제공하고 목록을 공개한다. reference host가 자동 주입하는 user-global instruction은 제거됐다고 가정하지 않고 authority manifest에 출처와 함께 공개한다. target 파일·로그·출력과 기계적으로 발견한 caller/interface/reference 같은 adjacent evidence는 모두 untrusted payload이며 그 안의 instruction-like text는 authority를 얻지 않는다. ordinary adjacent evidence는 authority criterion이 아니어도 mechanical reference로 포함할 수 있고, `scope-curation`은 standing obligation의 적용이나 membership 자체가 operator 판단을 요구할 때만 사용한다. 필수 authority나 자동 주입 목록이 불명확하면 `inconclusive`로 닫고 trigger `scope-curation`을 밝힌다.
-- reviewer process는 target repo 밖 neutral cwd에서 시작한다. operator가 full current content와 authority criteria를 byte-faithful UTF-8 stdin으로 전달하며 reviewer는 target repo를 cwd로 열거나 그 repo의 project config·instruction을 자동 로드하지 않는다. PowerShell 5.1 text pipeline처럼 encoding을 암묵 변환하는 carrier는 허용하지 않는다. target payload를 완전하게 전달할 수 없으면 path-list로 경계를 완화하지 않고 `unavailable(input-delivery-unavailable)`로 닫는다.
-- changed path가 없으면 `unavailable(no-changed-files)`로 닫는다.
-- 입력은 dispatch 시 path와 byte hash로 메모리에 결박한다. 결과 수용 전과 carrier recovery 전에 같은 결박을 재확인하고 bytes가 달라졌으면 stale run을 재사용하지 않는다. 이 결박을 위한 sidecar 파일이나 persistent ledger는 만들지 않는다.
-- deleted path는 현재 tombstone으로 표현한다. rename은 destination current state와 기계적 rename identifier를 제공한다. 과거 내용이 필요하면 추정하지 않는다.
-- target 하나라도 binary이거나 NUL을 포함하면 path를 열거하고 `unavailable(binary-or-nul-target)`로 종료한다. 해당 target을 skip하거나 정상 status를 만들지 않는다.
-- run은 single-shot이다. rebuttal, 설득, verdict 수렴 또는 multi-round synthesis를 B 안에 두지 않는다.
-
-정상 결과의 첫 줄은 다음 closed set 중 정확히 하나다.
-
-| Status | 의미 |
-|---|---|
-| `no-concerns-reported` | 실제로 검사한 범위에서 defect candidate를 보고하지 않았다. |
-| `concerns-reported` | 하나 이상의 defect candidate가 뒤따른다. |
-| `inconclusive` | B가 추가 framing, operator scope curation, 또는 제공된 read-only material 밖의 verdict/기계 validation evidence를 공급해야만 답할 수 있다. |
-
-`inconclusive`의 closed trigger는 `added-framing`, `scope-curation`, `validation-evidence`다. 결과는 firing trigger, 필요한 것, 답을 닫지 못한 이유를 밝힌다. 정상 결과 첫 줄은 status token 하나와 정확히 같아야 한다. collection failure, unreadable target, encoding corruption, timeout, abnormal exit, truncation, parse failure, stale input, 필수 finding/범위/한계 누락 같은 collection·invocation·transport·result-contract failure는 status가 아니며 `unavailable(<reason-id>)` 문법으로 종료한다. reason-id 어휘는 간결하고 정확한 실패 진단을 위한 open set이며 정상-result 의미, 승인 또는 downstream 분기 권한을 갖지 않는다. 처분에 필요한 누락 field나 affected path 같은 최소 실패 사실은 함께 밝히되 trace 전체를 대체 결과로 붙이지 않는다.
-
-각 finding은 location, observation, expected condition 또는 rationale, severity, confidence, assumption을 가진다. severity closed set은 `blocking`, `non-blocking`, `question`이다. `blocking`은 최종 blocker verdict가 아니라 관찰과 가정이 확인되면 landing을 막을 수 있는 candidate severity다.
+- 사용자 또는 ordinary caller가 skill 실행을 명시적으로 요청한 경우에만 실행한다. 이름 인용·설명·검토와 ordinary/fresh/independent/generic blind review 문구는 invocation이 아니다.
+- fresh reviewer는 current repo에 직접 위치하고 repo 상태와 적용되는 instruction을 스스로 읽는다. full-content bundle, authority manifest, hash inventory를 받지 않는다.
+- reviewer prompt는 다음 정보만 담는다: 실제 검토 범위가 들어간 read-only 정적 검토, 파일 변경·테스트 실행·ai-harness-toolset skill 사용 금지, 작업 목적, 현재 위치, 위치와 이유가 붙은 결함 후보 요청.
+- 사용자 지정 scope가 없으면 검토를 diff-only나 selected-file-only로 축소하지 않는다.
+- 기본은 reviewer 한 명이다. 작업량이 클 때만 같은 경계를 받은 ordinary read-only child reviewer를 한 단계 사용할 수 있으며 child는 추가 위임하지 않는다.
+- reviewer와 그 child가 모두 끝나거나 명시적으로 중단된 뒤 결과를 받는다.
+- main session과 ordinary subagent는 Blind를 명시 호출할 수 있다. current caller가 자신이 ai-harness-toolset skill 실행으로 생성된 lineage임을 알고 있으면 reviewer를 시작하지 않고 `unavailable(<짧은 실제 사유>)`로 닫는다.
+- reviewer final message를 요약·선별·재구성하지 않고 그대로 반환한다.
+- reviewer는 host의 final-message-only/no-trace 결과 경로로만 호출한다. 해당 경로를 사용할 수 없으면 reviewer를 시작하지 않고 `unavailable(output-isolation-unavailable)`로 닫는다. skill 전용 result artifact는 만들지 않는다.
+- reviewer final message를 얻지 못하거나 금지된 변경·테스트·toolset 재호출이 호스트나 호출자에게 관측되면 `unavailable(<짧은 실제 사유>)`를 반환한다.
 
 ## Owner surface 지도
 
-- `snippets/claude-skills/ai-harness-blind-advisory/SKILL.md`가 discovery, input collection, framing removal, authority/payload 분리, reviewer invocation, parsing, transport, completion과 failure closure를 소유한다.
-- 이 Spec은 skill과 1:1로 동기화되는 durable target이다. docs는 runtime dependency나 실행 authority가 아니다.
-- Design과 Plan은 변경 방향과 승인 대상 결정을, Work Packet은 회차 분석을, backlog는 아직 시작하지 않은 B future work를 소유한다.
-- `<ProjectRoot>/log/blind-advisory/<run-id>/result.md`는 capability fallback이 실제 발동한 단일 run의 delivery output이다. canonical review record, audit log, 장기 workflow state 또는 기능 source-of-truth가 아니다.
-- operator는 transport까지만 B 역할로 수행한다. downstream owner가 결과를 어떻게 판단·종합·승인하는지는 B가 소유하지 않는다.
+- `snippets/claude-skills/ai-harness-blind-advisory/SKILL.md`가 explicit trigger, 최소 prompt, fresh reviewer 호출, one-layer topology, 원응답 반환과 failure closure를 소유한다.
+- 이 Spec은 durable 의미와 경계를 소유하지만 runtime dependency가 아니다.
+- Design과 Plan은 변경 방향과 승인 결정을, Work Packet은 이번 회차 분석을, Backlog는 아직 시작하지 않은 future work를 소유한다.
+- vendor별 설치·업데이트·제거와 global mirror는 install-update owner의 범위다.
 
 ## Durable boundary
 
-정상 delivery는 reviewer final output 전문의 inline verbatim 전달이다. background/parallel execution 또는 recovery가 있었으면 carrier와 무관하게 expected/joined member set을 별도 operator note 한 줄로 공개하되 reviewer 본문을 요약·복제하지 않는다. 전문 inline 전달이 실제 호출 또는 transport capability상 불가능할 때만 다음 artifact delivery로 전환한다.
+허용:
 
-- path는 `<ProjectRoot>/log/blind-advisory/<run-id>/result.md`이며 run별로 고유하고 작성 전에 존재하지 않아야 한다.
-- 파일은 write-once다. overwrite와 append를 금지한다.
-- 파일 본문은 inline과 같은 완전한 reviewer final message만 담는다. process trace, progress, prompt echo, token usage, 별도 표지, 목차, 요약, verdict/status 복제 절, finding 표 재구성, 메타데이터 절, 빈 템플릿 절을 두지 않는다. stdout emitter와 final-message file writer의 terminal-newline 차이는 carrier framing이며 두 carrier의 raw byte identity를 요구하지 않는다.
-- inline에는 status 또는 `unavailable`, path, bytes, SHA-256, retention과 필요한 failure reason만 보고한다. reviewer 본문의 요약·발췌·재배열은 하지 않는다.
-- retention은 `retained-for-consumption`으로 공개한다. 소비 전 자동 삭제하지 않으며 이후 cleanup은 별도 안전 경계를 따른다.
-- artifact mode는 편의, 길이 추정, 정형 보고서 선호 또는 항상-on 설정으로 선택하지 않는다. fixed byte threshold도 계약으로 만들지 않는다.
+- current repo의 read-only 정적 inspection
+- 실제 검토 범위가 들어간 read-only 정적 검토, 파일 변경·테스트 실행·ai-harness-toolset skill 사용 금지, 작업 목적, 현재 위치, 위치와 이유가 붙은 결함 후보 요청만 담는 최소 prompt
+- 단일 fresh reviewer와 조건부 one-layer ordinary fan-out
+- 위치·이유가 붙은 결함 후보
+- 짧은 `unavailable(<짧은 실제 사유>)`
 
-정상 결과는 exit code 0, 분리된 stdout/stderr, 선택한 result carrier(inline이면 stdout, artifact면 final-message file)의 완전하고 읽을 수 있는 reviewer message, 정확히 한 first-line status, status별 필수 field, target completeness와 기록된 expected member set 전원의 JOIN을 충족해야 한다. expected set은 operator-visible in-memory run state에 launch 전에 기록하고 sidecar ledger로 만들지 않는다. artifact mode에서는 stdout을 결과로 소비하지 않는다. 기본 non-JSON 실행을 사용하고 event trace를 stdout에 쓰는 JSON mode는 결과 채널로 사용하지 않는다. stderr의 trace·progress·prompt echo·token usage는 결과에 합치거나 기본 보존하지 않고 failure classification 뒤 폐기한다. 실패 때도 필요한 기계 사유만 별도로 보고한다. 조건 하나라도 실패하면 partial output이나 artifact를 정상 결과로 소비하지 않는다.
+금지:
 
-observation yield 만료는 hard timeout이나 retry 근거가 아니다. 동일 invocation의 completion notification을 기다린 뒤 JOIN한다. hard timeout이면 해당 실행을 종료·JOIN하고 `unavailable(timeout)`으로 닫으며 retry하지 않는다. 한 번의 recovery는 이전 execution의 종료가 기계적으로 확인되고 해당 member가 JOIN된 뒤 input binding이 unchanged임을 재확인한 경우에만 허용한다. 허용 사유는 완전한 reviewer message의 carrier 전환, 또는 reviewer reasoning이 시작되지 않았음이 확인된 pre-reasoning launch/input 기계 실패로 한정한다. reviewer가 message를 생성했거나 reasoning 시작 여부가 불명확하면 다시 호출하지 않고 해당 `unavailable(<reason-id>)`으로 닫는다.
-
-다음은 standing prohibition이다.
-
-- reviewer mutation, verdict 발급, commit/push/release/adoption 승인
-- capsule, reducer, summary, synthesis, partial synthesis, finding 선별, 다중 packaging mode
-- prompt input file fallback, hidden sidecar, persistent run ledger, daemon/watcher/scheduler, unjoined background execution
-- collection/invocation/transport/result-contract failure를 `inconclusive`나 `no-concerns-reported`로 포장하는 행위
-- canonical review의 invocation/pass/coverage에 B 결과를 산입하거나 reviewer에게 B 결과를 신뢰하라고 지시하는 행위
-- B를 모든 skeptical inspection, 모든 AI defect hunting 또는 일반 quality gate로 확장하는 행위
+- 파일 변경, 테스트 실행, stage·commit·push·activation
+- 자신이 ai-harness-toolset skill 실행으로 생성된 lineage임을 아는 caller의 skill 재호출과 reviewer child의 추가 fan-out
+- 이전 verdict, worker self-report, 예상 finding, test 결과를 reviewer framing으로 주입
+- neutral cwd용 full-content packaging, authority manifest, byte/hash binding
+- closed status·severity·finding schema, result template, trace 보존, 중복 요약
+- retry·recovery·retention을 Blind 고유 상태기계로 만드는 것
+- canonical verdict나 consultation synthesis를 대체하는 것
 
 ## Cross-domain interface
 
-- B는 downstream consumer나 handoff interface를 정하지 않는다. 결과를 다른 owner가 소비·판단·종합하는 방식은 B의 계약 밖이다.
-- `consultation`은 이름만 참조한다. B는 consultation을 호출하지 않고 consultation output을 입력으로 소비하지 않는다. consultation의 status, synthesis, framing 또는 output lifecycle은 B에서 설명하지 않는다.
-- supervised execution의 active rule은 B보다 상위다. B의 adapter는 expected member, isolated capture, completion notification과 JOIN을 약화하지 않는다.
-- 여러 advisory 결과의 결합, B 재호출 여부, downstream neutralization과 최종 처분은 B 밖의 owner 결정이다.
+- canonical review는 Blind 결과와 별개의 권위·절차를 가진다. Blind는 canonical pass 가능성이나 coverage를 주장하지 않는다.
+- consultation, Brief, review skill을 호출하거나 그 결과를 Blind 입력으로 소비하지 않는다.
+- ordinary main/subagent의 명시 호출은 허용하지만, 자신이 ai-harness-toolset skill 실행으로 생성된 lineage임을 아는 caller는 다른 ai-harness-toolset workflow로 재진입하지 않는다.
+- Blind는 반환한 원응답의 소비·판단·후속 조치를 규정하지 않는다.
 
 ## Validation expectation
 
-- Spec↔skill 1:1 대조는 제한된 blindness, remaining-lens disclosure, authority/payload 분리, current-state binding, status/failure 분리, finding shape, inline/artifact delivery와 recovery를 모두 확인한다.
-- 최소 behavioral evidence는 inline 성공, capability-impossible artifact fallback, binary/NUL fail-closed, unreadable/abnormal/parse failure, hard timeout no-retry, carrier/pre-reasoning recovery boundary, stale binding 거부와 expected-member JOIN을 포함한다.
-- artifact 검증은 본문이 완전한 reviewer final message이고 trace나 추가 section이 없으며, inline run facts의 path·bytes·SHA-256이 실제 artifact bytes와 맞는지를 확인한다. inline stdout과 artifact의 byte hash를 서로 같다고 요구하지 않는다.
-- docs-working-model checker와 affected/full Pester는 lifecycle·placement·generic regression 근거다. 이 green을 B 의미 검증의 대체물로 해석하지 않는다.
-- 검증 evidence와 operator report는 `log/**`가 소유하며 Spec에는 회차 결과를 기록하지 않는다.
+- Design·Plan·Spec·SKILL의 문장 대조로 최소 계약이 1:1인지 확인한다.
+- skill frontmatter가 explicit invocation만 허용하고 일반 review 문구를 배제하는지 확인한다.
+- 기본 prompt가 빈 줄을 포함해 6줄이고 대규모 조건부 fan-out이 한 줄만 추가되는지 확인한다.
+- current repo direct review, no mutation, no tests, no toolset recursion, child no-fan-out을 확인한다.
+- 기존 authority/status/transport machinery가 current surface에 남지 않았는지 확인한다.
+- 구조 checker와 repo 밖 공식 skill-creator의 `quick_validate.py`(또는 동등 정적 검사) 통과는 보조 근거이며, 경량성·호출 경계의 수동 검토를 대체하지 않는다.
 
 ## Review focus
 
-- B가 실제 defect prefilter인지, 아니면 canonical review의 값싼 복제품·일반 skeptic 역할로 확장됐는지 반례를 찾는다.
-- “framing 제거”가 남은 lens를 숨기는 절대주장으로 되돌아갔는지 확인한다.
-- authority criteria가 target payload와 분리됐는지, 필요한 authority 누락을 정상 status로 세탁하지 않는지 확인한다.
-- `no-concerns-reported`가 제한된 scope, unread target, partial output 또는 missing obligation을 숨기지 않는지 확인한다.
-- `blocking` candidate가 최종 blocker verdict처럼 소비되지 않는지 확인한다.
-- artifact fallback이 inline 불능이라는 실제 capability 조건에만 쓰이고, 결과 문서 작성·중복 요약·형식 충족 비용을 만들지 않는지 확인한다.
-- timeout, recovery, JOIN, input binding이 zombie execution이나 stale result를 남기지 않는지 확인한다.
-- owner-local closure가 유지되고 다른 domain의 semantics나 예외가 B에 이식되지 않았는지 확인한다.
+- skill이 경량 prefilter를 넘어 기존 authority/status/transport machinery를 다시 도입했는가?
+- prompt에 목적·위치 외 narrative나 schema가 다시 붙었는가?
+- explicit-only 문구가 ordinary review를 다시 가로채는가?
+- fresh reviewer가 current repo 대신 operator가 고른 bundle만 보는가?
+- 정적 리뷰인데 테스트나 mutable tool을 실행할 여지가 있는가?
+- fan-out이 한 단계를 넘거나 toolset skill 재귀를 허용하는가?
+- reviewer final message를 선별·요약·재구성하는 후처리가 생겼는가?
+- `unavailable`이 reason catalog나 복잡한 recovery branch로 다시 자라는가?
 
 ## Lifecycle state
 
-- **prelive** — 이 Spec과 skill은 corrective 후 아직 closeout·activation 전이다. 존재만으로 live behavior나 glossary finalization의 근거가 되지 않는다.
+- **prelive** — 새 최소 계약과 source skill은 아직 검증·closeout·global activation 전이다.
