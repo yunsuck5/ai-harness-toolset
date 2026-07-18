@@ -79,9 +79,7 @@ install-global / update-global / uninstall-global
 
 ## 문서 작성 언어
 
-Repo 내부 human-facing 문서와 `rules/**` 본문은 한국어를 기본으로 작성합니다. 불특정 adopter가 직접 소비하는 `snippets/rules/**`와 root bootstrap payload인 `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`는 영어를 유지하며, 그 밖의 `snippets/**` 표면은 각 active owner를 따릅니다.
-
-단, 식별자, authority grade, technical clause anchor, gate name, path, filename, class/type name, package name, config key, command, commit hash, API/model name, code identifier는 English 그대로 유지하며 일반 설명 제목은 한국어로 쓸 수 있습니다.
+Repo 내부 human-facing prose의 binding 언어 경계는 root `CLAUDE.md` / `AGENTS.md` shared body의 *Human-facing repo prose* 규율을 따릅니다. 이 기여 안내서는 그 경계를 소비하며 별도 언어 정책을 재정의하지 않습니다.
 
 ## 금지 사항
 

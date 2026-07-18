@@ -38,6 +38,11 @@ Always-on for this repo (its canonical scripts are all `.ps1`). The repo-only fi
 
 The two rules tiers are distinct: **repo-only** rules live in `rules/` (this repo's development discipline, not distributed); **adopter-universal** rules ship in `snippets/rules/` under the `snippets/` payload root.
 
+## Human-facing repo prose
+
+- 새로 작성하거나 의미를 실질적으로 다시 쓰는 repo 내부 human-facing prose는 한국어가 기본이다. 기존 영어 표면의 untouched 주변 문면, path/token만 바꾸는 수정, 대량 기계 변경은 전체 번역 의무를 만들지 않는다. identifier, API/model 명칭, path, CLI/schema token, code와 예제 literal은 영어를 유지할 수 있으며 runtime CLI output/error와 code comment는 각 active owner가 결정한다. 이 경계는 자연어 저작 규율이며 language detector나 hard gate를 만들지 않는다.
+- 불특정 adopter가 직접 소비하는 `snippets/rules/**`와 root bootstrap payload인 `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`는 영어를 유지하고, 그 밖의 `snippets/**` 표면은 각 active owner를 따른다.
+
 ## Public-safe boundary
 
 These files are **tracked** (public to any contributor), so they carry only public-safe repo guidance. **Never** put in them: secrets / tokens / credentials; personal or machine-specific paths or state; local model endpoints; session-restore state or `log/brief/BRIEF.md` contents; private handoff or user decision history; runtime evidence or `log/**` payloads. Durable pointers resolve only to git-tracked files or git history — never to `log/**`, `polishing/**`, or user/global files (durable-pointer rule: `rules/docs-working-model/docs-working-model.md`, *Durable-pointer prohibition*).
