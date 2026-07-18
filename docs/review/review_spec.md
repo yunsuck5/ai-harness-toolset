@@ -6,7 +6,7 @@
 
 **이 체인이 끝나면 무엇이 되는가.** 이 spec 과 `review_backlog.md` 가 review 도메인의 live 표면이 되고, 구계열 review 문서(contracts·policies·systems 의 17파일)는 retire 되어 도메인이 `docs/review/` 안에서 닫힌다.
 
-**이 문서가 아닌 것.** 구현 절차서 아님 · operative authority 아님(behavior 는 active surface 가 소유하고 이 spec 은 명세·대조될 뿐) · 용어 정의의 home 아님(`rules/terminology-glossary.md`). 이 spec 은 mutation/commit/push 승인이 아니다(1회 진술).
+**이 문서가 아닌 것.** 구현 절차서 아님 · operative authority 아님(behavior 는 active surface 가 소유하고 이 spec 은 명세·대조될 뿐) · 프로젝트 공용으로 채택·기각된 용어의 한 줄 의미 home 아님(`rules/terminology-glossary.md`; review-local 의미는 이 owner가 소유). 이 spec 은 mutation/commit/push 승인이 아니다(1회 진술).
 
 ## 목표 상태
 
@@ -75,7 +75,7 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 
 - **install-update (footprint 경계)**: `<ProjectRoot>/log/` 는 target project 의 유일한 persistent footprint 이고 `log/review/`·`log/evidence/` 는 그 아래 runtime 트리다 — gitignored 성격과 channel 구조의 owner 는 install-update 도메인(`INSTALL.md`)이며, 이 spec 은 그 경로 interface 만 의존한다. 타 도메인의 `log/evidence/**` 사용(기록처 지정)은 이 경로 interface 사용이고 evidence 형식 의미에 대한 의존이 아니다.
 - **ToolRoot 해석**: review scripts 는 resolved `<ToolRoot>` 의 templates/config 를 읽는다 — channel 해석 순서의 owner 는 install-update/global-invocation 표면이고 이 spec 은 그 결과 경로만 의존한다.
-- **terminology**: 용어 의미의 single home 은 `rules/terminology-glossary.md` 다 — 이 spec 은 accepted 용어를 일관 사용할 뿐 재정의하지 않는다. coverage 5축 등 review 도메인 고유 운용 어휘의 의미는 이 spec 이 소유한다(`review owner surface`).
+- **terminology**: 프로젝트 공용으로 채택·기각된 용어의 한 줄 의미는 `rules/terminology-glossary.md` 가 single home 이다 — 이 spec 은 그 의미를 일관 사용할 뿐 재정의하지 않는다. coverage 5축 등 review 도메인 고유 운용 어휘의 상세 의미는 이 spec 이 소유한다(`review owner surface`).
 - **글로벌 배포 티어**: 배포되는 review 표면(skill·templates·scripts·config)은 review 의미를 **self-contained** 로 운반한다 — 동작의 완성이 repo 의 review 도메인 문서 읽기에 의존하지 않으며, **review 도메인 문서로의 경로 참조를 갖지 않는다.** (비-review 문서로의 비-behavior 주석 참조 — 예: PowerShell 정책 주석 — 는 그 문서를 소유한 도메인의 경계이며 이 spec 의 대상이 아니다.) review 의미의 home 은 이 spec 과 그 active surface 들뿐이다.
 - **brief**: 위 Durable boundary 의 비경계 진술 외에 brief 도메인의 semantics 를 참조하지 않는다.
 

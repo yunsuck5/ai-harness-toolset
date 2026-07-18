@@ -254,7 +254,7 @@ If a direct shell is genuinely unavailable, do not use prompt scratch in a backg
 
 - **review** — hand over neutralized advisory material manually through ordinary review input until the review owner defines a dedicated interface. Never invent or restate review internals.
 - **blind-advisory** — do not perform that workflow or consume its output as a consultation request/input.
-- **subagent-work-orchestration** — do not define cross-run re-invocation or stop semantics here. Own only this run's expected set, JOIN, and consultation outcomes.
+- **subagent-work-orchestration** — this is still a non-authoritative candidate name only; do not define cross-run re-invocation or stop semantics here. Own only this run's expected set, JOIN, and consultation outcomes.
 - **install-update** — leave source-skill installation and activation to that owner.
 
 ## Durable prohibitions

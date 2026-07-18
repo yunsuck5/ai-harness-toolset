@@ -64,7 +64,7 @@
 
 ## Vocabulary (domain-local 정의 — 후보)
 
-> 용어의 **full domain-local 정의는 incubation 동안 여기** 있다. glossary(`rules/terminology-glossary.md`)는 용어의 **one-line meaning + classification** 의 single home 이고, full semantics 는 finalization-owner — 이 rule candidate 의 경우 promote 후 terminal rule `snippets/rules/subagent-work-orchestration.md` — 가 소유하며, term 의 finalization 은 그 **terminal rule landing changeset** 에서 결정된다(promote 시점 아님). meaning-bearing 용어는 **exposed(후보 자신의 문서 밖 tracked surface 에 노출)이거나 collision-prone 일 때만** glossary 에 thin **`pending` reservation**(candidate / facet / not-this / eventual-owner-surface; collision-prone 이면 collision-note; **define-no-meaning**)으로 등록한다 — full 정의는 여기, glossary 는 name-level 예약(meaning-home 이전 아님). 현재 등록된 용어 = `subagent-work-orchestration` / `orchestrator stance` / `executor stance`(전부 exposed). `Regime 1/2`·계층·calibrated supervision 등 문서-내부 전용 용어는 **미등록**(과등록 금지).
+> 용어의 full domain-local 정의는 incubation 동안 여기 있다. `subagent-work-orchestration` / `orchestrator stance` / `executor stance`와 `Regime 1/2`·계층·calibrated supervision은 이 후보가 소유하는 작업용 이름이며 선등록하지 않는다. promote/discard 또는 외부 언급 자체는 glossary trigger가 아니다. 실제 프로젝트 공용 용어 도입·의미 변경·이름 충돌·기각 용어 부활이 생길 때만 `rules/terminology-glossary.md`에서 채택/기각한다.
 
 - **subagent-work-orchestration** — 위 §목표 상태 / Operating model 의 운영 규율(메인=오케스트레이터/감독, 서브=실행자; Regime-1, branching-agnostic). `architecture` / `policy` broad bucket 아님.
 - **orchestrator stance** — operator 세션이 분해·의존판정·감독·통합검증·사용자 정렬을 수행하는 stance. top-level role(operator/reviewer/supervisor) 아님.

@@ -69,13 +69,13 @@
 - 각 active rule은 자기 trigger, safety property, default, exception, validation과 실제 revision의 의미를 계속 단독 소유한다.
 - `snippets/rules/README.md`는 distributed-tier admission과 index를, 두 snippet의 trigger gate는 action class에서 terminal rule로의 load routing만 소유한다.
 - source repository의 `docs-working-model`은 이 저장소에서 rule을 추가·개정하는 lifecycle을 소유하지만 distributed runtime rule의 의존성은 아니다.
-- glossary는 후보가 도입한 이름의 분류와 최종 상태만 소유하며 full semantics는 terminal rule에 남는다.
+- 후보가 쓰는 이름과 분류의 full semantics는 candidate planning과 terminal rule에 남는다. 실제 프로젝트 공용 용어 도입·의미 변경·이름 충돌·기각 용어 부활이 생길 때만 glossary가 한 줄 채택/기각 상태를 소유한다.
 - repository/global mutation owners와 host instruction priority는 그대로 유지된다. G는 그 승인 또는 우선순위를 재정의하지 않는다.
 
 ## 수정 대상
 
 - global-distribution rules tier: 새 terminal rule, tier index, action-class trigger map.
-- terminology surface: promotion 중 노출되는 candidate-introduced 이름의 thin reservation과 terminal landing의 finalization decision.
+- name surface: candidate id와 두 분류값은 이 lifecycle의 owner-local 이름이며, 별도 선등록 없이 terminal rule이 필요성과 의미를 닫는다.
 - validation surface: docs-working lifecycle 구조, snippet symmetry, trigger routing, counterexample 경계를 검증하는 기존 또는 비례적인 새 검사.
 - `rule_docs/rule-conflict-and-revision-routing/`: promotion transition 동안 Design / Plan / Work Packet을 보유하고 terminal landing closeout에서 idle rule-folder 상태로 전환.
 
@@ -96,7 +96,7 @@
 | 분류가 과도하게 보수적이거나 shared dependency를 놓치는가 | **해결:** all-of isolated 조건 + unknown의 unit-blocking default + prospective user rescope를 채택한다. | terminal wording과 negative cases |
 | owner-local path가 자족하는 기준 | **해결:** containment + disclosure + terminal disposition/revision handoff의 기능적 완결성을 기준으로 하고, G는 누락 단계만 보충한다. | terminal wording의 재현 가능성 |
 | same-tier conflict가 owner revision을 한 batch로 강제하는가 | **해결:** conflict set은 함께 공개하되 owner lifecycle은 분리할 수 있다. affected unit의 unblock은 호환 active state에 결박한다. | terminal wording과 multi-owner case |
-| candidate id와 두 분류값의 glossary 처리 | **해결:** promotion 문서 노출 시 thin `pending` reservation을 두고 terminal landing에서 항목별 finalization을 결정한다. | terminal landing의 glossary decision |
+| candidate id와 두 분류값의 glossary 처리 | **해결:** 현재 실제 충돌이나 프로젝트 공용 용어 trigger가 없으므로 owner-local로 유지하고 glossary entry를 만들지 않는다. terminal landing에서 새 trigger가 생긴 경우에만 채택/기각을 결정한다. | terminal landing의 glossary trigger 재확인 |
 | bootstrap trigger action class | **해결:** genuine conflict 감지 또는 binding rule 때문에 막힌 operation의 revision 요청으로 좁힌다. | 두 snippet의 최종 trigger 문면 |
 | promotion 전에 더 필요한 evidence | **해결:** 지정된 정적 cross-owner 반례가 promotion threshold를 충족한다. live-use 부재는 공개 residual risk로 남긴다. | 별도 blocker 없음 |
 
@@ -105,6 +105,6 @@
 Plan으로 내려갈 준비가 됐다. candidate identity, semantic target, owner model, rejected alternatives, evidence threshold와 모든 incubation open question의 처분이 결정됐다.
 
 - **terminal wording risk:** trigger가 넓어져 정상 해석 질문까지 잡거나, owner-local fallback 기준이 모호해질 수 있다. terminal landing batch의 문안·반례 검증에서 닫는다.
-- **taxonomy risk:** 두 분류값이 permission 또는 severity처럼 읽힐 수 있다. terminal rule과 glossary finalization에서 dependency-containment 분류임을 닫는다.
+- **taxonomy risk:** 두 분류값이 permission 또는 severity처럼 읽힐 수 있다. terminal rule에서 dependency-containment 분류임을 직접 닫는다.
 - **distribution risk:** source-repo residue나 vendor-specific mechanics가 섞일 수 있다. terminal landing의 universal-core/project-residue split과 corrected-state review에서 닫는다.
 - **live-use residual risk:** 별도 선행 작업으로 보류하지 않는다. 실제 충돌이 새로운 evidence를 만들면 그 owner 사건과 이 rule의 정상 revision lifecycle에서 재평가한다.

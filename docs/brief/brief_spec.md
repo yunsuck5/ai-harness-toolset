@@ -6,7 +6,7 @@
 
 **이 체인이 끝나면 무엇이 되는가.** 이 spec 과 `brief_backlog.md` 가 brief 도메인의 live 표면이 되고, 구계열 brief 문서(contract·STATUS·DEFERRED)와 구형 routing 은 retire 되어 도메인이 `docs/brief/` 안에서 닫힌다.
 
-**이 문서가 아닌 것.** 구현 절차서 아님 · operative authority 아님(behavior 는 active surface 가 소유하고 이 spec 은 명세·대조될 뿐) · 용어 정의의 home 아님(`rules/terminology-glossary.md`). 이 spec 은 mutation/commit/push 승인이 아니다(1회 진술).
+**이 문서가 아닌 것.** 구현 절차서 아님 · operative authority 아님(behavior 는 active surface 가 소유하고 이 spec 은 명세·대조될 뿐) · 프로젝트 공용으로 채택·기각된 용어의 한 줄 의미 home 아님(`rules/terminology-glossary.md`; Brief-local 의미는 이 owner가 소유). 이 spec 은 mutation/commit/push 승인이 아니다(1회 진술).
 
 ## 목표 상태
 
@@ -57,7 +57,7 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 - **install-update (footprint 경계)**: target project 의 persistent footprint 는 `<ProjectRoot>/log/` 하나이고 Brief 는 그 아래 runtime artifact 다 — payload/install 은 Brief 를 포함하지 않는다. `INSTALL.md` 의 Brief 언급은 intentional contextual duplication 으로 존중한다(이 spec 이 회수하지 않는다).
 - **ToolRoot (template 공급 인터페이스)**: `brief-init.ps1` 은 `<ToolRoot>/templates/brief/BRIEF.md` 를 읽는다 — ToolRoot 해석(채널 순서)은 install-update 도메인 소유이고 이 spec 은 그 경로 인터페이스만 의존한다.
 - **글로벌 배포 티어**: snippets(글로벌 managed block)는 Brief framing 을 carry 하지 않는다 — Brief 의미의 home 은 이 spec 과 skill 뿐이다.
-- **terminology**: 용어 의미는 `rules/terminology-glossary.md` 가 single home 이다 — 이 spec 은 accepted 용어를 일관 사용할 뿐 재정의하지 않는다.
+- **terminology**: 프로젝트 공용으로 채택·기각된 용어의 한 줄 의미는 `rules/terminology-glossary.md` 가 single home 이다 — 이 spec 은 그 의미를 일관 사용할 뿐 재정의하지 않는다. Brief-local 운용 의미는 이 spec 이 소유한다.
 
 ## Validation expectation
 

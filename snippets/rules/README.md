@@ -35,6 +35,6 @@ A distributed rule never depends on its source repository's surfaces (`rules/`, 
 
 ## Rules in this tier
 
-- [global-file-mutation-boundary.md](global-file-mutation-boundary.md) — global / user instruction file mutation boundary and the managed-block adoption contract.
+- [global-file-mutation-boundary.md](global-file-mutation-boundary.md) — global / user instruction file mutation boundary: managed-payload operations and a source repository's separately governed repo-authored root-instruction regions.
 - [no-background-or-hidden-state.md](no-background-or-hidden-state.md) — no autonomous / hidden execution (no daemon / watcher / scheduler / hook / self-triggering task; explicit-prompt-only triggers), with supervised, read-only, output-isolated, fully-joined background / parallel work allowed; no sidecar state file; no per-user log partitioning or ownership metadata.
 - [repository-change-safety.md](repository-change-safety.md) — commit / push need explicit approval; a verdict approves nothing; no automatic `.gitignore` mutation; temporary-file hygiene.

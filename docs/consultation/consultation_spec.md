@@ -173,7 +173,7 @@ supported mode는 다음 넷이다.
 
 - **review**: consultation output은 optional advisory input일 뿐이다. review owner가 별도 interface를 실제로 정의하기 전에는 operator가 중립화한 내용을 ordinary review input으로 수동 전달한다. consultation은 review의 internal schema나 판단 semantics를 정의하지 않는다.
 - **blind-advisory**: 이름 identity만 참조한다. consultation은 blind-advisory workflow를 수행하지 않고 그 산출을 consultation request/input으로 소비하지 않는다.
-- **subagent-work-orchestration**: 이름 identity만 참조한다. consultation은 domain 밖 재호출·정지 orchestration을 정의하지 않으며, 현재 run의 expected set/JOIN은 active execution rule과 자기 run contract로 닫는다.
+- **subagent-work-orchestration**: 아직 non-authoritative candidate인 이름 identity만 참조한다. consultation은 domain 밖 재호출·정지 orchestration을 정의하지 않으며, 현재 run의 expected set/JOIN은 현재 활성 실행 지시와 자기 run contract로 닫는다.
 - **install-update**: source skill의 설치·activation lifecycle은 install-update owner가 소유한다. 이 Spec은 global/user activation을 수행하거나 승인하지 않는다.
 
 ## Validation expectation

@@ -38,7 +38,7 @@
 | review backlog의 Blind·consultation 결과 소비 interface | Blind 절반 폐기, consultation-only review-consumer 질문 유지 | Blind와 canonical은 독립이고 consultation 자료의 canonical intake/reporting 여부는 review owner backlog가 소유 |
 | docs-working-model closeout의 구 B Implementation 재리뷰 leg | 재지정 | 재작성된 B lifecycle의 리뷰 게이트 종결 |
 | consultation→Blind→O 강제 promotion 순서 | 폐기 | 각 owner lifecycle에서 독립 판정 |
-| docs-working-model의 old Blind realignment 대상 이름 열거 | 제거 | generic transition 면제 규칙은 존속 |
+| docs-working-model의 old Blind terminology realignment·transition dependency | 제거 | 후속 면제·registration 상태기계 없음 |
 
 ## Topology 대조
 

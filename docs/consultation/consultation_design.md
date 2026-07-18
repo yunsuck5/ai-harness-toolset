@@ -47,7 +47,7 @@
 - 같은 promoted lifecycle의 Design·Plan·Spec·Work Packet을 현재 결정에 맞게 재정렬한다.
 - source consultation skill을 final Spec과 1:1로 동기화한다.
 - 첫 실제 future item을 consultation backlog에 두고, orientation에는 prelive backlog read-first 경로만 더한다.
-- glossary pending term, install/activation surface, 다른 domain 파일은 이 change의 수정 대상이 아니다.
+- 다른 candidate의 owner-local 명명, install/activation surface, 다른 domain 파일은 이 change의 수정 대상이 아니다.
 
 ## 하지 않을 것
 

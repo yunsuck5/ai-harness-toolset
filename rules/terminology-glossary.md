@@ -1,147 +1,78 @@
-# Rule: Project terminology glossary
+# 규칙: 프로젝트 용어집
 
-This file is the **single, self-contained home of project term meaning** for developing the `ai-harness-toolset` repository. It is a flat repo-only rule in the repo-only rules tier — a sibling of `powershell-and-file-encoding.md`, routed read-first from the root `CLAUDE.md` / `AGENTS.md` *Docs trigger map* (`Project terminology` row) and listed in `rules/README.md`. **This file is itself the terminology source** — a repo worker learns what a project term means by reading this file alone, and never needs to read any external or out-of-repo document to know a term's meaning here; the file carries **no durable pointer** to any out-of-repo workspace. It is **not** adopter-universal — it is not shipped under `snippets/rules/` and is never installed to an adopter's `<ToolRoot>`. It is **not** a `rules/docs-working-model` package-local file — terminology is a cross-cutting concern across docs / spec / review / brief / planning, outside that package's domain-local closure.
+이 파일은 `ai-harness-toolset` repo 개발에서 실제로 공유하는 프로젝트 용어의 한 줄 의미와 채택·기각 상태를 두는 단일 home이다. 절차와 전체 semantics는 각 active owner가 소유하며, 이 용어집은 그것을 복제하지 않는다. repo-only 규칙이며 adopter payload로 배포하지 않는다.
 
-## How to use this glossary
+## 사용할 때
 
-- This is the **single home** of what a project term means. When a term defined here appears in any docs / spec / rule / review / brief / planning work, use it consistently and do **not** re-explain an **accepted** term in local prose — if a reader needs the meaning, route them here instead of copying the definition.
-- A **pending** term is one whose finalization-owner is **not yet at live authority** (a pre-promotion candidate is the typical — but not the only — source); an **owner-pending** term has a *live* finalization-owner but deferred finalization, so it carries a live one-line meaning yet is **not** final. Do not use either as if it were settled; each is decided at its named owner's close condition.
-- A **rejected** term is not adopted. Do not revive a rejected term under a new name or as an accepted-looking heading anywhere outside the `## Rejected terms` section.
-- One root word may carry **two distinct facets** in different states, each tracked separately. A facet naming a *specific sub-question* is classified independently of the same root word *as a broad domain* — e.g. the sub-question facet `instruction-surface mechanism location` (now **closed** — see *Term ownership and close conditions*) vs the broad-domain facet `instruction-surface as independent domain` (rejected, in the Rejected section). The single-state rule applies per exact term/facet, not per root word; each entry states its facet to avoid confusion.
-- This glossary records meaning, classification, and (for non-final terms) close conditions **only**. It grants **no mutation, commit, or push approval**, and no review verdict — those remain separate explicit user approvals. It does **not** weaken the `INSTALL.md` self-contained install / update / uninstall operative contract, and it does not own any other system's semantics.
+- 이미 채택된 용어의 뜻을 확인해야 할 때 이 single home을 read-only로 조회한다. 뜻을 이미 아는 채택 용어의 평범한 사용은 다시 읽을 필요가 없다.
+- 용어 결정·분류를 수정하는 trigger는 새 프로젝트 공용 용어 도입, 채택 의미·분류 변경, 실제 이름 충돌 해소, 기각 용어 부활 위험 네 경우다. 기존 용어가 더 이상 프로젝트 공용이 아니어서 항목을 제거하는 처분은 두 번째 trigger에 포함되며 새 상태를 만들지 않는다. 의미를 바꾸지 않는 오탈자·표현 교정은 proportionality rule에 따라 직접 수정할 수 있으며 별도 상태나 등록 절차를 만들지 않는다.
+- 후보 문서 안의 작업용 이름은 그 후보가 직접 소유한다. 프로젝트 공용 용어로 채택하거나 기각하기 전에는 선등록·예약 상태를 만들지 않는다.
+- 채택 용어는 여기에서 한 번만 정의한다. 다른 문서는 그 용어를 일관되게 사용하되 전체 정의를 복사하지 않는다.
+- 기각 용어는 새 이름을 붙여 공용 domain·owner·bucket으로 되살리지 않는다.
+- 이 파일은 mutation·commit·push·review verdict 권한을 부여하지 않고, `INSTALL.md`나 다른 active owner의 자족 계약을 약화하지 않는다.
+- committed 용어집에는 tracked 파일이나 git history로 해소되지 않는 durable pointer를 두지 않는다. `log/**`·`polishing/**` 같은 경로 class의 설명은 가능하지만 구체 runtime/scratch 경로나 drive 절대경로를 기록하지 않는다.
 
-## Status vocabulary
+## 채택 용어
 
-- **accepted (stable / operative)** — a settled term; used consistently as defined.
-- **accepted with owner boundary** — settled, but carrying an application boundary (which owner surface's self-contained re-explanation it must not weaken).
-- **pending** — a term whose **finalization-owner is not yet at live authority** (a pre-promotion candidate is the typical case); not final; decided at its finalization-owner's close under a stated close condition (a decision point — finalized to an outcome, or explicitly carried forward as `owner-pending`).
-- **owner-pending** — a term whose **finalization-owner is already at live authority** (a landed rule, a deployed implementation, or a live domain whose Spec is `sync-required`) but whose finalization is **deferred** to that owner's close; not final, yet it carries a live one-line meaning + classification because its meaning is already live. Decided at its finalization-owner's close — finalized to an outcome, or (with a stated `carry-forward reason`) carried forward past that close.
-- **rejected** — not adopted (typically a broad mixed-owner domain / bucket); must not be revived under another name.
+- **`Design`** — 변경의 이유·방향·owner 경계·trade-off·non-goal·semantic target을 담는 임시 lifecycle artifact.
+- **`Plan`** — Design을 batch 순서·scope·hard boundary·validation·review focus 같은 승인 대상 결정으로 분해하는 임시 lifecycle artifact.
+- **`Spec`** — domain의 target-state 명세이며 closeout 후 implementation과 의미 수준 1:1로 유지되는 live 문서.
+- **`Implementation`** — final Spec을 구현하고 closeout에서 Spec과 1:1로 대조되는 active surface.
+- **`final Spec only`** — implementation이 Design·Plan이나 별도 문서가 아니라 완성된 Spec 하나만 구현 기준으로 삼는 원칙.
+- **`stage rewind`** — 하위 단계가 상위 단계를 위반하면 상위 단계로 돌아가 다시 진행하는 절차.
+- **`owner surface`** — behavior를 실제로 정의하는 script·test·template·snippet·skill·config·root instruction·rule 등의 active surface.
+- **`source-of-truth` (single home)** — 한 사실에는 권위 있는 home 하나만 두고 다른 위치는 복사가 아니라 pointer만 두는 원칙.
+- **`stable filename rule`** — lifecycle 문서가 정해진 domain/rule-prefixed role filename을 재사용하고 topic별 파일·우회 subfolder 증식을 금지하는 규칙.
+- **`Work Packet`** — 회차성 조사·분류·구현 메모를 담는 committed temporary·비승인 문서. domain/rule의 정해진 role path에 두며 실행 명령·실행 기록은 넣지 않고 해당 closeout에서 흡수 후 삭제한다.
+- **`incubation`** — domain 또는 rule 후보가 promotion·discard·continue 판단 전 repo 안에서 non-authoritative하게 성숙하는 pre-promotion lifecycle.
+- **`rule-candidate incubation` (`rule_docs/`)** — terminal output이 단일 rule인 후보가 `rule_docs/<candidate>/`에서 진행하는 incubation. `rule_docs/`는 기존 rule revision도 수용하는 1:1 rule-bound planning workspace이며 candidate-only bucket이 아니다.
+- **`incubation anchoring`** — 검증된 incubation 문서가 승인된 첫 commit으로 repo에 들어오는 시점.
+- **`sync-required`** — 기존 live Spec이 새 target state로 갱신됐지만 implementation closeout 재동기화가 끝나지 않은 상태.
+- **`future-work queue`** — 아직 시작하지 않은 일을 reopen/start condition·monotonic next-ID와 함께 두는 non-authoritative domain/rule backlog. Spec·구현 승인이 아니며 닫힌 row는 기본 삭제한다.
+- **`proportionality rule`** — 의미 보존 교정은 직접 수정할 수 있지만 boundary·behavior·owner·validation 의미 변경은 정규 lifecycle을 요구하는 규칙.
+- **`domain-local closure`** — domain이 자기 Spec·active surface·명시된 안정 interface만으로 이해되는 성질.
+- **`top-down reference`** — orientation에서 owner surface로 내려가며 하위 문서가 상위 routing 문서에 의미를 의존하지 않는 참조 원칙.
+- **`owner absorption proof`** — Design·Plan을 retire하기 전에 모든 current-bearing 결정을 올바른 owner surface가 흡수했음을 보이는 확인.
+- **`4-class reference sweep`** — filename/path, bare token/ID, folder-as-bucket, semantic phrasing 네 종류로 잔여 참조를 찾는 조사.
+- **`corrected-state Codex review`** — 수정 전 상태가 아니라 교정된 working tree를 검토하는 Codex review.
+- **`mutation approval`** — repo 파일을 바꿀 수 있다는 사용자 명시 승인.
+- **`commit / push approval`** — commit과 push 각각에 필요한 별도 사용자 명시 승인.
+- **`package-local template / checklist`** — 다른 domain의 lifecycle 문서를 생산·검사하는 package-prefixed form.
+- **`external workspace baseline`** — repo 밖의 고정된 read-only 자료를 advisory 입력으로만 사용하는 분류.
+- **`checkpoint`** — Brief workflow에서 명시 요청으로 저장하는 복구 가능한 진행 지점.
+- **`restore point`** — 사용자 요청으로 Brief restore가 재개하는 저장 지점.
+- **`ProjectRoot`** — 작업 대상 project의 root.
+- **`ToolRoot`** — 설치된 toolset의 `config`·`scripts`·`snippets`·`templates` root.
+- **`ProjectLogRoot`** — `<ProjectRoot>/log` runtime factual-record root.
+- **`candidate-lifecycle closeout`** — promotion 또는 discard로 후보 lifecycle을 끝내고 `_incubation.md`를 처분하는 closeout.
+- **`promoted-lifecycle closeout`** — promoted artifact의 Design·Plan·Work Packet을 흡수 후 retire하는 closeout.
+- **`prelive`** — promotion 뒤 첫 closeout 전 domain Spec 상태; discoverable target-state blueprint지만 implementation authority는 아니다.
+- **`consultation`** — operator가 행동 전에 read-only 의견·반론·조사를 수집하고 한계를 포함해 종합하는 비판정 advisory workflow.
+- **`operator synthesis`** — consultation의 usable response·불일치·한계·남은 결정을 operator가 근거와 함께 종합한 결과.
+- **`독립 의견`** — operator의 결론·선호를 주입하지 않고 fresh one-shot으로 받는 consultation operation.
+- **`재조율`** — operator의 현재 입장을 명시하고 전제·논리·반례를 multi-round로 공격하는 consultation operation.
+- **`blind-advisory` (`blind advisory`)** — 명시 호출 시 current repo를 fresh read-only 정적으로 살펴 결함 후보만 반환하는 경량 prefilter.
 
-## Accepted terms
+## 채택 용어 — owner boundary 포함
 
-Each definition is a complete one-line meaning, self-contained in this file. Where a term also names an operative *procedure* that has its own home rule (e.g. the docs-working-model rule), the division of labor is: **the term's meaning lives here; the operative procedure lives in that rule.** This entry states the meaning and names that rule so a reader can find the procedure; it does not duplicate the rule's body, and a reader does not need that rule to understand what the term *means*.
+- **`INSTALL.md as protected root-level self-contained install / update / uninstall operative contract`** — `INSTALL.md`는 install/update/uninstall의 자족 operative contract이며 용어집이나 `rules/**`가 이를 pointer-only 문서·docs-cleanup 대상으로 만들거나 실행 계약을 다른 home으로 옮기지 않는다.
+- **`contextual duplication`** — 자족 계약 안에서 hard boundary를 의도적으로 다시 설명하는 허용된 중복.
+- **`brief owner surface`** — Brief가 자기 semantics를 소유하며 다른 surface는 interface만 참조한다.
+- **`review owner surface`** — review가 자기 semantics를 소유하며 다른 surface는 interface만 참조한다.
+- **`install-update interface vs semantics`** — install-update의 cross-domain mention은 안정 interface만 보유하고 foreign semantics는 해당 owner에 남긴다.
 
-- **`Design`** — the lifecycle artifact stating why / what / the owner-surface model / non-goals / which live Spec or implementation it modifies; not permanently live (retired after closeout).
-- **`Plan`** — decomposes a Design into batch order / scope / hard boundaries / validation expectations / review focus / Work Packet declarations — **approval-target decisions only**, never a work memo (round-scoped analysis / investigation / classification belongs in a Work Packet; execution mechanics / records belong in operator reports under `log/**`).
-- **`Spec`** — the domain's **target-state specification**: target state (normative sentences) + owner-surface map + durable boundary + validation expectation + review focus. At writing completion it is the blueprint of the target state; after closeout it is the live specification 1:1-synchronized with the implementation at the normative-sentence level.
-- **`Implementation`** — built from the final Spec only; reconciled 1:1 with the Spec at closeout.
-- **`final Spec only`** — an implementation references the closed final Spec alone, never the Design / Plan directly and never a separate document.
-- **`stage rewind`** — when a lower lifecycle stage violates the stage above it, stop and restart from the higher stage (Plan violates Design → redesign; Spec violates Plan → re-plan; Implementation exceeds the Spec boundary → stop and ask the user, never silently widen scope).
-- **`owner surface`** — the active surface that actually defines a behavior (script / test / template / snippet / skill / `config` / root instruction / `rules`), as opposed to a `docs/**` page that only describes it.
-- **`source-of-truth` (single home)** — every fact has exactly one authoritative home; every other mention is a pointer to it, never a copy.
-- **`stable filename rule`** — domain documents use domain-prefixed role filenames (`<domain>_design.md` / `_plan.md` / `_spec.md` / `_backlog.md` / `_work_packet.md`), reused after deletion; topic-named files and filename-evading subfolder splitting are forbidden. Operative home: `rules/docs-working-model/docs-working-model.md`.
-- **`Work Packet`** — a round-scoped, non-approval-target temporary work document (line-level reference classification, investigation notes, implementation notes, evidence proposals, reviewer-question preparation; execution mechanics / records are forbidden in it and belong to operator reports under `log/**`) living at `docs/<domain>/<domain>_work_packet.md` (for a domain) or `rule_docs/<id>/<id>_work_packet.md` (for a rule / rule candidate) as a **committed temporary document**; not a live document, absorbed into the Spec / owner surface / closeout report at closeout, then deleted (preservation = git history). Operative home: `rules/docs-working-model/docs-working-model.md`.
-- **`incubation`** — the repo-governed **pre-promotion lifecycle** of a candidate (a **domain** or a **rule** candidate) that develops in-repo but non-authoritatively before it is promoted, discarded, or continued at a review-date; the narrow pre-promotion-lifecycle facet, distinct from any broad "incubation bucket". Operative home: `rules/docs-working-model/docs-working-model.md` (*Incubation tier*).
-- **`rule-candidate incubation` (`rule_docs/`)** — incubation of a candidate whose promotion target is a single **rule file** (repo-only `rules/` or global-distribution `snippets/rules/`), housed in that candidate's `rule_docs/<candidate>/` folder within the per-rule planning workspace `rule_docs/` (a space that also serves existing-rule revisions — not candidate-only), separate from the domain-scoped `docs/` tree; the candidate's folder holds only items 1:1-bound to that specific rule candidate (terminal output = a rule file), and the incubation is **not** a Work Packet (round-scoped), **not** a domain, and **not** an `architecture` / `policy` broad bucket. Operative home: `rules/docs-working-model/docs-working-model.md` (*Incubation tier*).
-- **`incubation anchoring`** — the milestone where a consistency-checked incubation document first lands in-repo at an **approved** commit (the anchor is the meaning of that approved commit, not a self-commit licence; commit / push stay separate explicit approvals); supersedes the earlier ad-hoc `seed-install` wording. Operative home: `rules/docs-working-model/docs-working-model.md` (*Incubation tier*).
-- **`sync-required`** — the domain state after a live Spec has been updated in place to a new target state but before implementation closeout re-establishes the 1:1 sync (marked in the Spec's lifecycle-state section).
-- **`future-work queue`** — the fifth document artifact class: a per-domain `<domain>_backlog.md` **and per-rule `rule_docs/<id>/<id>_backlog.md`** (a non-authoritative queue, never a spec-of-record or implementation approval) whose items are one line + a reopen/start condition, with a monotonically increasing `next ID` header line; closed rows are deleted by default (git history preserves them).
-- **`proportionality rule`** — edits that preserve normative meaning (typos, stale pointers, wording cleanup) may be applied directly under the normal review gate, with a meaning-preserving change description; any normative-meaning change (boundary / behavior / owner mapping / validation expectation) requires the full Design→Plan→Spec lifecycle. Operative home: `rules/docs-working-model/docs-working-model.md`.
-- **`domain-local closure`** — a domain document is understandable from its own folder + its own live Spec + its own active surface + the stable interfaces it explicitly depends on; needing another domain's semantics to understand it is a failure.
-- **`top-down reference`** — references flow downward (root `README.md` → `rules/README.md` → a rule package → a classification / domain index → a domain Spec); a lower layer does not complete its meaning with a durable backlink up to a routing document.
-- **`owner absorption proof`** — before retiring a Design / Plan, every current-bearing decision is shown to be expressed in the Spec (or the correct owner surface), so no unique live meaning remains only in the Design / Plan.
-- **`4-class reference sweep`** — before and after a mutation, sweep references in four classes (filename / path, bare-token / ID, folder-as-bucket, semantic-phrasing) to confirm no stale or wrong reference remains.
-- **`corrected-state Codex review`** — the Codex review is run on the corrected working tree (after fixes), not on the pre-fix state; a later source / doc / rules edit makes the review stale and forces a re-run.
-- **`mutation approval`** — explicit user approval to apply a repo file change. A Spec, this glossary, and a review verdict each grant none of it.
-- **`commit / push approval`** — commit approval and push approval are each a separate explicit approval, distinct from mutation approval and from each other.
-- **`package-local template / checklist`** — a form (template / checklist) carrying a package-name prefix plus a `_template` / `_checklist` role suffix, used to produce another domain's Design / Plan / Spec; it is a form, not a domain's own artifact.
-- **`external workspace baseline`** — a classification for out-of-repo, pinned, read-only material the repo may consult as **advisory** input (e.g. restore / handoff / planning material). It is **not** a repo terminology dependency — project term meaning is self-contained in this file, not derived from such material — and the repo never references it by a durable pointer.
-- **`checkpoint`** — an explicit-prompt save of a recoverable progress point in the Brief workflow (the save / checkpoint trigger family). Owner = brief (`docs/brief/brief_spec.md`); closed in the brief pilot.
-- **`restore point`** — the saved point an explicit, user-requested Brief restore resumes from (the restore-summary + confirm step of the Brief workflow). Owner = brief (`docs/brief/brief_spec.md`); closed in the brief pilot.
-- **`ProjectRoot`** — the root of the project being operated on (the target repo); the project's only persistent ai-harness footprint is runtime artifacts under `<ProjectRoot>/log/`. Operative resolution lives on the active surface (`scripts/lib/path.ps1`).
-- **`ToolRoot`** — the root of the installed ai-harness-toolset files (`config` / `scripts` / `snippets` / `templates`), resolved per invocation by the channel chain; in the current shared / global mode it is the channel-3 stable install. Operative resolution + channel order live on the active surface (`scripts/lib/path.ps1`); the channel model is specified in `docs/install-update/install-update_spec.md`.
-- **`ProjectLogRoot`** — `<ProjectRoot>/log`, the runtime factual-record root (evidence / review / brief artifacts); gitignored, never a payload location.
-- **`candidate-lifecycle closeout`** — the closeout that ends a candidate's lifecycle (its promotion or discard), disposing the candidate's `_incubation.md`; in the promotion path it precedes the promoted-lifecycle closeout. Operative home: `rules/docs-working-model/docs-working-model.md`.
-- **`promoted-lifecycle closeout`** — the lifecycle closeout that disposes a promoted artifact's Design / Plan / Work Packet under the applicable docs-closeout gate; in the promotion path it follows the candidate-lifecycle closeout that disposed `_incubation.md` (an existing-rule or domain revision has no preceding candidate-lifecycle closeout). Operative home: `rules/docs-working-model/docs-working-model.md`.
-- **`finalization-owner`** — the owner-bearing surface responsible for a term's semantics and finalization (a live Spec, a rule, or a deployed implementation); distinct from the active-behavior `owner surface` (a live Spec may be a finalization-owner without being reclassified as an active-behavior owner surface). Operative home: `rules/docs-working-model/docs-working-model.md`.
-- **`prelive`** — a domain Spec's lifecycle state after the promotion transition and the Spec stage but before its first closeout: promoted-but-not-live (governance-discoverable yet not implementation authority); a rule candidate has no Spec, so its promoted-but-not-live phase is instead the `_design` / `_plan` active lifecycle work and carries no `prelive` marker. Operative home: `rules/docs-working-model/docs-working-model.md`.
+## 기각 용어
 
-## Accepted terms with owner boundary
-
-- **`INSTALL.md as protected root-level self-contained install / update / uninstall operative contract`** — `INSTALL.md` is the self-contained operative contract for install / update / uninstall; this glossary and the `rules/**` tier must not pointerize it, treat it as a docs-cleanup target, or move its execution contract elsewhere. Its intentional in-context re-explanation of invariants is deliberate, not stale duplication.
-- **`contextual duplication`** — an *intended* in-context restatement of an invariant (e.g. `INSTALL.md` re-explaining a hard boundary so it stays self-contained); deliberate, and not treated as stale duplication to be removed.
-- **`brief owner surface`** — the brief system owns its own semantics; other surfaces reference its interface, not its semantics.
-- **`review owner surface`** — the review system owns its own semantics; other surfaces reference its interface, not its semantics.
-- **`install-update interface vs semantics`** — a cross-domain mention inside install-update docs keeps the *interface* (stable path / boundary) and routes *semantics* back to the owner domain. Test: if the owner's implementation changes, does the reference change too? yes = semantics (route to owner); no = interface (may stay).
-
-## Pending / owner-pending terms
-
-여기에는 확정된 항목이 없다. 이 절의 두 상태는 term의 **finalization-owner가 live authority에 도달했는지**에 따라 나뉘며(*Status vocabulary* 참조), 이 구분은 **status만** 분류한다. 각 entry가 담을 수 있는 내용은 이 절이 아니라 docs-working-model 규칙의 terminology 조항이 정한다. **candidate가 도입한 `pending`** entry(finalization-owner가 아직 live 아님)는 `candidate` / `facet` / `not-this` / `eventual-owner-surface`(아직 모르면 생략 가능)를 기록하고, collision-prone reservation일 때만 `collision-note`를 추가한다. **`owner-pending`** entry(finalization-owner가 이미 live이고 finalization은 연기됨)는 한 줄 의미 + `finalization-owner`(owner id 또는 tracked owner-surface path이며 `_incubation` / `log/**` / repo 밖 pointer는 금지) / `facet` / `close-condition` / `not-this`를 기록하고, finalization-owner close를 넘겨 이월할 때만 짧은 `carry-forward reason`을 추가한다. `eventual-owner-surface`는 쓰지 않는다(finalization-owner가 이미 live이고 이름이 정해졌기 때문이다). 이 절은 term을 *분류*할 뿐 기존 repo 사용을 다시 쓰지 않으며, 그 정리는 각 owner의 작업이다.
-
-### Pending — finalization-owner not yet at live authority
-
-- **`subagent-work-orchestration`** — candidate = `subagent-work-orchestration`; facet = candidate-identity operating-discipline term; not-this = **not** an `architecture` / `policy` broad bucket and **not** a domain; eventual-owner-surface = the promoted `snippets/rules/subagent-work-orchestration.md` rule.
-- **`orchestrator stance`** — candidate = `subagent-work-orchestration`; facet = a stance within an operator session; not-this = **not** a top-level role (operator / reviewer / supervisor); eventual-owner-surface = the promoted `snippets/rules/subagent-work-orchestration.md` rule.
-- **`executor stance`** — candidate = `subagent-work-orchestration`; facet = a subagent stance with no commit authority; not-this = **not** a top-level role; eventual-owner-surface = the promoted `snippets/rules/subagent-work-orchestration.md` rule.
-- **`rule-conflict-and-revision-routing`** — candidate = `rule-conflict-and-revision-routing`; facet = candidate-identity operating-discipline term; not-this = **not** rule precedence, exception authority, or policy arbitration; eventual-owner-surface = the promoted `snippets/rules/rule-conflict-and-revision-routing.md` rule.
-- **`conflict-isolated`** — candidate = `rule-conflict-and-revision-routing`; facet = dependency-containment classification; not-this = **not** permission or completion status; eventual-owner-surface = the promoted `snippets/rules/rule-conflict-and-revision-routing.md` rule.
-- **`conflict-unit-blocking`** — candidate = `rule-conflict-and-revision-routing`; facet = dependency-containment classification; not-this = **not** global stop or severity; eventual-owner-surface = the promoted `snippets/rules/rule-conflict-and-revision-routing.md` rule.
-- **`consultation`** — candidate = `consultation`; facet = candidate-identity advisory-workflow term; not-this = **not** review or blind-advisory, **not** a broad AI-collaboration bucket; eventual-owner-surface = the promoted `consultation` domain.
-- **`operator synthesis`** — candidate = `consultation`; facet = the operator-side advisory-synthesis discipline; not-this = **not** a review final report, **not** a verdict; eventual-owner-surface = the promoted `consultation` domain.
-- **`consultation status vocabulary`** — candidate = `consultation`; facet = 비판정 자문 status 집합; not-this = review verdict vocabulary 아님; eventual-owner-surface = 승격된 `consultation` domain.
-- **`독립 의견`** — candidate = `consultation`; facet = a framing-axis advisory operation; not-this = **not** `재조율`, **not** a verdict; eventual-owner-surface = the promoted `consultation` domain.
-- **`재조율`** — candidate = `consultation`; facet = a framing-axis adversarial-reconciliation operation; not-this = **not** `독립 의견`, **not** canonical review; eventual-owner-surface = the promoted `consultation` domain.
-- **`blind advisory`** — candidate = `blind-advisory`; facet = 현재 repo 결함 후보 사전필터 정체성; not-this = canonical review 또는 consultation 아님; eventual-owner-surface = 승격된 `blind-advisory` domain.
-- (the formerly-pending `concrete-path value vs normative boundary` term **closed** in the `snippets/rules/` concrete-path audit; see *Term ownership and close conditions*.)
-
-### Owner-pending — finalization-owner at live authority, finalization deferred
-
-(None currently. The four `docs-working-model`-owned terms — `candidate-lifecycle closeout` / `promoted-lifecycle closeout` / `finalization-owner` / `prelive` — were finalized to **accepted** at the `docs-working-model` revision's closeout (cs1), where that finalization-owner's close forced the per-term decision; their one-line meanings now live under *Accepted terms*.)
-
-## Rejected terms
-
-Not adopted — typically a broad mixed-owner domain / bucket with no proven narrow owner / lifecycle / domain-local closure. Each entry: what it is + why rejected + do-not-revive-as. Rejected terms appear as headings **only** within this section.
-
-### instruction-surface as independent domain
-A broad standalone "instruction-surface" domain/bucket. Rejected: it mixes owners and proves no narrow owner / lifecycle / closure. Do not revive it as an independent domain under another name. (The narrow facet `instruction-surface mechanism location` has since **closed** — owner = the active surface; see *Term ownership and close conditions*. This rejected broad-domain facet stands unchanged.)
-
-### global-invocation as independent domain
-A broad standalone "global-invocation" domain. Rejected for the same broad-bucket reason. Do not revive as an independent domain. (The narrow facet `global-invocation single-home` has since **closed** in the install-update domain migration — the single home is the install-update domain spec.)
-
-### evidence umbrella as independent domain
-A broad "evidence" umbrella domain / system / shared contract. Rejected as a broad bucket. Do not revive evidence as a domain / system / shared contract. (The narrow facet `evidence contract absorption` has since **closed** — the evidence file-format convention was absorbed into the review domain spec `docs/review/review_spec.md`; see *Term ownership and close conditions*. This rejected broad-domain facet stands unchanged.)
-
-### managed-block as independent domain
-A standalone "managed-block" domain. Rejected: the managed block is a marker / payload boundary owned by the install and instruction surfaces, not its own domain. Do not revive it as a domain.
-
-### manifest as broad domain
-"manifest" as a broad domain. Rejected: no broad-domain owner or lifecycle. Do not revive it as a broad domain.
-
-### packaging as broad owner
-"packaging" as a broad owner concept. Rejected: this toolset is not packaged. Do not revive packaging as a broad owner.
-
-### project folder as broad owner
-A `docs/project/`-style folder kept as a long-term broad owner. Rejected: do not preserve a project folder as a long-term broad owner. (The `docs/project/` folder has since been retired; path concepts live in this glossary, domain-specific boundaries live in their domain specs, and root `README.md` states project-level positioning; preservation = git history.)
-
-### policy bucket as broad owner
-A `docs/policies/`-style folder kept as a long-term broad execution-policy bucket. Rejected: the live execution-policy rules are owned by the active surface (`rules/powershell-and-file-encoding.md` + `INSTALL.md` §1 host prerequisites), not a docs folder; the `docs/policies/` folder was retired (rationale preserved in git history). Do not revive a broad policy bucket — a policy's home is the active rule / script / test that enforces it.
-
-### handoff/snapshot as repo feature domain
-"handoff / snapshot" elevated into a repo feature domain. Rejected: there is no handoff/snapshot repo feature domain. Do not revive it as one. (The `handoff` *wording* was separately closed in the brief pilot as **not adopted as canonical brief vocabulary** — it survives only as a trigger synonym in the brief skill's example phrases. `continuation` was likewise **not adopted** as a project term in the same close — it remains free ordinary wording with no glossary entry.)
-
-### docs/domains broad taxonomy
-A broad `docs/domains/` taxonomy. Rejected when it would revive bucket sprawl (a folder used as a storage bucket rather than a scope boundary). Do not recreate a broad docs taxonomy that revives bucket sprawl.
-
-### architecture broad bucket as long-term owner
-A `docs/architecture/`-style broad mixed-owner classification kept as a long-term owner. Rejected **as a long-term broad mixed-owner bucket**. The `docs/architecture/` folder has since been retired — its live content was absorbed into the active owner surfaces and the folder deleted (preservation = git history) through the owner-absorption-gated process. A narrow architecture domain would be allowed only when it proves a narrow owner, lifecycle, domain-local closure, reference model, and active-surface relationship; none currently exists, and any future absorption stays owner-absorption-gated.
-
-### rule_docs as a broad/mixed-owner bucket
-A `rule_docs/` used as a broad or mixed-owner workspace (general operating-philosophy / project-architecture / branching-strategy / policy / domain drafts) instead of the 1:1 rule-bound per-rule planning workspace it is (serving rule candidates *and* existing-rule revisions — not candidate-only). Rejected **as a broad bucket** — the same shape as the rejected `architecture broad bucket`, under a new folder. `rule_docs/` holds only folders 1:1-bound to a specific rule or rule candidate whose terminal output is a rule file (`rules/` or `snippets/rules/`); its purity (every `rule_docs/<x>/` is 1:1 rule-bound and snapshot-distinguishable into one of three states — idle `.gitkeep` (optionally carrying an `<x>_backlog.md` future-work overlay) backed by an existing rule output / candidate incubation `<x>_incubation.md` / active lifecycle work `<x>_{design,plan,work_packet}.md` — with an allowed file set of `.gitkeep` or `<x>_{incubation,design,plan,work_packet,backlog}.md`, where `<x>_backlog.md` is a state overlay (an existing rule's future-work queue, never a candidate's) rather than a fourth state, and no top-level files, no orientation README, and no subfolders) is a structural invariant of `rules/docs-working-model/docs-working-model.md` (*Incubation tier* — `rule_docs/` purity, the three-state model) and is mechanically checked by `scripts/docs-working-model-check.ps1`. Do not revive `rule_docs/` as a general policy / architecture / operating-philosophy bucket.
-
-### repo consumed/ archive lifecycle
-A repo `consumed/` folder or a separate archive folder used as a retire lifecycle. Rejected: retire = deletion, with git history as the preservation mechanism. Do not revive a separate archive / `consumed/` folder as a repo pattern.
-
-## Term ownership and close conditions
-
-- **Accepted** terms have no open owner action — they are used consistently as defined above.
-- **Accepted-with-owner-boundary** terms stay within their stated boundary; the owner surface (`INSTALL.md`, brief, review, install-update) keeps its own self-contained semantics and this glossary does not override it.
-- **Pending** and **owner-pending** terms are decided at their finalization-owner's close — finalized to an outcome or explicitly carried forward as `owner-pending` — each under its stated close condition. (The records below also use two endings that are **not** glossary finalization outcomes — those are exactly accepted / accepted-with-owner-boundary / rejected: **closed** marks a tracked sub-question resolved with no standing term entry, and **not adopted** marks a naming proposal dropped with no entry and no do-not-revive burden.) (`concrete-path value vs normative boundary` **closed** in the `snippets/rules/` concrete-path audit: every concrete path token in the four `snippets/rules/*.md` files was classified, and all are **normative boundaries / structural invariants** (a governed-file class, a never-create negative boundary, a topology / partitioning invariant, a canonical-artifact location, or a pointer naming the enforcing active surface) — none asserts ownership of a tunable path *value*, which stays owned by the active surface / `INSTALL.md` per `rules/docs-working-model/docs-working-model.md`. No `snippets/rules/` reword was needed; the distinction `concrete-path value vs normative boundary` is the settled test the audit applied, not an open candidate.) (`instruction-surface mechanism location` **closed** — its architecture/instruction-surface follow-on work completed: the live instruction-surface mechanism is owned by the active surface (the snippet + `snippets/rules/README.md` / `rules/README.md` + root `CLAUDE.md` / `AGENTS.md`), and the `docs/architecture/instruction-surface/` docs were retired; the rejected broad-domain facet stands unchanged.) (The formerly-pending install-update-owned entries closed in the install-update domain migration: `global-invocation single-home` **closed** — the single home is the install-update domain spec `docs/install-update/install-update_spec.md`, with no separate contract-document role; `run diagnostics` **not adopted** — no project-term entry and no rename mandate, `INSTALL.md` operative wording stays as-is.) (The formerly-pending brief-owned wording closed in the brief pilot: `checkpoint` / `restore point` accepted above; `continuation` not adopted; `handoff` not adopted as canonical — see the Rejected `handoff/snapshot` entry's note. The formerly-pending review-owned entries closed in the review domain migration: `review-support naming` **not adopted** — the canonical names are owned by the artifact layout and scripts, and no live usage required an umbrella term; `evidence contract absorption` **closed** by absorbing the evidence file-format convention into the review domain spec (`docs/review/review_spec.md`) while the generic `log/` footprint stays an install-update interface — the rejected evidence-umbrella entry stands unchanged.)
-- This glossary records meaning, classification, and (for non-final terms) close conditions only. It does **not** rewrite the existing repo usage of any pending / owner-pending token — that wording cleanup belongs to each owner domain, not to this glossary.
-
-## Do-not-repeat rule
-
-- An **accepted** term is defined once, here. Other docs / spec / rules / skills use the term consistently and, if a reader needs its meaning, route to this glossary instead of re-explaining it. Repeated prose definitions of the same accepted term are the staleness engine this rule exists to prevent.
-- This glossary does **not** duplicate an operative rule that already has a home (e.g. the `stable filename rule` body lives in `rules/docs-working-model/docs-working-model.md`); it gives the one-line meaning and points to that home.
-- A **rejected** umbrella term must not reappear as an accepted-looking heading or a renamed synonym outside the `## Rejected terms` section. A **pending** or **owner-pending** term must not be written as if final.
-- This glossary is route-only authority for *meaning*. It confers no mutation / commit / push approval and weakens no owner surface's self-contained contract (notably `INSTALL.md`).
+- **instruction-surface as independent domain** — 여러 owner를 섞는 broad domain이므로 기각; 좁은 mechanism 위치 질문과 혼동해 되살리지 않는다.
+- **global-invocation as independent domain** — 별도 broad domain owner가 없으므로 기각.
+- **evidence umbrella as independent domain** — evidence를 공용 domain·system·shared contract로 묶는 broad bucket이므로 기각.
+- **managed-block as independent domain** — install·instruction surface가 소유하는 marker/payload boundary이지 독립 domain이 아니므로 기각.
+- **manifest as broad domain** — broad owner와 lifecycle이 없으므로 기각.
+- **packaging as broad owner** — 이 toolset의 broad owner 개념이 아니므로 기각.
+- **project folder as broad owner** — `docs/project/` 같은 장기 broad owner를 기각.
+- **policy bucket as broad owner** — `docs/policies/` 같은 장기 execution-policy bucket을 기각.
+- **handoff/snapshot as repo feature domain** — 독립 repo feature domain으로의 승격을 기각; trigger synonym이나 ordinary wording까지 금지하지 않는다.
+- **docs/domains broad taxonomy** — scope boundary가 아닌 저장 bucket 형태의 broad taxonomy를 기각.
+- **architecture broad bucket as long-term owner** — 여러 owner를 섞는 장기 architecture bucket을 기각. 좁은 architecture domain은 narrow owner·lifecycle·domain-local closure·reference model·active-surface 관계를 입증할 때만 별도로 검토할 수 있다.
+- **rule_docs as a broad/mixed-owner bucket** — `rule_docs/`를 general policy·architecture·philosophy workspace로 쓰는 형태를 기각; 1:1 rule-bound planning workspace만 허용한다.
+- **repo consumed/ archive lifecycle** — retire 대신 `consumed/`나 archive folder를 남기는 lifecycle을 기각; preservation은 git history가 맡는다.
