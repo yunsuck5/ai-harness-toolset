@@ -1,28 +1,39 @@
-# Rule: No autonomous or hidden execution (supervised background is allowed)
+# Rule: Explicit authority and accountable execution
 
-ai-harness-toolset is explicit-prompt, local-first, and deterministic. It introduces no autonomous execution and no hidden per-user state. Background or parallel execution is permitted only as operator-supervised, explicitly launched, and fully joined work — never as autonomous, hidden, or fire-and-forget execution. The two axes below — what may *trigger* work, and how that work may *run* — are separate; do not collapse them.
+Trigger authority and execution mode are separate axes. A direct prompt does not make every background mutation safe, and a named mechanism is not unsafe merely because it is a hook, watcher, scheduler, daemon, sidecar, or background task. This rule supplies atomic admission and accountability properties; it approves no particular mechanism and does not replace a flow owner's stricter policy.
 
-## Trigger: explicit prompt only (invariant)
+## Trigger authority and prospective admission
 
-- No daemon, watcher, scheduler, cron, hook, or self-triggering task. Every lifecycle action (review, Brief save / restore, install / update) starts only on an explicit prompt.
-- A rule is never implemented via a hook to compensate for weak instruction or skill design. Hooks are forbidden-by-default and out of scope.
-- No queue system and no autonomous scheduler.
+- **MUST NOT** create or rely on an unowned, undisclosed, or self-authorizing trigger. An action starts from an authorized direct goal unless an active owner surface has already adopted a `managed trigger`.
+- A **managed trigger** is an adopted condition or invocation that starts, resumes, or automatically advances an ai-harness-owned action without a new direct prompt for that firing. Before adoption, its active owner must declare its name and purpose; separate explicit user approval or standing delegation that covers adoption; trigger, executor, location, mutation scope, and the expected continuation set or closed continuation bound for each firing; inspect, disable, and remove paths; failure, residual, retention, cleanup, and terminal-accounting rules; and an owner revision path.
+- Any change affecting authority, trigger, executor, behavior, mutation scope, continuation authority or bound, or terminal meaning requires that owner revision path. Any expansion of authority or scope additionally requires explicit re-approval.
+- A rule, instruction, running process, result artifact, stable path, or payload update cannot authorize itself, name itself as an exception, or silently broaden an adopted trigger's authority, mutation scope, continuations, or completion meaning.
+- A rule is not implemented through a hook merely to compensate for weak instruction, skill, or active-owner design.
 
-## Execution: supervised background / parallel allowed; autonomous / unjoined forbidden
+An **authorized direct goal** is traceable to the current user's explicit request or to an unrevoked standing delegation whose scope covers the action. An **active owner surface** is an inspectable instruction, skill, rule, or runtime contract that owns the mechanism before execution and can be revised independently from the running instance.
 
-- Background or parallel execution is allowed **only when all hold**: (a) it is launched inside an explicit operator goal; (b) the work is **read-only with respect to the reviewed inputs and the repo / global / user surfaces** — its only permitted write is each unit's own isolated output per (c) (e.g., a per-pass `result.md`), never a mutation of source, global, or user files; (c) each unit's output is **isolated** (e.g., a per-purpose `log/` path or a per-pass review directory); (d) the operator **records the expected member set and joins every member** before any conclusion or closeout.
-- **MUST NOT** background or parallelize a **mutating** step — edits, writes to shared paths, install / update / uninstall, git operations, or any global / user filesystem mutation. Worktree-isolated mutating parallelism is out of scope and requires a separate explicit approval boundary.
-- **MUST NOT** conclude, report "done", or close out while any expected member is still running or has incomplete or stale artifacts. No fire-and-forget; no unjoined background work.
-- **Validity is independent of launch mode.** A unit is valid only by artifact completeness, exit code, verifier pass, disclosure-body inspection, and fresh source / input binding — never because it ran (or "looks done" because it ran) foreground, background, or in parallel. A timeout or budget is an operating allowance, not a validity guarantee; a partial / aborted artifact, or the mere existence of an output file, is not success; never raise a timeout, narrow scope, or drop a member to make a run finish or "pass".
-- **MUST NOT** sleep- or poll-loop to wait on runtime-tracked background work; rely on completion notification.
-- Concurrency is bounded by **join / reduce capacity** — how many results the operator can fully read and cross-check — **not** by how many tasks can be forked. Prefer fewer, well-grouped launches over a wide fan-out.
+A new mechanism is decided through its owner's normal adoption channel against these properties. A mechanism class alone is neither approval nor rejection, and an unchanged firing inside an adopted contract needs no new per-run adoption decision unless that contract requires one.
 
-The per-flow mechanics — canary-first for a new run shape, the concrete concurrency cap, the fan-out unit (independent concern / blast-radius, not file count), and the join checks — live with the deployed skill that owns the flow (e.g., `ai-harness-review`), which is itself an active surface; this rule and that skill, not any `docs/**` page, are the authority for this behavior.
+## Execution and terminal accounting
 
-## No sidecar state machine
+- Foreground, serial execution is the default for mutation.
+- Background or parallel read-only work may run under an authorized direct goal or an adopted managed trigger when outputs are isolated and the owning flow fixes the expected member set and terminal accounting before launch.
+- Background or parallel mutation is prohibited by default. It may be admitted only as a predeclared, named, bounded exception in an active owner surface under separate explicit authority. Its owner-defined result artifact must account for the trigger and executor, mutation targets, fixed continuation set, member outcomes, residuals, cleanup, and terminal predicate; hidden sidecar state cannot substitute for that accounting.
+- For each bounded firing or control operation, a launch acknowledgement is not terminal completion. Every expected member must be accounted as terminal, launch-failed, or not launched with its reason, and every launched continuation must reach an owner-defined terminal outcome. An unobserved continuation makes execution unresolved; unresolved execution prevents terminal success and closeout.
+- An owner-declared persistent active state may be the terminal outcome of an enable or control operation, but it is not a claim that the mechanism has terminated. Its continuing trigger authority and each later firing remain separately accountable.
+- **Validity is independent of launch mode.** Artifact completeness, fresh input binding, required verification, and the owner's success predicate decide validity. Do not raise a timeout, narrow scope, drop a member, discard a failure, or relabel a partial outcome to manufacture success.
+- Concurrency is bounded by join and reduce capacity, not by the number of tasks that can be forked.
 
-- No `BF_STATE.json` or any sidecar state-machine file, and no sidecar scheduler or join-tracking state. The Brief (`<ProjectRoot>/log/brief/BRIEF.md`) is the manual, human-readable recovery artifact; there is no automated state file, daemon, or scheduler behind it. Brief automation beyond manual save / restore is not implemented.
+Concrete concurrency limits, notification or wait mechanics, result vocabulary, retention, cleanup, and flow-specific verification belong to the active owner. This rule neither requires nor forbids polling as a universal mechanism.
 
-## No per-user partitioning or ownership metadata
+## State and identity
 
-- No per-user / per-operator log partitioning, operator-id, machine-id, or ownership metadata. Runtime artifacts are partitioned by **purpose** under `<ProjectRoot>/log/` (`log/review/`, `log/evidence/`, `log/brief/`), never by operator identity.
+- **MUST NOT** use hidden authority, lifecycle, scheduler, or join state to grant permission or manufacture completion.
+- Named, owner-visible run state, recovery material, and artifact, source, revision, role, or member identity are allowed when their purpose, location, and lifecycle role are disclosed. Concrete shape, retention, and cleanup remain with the active owner, and metadata grants no authority by itself.
+- Shared, distributed, or public-safe surfaces **MUST NOT** partition instructions, authority, correctness, or required evidence by person, operator, user, or machine identity in a way that breaks portability or hides behavior. Public, purpose-bound metadata is allowed.
+
+## Owner-local closure and non-retroactivity
+
+The active flow owner defines concrete mechanics and may impose a stricter policy. This rule defines admission and accountability properties only; it does not define review, consultation, Brief, install, update, uninstall, finalizer, trigger, scheduler, state, or cleanup mechanics.
+
+This rule does not retroactively approve or certify a pre-existing mechanism, close any known gap, or take ownership of that risk from the mechanism's active owner. It does not require a project-wide finite audit of every unchanged pre-existing mechanism.

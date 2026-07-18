@@ -21,6 +21,7 @@
 - **`final Spec only`** — implementation이 Design·Plan이나 별도 문서가 아니라 완성된 Spec 하나만 구현 기준으로 삼는 원칙.
 - **`stage rewind`** — 하위 단계가 상위 단계를 위반하면 상위 단계로 돌아가 다시 진행하는 절차.
 - **`owner surface`** — behavior를 실제로 정의하는 script·test·template·snippet·skill·config·root instruction·rule 등의 active surface.
+- **`managed trigger`** — ai-harness가 소유한 action을 새 direct prompt 없이 시작·재개·자동 전이시키는 명시 채택된 조건 또는 호출. 보편 admission·accountability와 비소급 비인증 경계는 `snippets/rules/no-background-or-hidden-state.md`가 소유하고, 구체 trigger·action·authority·closure는 각 owner surface가 소유한다.
 - **`source-of-truth` (single home)** — 한 사실에는 권위 있는 home 하나만 두고 다른 위치는 복사가 아니라 pointer만 두는 원칙.
 - **`stable filename rule`** — lifecycle 문서가 정해진 domain/rule-prefixed role filename을 재사용하고 topic별 파일·우회 subfolder 증식을 금지하는 규칙.
 - **`Work Packet`** — 회차성 조사·분류·구현 메모를 담는 committed temporary·비승인 문서. domain/rule의 정해진 role path에 두며 실행 명령·실행 기록은 넣지 않고 해당 closeout에서 흡수 후 삭제한다.
