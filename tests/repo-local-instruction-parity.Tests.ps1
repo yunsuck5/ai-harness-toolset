@@ -15,18 +15,73 @@ BeforeAll {
     $script:ClaudePath = Join-Path $script:RepoRoot 'CLAUDE.md'
     $script:AgentsPath = Join-Path $script:RepoRoot 'AGENTS.md'
     $script:Marker     = '<!-- BEGIN SHARED BODY'
+    . (Join-Path $script:RepoRoot 'scripts/lib/managed-block.ps1')
 
-    function script:Get-SharedBody {
+    function script:Find-ByteSequenceIndex {
+        param(
+            [byte[]] $Bytes,
+            [byte[]] $Needle
+        )
+
+        if ($Needle.Length -eq 0 -or $Bytes.Length -lt $Needle.Length) {
+            return -1
+        }
+
+        for ($i = 0; $i -le ($Bytes.Length - $Needle.Length); $i++) {
+            $matched = $true
+            for ($j = 0; $j -lt $Needle.Length; $j++) {
+                if ($Bytes[$i + $j] -ne $Needle[$j]) {
+                    $matched = $false
+                    break
+                }
+            }
+            if ($matched) {
+                return $i
+            }
+        }
+        return -1
+    }
+
+    function script:Get-SharedBodyBytes {
         param([string] $Path)
-        # Read raw bytes and decode as UTF-8 (the .md files are UTF-8 / no BOM / LF,
-        # so an ordinal string comparison of the decoded shared region is equivalent
-        # to a byte comparison and also catches any EOL drift). The shared region is
-        # the marker line through EOF; the header above the marker is excluded.
+
         $bytes = [System.IO.File]::ReadAllBytes($Path)
-        $text  = [System.Text.Encoding]::UTF8.GetString($bytes)
-        $idx   = $text.IndexOf($script:Marker, [System.StringComparison]::Ordinal)
+        $markerBytes = [System.Text.Encoding]::ASCII.GetBytes($script:Marker)
+        $idx = script:Find-ByteSequenceIndex -Bytes $bytes -Needle $markerBytes
         if ($idx -lt 0) { return $null }
-        return $text.Substring($idx)
+        return [byte[]] $bytes[$idx..($bytes.Length - 1)]
+    }
+
+    function script:Test-ByteArrayEqual {
+        param(
+            [byte[]] $Left,
+            [byte[]] $Right
+        )
+
+        if ($null -eq $Left -or $null -eq $Right -or $Left.Length -ne $Right.Length) {
+            return $false
+        }
+        for ($i = 0; $i -lt $Left.Length; $i++) {
+            if ($Left[$i] -ne $Right[$i]) {
+                return $false
+            }
+        }
+        return $true
+    }
+
+    function script:Get-StrictUtf8Text {
+        param([string] $Path)
+
+        $utf8 = New-Object System.Text.UTF8Encoding($false, $true)
+        return $utf8.GetString([System.IO.File]::ReadAllBytes($Path))
+    }
+
+    function script:Test-ContainsActualManagedMarker {
+        param([string] $Content)
+
+        $segments = @(Split-ManagedBlockLines -Content $Content)
+        $scan = Find-ManagedBlockMarkers -Segments $segments
+        return (($scan.BeginIndices.Count + $scan.EndIndices.Count) -gt 0)
     }
 }
 
@@ -37,22 +92,40 @@ Describe 'repo-local instruction surface parity (CLAUDE.md / AGENTS.md)' {
     }
 
     It 'AC-RLIS-2: both files carry the shared-body BEGIN marker' {
-        script:Get-SharedBody -Path $script:ClaudePath | Should -Not -BeNullOrEmpty
-        script:Get-SharedBody -Path $script:AgentsPath | Should -Not -BeNullOrEmpty
+        @(script:Get-SharedBodyBytes -Path $script:ClaudePath).Count | Should -BeGreaterThan 0
+        @(script:Get-SharedBodyBytes -Path $script:AgentsPath).Count | Should -BeGreaterThan 0
     }
 
     It 'AC-RLIS-3: shared body (BEGIN marker -> EOF) is byte-identical across both files' {
-        $claudeShared = script:Get-SharedBody -Path $script:ClaudePath
-        $agentsShared = script:Get-SharedBody -Path $script:AgentsPath
-        # Ordinal (case-sensitive, culture-invariant) exact match: the mirror-edit
-        # rule requires byte-for-byte parity of the shared body.
-        ($claudeShared -ceq $agentsShared) | Should -BeTrue -Because 'the shared body must be byte-identical (mirror-edit rule)'
+        $claudeShared = script:Get-SharedBodyBytes -Path $script:ClaudePath
+        $agentsShared = script:Get-SharedBodyBytes -Path $script:AgentsPath
+        (script:Test-ByteArrayEqual -Left $claudeShared -Right $agentsShared) |
+            Should -BeTrue -Because 'the shared body must be byte-identical (mirror-edit rule)'
     }
 
-    It 'AC-RLIS-4: neither file embeds the global managed block' {
-        $claudeText = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($script:ClaudePath))
-        $agentsText = [System.Text.Encoding]::UTF8.GetString([System.IO.File]::ReadAllBytes($script:AgentsPath))
-        $claudeText | Should -Not -Match 'AI_HARNESS_TOOLSET_GLOBAL'
-        $agentsText | Should -Not -Match 'AI_HARNESS_TOOLSET_GLOBAL'
+    It 'AC-RLIS-4: neither file contains an actual managed-block marker outside fenced code' {
+        $claudeText = script:Get-StrictUtf8Text -Path $script:ClaudePath
+        $agentsText = script:Get-StrictUtf8Text -Path $script:AgentsPath
+        script:Test-ContainsActualManagedMarker -Content $claudeText | Should -BeFalse
+        script:Test-ContainsActualManagedMarker -Content $agentsText | Should -BeFalse
+    }
+
+    It 'does not treat prose, inline code, or fenced examples as managed markers' {
+        $begin = '<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->'
+        $end = '<!-- END AI_HARNESS_TOOLSET_GLOBAL -->'
+        $content = @"
+The token AI_HARNESS_TOOLSET_GLOBAL is ordinary prose here.
+Inline: ``$begin``
+``````
+$begin
+$end
+``````
+"@
+        script:Test-ContainsActualManagedMarker -Content $content | Should -BeFalse
+    }
+
+    It 'detects a whole-line managed marker outside fenced code' {
+        $content = "before`n<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->`nafter`n"
+        script:Test-ContainsActualManagedMarker -Content $content | Should -BeTrue
     }
 }
