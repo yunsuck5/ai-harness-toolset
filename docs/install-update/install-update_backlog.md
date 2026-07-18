@@ -1,6 +1,6 @@
 # install-update — backlog (future-work queue)
 
-next ID: IU-B-14 (open/idea `IU-B-*` rows) · IU-D-13 (deferred `IU-D-*` rows)
+next ID: IU-B-19 (open/idea `IU-B-*` rows) · IU-D-13 (deferred `IU-D-*` rows)
 
 install-update 도메인의 future-work queue — open / deferred / idea-only rows. 각 row 는 한 줄 + reopen/start 조건이다. **이 파일이 install-update 의 open-work entrypoint 다**; spec-of-record 는 `docs/install-update/install-update_spec.md`. 어느 row 도 구현 승인이 아니다 — 각각 별도 scoped goal + Codex review gate 가 필요하다. 닫힌 row 는 기본 삭제한다(보존 = git history). 구계열 ledger(완료·운영 closeout·상세 narrative)는 git history 에 보존된다.
 
@@ -13,6 +13,11 @@ install-update 도메인의 future-work queue — open / deferred / idea-only ro
 | IU-B-04 | Install validation report evidence hygiene — PASS verdict 와 anomalous wrapper signal 의 분리 | scoped goal 승인 시 착수 |
 | IU-B-05 | Snapshot auxiliary evidence exactness wording polish | scoped goal 승인 시 착수 |
 | IU-B-06 | Long-lived docs commit hash hygiene(cross-cutting — literal hash 를 장수명 문서에서 배제) | scoped goal 승인 시 착수 |
+| IU-B-14 | Uninstall finalizer의 terminal result write 실패가 관측되지 않을 수 있는 경계 재검토 | 기존 finalizer·reinstall-first 구조를 보존하는 result-write observability hardening goal 승인 시 착수 |
+| IU-B-15 | Uninstall result artifact의 retention·cleanup owner와 소비 완료점 미소유 경계 재검토 | result artifact lifecycle scoped investigation 승인 시 착수 |
+| IU-B-16 | Installed-root README의 비종결 finalizer 상태와 terminal result 소비 경로 안내 공백 재검토 | cold-operator guidance scoped investigation 승인 시 착수 |
+| IU-B-17 | `uninstall-global.ps1`의 result 안내와 install root 비삭제 상태 사이 output predicate 정확성 재검토 | uninstall output-contract scoped investigation 승인 시 착수 |
+| IU-B-18 | Install-update trigger 실제 도입 여부 재검토 — 전역 admission rule은 도입 승인이 아니며 현행 비도입을 유지 | 구체 managed-trigger 제안·install-update owner의 별도 lifecycle·사용자 승인이 모두 있을 때 착수 |
 
 ## Deferred rows (accepted residual risks under LTS — reopen 조건 보존)
 

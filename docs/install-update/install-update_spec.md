@@ -64,7 +64,7 @@
 - deployed runtime extension(= deployed activation surface — source skill, 도입 시 hook 등)은 source payload 복사만으로 설치 완료가 아니다 — runtime 목적지에 실재하고 canonical source 와 **byte-identical** 해야 하며, install/update 후 부재·drift 면 그 install/update 는 미완료다. 어느 경로에서도 missing/drifted surface 가 조용히 "완료" 로 통과하지 않는다(status 값·precedence 는 `INSTALL.md` 소유).
 - enumeration 은 **generic inventory model** 이다 — deterministic·local-first(directory enumeration 우선; 별도 registry 는 그 불충분이 입증되기 전 비도입). 모든 source skill 은 자동으로 forced mirror + final-verify 대상이다.
 - uninstall 은 **owned surface 만** 회수한다 — installed payload 의 source inventory 로 식별된 surface 만 제거하고 비-owned sibling 은 보존한다.
-- 새 deployed runtime extension 의 추가는 **같은 approved scope 안에서** 다음을 모두 점검/갱신해야 한다 — source inventory 규칙 · runtime mirror 목적지 · forced-copy 동작 · final verification · uninstall cleanup · surface 의 count/name/path/class 를 가정하는 tests · 기술 docs · (소유가 바뀌면) status surface. hook 도입 시에도 본 정책이 동일 적용되며, 정책의 존재가 hook 도입을 승인하지 않는다(no-hook 불변의 owner 는 배포 rule).
+- 새 deployed runtime extension 의 추가는 **같은 approved scope 안에서** 다음을 모두 점검/갱신해야 한다 — source inventory 규칙 · runtime mirror 목적지 · forced-copy 동작 · final verification · uninstall cleanup · surface 의 count/name/path/class 를 가정하는 tests · 기술 docs · (소유가 바뀌면) status surface. hook 도입 시에도 본 정책이 동일 적용되며, 정책의 존재가 hook 도입을 승인하지 않는다. 전역 배포 rule은 공통 admission·accountability 경계만 소유하고, install-update의 실제 도입 여부와 현행 비도입은 `INSTALL.md`가 소유한다.
 
 ### uninstall
 
@@ -94,6 +94,7 @@
 - **tests** — `tests/install-global.Tests.ps1` · `install-update.Tests.ps1` · `update-global.Tests.ps1` · `activate-global.Tests.ps1` · `activation-surface.Tests.ps1` · `apply-managed-block.Tests.ps1` · `managed-block.Tests.ps1` · `install-pipeline.Tests.ps1` · `uninstall-apply.Tests.ps1` · `uninstall-target.Tests.ps1` · `path.Tests.ps1` · `resolve-script.Tests.ps1`(행동 잠금·회귀 보호).
 - **templates** — `templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md`(installed-root landing page — update/uninstall discovery).
 - **snippets** — 배포 instruction payload 와 skill(self-contained topology 운반).
+- **trigger admission 배포 rule** — `snippets/rules/no-background-or-hidden-state.md`(공통 admission·accountability와 비소급 비인증 경계; 특정 mechanism 도입은 승인하지 않음). install-update의 실제 도입 여부와 구체 lifecycle mechanics는 `INSTALL.md`가 소유한다.
 - **managed-block 정책**(marker 검출·destination 분기·update 규칙) — `INSTALL.md`(managed-block apply 규칙·skill adoption 규칙, self-contained)와 위 scripts(`apply-managed-block.ps1`·`activate-global.ps1`·`scripts/lib/managed-block.ps1`·`activation-surface.ps1`)가 소유한다. adopter 측 global/user instruction file mutation 경계는 배포 rule(`snippets/rules/global-file-mutation-boundary.md`)이 소유한다.
 
 ## Durable boundary
@@ -130,7 +131,7 @@
 
 ## Lifecycle state
 
-- lifecycle 문서: 없음 — batch I closeout 에서 design / plan 은 retire(삭제)되었고 work packet 은 삭제되었다; 기록은 git history 가 보존한다.
-- spec ↔ implementation: **live** — behavior 표면(lifecycle scripts·lib·tests·config·templates·snippets)과 문서 표면(routing·backlog·inbound pointer·배포 표면의 install-update-문서 self-containment)이 이 spec 과 1:1 동기화되어 있다. 이후의 변경은 live-Spec 갱신(sync-required 전이) 규칙을 따른다.
+- lifecycle 문서: 없음 — trigger owner 경계 정렬 Design/Plan은 current-bearing 의미를 본 Spec/backlog에 흡수한 뒤 closeout에서 retire됐고 Work Packet은 만들지 않았다.
+- spec ↔ implementation: **live** — behavior owner(`INSTALL.md`·전역 배포 rule)와 문서 표면(Spec·backlog)의 역할 경계가 1:1로 동기화돼 있다. 이후 변경은 live-Spec 갱신 규칙을 따른다.
 - 도메인 성숙도: install/update/uninstall/activation lifecycle 구현·실호스트 검증·self-adoption 완료 — **LTS maintenance**(이력·ledger 는 git history). 현재 동봉 source skill 4종(ai-harness-review·ai-harness-brief·ai-harness-consultation·ai-harness-blind-advisory — concrete activation surface 6).
 - future work: open·deferred·idea-only 항목과 ID 발번(next ID)의 single home 은 `install-update_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
