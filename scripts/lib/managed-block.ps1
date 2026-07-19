@@ -58,17 +58,30 @@ function Find-ManagedBlockMarkers {
     $beginIndices = New-Object System.Collections.Generic.List[int]
     $endIndices   = New-Object System.Collections.Generic.List[int]
     $inFence = $false
+    $fenceCharacter = $null
+    $fenceLength = 0
 
     for ($i = 0; $i -lt $Segments.Count; $i++) {
         $trimmed = (Get-ManagedBlockLineContent -Segment $Segments[$i]).Trim()
 
-        # A fence delimiter is at least three backticks or three tildes. The
-        # delimiter line and everything inside the fence are excluded from counting.
-        if ($trimmed -match '^(`{3,}|~{3,})') {
-            $inFence = -not $inFence
+        # A fence opens with at least three backticks or tildes. Once open, only
+        # the same delimiter character with a run at least as long as the opener
+        # closes it. An opposite delimiter or a shorter same-character run is
+        # ordinary fenced content and must not expose marker-looking lines.
+        if (-not $inFence -and $trimmed -match '^(`{3,}|~{3,})') {
+            $delimiter = $Matches[1]
+            $fenceCharacter = $delimiter.Substring(0, 1)
+            $fenceLength = $delimiter.Length
+            $inFence = $true
             continue
         }
         if ($inFence) {
+            $closerPattern = '^' + [regex]::Escape($fenceCharacter) + '{' + $fenceLength + ',}$'
+            if ($trimmed -match $closerPattern) {
+                $inFence = $false
+                $fenceCharacter = $null
+                $fenceLength = 0
+            }
             continue
         }
         if ($trimmed -eq $script:ManagedBlockBeginMarker) {

@@ -23,6 +23,67 @@ BeforeAll {
     }
 }
 
+Describe 'Find-ManagedBlockMarkers fenced-code tracking' {
+    It 'keeps an opposite delimiter inside the active fence and detects only the outside pair' {
+        $nl = "`n"
+        $open = '```'
+        $opposite = '~~~'
+        $content = (
+            $open + $nl +
+            $opposite + $nl +
+            $script:Begin + $nl +
+            $script:End + $nl +
+            $open + $nl +
+            $script:Begin + $nl +
+            'outside body' + $nl +
+            $script:End + $nl
+        )
+
+        $segments = @(Split-ManagedBlockLines -Content $content)
+        $scan = Find-ManagedBlockMarkers -Segments $segments
+        $scan.BeginIndices.Count | Should -Be 1
+        $scan.EndIndices.Count | Should -Be 1
+    }
+
+    It 'keeps a shorter same-character run inside the active fence and detects only the outside pair' {
+        $nl = "`n"
+        $open = '````'
+        $shorter = '```'
+        $content = (
+            $open + $nl +
+            $shorter + $nl +
+            $script:Begin + $nl +
+            $script:End + $nl +
+            $open + $nl +
+            $script:Begin + $nl +
+            'outside body' + $nl +
+            $script:End + $nl
+        )
+
+        $segments = @(Split-ManagedBlockLines -Content $content)
+        $scan = Find-ManagedBlockMarkers -Segments $segments
+        $scan.BeginIndices.Count | Should -Be 1
+        $scan.EndIndices.Count | Should -Be 1
+    }
+
+    It 'does not silently select an inside pair when opposite delimiters form an even-count sequence' {
+        $nl = "`n"
+        $content = (
+            '```' + $nl +
+            '~~~' + $nl +
+            $script:Begin + $nl +
+            $script:End + $nl +
+            '~~~' + $nl +
+            '```' + $nl
+        )
+
+        $segments = @(Split-ManagedBlockLines -Content $content)
+        $scan = Find-ManagedBlockMarkers -Segments $segments
+        $scan.BeginIndices.Count | Should -Be 0
+        $scan.EndIndices.Count | Should -Be 0
+    }
+}
+
 Describe 'Remove-ManagedBlock' {
 
     Context '0 marker pair -> idempotent no-op success' {
@@ -86,6 +147,42 @@ Describe 'Remove-ManagedBlock' {
             $r.Removed | Should -BeTrue
             # The real pair is gone; the fenced (uncounted) BEGIN mention is preserved verbatim.
             $r.Content | Should -Be "${fence}${nl}$script:Begin${nl}${fence}${nl}"
+        }
+
+        It 'does not remove a marker-looking pair exposed only by an opposite delimiter inside a fence' {
+            $nl = "`n"
+            $open = '```'
+            $opposite = '~~~'
+            $fenced = (
+                $open + $nl +
+                $opposite + $nl +
+                $script:Begin + $nl +
+                $script:End + $nl +
+                $open + $nl
+            )
+            $content = $fenced + $script:Begin + $nl + 'real body' + $nl + $script:End + $nl
+
+            $r = Remove-ManagedBlock -TargetContent $content
+            $r.Removed | Should -BeTrue
+            $r.Content | Should -Be $fenced
+        }
+
+        It 'does not remove a marker-looking pair exposed only by a shorter closer inside a fence' {
+            $nl = "`n"
+            $open = '````'
+            $shorter = '```'
+            $fenced = (
+                $open + $nl +
+                $shorter + $nl +
+                $script:Begin + $nl +
+                $script:End + $nl +
+                $open + $nl
+            )
+            $content = $fenced + $script:Begin + $nl + 'real body' + $nl + $script:End + $nl
+
+            $r = Remove-ManagedBlock -TargetContent $content
+            $r.Removed | Should -BeTrue
+            $r.Content | Should -Be $fenced
         }
     }
 

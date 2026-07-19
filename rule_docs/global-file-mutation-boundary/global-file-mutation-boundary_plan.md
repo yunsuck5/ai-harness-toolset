@@ -1,29 +1,30 @@
-# global-file-mutation-boundary Plan — root parity checker 정합
+# global-file-mutation-boundary Plan — managed-marker fence 판정 정합
 
 ## Header
 
-- 이 문서는 root parity checker 정합의 한 changeset을 정한다.
-- 완료 시 checker가 shared-body byte parity와 actual managed-marker 부재만 판정한다.
+- 이 문서는 공유 managed-marker parser와 세 소비 계층의 한 changeset을 정한다.
+- 완료 시 opposite delimiter와 shorter closer가 fenced marker를 노출하거나 실제 marker를 숨기지 않는다.
 - 작업 메모가 아니며 mutation·commit·push 승인이 아니다.
 
 ## Batch 순서와 의존
 
-Checker 구현과 양방향 회귀를 한 changeset으로 맞추고, root pair·distributed rule·managed-block primitive는 current bytes를 대조해 무변경으로 닫는다.
+공유 parser 교정, primitive·apply·parity 반례 회귀, lifecycle 정직화를 한 changeset으로 맞춘다. root pair와 distributed rule은 current bytes를 대조해 무변경으로 닫는다.
 
 ## Batch 정의
 
 | 목적 | Scope | Hard boundary | Validation expectation | Review focus | Work Packet |
 |---|---|---|---|---|---|
-| parity predicate 정합 | parity checker + GFM lifecycle/backlog | root pair·distributed rule·primitive·도메인 표면 무변경, 새 registry 없음 | 원시 byte 비교, actual-marker 판정, harmless mention 음성·whole-line marker 양성 회귀, targeted/full Pester·verify-ps1·DWM·diff/encoding | decoded equality 잔존, token blacklist 잔존, primitive semantics 복제, root shared-body drift | 불필요 — line-level inventory가 작고 이 Plan에 충분함 |
+| fence predicate 정합 | shared parser + primitive/apply/parity tests + GFM lifecycle + RA backlog | root pair·distributed rule·도메인 표면 무변경, 새 registry·별도 parser 없음 | same-delimiter·closer-length 판정, mixed/shorter 양방향 회귀, replace/remove span 보존, targeted/full Pester·verify-ps1·DWM·diff/encoding | delimiter/length 상태 유실, 세 계층 반례 누락, parser 복제, root shared-body drift | 불필요 — line-level inventory가 작고 이 Plan에 충분함 |
 
 ## Open decision 의 close 지점
 
-- shared body는 marker부터 EOF까지 raw byte 길이와 각 byte를 비교해 닫는다.
-- managed-block 부재는 `Find-ManagedBlockMarkers`의 실제 BEGIN/END count 0으로 닫고, malformed fence는 fail-fast를 유지한다.
-- `GFM-B-01`은 구현·검증과 함께 queue에서 제거한다.
+- opener의 delimiter 종류와 길이는 `Find-ManagedBlockMarkers`가 보존하고, same delimiter·length 이상인 closer만 fence를 닫는다.
+- primitive와 apply의 replace/remove, root parity는 같은 predicate를 소비하고 mixed/shorter 반례의 fenced marker 비검출·outside marker 검출을 함께 입증한다.
+- replace/remove 비소유 span 위험은 같은 parser 교정과 회귀에 포함하며 별도 GFM backlog로 이관하지 않는다.
+- P3-F2 history의 owner-model 오류는 `rule-authority` backlog의 RA-B-02로 분리한다.
 
 ## Stage rewind 조건
 
-- 구현이 root content·distributed rule·managed-block primitive를 수정하면 Design으로 돌아간다.
-- checker가 token blacklist나 permissive decoded equality를 다른 형태로 유지하면 구현 단계로 돌아간다.
+- 구현이 root content·distributed rule을 수정하면 Design으로 돌아간다.
+- 소비자별 parser 복제나 marker 의미 확장이 필요하면 Design으로 돌아간다.
 - unrelated instruction validation까지 확장되면 중단하고 별도 lifecycle로 분리한다.

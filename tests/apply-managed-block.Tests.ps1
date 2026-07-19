@@ -55,7 +55,7 @@ BeforeAll {
     }
 
     function script:Invoke-Apply {
-        param([string] $SnippetPath, [string] $TargetPath, [switch] $DryRun, [switch] $ShowFullDiff)
+        param([string] $SnippetPath, [string] $TargetPath, [switch] $DryRun, [switch] $ShowFullDiff, [switch] $Remove)
         $procArgs = @(
             '-NoProfile',
             '-ExecutionPolicy', 'Bypass',
@@ -65,6 +65,7 @@ BeforeAll {
         )
         if ($DryRun) { $procArgs += '-DryRun' }
         if ($ShowFullDiff) { $procArgs += '-ShowFullDiff' }
+        if ($Remove) { $procArgs += '-Remove' }
         $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
         $exitCode = $proc.ExitCode
         $text = (($proc.Stdout + $proc.Stderr) -replace "`r`n", "`n").TrimEnd("`n")
@@ -338,6 +339,53 @@ Describe 'apply-managed-block detection rule (whole-line trim match)' {
         $result.ExitCode | Should -Not -Be 0
         $result.Output | Should -Match 'unbalanced fenced code block'
         (script:Read-Utf8NoBomFile -Path $target) | Should -Be $original
+    }
+
+    It 'AC-AMB-FENCE-3: an opposite delimiter does not expose fenced markers during replace' {
+        $dir = script:New-CaseDir -CaseName 'fence-mixed-replace'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $open = '```'
+        $opposite = '~~~'
+        $fenced = (
+            $open + "`n" +
+            $opposite + "`n" +
+            $script:Begin + "`n" +
+            $script:End + "`n" +
+            $open + "`n"
+        )
+        $original = $fenced + $script:Begin + "`nreal body`n" + $script:End + "`n"
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $finalText = script:Read-Utf8NoBomFile -Path $target
+        $finalText.StartsWith($fenced) | Should -BeTrue
+        $finalText | Should -Match 'managed payload — v2'
+        $finalText | Should -Not -Match 'real body'
+    }
+
+    It 'AC-AMB-FENCE-4: a shorter closer does not expose fenced markers during remove' {
+        $dir = script:New-CaseDir -CaseName 'fence-short-remove'
+        $snippet = Join-Path $dir 'snippet.md'
+        $target  = Join-Path $dir 'CLAUDE.md'
+        script:Write-Utf8NoBomFile -Path $snippet -Content (script:New-SnippetContent)
+        $open = '````'
+        $shorter = '```'
+        $fenced = (
+            $open + "`n" +
+            $shorter + "`n" +
+            $script:Begin + "`n" +
+            $script:End + "`n" +
+            $open + "`n"
+        )
+        $original = $fenced + $script:Begin + "`nreal body`n" + $script:End + "`n"
+        script:Write-Utf8NoBomFile -Path $target -Content $original
+
+        $result = script:Invoke-Apply -SnippetPath $snippet -TargetPath $target -Remove
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        (script:Read-Utf8NoBomFile -Path $target) | Should -Be $fenced
     }
 }
 

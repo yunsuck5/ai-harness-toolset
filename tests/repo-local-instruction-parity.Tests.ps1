@@ -128,4 +128,18 @@ $end
         $content = "before`n<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->`nafter`n"
         script:Test-ContainsActualManagedMarker -Content $content | Should -BeTrue
     }
+
+    It 'keeps an opposite delimiter inside the active fence without hiding a later outside marker' {
+        $begin = '<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->'
+        $insideOnly = [string]::Join("`n", @('```', '~~~', $begin, '```', ''))
+        script:Test-ContainsActualManagedMarker -Content $insideOnly | Should -BeFalse
+        script:Test-ContainsActualManagedMarker -Content ($insideOnly + $begin + "`n") | Should -BeTrue
+    }
+
+    It 'keeps a shorter same-character run inside the active fence without hiding a later outside marker' {
+        $begin = '<!-- BEGIN AI_HARNESS_TOOLSET_GLOBAL -->'
+        $insideOnly = [string]::Join("`n", @('````', '```', $begin, '````', ''))
+        script:Test-ContainsActualManagedMarker -Content $insideOnly | Should -BeFalse
+        script:Test-ContainsActualManagedMarker -Content ($insideOnly + $begin + "`n") | Should -BeTrue
+    }
 }
