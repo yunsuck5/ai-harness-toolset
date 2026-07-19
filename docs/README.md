@@ -1,6 +1,6 @@
 # docs/ — Docs Tree Orientation & Placement Map
 
-This file is the **docs tree orientation / placement map** — a reading aid for what each `docs/` layer is *for* and how AI/operator and humans navigate the tree. It is **not** an operative authority. The binding placement rules live on the active surface at **`rules/docs-working-model/docs-working-model.md`** (*End-state placement and transition*, *Stable filename rule*), per the root *Final hard rule*; this file keeps the **map** and the **why**. Question routing is the minimal per-question table in §7; the docs change/closeout process rule is `rules/docs-working-model/docs-working-model.md`.
+This file is the **docs tree orientation / placement map** — a reading aid for what each `docs/` layer is *for* and how AI/operator and humans navigate the tree. It is **not** an operative authority. The binding placement rules live on the active surface at **`rules/docs-working-model/docs-working-model.md`** (*End-state placement and transition*, *Stable filenames and physical roles*), per the root *Final hard rule*; this file keeps the **map** and the **why**. Question routing is the minimal per-question table in §7; the docs change/closeout process rule is `rules/docs-working-model/docs-working-model.md`.
 
 The section numbers below are preserved so existing `§N` references resolve; binding-rule sections now hold orientation + a pointer to the operative rule.
 
@@ -44,7 +44,7 @@ The placement criterion is **how a document is read**, not how many topics it to
 
 Briefly: an always-on-for-every-task rule belongs on an always-on surface outside `docs/`; otherwise a doc goes in the single layer (§5) matching its access pattern, partitioned to avoid pulling unrelated scope and kept consolidated to avoid a dense reference chain.
 
-A **rule** being added or revised does **not** keep its planning under `docs/` — it uses the sibling top-level **`rule_docs/<rule>/`** tree: an in-repo, per-rule planning workspace holding that rule's lifecycle docs (`<rule>_incubation.md` for a new-rule candidate; `_design` / `_plan` / `_work_packet` during the add/revise), persisting as an idle `.gitkeep` anchor (optionally carrying an `<rule>_backlog.md` future-work overlay) between changes (no orientation README of its own). The output stays in `rules/<rule>/<rule>.md`, the flat `rules/<rule>.md`, or `snippets/rules/<rule>.md` — a rule is its own spec-of-record, so `rule_docs/` holds no spec. Placement, the 3-state purity, and lifecycle are owned by `rules/docs-working-model/docs-working-model.md` (*Incubation tier* — the `rule_docs/` workspace bullet); this note is the orientation pointer only.
+A **rule** being added or revised does **not** keep its planning under `docs/` — it uses the sibling top-level **`rule_docs/<rule>/`** tree: an in-repo, per-rule planning workspace holding that rule's lifecycle docs (`<rule>_incubation.md` for a new-rule candidate; `_design` / `_plan` / `_work_packet` during the add/revise), persisting as an idle `.gitkeep` anchor (optionally carrying an `<rule>_backlog.md` future-work overlay) between changes (no orientation README of its own). The output stays in `rules/<rule>/<rule>.md`, the flat `rules/<rule>.md`, or `snippets/rules/<rule>.md` — a rule is its own spec-of-record, so `rule_docs/` holds no spec. Placement, the 3-state purity, and lifecycle are owned by `rules/docs-working-model/docs-working-model.md` (*Incubation (pre-promotion)* — the `rule_docs/` planning workspace subsection); this note is the orientation pointer only.
 
 → Operative rule (binding placement + transition): `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*).
 
@@ -57,7 +57,7 @@ This file is the single orientation home: §5 above is the placement map; the ta
 | install / update / uninstall behavior | `INSTALL.md` (self-contained operative contract) + `docs/install-update/install-update_spec.md` |
 | review workflow / result contract | `docs/review/review_spec.md` + `snippets/claude-skills/ai-harness-review/SKILL.md` |
 | Brief save / restore | `docs/brief/brief_spec.md` + `snippets/claude-skills/ai-harness-brief/SKILL.md` |
-| current progress / what to do next | on-demand briefing — `rules/docs-working-model/docs-working-model.md` (*On-demand status-briefing model*); no committed project-current mirror |
+| current progress / what to do next | on-demand briefing — `rules/docs-working-model/docs-working-model.md` (*On-demand status*); no committed project-current mirror |
 | decision records | the relevant owner surface / domain spec (historical decisions in git history) |
 | open backlog / deferred items | the per-domain `<domain>_backlog.md` (review · install-update · brief, plus prelive `consultation` and `blind-advisory`) or a revised rule's `rule_docs/<id>/<id>_backlog.md` |
 | docs change / closeout / placement | `rules/docs-working-model/docs-working-model.md` |
@@ -67,13 +67,13 @@ Removed-legacy "do not use" identifiers and historical bodies are not re-listed 
 
 ## 8. How humans should navigate docs
 
-Start from `README.md` (repo root) for the high-level overview and the day-to-day natural-language UX. For "what is done / what remains / what to do next," ask the agent for an on-demand status briefing (`rules/docs-working-model/docs-working-model.md`, *On-demand status-briefing model*) or read the per-domain spec/backlog files (`docs/brief/` · `docs/review/` · `docs/install-update/`, plus prelive `docs/consultation/` and `docs/blind-advisory/`) and any revised rule's `rule_docs/<id>/<id>_backlog.md` directly; there is no committed project-current summary file.
+Start from `README.md` (repo root) for the high-level overview and the day-to-day natural-language UX. For "what is done / what remains / what to do next," ask the agent for an on-demand status briefing (`rules/docs-working-model/docs-working-model.md`, *On-demand status*) or read the per-domain spec/backlog files (`docs/brief/` · `docs/review/` · `docs/install-update/`, plus prelive `docs/consultation/` and `docs/blind-advisory/`) and any revised rule's `rule_docs/<id>/<id>_backlog.md` directly; there is no committed project-current summary file.
 
 ## 9. What not to do (orientation)
 
 In short: do not place artifact contracts under `policies/`, or task-scoped/conditional policy into always-on priming; do not leave any markdown at `docs/` root except this file; do not preserve a location merely because it was recently committed or heavily referenced.
 
-→ Operative rule (binding placement prohibitions — stable filenames, legacy-no-growth): `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*, *Stable filename rule*).
+→ Operative rule (binding placement prohibitions — stable filenames, legacy-no-growth): `rules/docs-working-model/docs-working-model.md` (*End-state placement and transition*, *Stable filenames and physical roles*).
 
 ## 10. The two complementary docs surfaces (orientation)
 
@@ -86,7 +86,7 @@ On overlap, placement + question-routing orientation is this file (§5 + §7), a
 
 Moving or splitting a document requires updating every inbound reference and preserving / remapping any section anchors referenced elsewhere.
 
-→ Operative rule (inbound-reference updates on move/retire): `rules/docs-working-model/docs-working-model.md` (*Lifecycle closeout — absorption and retire*).
+→ Operative rule (inbound-reference updates on move/retire): `rules/docs-working-model/docs-working-model.md` (*Lifecycle closeout*).
 
 ## 12. Historical preservation (rationale)
 

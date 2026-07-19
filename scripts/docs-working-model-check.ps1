@@ -117,8 +117,8 @@ $rulesDir = Join-Path -Path $project -ChildPath 'rules'
 $docsReadme = Join-Path -Path $docsDir -ChildPath 'README.md'
 $rulesReadme = Join-Path -Path $rulesDir -ChildPath 'README.md'
 
-# Discover candidate incubation folders. Two candidate homes (Incubation tier is
-# pre-promotion for a domain OR a rule candidate):
+# Discover candidate incubation folders. The Incubation (pre-promotion) section
+# defines two candidate homes (a domain OR a rule candidate):
 #   - domain candidate: docs/<candidate>/ containing a *_incubation.md
 #   - rule candidate:   rule_docs/<candidate>/ containing a *_incubation.md
 # Each folder records its base tree (docs / rule_docs) so the E1 README-reference
@@ -594,7 +594,7 @@ if (Test-Path -LiteralPath $specTemplatePath -PathType Leaf) {
         }
     }
     # The three bolded lifecycle markers (single-home: the same *Spec identity*
-    # enumeration + *Live-Spec update*). Presence anywhere in the template is
+    # enumeration + *Spec / rule ↔ implementation synchronization*). Presence anywhere in the template is
     # required (a template offers all three); EN-2's exactly-one rule is for a
     # produced Spec, not for the template.
     $stRequiredMarkers = @('**prelive**', '**sync-required**', '**live**')

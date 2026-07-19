@@ -2,7 +2,7 @@
 
 ## Header
 
-**이 문서는 무엇인가.** `subagent-work-orchestration` **rule candidate** 의 단일·자족 planning home 이다 — docs-working-model 의 *Incubation tier*(pre-promotion candidate stage)에 있는 **rule candidate** 가, branching-agnostic 운영 규율로서 글로벌 배포 rule 로 승격할지 dogfood 로 검증하는 동안 쓰는 유일한 committed-temporary 문서다. **이 문서 하나만 읽고 작업을 시작할 수 있도록 자족적으로 적는다**(별도 seed 문서 불요).
+**이 문서는 무엇인가.** `subagent-work-orchestration` **rule candidate** 의 단일·자족 planning home 이다 — docs-working-model 의 *Incubation (pre-promotion)*에 있는 **rule candidate** 가, branching-agnostic 운영 규율로서 글로벌 배포 rule 로 승격할지 dogfood 로 검증하는 동안 쓰는 유일한 committed-temporary 문서다. **이 문서 하나만 읽고 작업을 시작할 수 있도록 자족적으로 적는다**(별도 seed 문서 불요).
 
 **무엇을 해결하는가(problem).** 도메인/서페이스가 다른 독립 작업을 메인 세션 한 곳에서 직렬 처리하면 (a) 컨텍스트 오염·용량, (b) 작업속도(리뷰가 순수 작업보다 무거움)가 필연적 병목이 된다. 한 선행 실험(서브에이전트 오케스트레이션 파일럿)이 이 오케스트레이션(서브 위임 + perspective별 병렬 codex 리뷰)의 실현가능성·컨텍스트 오프로드·가드 유지를 **n=1**(단일 세션·머신·reviewer, 통제 벤치마크 아님)로 실증했다 — 그 실측이 이 candidate 의 motivating evidence 다. 측정 상세(병렬 단축률·재시도 수 등 수치)는 measurement `log/**` 소관이고, 원 실험 lineage 는 git history 가 보존한다. 이 candidate 는 그 실험을 **"메인=오케스트레이터/감독, 서브=실행자"** 기본 운영 규율로 정식화할지 검증한다.
 
