@@ -1,6 +1,6 @@
 # {{DOMAIN}} Plan
 
-> 사용법: 이 형틀을 복제해 `<domain>_plan.md` 로 채운다. 모든 `{{...}}` 를 치환한다. Plan 은 **승인 대상인 의사결정만** 담는다 — 작업 메모가 아니다. 조사 결과·line 분류·candidate-file 분석·구현 노트는 Work Packet(`docs/<domain>/<domain>_work_packet.md` — committed temporary, closeout 시 삭제) 소관이고, 실행 명령 시퀀스·staging 절차·실행 기록은 operator report(`log/**`) 소관. Plan 이 Design 을 위반하면 stop → Design 재설계 후 재시작(rewind). Plan 은 영구 live 아님 — closeout 시 흡수 후 retire(삭제). 이 Plan 은 mutation/commit/push 승인이 아니다(1회 진술).
+> 사용법: 이 형틀은 Plan의 권장 기본 구조다. `<domain>_plan.md` 로 복제해 승인 대상 결정을 채우되, 의미가 보존되면 heading을 합치거나 조정할 수 있다. 조사 결과는 Work Packet, 실행 기록은 `log/**` 소관이다. Plan이 Design 결정을 바꾸면 rewind한다. 이 Plan은 closeout에서 흡수 후 삭제되며 mutation/commit/push 승인이 아니다(1회 진술).
 
 ## Header
 
@@ -14,7 +14,7 @@
 
 ## Batch 정의
 
-{{각 batch 마다: 목적(한 줄) / scope(다루는 것·다루지 않는 것) / hard boundary(불가침 표면) / validation expectation(무엇이 성립해야 하는가) / review focus / Work Packet 필요 여부(필요 시 목적·흡수 대상·retire 조건 3요소 선언)}}
+{{각 batch의 목적 / scope / hard boundary / validation expectation / review focus / Work Packet 필요 여부. Work Packet이 필요하면 목적·흡수 대상·retire 조건을 선언}}
 
 ## Open decision 의 close 지점
 

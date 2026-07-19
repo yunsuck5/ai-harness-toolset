@@ -227,40 +227,35 @@ Describe 'docs-working-model-check E1 discovery target' {
 }
 
 Describe 'docs-working-model-check advisories' {
-    It 'AC-DWM-ADVISORY-1: E4 and E5 advisory lines are always emitted' {
+    It 'AC-DWM-ADVISORY-1: incubation scope limits are emitted without retired E4/E5 claims' {
         $project = script:New-CaseRoot -CaseName 'advisory'
         $result = script:Invoke-Check -ProjectRoot $project
         $result.ExitCode | Should -Be 0 -Because $result.Output
-        $result.Output | Should -Match 'E4 INFO'
-        $result.Output | Should -Match 'E5 INFO'
+        $result.Output | Should -Match 'INCUBATION INFO'
+        $result.Output | Should -Not -Match 'E4 INFO'
+        $result.Output | Should -Not -Match 'E5 INFO'
     }
 
     It 'AC-DWM-SCOPE-1: a SCOPE INFO line discloses the scanned subset and PASS is qualified' {
         $project = script:New-CaseRoot -CaseName 'scope-info'
         $result = script:Invoke-Check -ProjectRoot $project
         $result.ExitCode | Should -Be 0 -Because $result.Output
-        $result.Output | Should -Match 'SCOPE INFO: MECHANICAL subset only'
-        $result.Output | Should -Match 'all \.md under rules/'
-        $result.Output | Should -Match 'package-local templates/ or checklists/ under a rule ARE included'
-        $result.Output | Should -Match 'all \.md under snippets/rules/'
-        $result.Output | Should -Match 'snippets/rules/ IS now mechanically scanned for E2'
-        $result.Output | Should -Match 'NOT mechanically scanned'
-        $result.Output | Should -Match 'PASS \(no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/SPEC-TEMPLATE-SCHEMA/rule_docs-purity/orphan/candidate-backlog/file violations in the mechanically-scanned subset\)'
-        $result.Output | Should -Match 'DOCS-PURITY = every PROMOTED docs domain'
-        $result.Output | Should -Match 'BACKLOG-NEXTID = every backlog'
-        $result.Output | Should -Match 'rule backlog rule_docs/<id>/<id>_backlog.md'
-        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA = the docs-working-model spec template'
+        $result.Output | Should -Match 'SCOPE INFO: manually invoked deterministic diagnostic only; lifecycle hard gates = 0'
+        $result.Output | Should -Match 'CHECKS INFO: E1/E2/E3, EN-2, rule_docs/DOCS-PURITY owner topology, BACKLOG-NEXTID floors'
+        $result.Output | Should -Match 'LIMITS INFO: same-owner non-default roles and eight-heading deviations are INFO'
+        $result.Output | Should -Match 'PASS \(no deterministic diagnostic violations in the disclosed subset; not full lifecycle or safety proof\)'
     }
 
-    It 'AC-DWM-ADVISORY-2: E4/E5 advisories do not change a failing exit code' {
+    It 'AC-DWM-ADVISORY-2: incubation scope disclosure does not change a failing exit code' {
         $project = script:New-CaseRoot -CaseName 'advisory-fail'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_incubation.md') -Content "# scopeguard incubation`n"
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/scopeguard/scopeguard_spec.md') -Content "# premature spec`n"
 
         $result = script:Invoke-Check -ProjectRoot $project
         $result.ExitCode | Should -Be 1 -Because $result.Output
-        $result.Output | Should -Match 'E4 INFO'
-        $result.Output | Should -Match 'E5 INFO'
+        $result.Output | Should -Match 'INCUBATION INFO'
+        $result.Output | Should -Not -Match 'E4 INFO'
+        $result.Output | Should -Not -Match 'E5 INFO'
     }
 }
 
@@ -333,7 +328,7 @@ Describe 'docs-working-model-check rule_docs (rule candidates)' {
     }
 }
 
-Describe 'docs-working-model-check rule_docs structure (3-state model)' {
+Describe 'docs-working-model-check rule_docs owner topology' {
     It 'AC-DWM-PURITY-1: a loose file directly under rule_docs/ fails' {
         $project = script:New-CaseRoot -CaseName 'purity-loose-file'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
@@ -346,17 +341,16 @@ Describe 'docs-working-model-check rule_docs structure (3-state model)' {
         $result.Output | Should -Match 'notes\.md'
     }
 
-    It 'AC-DWM-PURITY-2: a rule_docs child folder with only a stray non-candidate file fails (disallowed file + no valid state)' {
+    It 'AC-DWM-PURITY-2: a rule_docs child folder with only a mixed-owner file fails (file + orphan authority)' {
         $project = script:New-CaseRoot -CaseName 'purity-noncandidate-folder'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/random/draft.md') -Content "# not a candidate`n"
 
         $result = script:Invoke-Check -ProjectRoot $project
         $result.ExitCode | Should -Be 1 -Because $result.Output
-        # draft.md is not .gitkeep nor random_{incubation,design,plan,work_packet}.md -> disallowed file.
+        # draft.md does not carry the random_ owner prefix.
         $result.Output | Should -Match 'RULE_DOCS-FILE FAIL'
         $result.Output | Should -Match 'draft\.md'
-        # And the folder is in no valid state (no .gitkeep, no recognized state file).
-        $result.Output | Should -Match 'RULE_DOCS-PURITY FAIL: rule_docs/random/ is in no valid state'
+        $result.Output | Should -Match 'RULE_DOCS-ORPHAN FAIL'
     }
 
     It 'AC-DWM-PURITY-3: a folder whose _incubation.md id mismatches the folder is a disallowed file' {
@@ -396,16 +390,15 @@ Describe 'docs-working-model-check rule_docs structure (3-state model)' {
         $result.Output | Should -Not -Match 'E3 FAIL'
     }
 
-    It 'AC-DWM-STATE-INCUBATION-2: candidate incubation may also carry a round-scoped work packet — passes, no rule output needed (_incubation.md present means candidate incubation)' {
-        $project = script:New-CaseRoot -CaseName 'state-incubation-workpacket'
-        # _incubation.md present => candidate incubation (the rule's state discriminator); a round-scoped
-        # work packet is allowed during incubation, and a candidate needs no rule output yet (no rules/swo/swo.md).
-        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_incubation.md') -Content "# swo incubation`n"
-        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_work_packet.md') -Content "# swo work packet`n"
+    It 'AC-DWM-ROLE-1: a same-owner non-default role for an existing rule is INFO, not a closed-set failure' {
+        $project = script:New-CaseRoot -CaseName 'state-same-owner-role'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/swo/swo.md') -Content "# swo rule`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_migration.md') -Content "# approved same-owner role candidate`n"
 
         $result = script:Invoke-Check -ProjectRoot $project
         $result.ExitCode | Should -Be 0 -Because $result.Output
-        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Match 'RULE_DOCS-ROLE INFO'
+        $result.Output | Should -Match 'swo_migration\.md'
         $result.Output | Should -Not -Match 'RULE_DOCS-.*FAIL'
     }
 
@@ -439,7 +432,7 @@ Describe 'docs-working-model-check rule_docs structure (3-state model)' {
         $result.ExitCode | Should -Be 1 -Because $result.Output
         $result.Output | Should -Match 'RULE_DOCS-ORPHAN FAIL'
         $result.Output | Should -Match 'swo'
-        $result.Output | Should -Match 'has no corresponding rule output'
+        $result.Output | Should -Match 'no corresponding rule output'
     }
 
     It 'AC-DWM-FILE-1: a disallowed file (README.md) alongside a valid state file fails RULE_DOCS-FILE' {
@@ -818,6 +811,18 @@ Describe 'docs-working-model-check FN-3 docs domain purity' {
         $result.Output | Should -Not -Match 'DOCS-PURITY FAIL'
     }
 
+    It 'AC-DWM-FN3-3B: a same-owner non-default domain role emits INFO and stays non-blocking' {
+        $project = script:New-CaseRoot -CaseName 'fn3-same-owner-role'
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_spec.md') -Content "# widget spec`n`n## Lifecycle state`n`n- spec to implementation: **live** - synced 1:1.`n"
+        script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/widget/widget_migration.md') -Content "# approved same-owner role candidate`n"
+
+        $result = script:Invoke-Check -ProjectRoot $project
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'DOCS-ROLE INFO'
+        $result.Output | Should -Match 'widget_migration\.md'
+        $result.Output | Should -Not -Match 'DOCS-PURITY FAIL'
+    }
+
     It 'AC-DWM-FN3-4: an in-flight candidate (incubation, no spec) with an extra file is conform-pass (no DOCS-PURITY)' {
         $project = script:New-CaseRoot -CaseName 'fn3-candidate-passthrough'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'docs/cand/cand_incubation.md') -Content "# cand incubation`n"
@@ -1098,19 +1103,15 @@ Describe 'docs-working-model-check rule backlog (A4 allowed / A19 overlay carve-
         $result.Output | Should -Match 'no corresponding rule output'
     }
 
-    It 'AC-DWM-RULEBL-8: a backlog-only folder (no .gitkeep anchor) is a no-valid-state PURITY FAIL even for an existing rule (coverage-gap regression)' {
+    It 'AC-DWM-RULEBL-8: a backlog-only folder for an existing rule passes because .gitkeep is a default, not authority' {
         $project = script:New-CaseRoot -CaseName 'rulebl-backlog-only'
-        # An existing rule (so the state-independent backlog guard does NOT fire), but the
-        # folder carries ONLY a backlog with no .gitkeep anchor -> not a recognized idle shape
-        # (idle REQUIRES .gitkeep, the backlog is an overlay) -> no-valid-state PURITY FAIL.
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/swo/swo.md') -Content "# swo rule`n"
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'rule_docs/swo/swo_backlog.md') -Content "# swo backlog`n`nnext ID: SWO-B-01`n"
 
         $result = script:Invoke-Check -ProjectRoot $project
-        $result.ExitCode | Should -Be 1 -Because $result.Output
-        $result.Output | Should -Match 'RULE_DOCS-PURITY FAIL'
-        $result.Output | Should -Match 'is in no valid state'
-        # The existing rule output means the backlog guard must NOT fire here.
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'docs-working-model-check: PASS'
+        $result.Output | Should -Not -Match 'RULE_DOCS-.*FAIL'
         $result.Output | Should -Not -Match 'RULE_DOCS-CANDIDATE-BACKLOG FAIL'
     }
 
@@ -1215,18 +1216,17 @@ Describe 'docs-working-model-check SPEC-TEMPLATE-SCHEMA spec-template form' {
         $result.Output | Should -Not -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
     }
 
-    It 'AC-DWM-STS-2: a spec template missing one required heading (Review focus) fails SPEC-TEMPLATE-SCHEMA' {
+    It 'AC-DWM-STS-2: a spec template missing one default heading emits INFO and stays non-blocking' {
         $project = script:New-CaseRoot -CaseName 'sts-missing-heading'
-        # Drop the "## Review focus" heading; all three markers stay present, so the ONLY
-        # SPEC-TEMPLATE-SCHEMA violation is the missing heading.
         $missingHeading = "# {{DOMAIN}} Spec`n`n## Header`n`nwhat this is.`n`n## 목표 상태`n`nnormative sentences.`n`n## Owner surface 지도`n`nowner map.`n`n## Durable boundary`n`nboundaries.`n`n## Cross-domain interface`n`ninterfaces only.`n`n## Validation expectation`n`nsuites.`n`n## Lifecycle state`n`nmarker: **prelive** | **sync-required** | **live**.`n"
         script:Write-Utf8NoBomFile -Path (Join-Path $project $script:SpecTemplateRel) -Content $missingHeading
 
         $result = script:Invoke-Check -ProjectRoot $project
-        $result.ExitCode | Should -Be 1 -Because $result.Output
-        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
-        $result.Output | Should -Match 'missing the required Spec-identity section heading'
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA INFO'
+        $result.Output | Should -Match 'missing the default meaning-area heading'
         $result.Output | Should -Match '## Review focus'
+        $result.Output | Should -Not -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
     }
 
     It 'AC-DWM-STS-3: a spec template missing one lifecycle marker (**live**) fails SPEC-TEMPLATE-SCHEMA' {
@@ -1248,7 +1248,7 @@ Describe 'docs-working-model-check SPEC-TEMPLATE-SCHEMA spec-template form' {
     It 'AC-DWM-STS-4: rule present + required template MISSING fails SPEC-TEMPLATE-SCHEMA' {
         # The spec template is a REQUIRED package form of the docs-working-model rule.
         # A ProjectRoot that adopts the rule (carries rules/docs-working-model/docs-working-model.md)
-        # but is missing the template has evaded the package-form machine-check -> FAIL.
+        # but is missing the directly listed package form -> FAIL.
         $project = script:New-CaseRoot -CaseName 'sts-rule-present-template-missing'
         script:Write-Utf8NoBomFile -Path (Join-Path $project 'rules/docs-working-model/docs-working-model.md') -Content "# docs-working-model rule`n`nSpec identity fixes the eight sections and three lifecycle markers.`n"
         # Deliberately NO rules/docs-working-model/templates/docs-working-model_spec_template.md.
@@ -1270,32 +1270,28 @@ Describe 'docs-working-model-check SPEC-TEMPLATE-SCHEMA spec-template form' {
         $result.Output | Should -Not -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
     }
 
-    It 'AC-DWM-STS-6: a spec template with an EXTRA top-level "## " section fails SPEC-TEMPLATE-SCHEMA (exact-schema)' {
+    It 'AC-DWM-STS-6: a spec template with an extra top-level section emits INFO and stays non-blocking' {
         $project = script:New-CaseRoot -CaseName 'sts-extra-section'
-        # All eight required headings + all three markers are present, but an extra
-        # "## Extra" top-level section is added -- the closed-eight schema is violated.
         $extraSection = $script:GoodSpecTemplate + "`n## Extra`n`nunexpected section.`n"
         script:Write-Utf8NoBomFile -Path (Join-Path $project $script:SpecTemplateRel) -Content $extraSection
 
         $result = script:Invoke-Check -ProjectRoot $project
-        $result.ExitCode | Should -Be 1 -Because $result.Output
-        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
-        $result.Output | Should -Match 'unexpected top-level "## Extra" section'
-        $result.Output | Should -Match 'fixed to exactly the eight Spec-identity sections'
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA INFO'
+        $result.Output | Should -Match 'non-default top-level "## Extra" section'
+        $result.Output | Should -Not -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
     }
 
-    It 'AC-DWM-STS-7: a spec template with a DUPLICATED top-level "## " section fails SPEC-TEMPLATE-SCHEMA (exact-schema)' {
+    It 'AC-DWM-STS-7: a duplicated default top-level section emits INFO and stays non-blocking' {
         $project = script:New-CaseRoot -CaseName 'sts-duplicate-section'
-        # All eight required headings + all three markers are present, but "## Header"
-        # appears twice -- each Spec-identity section must appear exactly once.
         $dupSection = $script:GoodSpecTemplate + "`n## Header`n`nduplicate header section.`n"
         script:Write-Utf8NoBomFile -Path (Join-Path $project $script:SpecTemplateRel) -Content $dupSection
 
         $result = script:Invoke-Check -ProjectRoot $project
-        $result.ExitCode | Should -Be 1 -Because $result.Output
-        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
-        $result.Output | Should -Match 'duplicated top-level "## Header" section'
-        $result.Output | Should -Match 'each Spec-identity section appears exactly once'
+        $result.ExitCode | Should -Be 0 -Because $result.Output
+        $result.Output | Should -Match 'SPEC-TEMPLATE-SCHEMA INFO'
+        $result.Output | Should -Match 'duplicated default top-level "## Header" section'
+        $result.Output | Should -Not -Match 'SPEC-TEMPLATE-SCHEMA FAIL'
     }
 
     It 'AC-DWM-STS-8: a "### " level-3 subheading does NOT count as a top-level section (no SPEC-TEMPLATE-SCHEMA violation)' {

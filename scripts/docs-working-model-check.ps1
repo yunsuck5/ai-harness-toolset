@@ -110,6 +110,7 @@ $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
 # carry no source-repo markers.
 
 $violations = New-Object System.Collections.Generic.List[string]
+$diagnosticInfos = New-Object System.Collections.Generic.List[string]
 
 $docsDir = Join-Path -Path $project -ChildPath 'docs'
 $rulesDir = Join-Path -Path $project -ChildPath 'rules'
@@ -145,81 +146,61 @@ foreach ($base in @(
 }
 
 # ---------------------------------------------------------------------------
-# rule_docs structural conformance (mechanical, hard FAIL): rule_docs/ is the
-# per-rule, 1:1 rule-bound planning workspace. Each direct child rule_docs/<id>/
-# is a PERSISTENT per-rule folder snapshot-distinguishable into exactly THREE
-# valid states (docs-working-model rule, Incubation tier > rule_docs purity):
-#   - idle              = .gitkeep present with no lifecycle-work docs (optionally an
-#                         <id>_backlog.md OVERLAY); valid ONLY if a corresponding
-#                         existing rule output file exists (rules/<id>/<id>.md package
-#                         form OR rules/<id>.md flat repo-only form OR
-#                         snippets/rules/<id>.md distributed form).
-#                         No corresponding rule output -> RULE_DOCS-ORPHAN
-#                         (a discarded candidate's / deleted rule's folder left behind).
-#   - candidate incubation = contains <id>_incubation.md (may also carry a round-scoped
-#                         <id>_work_packet.md; E3 still forbids _design/_plan/_spec
-#                         siblings); valid, need NOT have a rule output yet.
-#   - active lifecycle work = contains one or more of
-#                         <id>_design.md / <id>_plan.md / <id>_work_packet.md; valid.
-# The <id>_backlog.md is a STATE OVERLAY (a not-yet-started future-work queue), NOT a
-#   work-state file: it is carved out of the state determination so a .gitkeep+backlog
-#   or a backlog-only folder is not misread as active-lifecycle work (which would skip
-#   the orphan check). It may overlay an idle or an active-lifecycle-work folder.
-# Allowed files in a child: ONLY .gitkeep or
-#   <id>_{incubation,design,plan,work_packet,backlog}.md (.md only). Anything else
-#   (README / archive / consumed / old / misc / mismatched-id / non-.md) is a
-#   RULE_DOCS-FILE violation; a subfolder is a RULE_DOCS-FILE violation. A loose
-#   file DIRECTLY under rule_docs/ (not inside a <id>/ child) is RULE_DOCS-PURITY.
-# This is a STRUCTURE (snapshot) check only: it deletes nothing and must not flag
-# a valid idle .gitkeep folder. (docs/ is intentionally looser -- it also holds
-# live domain Specs + docs/README.md -- so this binds only rule_docs/.)
+# rule_docs structural diagnostic. Direct children remain owner-local planning
+# homes. Loose top-level files, subfolders, mixed-owner/non-.md files, candidate
+# backlogs without a rule, and orphan authority are deterministic failures when
+# this checker is invoked. The familiar role names are defaults, not a closed
+# universe: an additional <id>_*.md role is reported as INFO so its Design/Plan
+# admission remains a semantic lifecycle judgment.
 # ---------------------------------------------------------------------------
 if (Test-Path -LiteralPath $ruleDocsDir -PathType Container) {
     foreach ($child in @(Get-ChildItem -LiteralPath $ruleDocsDir -Force -ErrorAction SilentlyContinue)) {
         $rel = Resolve-ProjectRelativePath -Path $child.FullName -ProjectRoot $project
         if (-not $child.PSIsContainer) {
-            # Loose file directly under rule_docs/ -- not inside a <id>/ child.
-            $violations.Add(('RULE_DOCS-PURITY FAIL: loose file directly under rule_docs/: {0} (rule_docs holds only per-rule folders rule_docs/<id>/; no top-level files and no orientation README)' -f $rel)) | Out-Null
+            $violations.Add(('RULE_DOCS-PURITY FAIL: loose file directly under rule_docs/: {0} (rule_docs holds per-rule folders rule_docs/<id>/; a top-level file has no rule owner)' -f $rel)) | Out-Null
             continue
         }
 
         $id = $child.Name
-        $allowedNames = @(
-            '.gitkeep',
-            ($id + '_incubation.md'),
-            ($id + '_design.md'),
-            ($id + '_plan.md'),
-            ($id + '_work_packet.md'),
-            ($id + '_backlog.md'))
         $cmp = [System.StringComparison]::OrdinalIgnoreCase
 
-        # Enumerate the folder's direct entries. No subfolders allowed; every file
-        # must be in the allowed set (snapshot validation only -- nothing removed).
         $entries = @(Get-ChildItem -LiteralPath $child.FullName -Force -ErrorAction SilentlyContinue)
-        $hasIncubation = $false
-        $hasLifecycle  = $false
+        $hasLifecycle = $false
         $hasGitkeep    = $false
         $hasBacklog    = $false
-        $allowedFileCount = 0
+        $sameOwnerAuxCount = 0
         foreach ($entry in $entries) {
             $entryRel = Resolve-ProjectRelativePath -Path $entry.FullName -ProjectRoot $project
             if ($entry.PSIsContainer) {
-                $violations.Add(('RULE_DOCS-FILE FAIL: disallowed subfolder under rule_docs/{0}/: {1} (a per-rule folder holds only .gitkeep or {0}_{{incubation,design,plan,work_packet,backlog}}.md; no subfolders)' -f $id, $entryRel)) | Out-Null
+                $violations.Add(('RULE_DOCS-FILE FAIL: disallowed subfolder under rule_docs/{0}/: {1} (a subfolder can hide lifecycle or split one rule owner across physical homes)' -f $id, $entryRel)) | Out-Null
                 continue
             }
-            $isAllowed = $false
-            foreach ($an in $allowedNames) {
-                if ([string]::Equals($entry.Name, $an, $cmp)) { $isAllowed = $true; break }
-            }
-            if (-not $isAllowed) {
-                $violations.Add(('RULE_DOCS-FILE FAIL: disallowed file under rule_docs/{0}/: {1} (allowed: .gitkeep or {0}_{{incubation,design,plan,work_packet,backlog}}.md, .md only; no README/archive/consumed/old/misc or mismatched-id files)' -f $id, $entryRel)) | Out-Null
+
+            if ([string]::Equals($entry.Name, '.gitkeep', $cmp)) {
+                $hasGitkeep = $true
                 continue
             }
-            $allowedFileCount++
-            if ([string]::Equals($entry.Name, '.gitkeep', $cmp)) { $hasGitkeep = $true }
-            elseif ([string]::Equals($entry.Name, ($id + '_incubation.md'), $cmp)) { $hasIncubation = $true }
-            elseif ([string]::Equals($entry.Name, ($id + '_backlog.md'), $cmp)) { $hasBacklog = $true }
-            else { $hasLifecycle = $true }  # _design / _plan / _work_packet
+
+            if ((-not $entry.Name.EndsWith('.md', $cmp)) -or
+                (-not $entry.Name.StartsWith(($id + '_'), $cmp))) {
+                $violations.Add(('RULE_DOCS-FILE FAIL: mixed-owner or non-.md file under rule_docs/{0}/: {1} (a role file must be {0}_*.md; README.md and another owner prefix are not rule-local roles)' -f $id, $entryRel)) | Out-Null
+                continue
+            }
+
+            if ([string]::Equals($entry.Name, ($id + '_incubation.md'), $cmp)) {
+                # Candidate state is already discovered by the shared E1-E3
+                # incubation scan. No separate rule_docs hard check is attached
+                # to the incubation filename here.
+            } elseif ([string]::Equals($entry.Name, ($id + '_backlog.md'), $cmp)) {
+                $hasBacklog = $true
+            } elseif ([string]::Equals($entry.Name, ($id + '_design.md'), $cmp) -or
+                [string]::Equals($entry.Name, ($id + '_plan.md'), $cmp) -or
+                [string]::Equals($entry.Name, ($id + '_work_packet.md'), $cmp)) {
+                $hasLifecycle = $true
+            } else {
+                $sameOwnerAuxCount++
+                $diagnosticInfos.Add(('RULE_DOCS-ROLE INFO: same-owner non-default role found under rule_docs/{0}/: {1} (default roles are {0}_{{incubation,design,plan,work_packet,backlog}}.md; admission of another {0}_*.md role is a Design/Plan judgment, not a closed-set violation)' -f $id, $entryRel)) | Out-Null
+            }
         }
 
         # rule output presence -- THREE forms, because "one file per rule" covers every
@@ -237,57 +218,34 @@ if (Test-Path -LiteralPath $ruleDocsDir -PathType Container) {
         $ruleOutputSnippet = [System.IO.Path]::GetFullPath($ruleOutputSnippet)
         $hasRuleOutput = (Test-Path -LiteralPath $ruleOutputNested -PathType Leaf) -or (Test-Path -LiteralPath $ruleOutputFlat -PathType Leaf) -or (Test-Path -LiteralPath $ruleOutputSnippet -PathType Leaf)
 
-        # A16 mechanical enforcement (STATE-INDEPENDENT): an <id>_backlog.md is the
-        # future-work queue of an EXISTING rule ONLY. The rule text forbids creating it
-        # during candidate incubation, and a promoted candidate has no rule until its
-        # terminal rule file lands -- in both cases there is NO rule output, and the
-        # candidate's deferred questions belong in its _design/_plan, not a backlog
-        # (docs-working-model *Incubation tier* / *Future-work queue*). So a backlog
-        # present with no rule output is a violation regardless of the folder's
-        # idle/incubation/active state -- this is the mechanical guard that keeps the
-        # check from being looser than the rule (which otherwise let a
-        # _incubation.md+_backlog.md or a promoted _design.md+_backlog.md pass).
+        # A rule backlog is the queue of an existing rule. This diagnostic checks
+        # only the presence of one of the three terminal rule-output shapes.
         if ($hasBacklog -and (-not $hasRuleOutput)) {
             $violations.Add(('RULE_DOCS-CANDIDATE-BACKLOG FAIL: rule_docs/{0}/ carries an {0}_backlog.md but has no corresponding rule output (expected rules/{0}/{0}.md, rules/{0}.md, or snippets/rules/{0}.md): {1} (a rule backlog is the future-work queue of an EXISTING rule; a candidate in incubation or a promoted candidate before its terminal rule lands must keep deferred questions in its _design/_plan, not a backlog)' -f $id, $rel)) | Out-Null
         }
 
-        # State determination on the ALLOWED files present. The <id>_backlog.md is a
-        # STATE OVERLAY (docs-working-model *Future-work queue* / the rule_docs
-        # three-state model), NOT a work-state file: it is carved out of $hasLifecycle
-        # so a .gitkeep+backlog or a backlog-only folder is NOT misread as active
-        # lifecycle work (which would wrongly skip the existing-rule orphan / backlog
-        # guard). A backlog may overlay an idle folder (an existing rule's future-work
-        # queue) or an active-lifecycle-work folder (an in-flight revision's queued
-        # items); either way it does not change which of the three states the folder is
-        # in.
-        if ($hasIncubation -or $hasLifecycle) {
-            # candidate incubation OR active lifecycle work (with or without a backlog
-            # overlay) -> valid STATE; need not have a rule output yet (incubation) or is
-            # a normal existing-rule revision. (A backlog with no rule output was already
-            # flagged above by the state-independent guard.)
+        # Reuse the shared E1-E3 discovery result to distinguish a candidate from
+        # an orphan folder. Incubation-specific sibling enforcement remains E3;
+        # this rule_docs structural block adds no separate Work-Packet policy.
+        if (@($incubationFolders | Where-Object {
+                    [string]::Equals($_.FullName, $child.FullName, $cmp)
+                }).Count -gt 0) {
             continue
         }
 
-        # No incubation and no lifecycle-work docs. The remaining valid state is idle:
-        # .gitkeep present, optionally with an <id>_backlog.md overlay. An idle folder
-        # (with or without the backlog overlay) is valid ONLY for an EXISTING rule --
-        # the orphan check is preserved through the overlay (the backlog carve-out
-        # above is exactly what keeps a .gitkeep+backlog / backlog-bearing folder from
-        # evading it). A backlog WITHOUT a .gitkeep anchor is not a recognized idle
-        # shape and falls through to the no-valid-state branch below.
-        $isIdle = ($hasGitkeep -and (($allowedFileCount - [int]$hasBacklog) -eq 1))
-        if ($isIdle) {
-            if (-not $hasRuleOutput) {
-                $violations.Add(('RULE_DOCS-ORPHAN FAIL: idle rule_docs/{0}/ (.gitkeep, optionally + {0}_backlog.md overlay) has no corresponding rule output (expected rules/{0}/{0}.md, rules/{0}.md, or snippets/rules/{0}.md): {1} (an idle folder is valid only for an EXISTING rule; a discarded candidate or deleted rule must remove its folder; a backlog overlay does not exempt it)' -f $id, $rel)) | Out-Null
-            }
+        if ($hasLifecycle) {
+            # Active Design/Plan/Work-Packet work can precede terminal rule landing.
             continue
         }
 
-        # Neither a recognized work state nor an idle .gitkeep(+backlog) folder: an empty
-        # folder, a backlog-only folder with no .gitkeep anchor, or one carrying only
-        # stray/disallowed files (those are already reported above) with no .gitkeep and
-        # no recognized state file. Flag the folder itself so it is not silently accepted.
-        $violations.Add(('RULE_DOCS-PURITY FAIL: rule_docs/{0}/ is in no valid state: {1} (must be idle [.gitkeep, optionally + {0}_backlog.md overlay, with an existing rule output], candidate incubation [{0}_incubation.md], or active lifecycle work [{0}_design.md/_plan.md/_work_packet.md])' -f $id, $rel)) | Out-Null
+        # Without incubation or active lifecycle work, the folder must belong to an
+        # existing terminal rule. .gitkeep and the default role set are conventions,
+        # so backlog-only or a same-owner auxiliary role is not independently blocked.
+        if (-not $hasRuleOutput) {
+            $violations.Add(('RULE_DOCS-ORPHAN FAIL: rule_docs/{0}/ has no incubation or active lifecycle work and no corresponding rule output (expected rules/{0}/{0}.md, rules/{0}.md, or snippets/rules/{0}.md): {1} (the folder would otherwise claim orphan rule authority)' -f $id, $rel)) | Out-Null
+        } elseif ((-not $hasGitkeep) -and (-not $hasBacklog) -and ($sameOwnerAuxCount -eq 0)) {
+            $diagnosticInfos.Add(('RULE_DOCS-STATE INFO: existing rule_docs/{0}/ has no default role file or .gitkeep anchor: {1} (default-shape diagnostic only)' -f $id, $rel)) | Out-Null
+        }
     }
 }
 
@@ -319,7 +277,7 @@ foreach ($folder in $incubationFolders) {
 }
 
 # ---------------------------------------------------------------------------
-# E3 (mechanical, hard FAIL): no canonical-looking sibling in an incubation
+# E3 deterministic diagnostic: no canonical-looking sibling in an incubation
 # folder. For any docs/<candidate>/ containing a *_incubation.md, assert there
 # is NO sibling *_design.md / *_plan.md / *_spec.md in that same directory.
 # ---------------------------------------------------------------------------
@@ -334,7 +292,7 @@ foreach ($folder in $incubationFolders) {
 }
 
 # ---------------------------------------------------------------------------
-# E2 (mechanical, hard FAIL): canonical surfaces must not durably reference a
+# E2 deterministic diagnostic: canonical surfaces must not durably reference a
 # candidate *_incubation.md. Scan rules/**/*.md + rules/README.md +
 # snippets/rules/**/*.md (incl. snippets/rules/README.md) + docs/README.md for a
 # path or markdown link that points at a *_incubation.md file. A bare mention of
@@ -404,8 +362,8 @@ foreach ($cf in $canonicalFiles) {
 # the SAME canonical-file set the E2 scan reads. Purpose: a mechanical find-step
 # aid for the rule's life-event sweeps (Candidate lifecycle promotion / discard;
 # State migration -- De-promotion) and for reviewing the Promoted-artifact
-# sibling reference form. Whether a mention is status-honest / within the E4
-# carry cap is a SEMANTIC judgment this check cannot make (a hard FAIL here
+# sibling reference form. Whether a mention is status-honest is a semantic
+# judgment this check cannot make (a deterministic FAIL here
 # would false-positive on legitimate mentions, e.g. the rule's own transition
 # clause and legitimate candidate-name mentions), so this stays
 # a listing: NOT a violation, NOT a discovery index. Token match: the candidate
@@ -426,13 +384,13 @@ foreach ($folder in $incubationFolders) {
         }
         if ($hitLines.Count -gt 0) {
             $rel = Resolve-ProjectRelativePath -Path $cf -ProjectRoot $project
-            $siblingMentionInfos.Add(('SIBLING-MENTION INFO: candidate "{0}" name-mention(s) on canonical surface {1} line(s) {2} (advisory inventory only -- NOT a violation, NOT a discovery index; status-honesty / carry-cap conformance under the Promoted-artifact sibling reference clause is a semantic manual/review-gate judgment; life-event sweeps may use this list as their find step)' -f $folder.Name, $rel, ($hitLines -join ','))) | Out-Null
+            $siblingMentionInfos.Add(('SIBLING-MENTION INFO: candidate "{0}" name-mention(s) on canonical surface {1} line(s) {2} (advisory inventory only; whether the mention falsely claims authority is a semantic judgment)' -f $folder.Name, $rel, ($hitLines -join ','))) | Out-Null
         }
     }
 }
 
 # ---------------------------------------------------------------------------
-# E1 (mechanical, hard FAIL): a docs/<candidate>/ that holds ONLY _incubation
+# E1 deterministic diagnostic: a docs/<candidate>/ that holds ONLY _incubation
 # file(s) (no promoted canonical *_spec.md) must NOT be referenced as a
 # discovery/domain target by docs/README.md or rules/README.md. Conservative
 # form: FAIL if either README contains a markdown link or path to that
@@ -467,7 +425,7 @@ foreach ($folder in $incubationFolders) {
 }
 
 # ---------------------------------------------------------------------------
-# EN-2 (mechanical, hard FAIL): every PROMOTED domain Spec docs/<domain>/<domain>_spec.md
+# EN-2 deterministic diagnostic: every PROMOTED domain Spec docs/<domain>/<domain>_spec.md
 # must carry a "## Lifecycle state" section holding EXACTLY ONE bolded lifecycle
 # marker -- one of **prelive** / **sync-required** / **live**. Detection keys off
 # the BOLDED token, NOT a plain-text mention: the live specs write the marker as a
@@ -572,31 +530,18 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
 }
 
 # ---------------------------------------------------------------------------
-# SPEC-TEMPLATE-SCHEMA (mechanical, hard FAIL): the docs-working-model rule's
-# spec TEMPLATE file must embody the Spec-identity FORM the rule fixes -- a
-# "rule requirement now" package-form machine-check (docs-working-model
-# *Spec identity*: the template "fixes these as its eight sections"; and
-# *Closeout -- Package-form sync*, which extends the listed Level-2 surfaces to
-# a rule package's own forms + validation surfaces). The single target is
-# EXACTLY rules/docs-working-model/templates/docs-working-model_spec_template.md;
-# its top-level "## " section set must be EXACTLY the eight Spec-identity section
-# headings -- no MISSING one, no EXTRA one, and no DUPLICATE one (the rule fixes
-# the sections to a CLOSED set of exactly eight) -- AND it must carry ALL THREE
-# bolded lifecycle markers (**prelive** / **sync-required** / **live**). An edit
-# that drops a required heading, adds an unexpected top-level "## " section,
-# duplicates a top-level "## " section, or drops a marker is a FAIL.
+# SPEC-TEMPLATE-SCHEMA deterministic diagnostic. The package template presents
+# the eight Spec meaning areas as an authoring default. Missing, extra, or
+# duplicated level-2 headings are INFO diagnostics, not independent lifecycle
+# blockers. The template must still offer all three lifecycle markers because
+# marker meaning is a direct dependency of the rule and produced-Spec contract.
 #
 # This is TEMPLATE-PATH-ONLY and deliberately does NOT overlap EN-2: EN-2
 # validates a PRODUCED domain Spec docs/<domain>/<domain>_spec.md for EXACTLY
 # ONE lifecycle marker; this check binds only the template file, requires ALL
 # THREE markers (the template offers all three choices), and never scans
-# docs/**. The spec template is a REQUIRED package form of the docs-working-model
-# rule, so a MISSING template is a no-op ONLY when the rule itself is absent (a
-# ProjectRoot that does not adopt docs-working-model has nothing to validate);
-# when the docs-working-model rule file IS present but the required template is
-# missing (deleted/renamed), that evades the package-form machine-check and is a
-# FAIL. The real repo carries both the rule and a conformant template, so this
-# check PASSes on the real tree.
+# docs/**. A missing template still fails when the rule package exists because
+# the package lists the template as a direct form dependency.
 # ---------------------------------------------------------------------------
 $specTemplatePath = Join-Path -Path $rulesDir -ChildPath 'docs-working-model/templates/docs-working-model_spec_template.md'
 $dwmRulePath = Join-Path -Path $rulesDir -ChildPath 'docs-working-model/docs-working-model.md'
@@ -604,9 +549,8 @@ if (Test-Path -LiteralPath $specTemplatePath -PathType Leaf) {
     $stRel = Resolve-ProjectRelativePath -Path $specTemplatePath -ProjectRoot $project
     $stText = Read-Utf8 -Path $specTemplatePath
     $stLines = $stText -split "\r?\n"
-    # The eight Spec-identity section headings the rule enumerates (single-home:
-    # rules/docs-working-model/docs-working-model.md *Spec identity*), each matched
-    # as a "## <heading>" line (a deeper "### " or a "# " level does not count).
+    # The eight default Spec meaning-area headings, each matched as a
+    # "## <heading>" line (a deeper "### " or a "# " level does not count).
     $stRequiredHeadings = @(
         'Header',
         '목표 상태',
@@ -624,13 +568,10 @@ if (Test-Path -LiteralPath $specTemplatePath -PathType Leaf) {
             if ($stLine -match $stHeadingPattern) { $stFound = $true; break }
         }
         if (-not $stFound) {
-            $violations.Add(('SPEC-TEMPLATE-SCHEMA FAIL: spec template is missing the required Spec-identity section heading "## {1}": {0} (the docs-working-model spec template must carry all eight "## " Spec-identity section headings: {2})' -f $stRel, $stHeading, $stHeadingList)) | Out-Null
+            $diagnosticInfos.Add(('SPEC-TEMPLATE-SCHEMA INFO: spec template is missing the default meaning-area heading "## {1}": {0} (the eight-heading shape is an authoring diagnostic, not an independent lifecycle blocker; defaults: {2})' -f $stRel, $stHeading, $stHeadingList)) | Out-Null
         }
     }
-    # Exact-schema enforcement (the rule's *Spec identity* fixes the template's
-    # top-level sections to EXACTLY these eight -- a CLOSED set): beyond the
-    # per-heading presence check above, the template must carry NO EXTRA and NO
-    # DUPLICATE top-level "## " section. Collect every LEVEL-2 heading only --
+    # Heading-shape diagnostics. Collect every LEVEL-2 heading only --
     # the pattern "^##\s+" requires whitespace immediately after exactly two
     # hashes, so a "### " level-3 subheading (a '#' sits where whitespace is
     # required) and a "# " level-1 title (only one hash) are BOTH excluded.
@@ -647,11 +588,9 @@ if (Test-Path -LiteralPath $specTemplatePath -PathType Leaf) {
     }
     foreach ($stSeenHeading in @($stHeadingCounts.Keys)) {
         if ($stRequiredHeadings -notcontains $stSeenHeading) {
-            # Extra section: a top-level "## " heading outside the fixed eight.
-            $violations.Add(('SPEC-TEMPLATE-SCHEMA FAIL: spec template has an unexpected top-level "## {1}" section (the spec template''s sections are fixed to exactly the eight Spec-identity sections): {0}' -f $stRel, $stSeenHeading)) | Out-Null
+            $diagnosticInfos.Add(('SPEC-TEMPLATE-SCHEMA INFO: spec template has a non-default top-level "## {1}" section: {0} (the eight-heading shape is an authoring diagnostic, not a closed schema)' -f $stRel, $stSeenHeading)) | Out-Null
         } elseif ([int]$stHeadingCounts[$stSeenHeading] -gt 1) {
-            # Duplicate section: a required Spec-identity heading appears twice+.
-            $violations.Add(('SPEC-TEMPLATE-SCHEMA FAIL: spec template has a duplicated top-level "## {1}" section (each Spec-identity section appears exactly once): {0}' -f $stRel, $stSeenHeading)) | Out-Null
+            $diagnosticInfos.Add(('SPEC-TEMPLATE-SCHEMA INFO: spec template has a duplicated default top-level "## {1}" section: {0} (review whether the duplicate hides conflicting meaning; heading count alone is not a lifecycle blocker)' -f $stRel, $stSeenHeading)) | Out-Null
         }
     }
     # The three bolded lifecycle markers (single-home: the same *Spec identity*
@@ -665,39 +604,19 @@ if (Test-Path -LiteralPath $specTemplatePath -PathType Leaf) {
         }
     }
 } elseif (Test-Path -LiteralPath $dwmRulePath -PathType Leaf) {
-    # Rule present, required template absent: a REQUIRED package form of the
-    # docs-working-model rule is missing (deleted/renamed), which would silently
-    # evade the schema check above -- FAIL. (When the rule is ABSENT the block
-    # above is skipped and no FAIL is raised: a ProjectRoot that does not adopt
-    # docs-working-model has no template to require.)
+    # Rule present, direct package form absent. When the rule is absent, a
+    # synthetic ProjectRoot has no docs-working-model package to validate.
     $stRel = Resolve-ProjectRelativePath -Path $specTemplatePath -ProjectRoot $project
     $violations.Add(('SPEC-TEMPLATE-SCHEMA FAIL: required spec template is missing while the docs-working-model rule is present: {0}' -f $stRel)) | Out-Null
 }
 
 # ---------------------------------------------------------------------------
-# DOCS-PURITY (mechanical, hard FAIL): structural purity of a PROMOTED docs domain
-# folder -- the docs/ sibling of the rule_docs/ purity check, but TRANSITION-AWARE
-# and looser (docs/ also holds in-flight candidates + legacy residue). It binds a
-# PROMOTED-ENTRY domain = docs/<domain>/ that carries any one of its own promoted
-# lifecycle docs <domain>_{design,plan,spec}.md. A candidate in incubation can only
-# carry <domain>_incubation.md (E3 forbids a _design/_plan/_spec sibling before
-# promotion), so the presence of any _design/_plan/_spec necessarily marks a domain
-# that has ENTERED promotion (mid-promotion binding) -- the false-positive set against
-# an in-flight candidate is empty. An in-flight candidate (docs/<cand>/ with an
-# _incubation.md and no _design/_plan/_spec) or legacy residue (none of the three) is
-# NOT bound -> conform-pass (transition-aware; matches the rule's *Stable filename
-# rule* end-state model). For a bound promoted domain the *Stable filename rule*
-# forbids: a filename-evading subfolder (e.g. docs/<domain>/work/ -- any subfolder)
-# and a non-role file -- a <topic>_*.md topic-named file (a .md whose prefix is not
-# the domain name) or any <domain>_*.md that is not an allowed role. Allowed:
-# README.md, the domain-prefixed lifecycle role files
-# <domain>_{spec,backlog,design,plan,work_packet,incubation}.md, AND the auxiliary
-# role docs <domain>_{policy,contract,state,status,guide}.md. The auxiliary roles are
-# *deferred* (introduced only by an explicit Design/Plan decision -- *Stable filename
-# rule*), but this check cannot verify that an approval exists (not a structural
-# fact); rather than over-strictly forbid an approved auxiliary doc it ACCEPTS the
-# known auxiliary role names (.md only). Anything else is a DOCS-PURITY violation.
-# STRUCTURE (snapshot) check only -- deletes nothing.
+# DOCS-PURITY deterministic diagnostic for promoted-entry domain folders. A
+# subfolder or mixed-owner/non-.md file is a failure because it can split one
+# domain owner or hide lifecycle work. README.md and <domain>_*.md are accepted.
+# Familiar role names are defaults; another same-owner role emits INFO so its
+# Design/Plan admission remains a semantic judgment rather than a closed-set
+# checker decision. Incubation-only and legacy folders remain outside this scan.
 # ---------------------------------------------------------------------------
 if (Test-Path -LiteralPath $docsDir -PathType Container) {
     foreach ($domainDir in @(Get-ChildItem -LiteralPath $docsDir -Directory -ErrorAction SilentlyContinue)) {
@@ -709,7 +628,7 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
         }
         if (-not $isPromotedEntry) { continue }  # not promoted -> conform-pass (in-flight candidate / legacy)
 
-        $allowedDocsNames = @(
+        $defaultDocsNames = @(
             'README.md',
             ($domain + '_spec.md'),
             ($domain + '_backlog.md'),
@@ -726,22 +645,30 @@ if (Test-Path -LiteralPath $docsDir -PathType Container) {
         foreach ($entry in @(Get-ChildItem -LiteralPath $domainDir.FullName -Force -ErrorAction SilentlyContinue)) {
             $entryRel = Resolve-ProjectRelativePath -Path $entry.FullName -ProjectRoot $project
             if ($entry.PSIsContainer) {
-                $violations.Add(('DOCS-PURITY FAIL: disallowed subfolder under promoted docs domain docs/{0}/: {1} (a promoted domain folder holds only README.md or {0}_{{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}}.md; a filename-evading subfolder such as docs/{0}/work/ is forbidden by the Stable filename rule)' -f $domain, $entryRel)) | Out-Null
+                $violations.Add(('DOCS-PURITY FAIL: disallowed subfolder under promoted docs domain docs/{0}/: {1} (a subfolder can hide lifecycle or split one domain owner across physical homes)' -f $domain, $entryRel)) | Out-Null
                 continue
             }
-            $isAllowed = $false
-            foreach ($an in $allowedDocsNames) {
-                if ([string]::Equals($entry.Name, $an, $cmpDocs)) { $isAllowed = $true; break }
+
+            if ([string]::Equals($entry.Name, 'README.md', $cmpDocs)) { continue }
+            if ((-not $entry.Name.EndsWith('.md', $cmpDocs)) -or
+                (-not $entry.Name.StartsWith(($domain + '_'), $cmpDocs))) {
+                $violations.Add(('DOCS-PURITY FAIL: mixed-owner or non-.md file under promoted docs domain docs/{0}/: {1} (a role file must be {0}_*.md; topic files with another prefix do not have this domain owner)' -f $domain, $entryRel)) | Out-Null
+                continue
             }
-            if (-not $isAllowed) {
-                $violations.Add(('DOCS-PURITY FAIL: disallowed file under promoted docs domain docs/{0}/: {1} (allowed: README.md or {0}_{{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}}.md, .md only; a <topic>_*.md topic-named file or any non-role {0}_*.md is forbidden by the Stable filename rule)' -f $domain, $entryRel)) | Out-Null
+
+            $isDefault = $false
+            foreach ($an in $defaultDocsNames) {
+                if ([string]::Equals($entry.Name, $an, $cmpDocs)) { $isDefault = $true; break }
+            }
+            if (-not $isDefault) {
+                $diagnosticInfos.Add(('DOCS-ROLE INFO: same-owner non-default role found under docs/{0}/: {1} (default roles are diagnostic conventions; admission of another {0}_*.md role is a Design/Plan judgment)' -f $domain, $entryRel)) | Out-Null
             }
         }
     }
 }
 
 # ---------------------------------------------------------------------------
-# BACKLOG-NEXTID (mechanical, hard FAIL): every future-work queue -- a per-domain
+# BACKLOG-NEXTID deterministic floor diagnostic: every future-work queue -- a per-domain
 # backlog docs/<domain>/<domain>_backlog.md AND a per-rule backlog
 # rule_docs/<id>/<id>_backlog.md -- must carry a "next ID:" header whose per-prefix
 # floor is strictly ABOVE every present row id of that prefix (ID-reuse prevention --
@@ -853,7 +780,9 @@ foreach ($backlogPath in $backlogFiles) {
 # Report
 # ---------------------------------------------------------------------------
 Write-Line ('scanned ProjectRoot {0}; found {1} incubation candidate folder(s)' -f $project, $incubationFolders.Count)
-Write-Line 'SCOPE INFO: MECHANICAL subset only. Scanned: candidate incubation folders in BOTH docs/<candidate>/ (domain candidates) and rule_docs/<candidate>/ (rule candidates); E1 = docs/README.md + rules/README.md must not reference a candidate folder as a discovery target; E2 = all .md under rules/ (recursive, so any package-local templates/ or checklists/ under a rule ARE included) + all .md under snippets/rules/ (recursive, incl. snippets/rules/README.md) + docs/README.md must not durably reference a candidate *_incubation.md; E3 = no _design/_plan/_spec siblings in a candidate incubation folder (docs/ or rule_docs/); EN-2 = every promoted domain Spec docs/<domain>/<domain>_spec.md must carry a ## Lifecycle state section with exactly one bolded lifecycle marker (**prelive**/**sync-required**/**live**); DOCS-PURITY = every PROMOTED docs domain (docs/<domain>/ carrying any one of <domain>_{design,plan,spec}.md -- promotion-entry; an in-flight candidate or legacy residue with none of the three is conform-pass) holds only README.md or <domain>_{spec,backlog,design,plan,work_packet,incubation,policy,contract,state,status,guide}.md with no subfolders (a <topic>_*.md topic file or any non-role <domain>_*.md or a docs/<domain>/work/ subfolder is forbidden; the auxiliary role docs <domain>_{policy,contract,state,status,guide}.md are ACCEPTED -- their Design/Plan approval is not a structural fact this check can verify, so it does not over-strictly forbid them); BACKLOG-NEXTID = every backlog -- a domain backlog docs/<domain>/<domain>_backlog.md AND a rule backlog rule_docs/<id>/<id>_backlog.md -- carries a next-ID header (present-but-zero-valid-token = malformed FAIL) whose per-prefix floor (each middot-separated segment''s leading declared <PREFIX>-NN token, prose parentheticals excluded) is strictly above every present table-row id of that prefix (a decorated/annotated row id such as **PFX-NN** or PFX-NN (retired) still counts); rule_docs structure = each direct child rule_docs/<id>/ is in one of THREE valid states -- idle (.gitkeep, optionally + <id>_backlog.md overlay, requires an existing rule output rules/<id>/<id>.md [package] or rules/<id>.md [flat repo-only] or snippets/rules/<id>.md [distributed], else RULE_DOCS-ORPHAN), candidate incubation (<id>_incubation.md), or active lifecycle work (<id>_design.md/_plan.md/_work_packet.md) -- the <id>_backlog.md is a STATE OVERLAY (a not-yet-started future-work queue carved out of the state determination so it cannot misclassify the folder as active-lifecycle and evade the orphan check; may accompany idle or active-lifecycle work) that -- STATE-INDEPENDENTLY -- REQUIRES an existing rule output (rules/<id>/<id>.md [package] or rules/<id>.md [flat repo-only] or snippets/rules/<id>.md [distributed]), else RULE_DOCS-CANDIDATE-BACKLOG (a backlog is an EXISTING rule''s queue; a candidate in incubation or a promoted candidate before its terminal rule lands must not carry one) -- with only .gitkeep or <id>_{incubation,design,plan,work_packet,backlog}.md files (RULE_DOCS-FILE otherwise), no subfolders, and no loose top-level files under rule_docs/ (RULE_DOCS-PURITY); SIBLING-MENTION = an advisory INFO inventory (non-gating -- never a violation, never affects the exit code) listing bare name-identity mentions of each discovered candidate id (standalone-token match) across the SAME canonical-file set as E2 -- a find-step aid for the life-event sweeps and the Promoted-artifact sibling reference review; whether a mention is status-honest / within the carry cap is a semantic judgment NOT mechanically checked, and the inventory is not a discovery index; SPEC-TEMPLATE-SCHEMA = the docs-working-model spec template rules/docs-working-model/templates/docs-working-model_spec_template.md must carry EXACTLY the eight "## " Spec-identity section headings (Header / 목표 상태 / Owner surface 지도 / Durable boundary / Cross-domain interface / Validation expectation / Review focus / Lifecycle state) with NO extra or duplicated top-level "## " section (the rule fixes the sections to a closed set of exactly eight) AND all THREE bolded lifecycle markers (**prelive**/**sync-required**/**live**); this is template-path-only and does NOT overlap EN-2 (which validates a produced docs/<domain>/<domain>_spec.md for exactly one marker); a missing template file is a SPEC-TEMPLATE-SCHEMA no-op ONLY when the docs-working-model rule (rules/docs-working-model/docs-working-model.md) is ABSENT (a ProjectRoot that does not adopt docs-working-model has nothing to validate), but when that rule IS present a missing required template is instead a SPEC-TEMPLATE-SCHEMA violation (reported, not a no-op). E4/E5 are advisory only (not enforced). snippets/rules/ IS now mechanically scanned for E2 (it is no longer an unscanned tier). Any canonical surface outside those exact globs (e.g. repo-root templates/, snippets/ outside snippets/rules/, skills, generator inputs, docs/** other than docs/README.md and the promoted-Spec Lifecycle-state check) is NOT mechanically scanned (manual conformance). KNOWN MECHANICAL RESIDUALS (disclosed, not defects): BACKLOG-NEXTID generalizes the rule''s single-prefix "next ID: <PREFIX>-NN" wording to the real multi-prefix per-prefix-floor shape by design (no rule-text change), and a deleted-row-gap reuse below the floor is intentionally not detected (floor check, not full monotonicity). E2 durable-reference detection covers the common forms (a markdown link [x](dest) or [x](<dest>) including an optional CommonMark title and an optional trailing #fragment / ?query on the destination, a bare relative / . / .. path, and a drive-letter absolute) but NOT every theoretical shape: a POSIX-rooted absolute /work/.../<cand>_incubation.md, a bare autolink <...>, and a reference-style [ref]: <...> link definition are narrow unscanned residuals (manual conformance); and a hit is confined to a discovered <candidate-folder>/<file> tail, so a bare-leaf <cand>_incubation.md with no concrete folder is intentionally not flagged. A PASS attests only to the scanned subset, not full incubation-tier conformance.'
+Write-Line 'SCOPE INFO: manually invoked deterministic diagnostic only; lifecycle hard gates = 0.'
+Write-Line 'CHECKS INFO: E1/E2/E3, EN-2, rule_docs/DOCS-PURITY owner topology, BACKLOG-NEXTID floors, and Spec-template marker/heading diagnostics run only on their disclosed paths and shapes.'
+Write-Line 'LIMITS INFO: same-owner non-default roles and eight-heading deviations are INFO; semantic admission, deleted-ID gaps, unscanned reference forms, lifecycle completion, and secret absence remain outside this checker.'
 
 if ($violations.Count -gt 0) {
     foreach ($v in $violations) {
@@ -867,18 +796,16 @@ foreach ($smi in $siblingMentionInfos) {
     Write-Line $smi
 }
 
-# E4 (advisory only — never FAILs): absorption-content completeness is a
-# manual/semantic check, not mechanically enforced.
-Write-Line 'E4 INFO: absorption-content completeness (adopted conclusion / rejected alternatives / evidence-type / scope / failure criteria / known negative evidence) is a manual/semantic check, not mechanically enforced here.'
+foreach ($info in $diagnosticInfos) {
+    Write-Line $info
+}
 
-# E5 (not mechanized — one info line): the rule's own incubation-tier addition
-# is a one-time bootstrap invariant.
-Write-Line 'E5 INFO: this rule''s own incubation-tier addition is a one-time bootstrap (incubation cannot incubate itself), not mechanically checked and not a precedent.'
+Write-Line 'INCUBATION INFO: E1/E2/E3 cover only disclosed README discovery, canonical-path reference, and same-folder sibling subsets. They do not prove full semantic conformance or secret absence.'
 
 if ($violations.Count -gt 0) {
-    Write-Line ('FAIL ({0} E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/SPEC-TEMPLATE-SCHEMA/rule_docs-purity/orphan/candidate-backlog/file violation(s) in the mechanically-scanned subset)' -f $violations.Count)
+    Write-Line ('FAIL ({0} deterministic diagnostic violation(s); this invocation is not a lifecycle hard gate)' -f $violations.Count)
     exit 1
 }
 
-Write-Line 'PASS (no E1/E2/E3/EN-2/DOCS-PURITY/BACKLOG-NEXTID/SPEC-TEMPLATE-SCHEMA/rule_docs-purity/orphan/candidate-backlog/file violations in the mechanically-scanned subset)'
+Write-Line 'PASS (no deterministic diagnostic violations in the disclosed subset; not full lifecycle or safety proof)'
 exit 0

@@ -1,11 +1,13 @@
-# Promotion conformance checklist — docs-working-model lifecycle
+# Promotion checklist — docs-working-model lifecycle
 
-> promotion-boundary / promoted-but-not-live 이벤트가 lifecycle 규칙을 지켰는지 **의미 기준으로** 점검한다. 대상 = promotion·discard(candidate-lifecycle closeout) + de-promotion/withdrawal(promoted-but-not-live reversal = *State migration* 소관). 판정 = "충족/미충족 + 한 줄 evidence". **evidence 는 이 checklist 본문에 축적하지 않는다** — operator report / closeout report 소관.
+> Design 진입 이후 promotion/discard/withdrawal의 의미 누락을 찾는 **self-review aid**다. Incubation 문서 자체에 review gate를 소급 적용하지 않는다. 체크 누락 자체는 blocker가 아니며, blocker에는 underlying E1–E3·absorption·authority violation evidence가 필요하다.
 
-- [ ] prelive Spec 을 live authority 로 소비하지 않는가(governance-discoverable ≠ implementation-authority — 단순 발견은 live behavior 의 1:1 근거가 아니다; promoted-but-not-live domain 의 active surface 가 정규 배포/activation 표면에 landing 하는 것 자체는 이 제약의 위반이 아니라 운용-검증 경로이고, 배포된 구현을 통한 소비도 artifact 에 없는 authority 를 만들지 않는다 — E1) — 충족/미충족 + evidence 한 줄
-- [ ] E4 흡수가 완전한가(adopted conclusion / rejected alternatives / 판단을 바꾼 evidence type / scope / failure criteria / negative evidence → entry `_design`, never the Work Packet) — 충족/미충족 + evidence 한 줄
-- [ ] 미해결 open question 이 resolved 되었거나 explicitly deferred 되었는가 — domain → `<domain>_backlog.md`(one line + reopen/start condition), 단 그 backlog 이 아직 없으면 entry `_design` 의 `Deferred Questions` 섹션으로 fallback(Plan 이 이후 backlog 로 흡수) / rule → true blocker 는 terminal rule landing 전 resolve, 미착수 future-work 는 `_design`/`_plan` 에 담아 terminal landing 시 그 rule 의 `rule_docs/<id>/<id>_backlog.md` 로 defer(rule 은 landing 시점에 존재 → backlog 도 그때 생성/채워짐); neither-resolved-nor-deferred 는 live(closeout/terminal landing) 전환을 차단한다(deferred backlog item 은 tracked future work, blocker 아님) — 충족/미충족 + evidence 한 줄
-- [ ] discard(candidate-lifecycle closeout 의 discard 변형) 시 `_incubation.md`(rule candidate 면 `rule_docs/<candidate>/` 폴더 전체)가 삭제되고 discard 근거(negative evidence)가 discard commit message 에 기록되었는가 — E4 promotion-absorption 은 *promote* 경로에만 적용되며 discard 에는 canonical 흡수가 없다(둘은 상충하지 않는다) — 충족/미충족 + evidence 한 줄
-- [ ] de-promotion 이 `promotion-withdrawal` 로 기록되었는가 — 모든 promoted-lifecycle artifact(`_design`/`_plan`, 이미 쓰였으면 `prelive` `<domain>_spec.md`) 처분 + candidate 의 `_incubation` 재개(`restored from withdrawn promotion` marker 동반; candidate id 재사용 가능·history 보존 = recorded reversal); live(closeout-reconciled Spec / landed terminal rule) 후엔 금지 — 충족/미충족 + evidence 한 줄
-- [ ] 이 boundary event 가 promotion 이면 — 신규 promoted artifact, 그리고 이 changeset 이 신규/갱신한 canonical index·accepted glossary entry 의 outbound sibling-참조가 *Promoted-artifact sibling reference* 형식(이름-정체성 only·상태-정직 문장·discovery-index 화 아님·운반 상한)을 지키는가 — 충족/미충족 + evidence 한 줄
-- [ ] 이 boundary event 종류별 참조 sweep 이 같은 changeset 에서 수행됐는가 — promotion(동명 포함): 기존 canonical 표면의 그 후보 이름-참조 상태-문구 갱신(rename-at-promotion 이면 이름 정정 포함) / discard: 이름-참조 정정·제거(sibling-mention sweep) / de-promotion: 이름-참조 + promoted-기간 inbound 문서-레벨 참조 처분 — 그리고 새 프로젝트 공용 용어 도입·기존 의미/채택 분류 변경(더 이상 공용이 아니어서 제거하는 처분 포함)·실제 이름 collision·rejected-term revival 위험 중 glossary trigger가 있는지 sweep과 별개로 판단하고, 있으면 채택/기각/제거했는가 — 충족/미충족 + evidence 한 줄
+- [ ] **E1:** candidate/prelive 상태를 live·closeout-verified authority로 소비하지 않았는가(runtime dogfood는 그 자체로 authority가 아님) — 관찰 + evidence 한 줄
+- [ ] **E2:** canonical surface가 `_incubation.md` 경로/content를 durable input으로 소비하지 않고, 필요한 current-bearing idea가 promoted artifact에 자족적으로 흡수됐는가 — 관찰 + evidence 한 줄
+- [ ] **E3:** promotion changeset이 `_incubation` 제거/rename과 entry `_design` 생성을 함께 수행하며, incubation 중 `_design`/`_plan`/`_spec` sibling 또는 canonical default가 없었는가 — 관찰 + evidence 한 줄
+- [ ] Design이 candidate identity와 실제로 살아남은 current-bearing idea를 의미 보존해 흡수했는가(raw log·abandoned thought·고정 evidence-field 운반은 요구하지 않음) — 관찰 + evidence 한 줄
+- [ ] current-correctness blocker는 해결되고, not-yet-started future work는 owner backlog가 존재하는 시점에 reopen condition과 함께 이관됐는가 — 관찰 + evidence 한 줄
+- [ ] discard면 `_incubation.md`가 삭제되고, rule candidate면 빈 `rule_docs/<candidate>/` 폴더도 제거됐는가 — 관찰 + evidence 한 줄
+- [ ] withdrawal이면 stale해진 promoted status/reference만 정정하고 promoted artifacts를 처분한 뒤 `_incubation`을 기록된 방식으로 재개했는가; live artifact에는 withdrawal을 사용하지 않았는가 — 관찰 + evidence 한 줄
+- [ ] name-only candidate mention이 있다면 non-authoritative candidate 상태를 정직하게 표시하고 discovery index나 foreign-semantics copy가 되지 않는가 — 관찰 + evidence 한 줄
+- [ ] 새 project-wide term/meaning change/name collision/rejected-term revival이라는 glossary trigger가 실제로 발생했는지 별도로 판단했는가 — 관찰 + evidence 한 줄

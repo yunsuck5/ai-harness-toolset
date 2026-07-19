@@ -1,6 +1,6 @@
 # {{DOMAIN}} Design
 
-> 사용법: 이 형틀을 복제해 `<domain>_design.md` 로 채운다. 모든 `{{...}}` 를 치환한다. Design 은 변경의 **방향성 문서**다 — 영구 live 아님: closeout 시 current-bearing 내용이 Spec(또는 올바른 owner surface)으로 흡수된 뒤 retire(삭제). 이 Design 은 mutation/commit/push 승인이 아니다(1회 진술).
+> 사용법: 이 형틀은 Design의 권장 기본 구조다. `<domain>_design.md` 로 복제해 필요한 의미를 채우되, 의미가 보존되면 heading을 합치거나 조정할 수 있다. Design은 영구 live가 아니며 closeout에서 흡수 후 삭제된다. 이 Design은 mutation/commit/push 승인이 아니다(1회 진술).
 
 ## Header
 
@@ -26,4 +26,4 @@
 
 ## Plan readiness / open risks
 
-{{이 Design 이 Plan 으로 내려가도 되는가 + 남은 open risk·unresolved decision 목록(각각 어디서 닫히는지)}}
+{{이 Design이 Plan으로 내려가도 되는가 + 방향 결정을 위해 남은 open risk와 close 지점}}

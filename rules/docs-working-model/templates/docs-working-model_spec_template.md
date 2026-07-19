@@ -1,16 +1,16 @@
 # {{DOMAIN}} Spec
 
-> 사용법: 이 형틀을 복제해 `<domain>_spec.md` 로 채운다. 모든 `{{...}}` 를 치환한다. Spec 은 **목표 상태 명세**다 — 작성 완료 시 = 구현할 목표 상태의 청사진, closeout 후 = 구현물과 1:1 동기화된 live 명세. **담으면 안 되는 것**: 회차 candidate-file 목록 · 실행 명령 시퀀스 · staging 절차 · review result · readiness 판정 · 시점성 작업 상태(분석·분류 → Work Packet, 실행 메커닉·기록 → operator report `log/**` 소관). Spec 이 Plan 을 위반하면 stop → re-plan(rewind); 구현이 boundary 를 초과하면 stop → ask user. 승인 경계는 Header 에서 1회만 진술한다(절마다 반복 금지).
+> 사용법: 이 형틀은 Spec의 여덟 의미 영역을 여덟 heading으로 제시하는 권장 기본 구조다. heading 수는 명시 호출 시 form diagnostic이며 독립 lifecycle blocker가 아니다. 목표 상태·owner·durable boundary와 정확히 하나의 lifecycle marker는 의미 invariant다. 회차 분석은 Work Packet, 실행 기록은 `log/**` 소관이다. 이 Spec은 mutation/commit/push 승인이 아니다(1회 진술).
 
 ## Header
 
 {{이 문서는 무엇인가 — 3줄 이내}}
 {{이 체인이 끝나면 무엇이 되는가 — 3줄 이내}}
-{{이 문서가 아닌 것 — 3줄 이내. 이 Spec 은 mutation/commit/push 승인이 아니라는 1회 진술 포함}}
+{{이 문서가 아닌 것 — 3줄 이내}}
 
 ## 목표 상태
 
-{{이 도메인이 무엇인가/무엇이어야 하는가 — normative 문장으로. 각 문장은 구현에서 확인 가능해야 하며(1:1 의 단위), 이 절+Owner surface 지도만으로 동일 행동의 구현을 재작성할 수 있는 수준(reconstructibility)이어야 한다}}
+{{이 도메인이 무엇인가/무엇이어야 하는가 — 구현에서 확인 가능한 durable behavior와 owner 의미로. 문장·코드의 literal 대응은 요구하지 않는다}}
 
 ## Owner surface 지도
 
@@ -34,4 +34,4 @@
 
 ## Lifecycle state
 
-{{compact 상태 절. 이 절은 lifecycle marker 를 **정확히 하나** 담는다 — `**prelive**` | `**sync-required**` | `**live**` 중 하나를 **bolded** 로 쓴다(plain-prose 언급은 marker 가 아니며, 한 절에 bolded marker 가 둘 이상 있으면 안 된다): 신규 promote 후 closeout 전 = `**prelive**`; 기존 live Spec in-place 갱신 후 = `**sync-required**`; closeout 1:1 = `**live**`. 그 외 design/plan 존재 여부 · capability/maturity 한 줄. (검사: spec checklist + `docs-working-model-check.ps1` EN-2.)}}
+{{compact 상태 절. lifecycle marker를 **정확히 하나** 담는다 — `**prelive**` | `**sync-required**` | `**live**`. plain-prose 언급은 marker가 아니다. checker의 EN-2는 이 marker의 물리 subset만 진단한다.}}
