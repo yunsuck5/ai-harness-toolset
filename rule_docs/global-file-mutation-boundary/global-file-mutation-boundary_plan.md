@@ -21,7 +21,6 @@
 - opener의 delimiter 종류와 길이는 `Find-ManagedBlockMarkers`가 보존하고, same delimiter·length 이상인 closer만 fence를 닫는다.
 - primitive와 apply의 replace/remove, root parity는 같은 predicate를 소비하고 mixed/shorter 반례의 fenced marker 비검출·outside marker 검출을 함께 입증한다.
 - replace/remove 비소유 span 위험은 같은 parser 교정과 회귀에 포함하며 별도 GFM backlog로 이관하지 않는다.
-- P3-F2 history의 owner-model 오류는 `rule-authority` backlog의 RA-B-02로 분리한다.
 
 ## Stage rewind 조건
 
