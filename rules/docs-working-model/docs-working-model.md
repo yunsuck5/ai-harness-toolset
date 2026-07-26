@@ -184,7 +184,7 @@ A direct edit states that it is meaning-preserving. If unresolved doubt concerns
 Inspection and reporting are unconditional; updating is conditional. For every listed surface the closeout report says `updated: <file> — <what>` or `checked: <file> — no change required`. Silent omission fails closeout.
 
 - **Level 1 — orientation:** `docs/README.md` and any affected unmigrated orientation surface.
-- **Level 2 — owner-local:** domain Spec/backlog, or terminal rule and its existing rule backlog.
+- **Level 2 — owner-local:** identity를 유지하는 domain 변경은 Spec/backlog를, live-domain terminal은 old Spec disposition과 아래 lifecycle의 behavior/routing/runtime 후속·successor/destination owner·old backlog identity를, terminal rule 변경은 그 rule과 existing rule backlog를 검사한다.
 
 Current-correctness blockers are resolved before landing. Not-yet-started future work goes to the owner backlog with a reopen condition.
 
@@ -212,7 +212,18 @@ Candidate promotion/discard closes the candidate lifecycle first. Promoted-lifec
 
 - In the same owner and role slot, a prior revision's unretired planning artifacts are disposed or explicitly continued before a competing revision starts. Independent owner/role-slot work is not blocked.
 - A carried-over artifact is non-authoritative until reused, reverified, or discarded; this creates no archive or extra role file.
-- A promoted-but-not-live artifact may be withdrawn through a recorded `promotion-withdrawal` changeset that disposes its promoted artifacts and reopens `_incubation`. The correction sweep is limited to references/status claims that actually become stale. Once live, change uses the normal repeal/supersede lifecycle.
+- A promoted-but-not-live artifact may be withdrawn through a recorded `promotion-withdrawal` changeset that disposes its promoted artifacts and reopens `_incubation`. The correction sweep is limited to references/status claims that actually become stale. Once live, identity 종료는 아래 live-domain lifecycle을 사용한다.
+
+## Live domain retire·repeal·supersede
+
+Candidate discard는 *Incubation (pre-promotion)*을, promoted `prelive`의 `promotion-withdrawal`은 *State migration*을 사용한다. Live domain의 같은 identity가 계속 active라면 일반 revision과 `sync-required → live` reconciliation을 사용한다. Previously-live Spec이 `sync-required`인 동안 처분 결정이 나면 기존 revision을 *State migration*과 *Stage rewind*에 따라 명시적으로 처분하거나 같은 owner slot에서 terminal 목표로 재계획한 뒤 아래 lifecycle로 전환하며, 그동안 old active behavior owner를 보존한다. Old live identity 자체가 active target-state/behavior owner에서 사라지는 retire·repeal, successor로 대체되는 supersede, rename/rehome은 아래 lifecycle을 사용한다. Spec 파일 삭제만으로 domain 종료를 주장하지 않는다.
+
+1. **Entry and current binding state.** 명시적 사용자 처분은 exact domain identity와 current lifecycle state(`live` 또는 previously-live `sync-required`), retire·repeal·supersede·rename/rehome 중 disposition, successor 유무, retained meaning·stable interface, current Spec·active implementation·backlog·routing·direct consumer와 열린 planning slot을 특정한다. 처분 changeset이 닫히기 전까지 old target state와 active behavior owner는 current로 남는다.
+2. **Absorb or discard.** Successor 유무와 무관하게 유지할 target meaning·stable interface와 아직 유효한 future work는 successor 또는 명명된 destination owner의 Spec·implementation·backlog lifecycle에서 흡수한다. 유지하지 않을 meaning/interface는 명시적으로 discard하고 future work는 rehome 또는 drop한다. Meaning이 여러 owner로 나뉘면 각 owner를 독립적으로 닫고 broad replacement domain을 만들지 않는다. 폐기 meaning은 archive·tombstone 문서에 current authority로 복제하지 않는다. Rename/rehome은 successor identity transition이며, new Spec path·backlog identity·routing이 준비된 뒤 old identity에서 단방향으로 전환한다.
+3. **Dispose old ownership.** Old Spec, domain-local Design·Plan·Work Packet, old backlog identity와 남은 무효 row, domain 전용 implementation·trigger·routing·fixture, docs orientation, 실제로 stale해진 inbound reference를 제거하거나 새 owner로 이관한다. Shared implementation과 foreign owner meaning은 해당 owner 경계 밖에서 삭제하지 않는다. Glossary는 공용 term의 도입·의미/분류 변경·실제 collision·rejected revival trigger가 발생할 때만 연다. Git hash와 역사적 path citation은 active dependency가 아니다.
+4. **Close or resume.** No-successor source-side terminal은 old identity의 Spec·backlog·전용 behavior/discovery route가 없고, retained meaning·interface가 없거나 각 destination owner가 active이며, 유효 future work가 rehome/drop되고 dependent work가 명시적으로 drop/rescope된 상태다. Successor source-side terminal은 retained meaning·interface·future work의 destination owner가 active이고 old/new identity의 active 병존이 없으며 dependent work가 새 interface에서 resume하거나 drop/rescope된 상태다. 필요한 absorption·disposal·validation이 준비되지 않으면 old owner를 먼저 제거하지 않고 affected material을 보존한 채 중단 지점과 재개 조건을 current planning owner에 남긴다.
+
+Committed source의 closeout은 installed payload나 user-global activation의 완료가 아니다. Domain 처분이 deployed surface를 바꾸면 payload materialization과 activation은 `INSTALL.md`와 그 active implementation owner의 별도 승인·검증을 따르며, 그 증거가 없으면 runtime follow-up을 미완 상태로 보고한다.
 
 ## Self-amendment
 
