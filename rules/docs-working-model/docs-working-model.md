@@ -179,6 +179,25 @@ Typos, stale pointers, and meaning-preserving clarification may be edited direct
 
 A direct edit states that it is meaning-preserving. If unresolved doubt concerns normative meaning, use the lifecycle conservatively. Pure style or wording preference is not such doubt.
 
+## Late finding routing and cross-owner handoff
+
+뒤늦게 발견한 사실(late finding)은 evidence이지 authority·priority·completion이 아니다. 현재 작업을 바꾸기 전에 exact finding, 알려진 owner와 active/inactive 상태, 영향받는 operation·decision, 현재 correctness의 dependency를 식별한다. Controlling owner/route 하나를 정하고 그 route, 보조 evidence transport, 현재 작업의 continue/stop/rewind 상태, 필요한 user/owner decision을 current work item 또는 `<ProjectRoot>/log/**` operator/closeout report에 남긴다. 이 기록은 registry·sidecar·새 authority를 만들지 않는다.
+
+겹치는 finding은 다음 bounded selector로 분류한다.
+
+1. Concrete safety risk는 relevant safety owner의 stop/repair 경로가 먼저 소유한다.
+2. 명시적 user target change는 변경된 target에 의존하는 작업을 *Stage rewind*로 되돌린다.
+3. Concrete required operation과 applicable active rule이 실제로 양립 불가능하고 compliant path가 없으면 `rule-conflict-and-revision-routing` owner를 사용한다. Safety repair나 target change가 나중에 그 admission을 충족해도 같은 전환을 사용한다.
+4. Owner-local current defect는 *Proportionality* 또는 그 owner의 revision lifecycle을 사용한다. Ordinary foreign-owner finding은 아래 evidence handoff를 사용한다.
+5. Inactive policy text는 current authority나 current blocker가 아니다. 필요한 user approval이 있으면 여전히 유효한 future work를 알려진 owner의 backlog/incubation으로 보낸다.
+6. Owner를 알 수 없으면 broad owner를 만들지 않고 사용자에게 물은 뒤 이 selector로 재분류한다.
+
+보조 evidence transport는 controlling route와 병존할 수 있지만 exception이나 foreign mutation·priority·acceptance·completion을 부여하지 않는다. Cross-owner handoff는 필요한 만큼 source/target owner, 재현 가능한 evidence, 영향받는 stable interface, source의 current impact, requested target action(`inspect`, backlog 검토 또는 owner-local revision 검토), target의 actual disposition/status와 근거, source의 independence 근거를 남긴다. 이는 상황별 report이며 fixed schema가 아니다.
+
+Target owner가 실제 결과와 vocabulary를 소유한다. 예를 들어 pending, inspect 결과, reopen condition을 갖춘 backlog, owner-local revision entry 또는 근거가 있는 reject를 해당 owner의 형식으로 보고한다. Receipt만 있으면 공통 handoff 상태는 `pending, target incomplete`로 남는다. 같은 physical file은 joint changeset도 isolation도 증명하지 않는다. Stable interface, validator, transaction/commit boundary, acceptance gate 또는 coherence unit이 작업을 결합하면 dependency와 commit order를 남기되 각 owner의 lifecycle과 review를 보존한다.
+
+Target change가 source correctness에 필요하지 않다는 evidence가 있을 때만 source를 독립적으로 닫는다. 그렇지 않으면 target lifecycle, dependency/commit order와 owner-local review가 terminal을 충족할 때까지 source도 affected 상태다. Actual-conflict admission을 충족하면 conflict owner의 dependency classification을 복제하지 않고 소비한다. `conflict-isolated`은 독립 evidence가 있는 source unit만 continue/close할 수 있고, `conflict-unit-blocking`은 compatible active states 또는 명시적 drop/rescope terminal을 요구한다. Containment transport 자체는 completion을 증명하지 않는다.
+
 ## Closeout — two-level inspection
 
 Inspection and reporting are unconditional; updating is conditional. For every listed surface the closeout report says `updated: <file> — <what>` or `checked: <file> — no change required`. Silent omission fails closeout.
@@ -207,6 +226,13 @@ Candidate promotion/discard closes the candidate lifecycle first. Promoted-lifec
 - Plan changes the Design decision → stop, redesign, restart Plan.
 - Spec changes the Plan decision → stop, re-plan, restart Spec.
 - Implementation exceeds the Spec/rule boundary → stop and ask the user.
+- 명시적 user target change는 결정이 바뀐 최초 approval-bearing stage로 되돌린다. 승인된 target을 보존하는 owner-local correction은 대신 *Proportionality* 또는 그 owner의 일반 revision을 사용한다.
+
+실제 rewind에서는 affected owner/stage decision, 각 invalidated output과 exact dependency, preserved material과 그 non-authoritative 상태, resume point와 필요한 user/owner decision을 남긴다. 이 결과는 current work item 또는 operator/closeout report에 두며 checklist는 이를 확인만 한다.
+
+Dependency로 입증된 affected slice만 무효화한다. 다른 owner나 role slot이라는 사실만으로는 independence가 입증되지 않는다. Unaffected continuation에는 해당 작업이 changed target, shared stable interface, acceptance/validator, transaction/commit boundary 또는 coherence unit에 의존하지 않고 독립 acceptance와 status가 있다는 evidence가 필요하다. Actual-conflict admission을 충족하면 여기서 다시 정의하지 않고 그 owner의 `conflict-isolated` / `conflict-unit-blocking` classification을 사용한다.
+
+Preserved material은 *State migration*을 따르며 reused·reverified·discarded 전에는 non-authoritative다. Forward correction은 changed decision 때문에 실제로 stale해진 current pointer·status·acceptance claim으로 제한한다. 실제로 정정한 path/heading/claim 범위 또는 `no correction`을 operator/closeout report에 남긴다. 새 결정을 반영하려고 Git history, fixed-hash citation 또는 완료된 point-in-time evidence를 다시 쓰지 않는다.
 
 ## State migration
 
