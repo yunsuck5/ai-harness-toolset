@@ -8,7 +8,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 다음 발번 번호 | `00057` |
+| 다음 발번 번호 | `00070` |
 | 번호 공간 | **원소·합성 공유 단일 카운터** (`D-2`) |
 | 반납된 key | 없음 |
 | 재사용 금지 | 반납된 key 는 다시 쓰지 않는다 |
@@ -19,7 +19,7 @@
 |---|---|
 | `key` | `RE-<5자리>` / `RC-<5자리>`. 참조할 때는 항상 대괄호로 닫는다 — `[RE-00001]` |
 | `종류` | 원소 / 합성 |
-| `상태` | 살아있음 / **발번됨(정본 미생성)** / 반납됨 |
+| `상태` | 살아있음 / **발번됨(정본 미생성)** / **표본(미반영)** / 반납됨 |
 | `authority` | `false` / `true`. **접두사가 아니라 이 필드가 권위의 현재 값을 소유한다** (`D-6`, `FINDINGS.md` `F-2`) |
 | `방향` | `—` 막지 않음 / `정` 작업을 막음 / `역` 차단 주장을 막음 (`FINDINGS.md` `F-3`) |
 | `정본 경로` | repo 상대 경로 |
@@ -98,7 +98,7 @@ key 는 `item-02` 에서 먼저 발번했고(`D-10`), 정본은 `item-03` 이 `r
 | `RC-00031` | 합성 | 살아있음 | true | 정 | `rule_graph/composites/rule-authority.md` | `RA-09` | 2026-07-27 |
 | `RC-00032` | 합성 | 살아있음 | true | 정 | `rule_graph/composites/rule-authority.md` | `RA-11` | 2026-07-27 |
 | `RC-00033` | 합성 | 살아있음 | true | 역 | `rule_graph/composites/rule-authority.md` | `RA-14` | 2026-07-27 |
-| `RC-00034` | 합성 | 살아있음 | true | 정 | `rule_graph/composites/rule-authority.md` | `RA-15` | 2026-07-27 |
+| `RC-00034` | 합성 | 살아있음 | true | 역 | `rule_graph/composites/rule-authority.md` | `RA-15` | 2026-07-27 |
 | `RC-00035` | 합성 | 살아있음 | true | 역 | `rule_graph/composites/rule-authority.md` | `RA-18` | 2026-07-27 |
 | `RC-00036` | 합성 | 살아있음 | true | 역 | `rule_graph/composites/rule-authority.md` | `RA-19` | 2026-07-27 |
 | `RC-00037` | 합성 | 살아있음 | true | 정 | `rule_graph/composites/rule-authority.md` | `RA-20` | 2026-07-27 |
@@ -111,6 +111,32 @@ key 는 `item-02` 에서 먼저 발번했고(`D-10`), 정본은 `item-03` 이 `r
 | `RC-00044` | 합성 | 살아있음 | true | 역 | `rule_graph/composites/rule-authority.md` | `RA-31` | 2026-07-27 |
 
 `출처 조각` 은 `_work/rule-authority.extract.md` 의 조각 id 다. 조각 id 는 key 가 아니며 그래프에 들어가지 않는다 — 추출 작업 기록의 지역 라벨이다.
+
+## 배포 tier — B2 표본
+
+`snippets/rules/rule-conflict-and-revision-routing.md` 의 `Dependency containment` 절(8개 절 중 1개)을 설계대로 처리한 것이다. **대상 파일은 수정하지 않았다**(`D-21`) — 한 절만 전환하면 파일이 반쪽 상태가 되기 때문이다.
+
+원소 9개는 정본이 `rule_graph/elements/` 에 실재하므로 `살아있음` 이다. 합성 4개는 `D-17` 대로라면 배포 파일 안에 있어야 하는데 아직 반영되지 않았으므로 `표본(미반영)` 이다.
+
+| key | 종류 | 상태 | authority | 방향 | 정본 경로 | 출처 | 생성 |
+|---|---|---|---|---|---|---|---|
+| `RE-00057` | 원소 | 살아있음 | false | — | `rule_graph/elements/distributed-definition.md` | 복원 | 2026-07-27 |
+| `RE-00058` | 원소 | 살아있음 | false | — | `rule_graph/elements/distributed-definition.md` | 저작 | 2026-07-27 |
+| `RE-00059` | 원소 | 살아있음 | false | — | `rule_graph/elements/distributed-definition.md` | 저작 | 2026-07-27 |
+| `RE-00060` | 원소 | 살아있음 | false | — | `rule_graph/elements/distributed-definition.md` | 저작 | 2026-07-27 |
+| `RE-00061` | 원소 | 살아있음 | false | — | `rule_graph/elements/distributed-definition.md` | 저작 | 2026-07-27 |
+| `RE-00062` | 원소 | 살아있음 | false | — | `rule_graph/elements/distributed-fact.md` | 추출 | 2026-07-27 |
+| `RE-00063` | 원소 | 살아있음 | false | — | `rule_graph/elements/distributed-definition.md` | 저작 | 2026-07-27 |
+| `RE-00064` | 원소 | 살아있음 | false | — | `rule_graph/elements/distributed-definition.md` | 저작 | 2026-07-27 |
+| `RE-00065` | 원소 | 살아있음 | false | — | `rule_graph/elements/distributed-definition.md` | 저작 | 2026-07-27 |
+| `RC-00066` | 합성 | 표본(미반영) | true | 정 | `rule_graph/_work/rule-conflict-routing.distribution-sample.md` | `RCR-13` | 2026-07-27 |
+| `RC-00067` | 합성 | 표본(미반영) | true | 역 | `rule_graph/_work/rule-conflict-routing.distribution-sample.md` | `RCR-14` | 2026-07-27 |
+| `RC-00068` | 합성 | 표본(미반영) | true | 역 | `rule_graph/_work/rule-conflict-routing.distribution-sample.md` | `RCR-16` | 2026-07-27 |
+| `RC-00069` | 합성 | 표본(미반영) | true | 역 | `rule_graph/_work/rule-conflict-routing.distribution-sample.md` | `RCR-17` | 2026-07-27 |
+
+**출처 분포 (배포 표본)** — 추출 1 · 복원 1 · 저작 7. **원문 문장을 그대로 쓸 수 없는 것이 8 / 9 = 89%** 다. B1 의 64% 보다 높다.
+
+`RC-00066` 은 원문 16행의 **부정 작용역 중의를 그대로 안고 있다.** 문면이 차단 범위를 결정하지 않으므로 이 합성이 언제 발동하는지도 결정되지 않는다. `_journal/FINDINGS.md` `F-15`
 
 ## 반납
 
