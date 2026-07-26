@@ -124,6 +124,33 @@ A candidate is a possible domain or rule that the user is still deciding whether
 - A backlog belongs only to an existing rule or is created at its terminal landing. Incubation questions stay in `_incubation.md`; promoted questions stay in Design/Plan until the rule exists.
 - Distribution-tier admission is owned by `snippets/rules/README.md`. When distributed rule work puts project residue in play, the lifecycle re-homes or explicitly discards it before planning artifacts are deleted; closeout does not lose it silently.
 
+### Rule add/change entry와 placement
+
+- 신규 rule은 incubation promotion으로, 기존 terminal rule의 의미 변경은 그 identity의 승인된 revision으로 Design에 진입한다. 의미 보존 direct edit와 normative revision의 구분은 *Proportionality*를 그대로 사용하며 제3 경로를 만들지 않는다.
+- Plan은 terminal landing 전에 repo-only와 global-distribution placement를 선택하고 해당 tier owner의 admission·discovery route를 확인한다. Terminal meaning은 rule 본문이, form/checker/test 같은 직접 dependency는 그 active surface가 소유한다.
+- concrete active-rule conflict에서 진입한 revision은 `rule-conflict-and-revision-routing`의 containment와 disclosure를 복제하지 않는다. DWM lifecycle은 owner-local revision target, 보존된 affected unit, compatible active state 뒤의 resume 또는 drop/rescope terminal만 이어받는다.
+- Closeout은 entry, placement, terminal meaning, 직접 dependency, governing text, 원 작업의 terminal/resume를 재구성한다. Governance self-revision은 *Self-amendment*의 pre-revision governing text를 계속 따른다.
+
+### 같은 identity의 terminal placement 변경
+
+같은 rule identity를 유지하면서 terminal placement를 바꾸는 작업은 identity retire가 아니라 별도 source-placement transition이다. Owner·actor만 바뀌고 placement가 유지되는 일반 revision과도 구분한다.
+
+- Plan은 old/new placement와 tier owner를 특정하고, new placement의 admission·discovery route와 old placement의 source disposition을 같은 transition에 둔다.
+- Landing은 old terminal source와 old tier 전용 index/trigger를 제거하거나 이관하고 new terminal source와 route를 활성화한다. Old/new placement가 같은 identity의 동시 active owner로 남지 않는다.
+- Repo-only ↔ global-distribution 이동은 source file rename만으로 닫히지 않는다. Distributed side가 생기거나 사라지면 installed payload와 activation의 별도 후속 상태를 보고하며, source changeset만으로 runtime 완료를 주장하지 않는다.
+- 성공 terminal은 new placement가 identity의 유일한 active terminal이고 old source placement·전용 route가 닫힌 상태다. 필요한 tier admission이나 replacement route가 준비되지 않으면 old placement를 먼저 제거하지 않고 재개 조건을 남긴다.
+
+### Terminal rule 전체 retire/replacement
+
+Clause·scope·enforcement 처분 뒤에도 같은 rule identity와 placement가 active terminal로 남으면 owner·actor 변경을 포함해 일반 rule revision이다. 같은 identity의 placement 변경은 앞 절을 사용한다. Old rule identity 자체를 active terminal에서 제거하고, retained meaning이 있으면 다른 identity나 owner가 흡수하는 경우에만 아래 lifecycle을 사용한다.
+
+1. **Entry and current binding state.** 사용자 처분은 exact terminal identity와 placement, current owner/enforcement, replacement 유무, 직접 영향 surface를 특정한다. 처분 changeset이 닫히기 전까지 old terminal rule은 계속 binding이며, planning 시작 자체는 예외나 제거 효력을 만들지 않는다.
+2. **Absorb or discard.** 유지할 normative meaning은 replacement 또는 다른 active owner가 자기 lifecycle로 흡수한다. 폐기 claim은 history 문서나 tombstone에 current authority로 복제하지 않는다. Meaning이 여러 owner로 나뉘면 각 owner를 독립적으로 닫고 하나의 새 terminal로 강제 통합하지 않는다.
+3. **Dispose source ownership.** Old terminal path, rule 전용 source enforcement·form·checker·test, tier index와 owner-declared bootstrap route, rule backlog와 idle `rule_docs/<id>/` folder, 실제로 stale해진 inbound reference를 제거하거나 새 owner로 이관한다. Glossary는 그 owner의 de-adoption/collision/revival trigger가 실제로 발생할 때만 연다. Git hash와 역사적 path citation은 active dependency가 아니다.
+4. **Close or resume.** 성공 terminal은 old identity가 active terminal owner로 남지 않고, old 전용 source enforcement/discovery route와 planning/backlog residue가 없으며, retained meaning마다 destination owner가 있고, affected work마다 새 owner interface의 resume 또는 명시적 drop/rescope terminal이 있는 상태다. Replacement나 필요한 owner absorption이 준비되지 않으면 그 retained meaning과 직접 필요한 old owner/enforcement를 선제 제거하지 않고 중단 지점과 재개 조건을 planning owner에 남긴다. 별도 clause 처분은 applicable owner가 독립성을 입증한 경우 일반 revision으로 닫을 수 있다. Concrete active-rule conflict라면 독립성은 `rule-conflict-and-revision-routing` owner의 containment 결과를 그대로 소비하며, 어느 경우에도 별도 clause closeout이 terminal identity 전체 처분의 부분 완료를 만들지는 않는다.
+
+Global-distribution rule은 source terminal, distribution index, bootstrap route를 source-side에서 함께 닫는다. Committed source의 closeout은 installed payload나 user-global activation의 완료가 아니다. Payload materialization과 activation은 `INSTALL.md`와 그 active implementation owner의 별도 승인·검증을 따르며, 그 증거가 없으면 runtime follow-up을 미완 상태로 보고한다.
+
 ## Future-work queue
 
 Each domain/rule normally has at most one backlog. A backlog is non-authoritative future work, never a decision ledger, incident log, status report, or implementation approval.

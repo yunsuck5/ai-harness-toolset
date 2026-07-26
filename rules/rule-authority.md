@@ -22,6 +22,8 @@ repo 규칙을 저작·개정하거나 상위 규칙이 정당한 작업과 충�
 
 사용자 결정 후 claim을 유지하거나 축소·강등·quarantine·제거·이관한다. claim을 변경하거나 제거하는 처분은 active owner와 enforcement를 함께 바꾼다. Quarantine은 권위 등급이 아니라 처분 상태다. 승인된 source 변경 후에만 발효되며, active owner에는 대상·scope·fallback·종료 조건만 기록한다.
 
+처분 뒤에도 같은 rule identity와 placement가 active terminal로 남으면 owner·actor 변경을 포함해 clause × scope × enforcement의 일반 revision으로 닫는다. 같은 identity의 terminal placement가 바뀌면 DWM의 같은-identity terminal placement 변경 절차로 넘긴다. Old rule identity 자체를 retire·repeal하고 retained meaning이 있으면 다른 identity나 owner가 흡수하는 처분은 exact identity·placement·replacement 유무를 특정한 뒤 DWM의 owner-local terminal-rule lifecycle로 넘긴다. 각 lifecycle이 old source/owner disposition과 terminal/resume를 닫기 전까지 old rule은 계속 binding이다. 이 rule은 그 artifact·distribution 순서를 복제하거나 planning 시작을 제거 효력으로 취급하지 않는다.
+
 전칭 또는 절대 claim을 유지하기 전에 최소 한 개의 정당한 대안 realization이나 counterexample로 시험한다. 견디지 못하면 축소하거나 강등한다.
 
 상세 평가 rubric은 일회성 입력이었다. 이 파일은 영구적으로 남길 최소 문면이며, 이를 위해 영구 rubric·registry·scanner·checklist 또는 작업 간 필수 load를 만들지 않는다.
