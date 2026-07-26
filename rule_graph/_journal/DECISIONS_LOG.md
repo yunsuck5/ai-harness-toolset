@@ -283,3 +283,23 @@
 - **되돌릴 수 있는가**: 예. 다만 되돌리면 `V2` 를 포기하는 것과 같다.
 - **대가**: `rule_graph/elements/` 안에 **언어가 섞인 파일**이 생긴다 — 정본 문장은 영어, 그 주변의 출처·비고·class 설명은 한국어. 이것은 repo 의 자연어 저작 규율이 예상한 형태가 아니다. `FINDINGS.md` `F-12`
 
+## D-19 — 배포본에는 key·조합 선언·사본만 넣고 추적 정보는 전부 뺀다
+
+- **시점**: B2. 배포본에 무엇을 담을지 정하는 자리
+- **막힌 지점**: `D-17` 로 합성 선언과 사본이 배포본 안에 들어가는 것이 정해졌다. 그런데 B1 의 합성 선언 형식에는 **출처 조각 id**(`RA-03` 등)와 **앵커**와 **실측 표**가 함께 있다. 이것들을 배포본에 그대로 옮길지가 정해져 있지 않았다.
+- **확인한 제약**: 배포 tier 자신의 admission 조건이 이것을 직접 다룬다.
+  - `snippets/rules/README.md:28` — *"(d) carries measurement or pilot traces — those stay in the rule's source repository, never in a distributed rule."*
+  - `snippets/rules/README.md:34` — *"A distributed rule never depends on its source repository's surfaces (`rules/`, `rule_docs/`, `docs/`, the repo glossary) as a meaning source … its terms are defined in its own text or in surfaces shipped in the same distribution."*
+  - `snippets/rules/README.md:23` — 1차 시험: *"could an adopter who knows nothing about the rule's source repository read and follow the rule?"*
+- **선택지**:
+  - (a) B1 의 합성 선언 형식을 그대로 배포본에 옮긴다
+  - (b) **key · 조합 선언 · 원소 내용 사본만 넣고, 출처 조각 id · 앵커 · 실측 · `rule_graph/` 경로는 전부 뺀다**
+  - (c) key 까지 빼고 사본만 넣는다 — 배포본을 완전히 자족적인 산문으로 만든다
+  - (d) 배포본에 `rule_graph/` 로 가는 경로를 병기해 adopter 가 정본을 찾아갈 수 있게 한다
+- **선택**: (b)
+- **왜**: (a)와 (d)는 위 제약을 직접 위반한다 — (a)는 (d) 조항의 pilot trace 금지에, (d)는 L34 의 source-repo 표면 의존 금지에 걸린다. **`rule_graph/` 는 배포되지 않으므로 그 경로는 adopter 에게 해석 불가능한 포인터다.**
+
+  (c)를 버린 것이 이 결정의 실질이다. key 를 빼면 **설계의 핵심 장치 하나가 배포 tier 에서 사라진다** — *"막힌 지점에 이름을 준다. 무엇이 막았는지가 식별자로 나온다."* adopter 가 배포 규칙에 막혔을 때 상류에 보고할 수 있는 것이 바로 그 key 다. key 는 adopter 에게 **의미 원천이 아니라 식별자**이고, 의미는 같은 파일 안의 사본이 준다. 따라서 L34 의 「meaning source 의존」에 걸리지 않는다(기준 1).
+- **되돌릴 수 있는가**: 예.
+- **남는 긴장**: key 는 adopter 에게 **해석할 수 없지만 인용할 수는 있는 토큰**이다. 이것이 L23 의 1차 시험(*"소스 repo 를 전혀 모르는 adopter 가 읽고 따를 수 있는가"*)을 통과하는지는 「따를 수 있는가」를 무엇으로 보느냐에 달렸다. 규범을 따르는 데는 지장이 없고, 정본을 확인하는 데는 지장이 있다. **이 판단은 이 작업이 단독으로 닫을 수 없다.** `FINDINGS.md` `F-13`
+
