@@ -1,6 +1,6 @@
 # docs-working-model — backlog (future-work queue)
 
-next ID: DWM-B-18
+next ID: DWM-B-20
 
 docs-working-model 규칙의 non-authoritative future-work queue — 아직 착수하지 않은 작업을 한 줄 + reopen/start 조건으로 담는다. spec-of-record 는 `rules/docs-working-model/docs-working-model.md`(rule 은 자기 자신이 spec-of-record). 어느 row 도 구현 승인이 아니다 — 각각 별도 scoped Design→Plan + review gate 가 필요하다. 닫힌 row 는 기본 삭제한다(보존 = git history). cs1(개정) 착수 시점의 상세 근거는 retire 된 `_design`/`_plan`/`_work_packet` 의 git history 에 보존된다.
 
@@ -20,3 +20,5 @@ docs-working-model 규칙의 non-authoritative future-work queue — 아직 착�
 | DWM-B-15 | E1의 rule-kind 적용 충분성 재평가 — rule candidate의 promoted-but-not-live Design/Plan을 terminal-rule authority나 domain runtime-landing 대상으로 오분류하지 않는지 점검 | `subagent-work-orchestration` rule promotion의 Plan을 terminal-rule landing 전에 승인 대상으로 review할 때 |
 | DWM-B-16 | E1의 domain runtime 경계 실사용 충분성 재평가 — prelive active surface의 정규 배포경로 dogfood에서 not-authority와 runtime activation topology를 분리하는지 점검 | 다음 promoted-but-not-live domain의 active-surface landing changeset을 review하거나 그 배포본의 첫 dogfood review를 종결할 때 |
 | DWM-B-17 | 새로 작성하거나 의미를 실질적으로 다시 쓰는 repo 내부 human-facing prose의 한국어 기본 authoring policy를 교체·완화할지 재검토 | 한국어 규범 문면의 해석 분산 사고가 반복 관측되거나, 외부 협업자/타 벤더 agent의 repo 내부 human-facing prose 직접 소비에서 언어 해석 차이로 인한 정정·운용 실패가 실제로 관측될 때 |
+| DWM-B-18 | `DOCS-PURITY`의 promoted-entry 한정을 재검토하고, incubation candidate 폴더의 추가 파일·subfolder가 owner split이나 lifecycle 은닉을 만드는지 같은 purity gate에서 판별 | 다음 docs-side candidate의 realign/promotion에서 추가 파일·subfolder가 생기거나, incubation 자유벽과 purity 위반을 구분하는 결정 가능한 predicate·반례 corpus가 준비될 때 |
+| DWM-B-19 | `docs/<candidate>/` 폴더 ID와 `<candidate>_incubation.md` filename identity 불일치를 기계 검출할지 검토 — 현재 docs-side candidate discovery는 임의 `*_incubation.md`를 수용 | docs-side candidate를 새로 등록·rename·rehome하거나, folder/file ID mismatch를 재현하는 fixture와 template/concept 이름을 오탐하지 않는 predicate가 준비될 때 |
