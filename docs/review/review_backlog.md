@@ -1,6 +1,6 @@
 # review Backlog
 
-next ID: RV-B-19
+next ID: RV-B-20
 
 | ID | item | reopen / start condition |
 |---|---|---|
@@ -18,3 +18,4 @@ next ID: RV-B-19
 | RV-B-16 | consultation advisory material의 canonical review input/reporting 수용 interface 여부(review owner 판단; consultation의 output·artifact·status·synthesis 의미는 소유하지 않음) | canonical-linked consultation 사례 누적 + 사용자 결정 + 별도 scoped goal |
 | RV-B-17 | reviewer config 의 categoryPolicy 재검토 — 카테고리 항목 구성과 카테고리별 model·effort 값 조정 논의(현행 = 전 카테고리 동일 model + xhigh safe-floor; 최신모델 일괄 갱신은 2026-07-11 선행 완료) | O(subagent-work-orchestration) promote 완료 후 + 사용자 별도 결정 + 별도 scoped goal |
 | RV-B-18 | canonical review input UTF-8 stdin fidelity — Windows PowerShell 5.1에서 `review-run.ps1`의 non-ASCII `input.md` payload를 reviewer에게 byte-faithful하게 전달하도록 교정 | current native-process byte-stdin unit closeout + actual runner-path raw-byte reproduction(non-ASCII corruption / ASCII control) + 사용자 별도 결정 + 별도 scoped goal |
+| RV-B-19 | canonical review result integrity — evidence 부족 또는 reviewer result-unavailable 상태와 강제 3-verdict taxonomy의 관계 재검토(fourth verdict·behavior 변경 미결정) | evidence-insufficient/no-result 실제 사례와 current result contract를 owner-local하게 재대조할 별도 scoped goal + 사용자 결정 |
