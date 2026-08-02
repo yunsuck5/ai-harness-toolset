@@ -199,6 +199,7 @@ BeforeAll {
         script:Write-TextFile (Join-Path $CodexHome  'AGENTS.md') (script:Get-MarkedDestinationText -MarkedBlockBody $codexBodyInner)
         # Skill mirror — whole-file copy.
         script:Write-TextFile (Join-Path $ClaudeHome 'skills/ai-harness-review/SKILL.md') $skillPayloadText
+        script:Write-TextFile (Join-Path $CodexHome  'skills/ai-harness-review/SKILL.md') $skillPayloadText
     }
 
     function script:Invoke-InstallUpdate {
@@ -457,6 +458,29 @@ Describe 'install-update.ps1 — inspect mode' {
         $r.ExitCode | Should -BeExactly 0
         $r.Json.status | Should -BeExactly 'inspect_activation_drift'
         $skillRow = $r.Json.activationSurfaces | Where-Object { $_.name -eq 'skill-mirror:ai-harness-review' }
+        $skillRow.exists        | Should -BeExactly $true
+        $skillRow.byteIdentical | Should -BeExactly $false
+        $skillRow.reason        | Should -Match '^byte-mismatch'
+    }
+
+    It 'T04b-codex: Codex skill byte-mismatch is independently reported on its stable surface ID' {
+        $src = script:New-FixtureGitRepo -CaseName 't04b-codex'
+        $area = script:New-FixtureInstallArea -CaseName 't04b-codex'
+        $homes = script:New-FixtureHomeRoots -CaseName 't04b-codex'
+        script:Initialize-CleanInstallFixture -InstallArea $area -ClaudeHome $homes.ClaudeHome -CodexHome $homes.CodexHome -SourcePath $src.Root -Head $src.Head
+        $skillDest = Join-Path $homes.CodexHome 'skills/ai-harness-review/SKILL.md'
+        script:Write-TextFile $skillDest "---`nname: ai-harness-review`n---`n# DRIFTED Codex skill body`n"
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'inspect'
+            InstallArea = $area
+            ClaudeHome = $homes.ClaudeHome
+            CodexHome = $homes.CodexHome
+            SourcePath = $src.Root
+        }
+        $r.ExitCode | Should -BeExactly 0
+        $r.Json.status | Should -BeExactly 'inspect_activation_drift'
+        $skillRow = $r.Json.activationSurfaces | Where-Object { $_.name -eq 'skill-mirror:codex:ai-harness-review' }
         $skillRow.exists        | Should -BeExactly $true
         $skillRow.byteIdentical | Should -BeExactly $false
         $skillRow.reason        | Should -Match '^byte-mismatch'
@@ -884,6 +908,7 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
             script:Write-TextFile (Join-Path $homes.ClaudeHome 'CLAUDE.md') (script:Get-MarkedDestinationText -MarkedBlockBody $claudeInner)
             script:Write-TextFile (Join-Path $homes.CodexHome  'AGENTS.md') (script:Get-MarkedDestinationText -MarkedBlockBody $codexInner)
             script:Write-TextFile (Join-Path $homes.ClaudeHome 'skills/ai-harness-review/SKILL.md') $skillText
+            script:Write-TextFile (Join-Path $homes.CodexHome  'skills/ai-harness-review/SKILL.md') $skillText
 
             return [pscustomobject]@{ Source = $src; Area = $area; Homes = $homes; SeedHead = $seedHead }
         }

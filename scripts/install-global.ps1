@@ -53,7 +53,7 @@ $ErrorActionPreference = 'Stop'
 #          a pre-existing managed block fail-fasts with replace guidance — it does NOT silently splice).
 #        - each skill mirror: canonical-overwrite create from the payload + post-write SHA-256 verify.
 #   6. final canonical verify: scripts/install-update.ps1 -Mode verify must reach verify_pass
-#      (payload + all activation surfaces byte-identical: two managed blocks + one mirror per source skill).
+#      (payload + all activation surfaces byte-identical: two managed blocks + one mirror per vendor per source skill).
 #   7. optional operational smoke (reuses the shared lib/operational-smoke.ps1 helper).
 #
 # Mutation scope: only -InstallArea (payload) and the resolved activation surfaces under
@@ -291,8 +291,8 @@ if ($activationFailed) {
 
 # ---------------------------------------------------------------------------------------------------
 # 6. Final canonical verify via scripts/install-update.ps1 -Mode verify -> must reach verify_pass
-#    (payload + all activation surfaces byte-identical: two managed blocks + one mirror per source
-#    skill). Sibling install-update is used (guaranteed to carry the verify mode).
+#    (payload + all activation surfaces byte-identical: two managed blocks + one mirror per vendor per
+#    source skill). Sibling install-update is used (guaranteed to carry the verify mode).
 # ---------------------------------------------------------------------------------------------------
 Write-Host 'install-global: running final canonical verify (install-update.ps1 -Mode verify)...'
 $vproc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
@@ -308,7 +308,7 @@ if ($vproc.ExitCode -ne 0) {
     Write-Host 'install-global: FAIL final verify did not reach verify_pass.'
     exit 1
 }
-Write-Host 'install-global: final verify reached verify_pass (payload + all activation surfaces byte-identical: two managed blocks + one mirror per source skill)'
+Write-Host 'install-global: final verify reached verify_pass (payload + all activation surfaces byte-identical: two managed blocks + one mirror per vendor per source skill)'
 
 # ---------------------------------------------------------------------------------------------------
 # 7. Optional operational smoke (reuses the shared helper). Skipped with -SkipSmoke.

@@ -5,8 +5,8 @@ $ErrorActionPreference = 'Stop'
 #
 # Single source of truth for the activation surfaces and their canonical source -> destination
 # mapping + mutation class. The surfaces are: two always-present managed-block surfaces (Claude
-# CLAUDE.md, Codex effective AGENTS.md/.override.md) plus ONE canonical-overwrite skill mirror per
-# source skill under snippets/claude-skills/<name>/SKILL.md (generic, deterministic, local-first
+# CLAUDE.md, Codex effective AGENTS.md/.override.md) plus TWO canonical-overwrite skill mirrors per
+# source skill under snippets/claude-skills/<name>/SKILL.md (one per vendor; generic, deterministic, local-first
 # directory enumeration — no per-skill hardcoding, no registry; Batch 2C-0; the activation-surface
 # policy decision record / rationale is preserved in git history — this resolver, not
 # any doc, is the operative authority). The install-global / install-update
@@ -75,8 +75,8 @@ function Get-ActivationSurfacePlan {
     })
 
     # Generic deployed runtime extension (skill) mirrors: every source skill
-    # snippets/claude-skills/<name>/SKILL.md becomes a forced-mirror + final-verify surface
-    # (canonical-overwrite) at <ClaudeHome>/skills/<name>/SKILL.md. Deterministic, local-first
+    # snippets/claude-skills/<name>/SKILL.md becomes forced-mirror + final-verify surfaces
+    # (canonical-overwrite) at both vendor homes' skills/<name>/SKILL.md. Deterministic, local-first
     # directory enumeration (no registry, no per-skill hardcoding); ordering is by skill name so the
     # surface list is stable across apply / verify / uninstall. A directory without a SKILL.md is not a
     # skill and is skipped. The skill is enumerated only when it exists under PayloadRoot, so callers
@@ -93,6 +93,15 @@ function Get-ActivationSurfacePlan {
                 Name        = ('skill-mirror:' + $skillName)
                 Scope       = 'Skill'
                 Destination = (Join-Path $ClaudeHome ('skills/' + $skillName + '/SKILL.md'))
+                Source      = (Join-Path $d.FullName 'SKILL.md')
+                CompareMode = 'whole-file'
+                Class       = 'canonical-overwrite'
+                SkillName   = $skillName
+            })
+            $plan.Add([pscustomobject]@{
+                Name        = ('skill-mirror:codex:' + $skillName)
+                Scope       = 'Skill'
+                Destination = (Join-Path $CodexHome ('skills/' + $skillName + '/SKILL.md'))
                 Source      = (Join-Path $d.FullName 'SKILL.md')
                 CompareMode = 'whole-file'
                 Class       = 'canonical-overwrite'

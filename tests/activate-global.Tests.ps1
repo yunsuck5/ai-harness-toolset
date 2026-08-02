@@ -300,12 +300,12 @@ Describe 'activate-global does not touch real %USERPROFILE%' {
 }
 
 Describe 'activate-global all-surface coverage (Phase 4a)' {
-    # The real repo payload enumerates two managed blocks + one canonical-overwrite mirror per source
+    # The real repo payload enumerates two managed blocks + two canonical-overwrite mirrors per source
     # skill under snippets/claude-skills/*. There are four source skills (ai-harness-review +
     # ai-harness-brief + ai-harness-consultation + ai-harness-blind-advisory), so the concrete surface
-    # count is 6. The test ID stays AC-AG-3SURFACE-DRYRUN for identifier continuity; the asserted count
+    # count is 10. The test ID stays AC-AG-3SURFACE-DRYRUN for identifier continuity; the asserted count
     # tracks the real payload.
-    It 'AC-AG-3SURFACE-DRYRUN: Scope All dry-run lists all six verified surfaces (all four skill mirrors)' {
+    It 'AC-AG-3SURFACE-DRYRUN: Scope All dry-run lists all ten verified surfaces (four skills for both vendors)' {
         $dir = script:New-CaseDir -CaseName '3surface'
         $ch  = Join-Path $dir '.claude'
         $cx  = Join-Path $dir '.codex'
@@ -314,18 +314,23 @@ Describe 'activate-global all-surface coverage (Phase 4a)' {
 
         $result = script:Invoke-Activate -Scope 'All' -ClaudeHome $ch -CodexHome $cx
         $result.ExitCode | Should -Be 0 -Because $result.Output
-        $result.Output | Should -Match 'surfaces=6'
+        $result.Output | Should -Match 'surfaces=10'
         $result.Output | Should -Match 'claude-user-global-managed-block'
         $result.Output | Should -Match 'codex-user-global-managed-block'
         $result.Output | Should -Match 'skill-mirror:ai-harness-review'
         $result.Output | Should -Match 'skill-mirror:ai-harness-brief'
         $result.Output | Should -Match 'skill-mirror:ai-harness-consultation'
         $result.Output | Should -Match 'skill-mirror:ai-harness-blind-advisory'
+        $result.Output | Should -Match 'skill-mirror:codex:ai-harness-review'
+        $result.Output | Should -Match 'skill-mirror:codex:ai-harness-brief'
+        $result.Output | Should -Match 'skill-mirror:codex:ai-harness-consultation'
+        $result.Output | Should -Match 'skill-mirror:codex:ai-harness-blind-advisory'
         # The skill destinations do not exist in the temp home, so their preview action is create.
         $result.Output | Should -Match 'skill-mirror:ai-harness-review.*action=would-create'
         $result.Output | Should -Match 'skill-mirror:ai-harness-brief.*action=would-create'
         $result.Output | Should -Match 'skill-mirror:ai-harness-consultation.*action=would-create'
         $result.Output | Should -Match 'skill-mirror:ai-harness-blind-advisory.*action=would-create'
+        $result.Output | Should -Match 'skill-mirror:codex:ai-harness-review.*action=would-create'
         $result.Output | Should -Match 'activationStatus=preview'
         $result.Output | Should -Match 'activate-global: PASS'
     }
@@ -335,65 +340,84 @@ Describe 'activate-global skill mirror canonical-overwrite (Phase 4a)' {
     It 'AC-AG-SKILL-CREATE: -Scope Skill -Apply creates the destination byte-identical to the canonical source, no sidecar' {
         $dir = script:New-CaseDir -CaseName 'skill-create'
         $ch  = Join-Path $dir '.claude'
-        $dst = Join-Path $ch $script:SkillRel
+        $cx  = Join-Path $dir '.codex'
+        $claudeDst = Join-Path $ch $script:SkillRel
+        $codexDst  = Join-Path $cx $script:SkillRel
 
-        (Test-Path -LiteralPath $dst) | Should -BeFalse
-        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
+        (Test-Path -LiteralPath $claudeDst) | Should -BeFalse
+        (Test-Path -LiteralPath $codexDst) | Should -BeFalse
+        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -CodexHome $cx -Apply
         $result.ExitCode | Should -Be 0 -Because $result.Output
         $result.Output | Should -Match 'skill-mirror:ai-harness-review.*action=create'
+        $result.Output | Should -Match 'skill-mirror:codex:ai-harness-review.*action=create'
         $result.Output | Should -Match 'activationStatus=applied'
         $result.Output | Should -Match 'activate-global: PASS'
 
-        (Test-Path -LiteralPath $dst -PathType Leaf) | Should -BeTrue
-        [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
+        foreach ($dst in @($claudeDst, $codexDst)) {
+            (Test-Path -LiteralPath $dst -PathType Leaf) | Should -BeTrue
+            [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
+            @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
+        }
         # Canonical-overwrite class creates NO backup/sidecar of any kind.
         @(Get-ChildItem -Path $dir -Recurse -Filter '*.amb-backup' -ErrorAction SilentlyContinue).Count | Should -Be 0
         @(Get-ChildItem -Path $dir -Recurse -Filter '*.bak' -ErrorAction SilentlyContinue).Count | Should -Be 0
-        # Only SKILL.md exists in the skill destination directory (no sidecar artifacts).
-        @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
     }
 
     It 'AC-AG-SKILL-OVERWRITE: -Scope Skill -Apply overwrites a drifted destination to byte-identity, no sidecar, no rollback artifact' {
         $dir = script:New-CaseDir -CaseName 'skill-overwrite'
         $ch  = Join-Path $dir '.claude'
-        $dst = Join-Path $ch $script:SkillRel
-        script:Write-Utf8NoBomFile -Path $dst -Content "---`nname: ai-harness-review`n---`n# DRIFTED user copy`n"
+        $cx  = Join-Path $dir '.codex'
+        $claudeDst = Join-Path $ch $script:SkillRel
+        $codexDst  = Join-Path $cx $script:SkillRel
+        foreach ($dst in @($claudeDst, $codexDst)) {
+            script:Write-Utf8NoBomFile -Path $dst -Content "---`nname: ai-harness-review`n---`n# DRIFTED user copy`n"
+        }
 
-        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
+        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -CodexHome $cx -Apply
         $result.ExitCode | Should -Be 0 -Because $result.Output
         $result.Output | Should -Match 'skill-mirror:ai-harness-review.*action=overwrite'
+        $result.Output | Should -Match 'skill-mirror:codex:ai-harness-review.*action=overwrite'
         $result.Output | Should -Match 'activationStatus=applied'
 
-        [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
+        foreach ($dst in @($claudeDst, $codexDst)) {
+            [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
+            @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
+        }
         @(Get-ChildItem -Path $dir -Recurse -Filter '*.amb-backup' -ErrorAction SilentlyContinue).Count | Should -Be 0
-        @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
     }
 
     It 'AC-AG-SKILL-UNCHANGED: -Scope Skill -Apply on an already byte-identical destination reports unchanged and writes no sidecar' {
         $dir = script:New-CaseDir -CaseName 'skill-unchanged'
         $ch  = Join-Path $dir '.claude'
-        $dst = Join-Path $ch $script:SkillRel
-        $parent = Split-Path -Parent $dst
-        $null = New-Item -ItemType Directory -Path $parent -Force
-        [System.IO.File]::WriteAllBytes($dst, (script:Read-Bytes -Path $script:SkillSrc))
+        $cx  = Join-Path $dir '.codex'
+        $claudeDst = Join-Path $ch $script:SkillRel
+        $codexDst  = Join-Path $cx $script:SkillRel
+        foreach ($dst in @($claudeDst, $codexDst)) {
+            $null = New-Item -ItemType Directory -Path (Split-Path -Parent $dst) -Force
+            [System.IO.File]::WriteAllBytes($dst, (script:Read-Bytes -Path $script:SkillSrc))
+        }
 
-        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
+        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -CodexHome $cx -Apply
         $result.ExitCode | Should -Be 0 -Because $result.Output
         $result.Output | Should -Match 'skill-mirror:ai-harness-review.*action=unchanged'
+        $result.Output | Should -Match 'skill-mirror:codex:ai-harness-review.*action=unchanged'
         $result.Output | Should -Match 'activationStatus=applied'
-        [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
-        @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
+        foreach ($dst in @($claudeDst, $codexDst)) {
+            [System.Linq.Enumerable]::SequenceEqual([byte[]](script:Read-Bytes -Path $dst), [byte[]](script:Read-Bytes -Path $script:SkillSrc)) | Should -BeTrue
+            @(Get-ChildItem -Path (Split-Path -Parent $dst) -File).Count | Should -Be 1
+        }
     }
 
     It 'AC-AG-SKILL-APPLY-FAIL: a destination that cannot be written fails post-write as activation_applied_verify_failed (no rollback artifact)' {
         $dir = script:New-CaseDir -CaseName 'skill-applyfail'
         $ch  = Join-Path $dir '.claude'
+        $cx  = Join-Path $dir '.codex'
         $dst = Join-Path $ch $script:SkillRel
         # Make the destination path itself a DIRECTORY so the whole-file write throws at apply time
         # (preflight create-preview passes; the apply-phase write fails deterministically).
         $null = New-Item -ItemType Directory -Path $dst -Force
 
-        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -Apply
+        $result = script:Invoke-Activate -Scope 'Skill' -ClaudeHome $ch -CodexHome $cx -Apply
         $result.ExitCode | Should -Not -Be 0
         $result.Output | Should -Match 'activationStatus=activation_applied_verify_failed'
         $result.Output | Should -Match 'skill-mirror:ai-harness-review.*(write error|FAIL)'

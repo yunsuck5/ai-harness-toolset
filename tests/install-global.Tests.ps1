@@ -32,7 +32,7 @@ BeforeAll {
 
 Describe 'install-global.ps1 fresh install (IU-B-09)' {
 
-    It 'AC-IG-1: fresh local-clone install reaches verify_pass; payload + 3 activation surfaces created' {
+    It 'AC-IG-1: fresh local-clone install reaches verify_pass; payload + both vendor skill mirrors created' {
         $src = New-LifecycleFixtureSource -TestDriveRoot $TestDrive -CaseName 'fresh'
         $h   = New-LifecycleHomes -TestDriveRoot $TestDrive -CaseName 'fresh'
         $r = script:Install -Params @{ InstallArea = $h.Area; SourcePath = $src; ClaudeHome = $h.Claude; CodexHome = $h.Codex; SkipSmoke = $true }
@@ -50,6 +50,7 @@ Describe 'install-global.ps1 fresh install (IU-B-09)' {
         (Test-Path -LiteralPath (Join-Path $h.Claude 'CLAUDE.md') -PathType Leaf) | Should -BeTrue
         (Test-Path -LiteralPath (Join-Path $h.Codex 'AGENTS.md') -PathType Leaf) | Should -BeTrue
         (Test-Path -LiteralPath (Join-Path $h.Claude 'skills/ai-harness-review/SKILL.md') -PathType Leaf) | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $h.Codex 'skills/ai-harness-review/SKILL.md') -PathType Leaf) | Should -BeTrue
 
         # Each managed-block surface carries exactly one marker pair.
         $claudeMd = script:Read-NoBom -Path (Join-Path $h.Claude 'CLAUDE.md')
@@ -64,16 +65,20 @@ Describe 'install-global.ps1 fresh install (IU-B-09)' {
         $r = script:Install -Params @{ InstallArea = $h.Area; SourcePath = $src; ClaudeHome = $h.Claude; CodexHome = $h.Codex; SkipSmoke = $true }
         $r.ExitCode | Should -Be 0
         $r.Output | Should -Match 'installStatus=installed'
-        # verify_pass requires ALL activation surfaces (both skill mirrors) byte-identical.
+        # verify_pass requires both vendor mirrors for every source skill to be byte-identical.
         $r.Output | Should -Match 'verify reached verify_pass'
 
         # BOTH source skills are mirrored to their runtime destinations (forced mirror, not just the payload copy).
         (Test-Path -LiteralPath (Join-Path $h.Claude 'skills/ai-harness-review/SKILL.md') -PathType Leaf) | Should -BeTrue
         (Test-Path -LiteralPath (Join-Path $h.Claude 'skills/ai-harness-extra/SKILL.md') -PathType Leaf)  | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $h.Codex 'skills/ai-harness-review/SKILL.md') -PathType Leaf) | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $h.Codex 'skills/ai-harness-extra/SKILL.md') -PathType Leaf)  | Should -BeTrue
         # The extra skill's runtime mirror is byte-identical to its installed payload source.
         $extSrc = script:Read-NoBom -Path (Join-Path $h.Area 'current/snippets/claude-skills/ai-harness-extra/SKILL.md')
         $extDst = script:Read-NoBom -Path (Join-Path $h.Claude 'skills/ai-harness-extra/SKILL.md')
         $extDst | Should -Be $extSrc
+        $extCodexDst = script:Read-NoBom -Path (Join-Path $h.Codex 'skills/ai-harness-extra/SKILL.md')
+        $extCodexDst | Should -Be $extSrc
     }
 
     It 'AC-IG-2: pre-existing 0-pair CLAUDE.md content is preserved (append, not overwrite)' {

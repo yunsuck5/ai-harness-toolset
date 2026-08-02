@@ -239,7 +239,8 @@ function Get-UninstallPlan {
     # skill enumeration the surface SET depends on PayloadRoot, so passing the install root (which has
     # no snippets/ directly) would enumerate ZERO skills and ORPHAN owned skill dirs. Enumerating from
     # current/ means uninstall reclaims exactly the skills this install shipped; skills present under
-    # <ClaudeHome>/skills/ that are NOT in the payload (sibling skills) are never enumerated → preserved.
+    # Entries under either vendor home's skills/ that are NOT in the payload (sibling skills) are
+    # never enumerated → preserved.
     # (The managed-block surfaces' DESTINATIONS do not depend on PayloadRoot.)
     $currentDir = Join-Path $installAreaFull 'current'
     $skillInventoryRoot = Join-Path $currentDir 'snippets/claude-skills'
@@ -249,7 +250,7 @@ function Get-UninstallPlan {
     # enumerates ZERO owned skills from the installed payload — for ANY reason: current/ itself,
     # current/snippets/, or current/snippets/claude-skills/ missing; that directory empty; or every
     # candidate dir lacking a SKILL.md — the OWNED skill set cannot be trusted. Removing the install
-    # root while cleaning up zero skills would ORPHAN owned runtime skill dirs under <ClaudeHome>/skills/
+    # root while cleaning up zero skills would ORPHAN owned runtime skill dirs under vendor homes' skills/
     # (footprint-zero violation). Refuse rather than risk an orphan. (Treating an unenumerable inventory
     # as a legitimate zero-skill payload would need explicit manifest-backed evidence, which uninstall
     # does not consult — so the safe, recoverable choice is to block and report.)

@@ -11,7 +11,7 @@ The operator-facing update entrypoint is **`scripts/update-global.ps1`** (existi
 1. **Clone the latest source** and read its `INSTALL.md` — that cloned `INSTALL.md` is the operative contract for the update.
 2. Run the **cloned latest source's** `scripts/update-global.ps1` (not this installed copy). Use the cloned latest even if this installed copy already has it — and note a legacy installed payload may **predate** `update-global.ps1` entirely — because the latest source's script + `INSTALL.md` are the update source-of-truth while this installed payload may still be at an older version during bootstrap:
    - `scripts/update-global.ps1 -InstallArea <this directory>`
-   - `update-global.ps1` is a thin wrapper: it fail-fasts (and points you to fresh install via `install-global.ps1`) if this is not a valid existing install, otherwise it delegates to the underlying `install-update.ps1 -Mode update-source` and returns its outcome.
+   - `update-global.ps1` is a thin wrapper: it fail-fasts (and points you to fresh install via `install-global.ps1`) if this is not a valid existing install, otherwise it delegates to the underlying `install-update.ps1 -Mode update-source` and preserves its outcome. In particular, `activation_pending` remains **INCOMPLETE**, not FAIL; with `-Json`, delegate JSON stays alone on stdout and wrapper prose goes to stderr.
 3. The read-only checks are run with `install-update.ps1` directly (these are not wrapped by `update-global.ps1`):
    - preflight: `scripts/install-update.ps1 -Mode inspect -InstallArea <this directory>`
    - confirm:  `scripts/install-update.ps1 -Mode verify  -InstallArea <this directory>`
@@ -28,7 +28,7 @@ The operator-facing update entrypoint is **`scripts/update-global.ps1`** (existi
 
 ### Applying activation (the follow-up step)
 
-After explicit approval, apply activation with `current/scripts/activate-global.ps1`. It applies **all** verified activation surfaces — the Claude managed block (`CLAUDE.md`), the Codex managed block (`AGENTS.md`, or `AGENTS.override.md` when present), and one canonical-overwrite skill mirror per source skill (`skills/<name>/SKILL.md`; currently the four shipped skills, `ai-harness-review`, `ai-harness-brief`, `ai-harness-consultation`, and `ai-harness-blind-advisory`). Preview first, then apply:
+After explicit approval, apply activation with `current/scripts/activate-global.ps1`. It applies **all** verified activation surfaces — the Claude managed block (`CLAUDE.md`), the Codex managed block (`AGENTS.md`, or `AGENTS.override.md` when present), and one canonical-overwrite skill mirror in **each vendor home** per source skill (`skills/<name>/SKILL.md`; currently the four shipped skills, `ai-harness-review`, `ai-harness-brief`, `ai-harness-consultation`, and `ai-harness-blind-advisory`). Preview first, then apply:
 
 - dry-run preview: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\activate-global.ps1" -Scope All`
 - apply: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\activate-global.ps1" -Scope All -Apply`
@@ -36,7 +36,7 @@ After explicit approval, apply activation with `current/scripts/activate-global.
 `-Apply` **modifies your global/user files**, in two mutation classes:
 
 - **Managed blocks** (`CLAUDE.md` / `AGENTS.md`) are spliced **marker-bounded** — your content outside the markers is preserved. Each gets a `<target>.amb-backup` rollback backup, and a clean apply **removes it on success** (leaving none).
-- Each **skill mirror** (one per source skill) is a **whole-file canonical overwrite** — the whole `SKILL.md` is replaced from the canonical payload and verified by hash. It has **no backup/rollback**; if a local edit must survive, copy it out first. Recover a failed write by re-running apply or reinstalling.
+- Each **skill mirror** (one per vendor per source skill) is a **whole-file canonical overwrite** — the whole `SKILL.md` is replaced from the canonical payload and verified by hash. It has **no backup/rollback**; if a local edit must survive, copy it out first. Recover a failed write by re-running apply or reinstalling.
 
 `-Apply` runs only after an all-surface preflight passes (otherwise it writes nothing). The dry-run previews all surfaces — the managed blocks as a **compact change summary** (add `-ShowFullDiff` for the full before/after), and each skill mirror as source/destination hash + `create | overwrite | unchanged` action + an overwrite notice. Activation is always a **separate explicit step**; `update-source` never applies it and prints these exact commands for you when it reports `activation_pending`.
 
@@ -51,7 +51,7 @@ Run it **dry-run first, then apply** (mirrors the activation flow — default is
 - dry-run preview (default): `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\uninstall-global.ps1"`
 - apply: `powershell.exe -NoProfile -ExecutionPolicy Bypass -File "current\scripts\uninstall-global.ps1" -Apply`
 
-With no path arguments it targets the default global install (`%USERPROFILE%\ai-harness-toolset`). `-Apply` reduces the **global ai-harness footprint to zero** and verifies it: this install root (`current/` + the three sibling files + this `README.md`), each owned skill mirror `…\.claude\skills\<name>\` (currently the four shipped skills `ai-harness-review`, `ai-harness-brief`, `ai-harness-consultation`, and `ai-harness-blind-advisory`), and the **managed block** in both instruction files. The two instruction files are **never deleted** — only the marker-bounded `AI_HARNESS_TOOLSET_GLOBAL` span is excised, and your content outside the markers is preserved byte-for-byte.
+With no path arguments it targets the default global install (`%USERPROFILE%\ai-harness-toolset`). `-Apply` reduces the **global ai-harness footprint to zero** and verifies it: this install root (`current/` + the three sibling files + this `README.md`), each owned skill mirror under both vendor homes' `skills\<name>\` directories (currently the four shipped skills `ai-harness-review`, `ai-harness-brief`, `ai-harness-consultation`, and `ai-harness-blind-advisory`), and the **managed block** in both instruction files. The two instruction files are **never deleted** — only the marker-bounded `AI_HARNESS_TOOLSET_GLOBAL` span is excised, and your content outside the markers is preserved byte-for-byte.
 
 **Both managed-block surfaces are targeted — including Codex.** The official uninstaller excises the marker span from:
 

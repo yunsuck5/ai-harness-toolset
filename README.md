@@ -85,16 +85,20 @@ templates/
 %USERPROFILE%\.codex\AGENTS.md
 ```
 
-Claude skill mirror는 다음 위치에 생성됩니다.
+각 source skill mirror는 Claude와 Codex user-global skill home에 각각 생성됩니다.
 
 ```text
 %USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md
 %USERPROFILE%\.claude\skills\ai-harness-brief\SKILL.md
 %USERPROFILE%\.claude\skills\ai-harness-consultation\SKILL.md
 %USERPROFILE%\.claude\skills\ai-harness-blind-advisory\SKILL.md
+%USERPROFILE%\.codex\skills\ai-harness-review\SKILL.md
+%USERPROFILE%\.codex\skills\ai-harness-brief\SKILL.md
+%USERPROFILE%\.codex\skills\ai-harness-consultation\SKILL.md
+%USERPROFILE%\.codex\skills\ai-harness-blind-advisory\SKILL.md
 ```
 
-Codex의 경우 `%CODEX_HOME%` 또는 `AGENTS.override.md`가 있는 환경에서는 해당 effective destination을 따릅니다. 자세한 install / update / uninstall contract는 `INSTALL.md`가 self-contained operative contract입니다.
+Codex skill home은 `%CODEX_HOME%`이 설정되면 그 아래 `skills\`, 아니면 `%USERPROFILE%\.codex\skills\`입니다. Codex managed block만 `AGENTS.override.md`가 있으면 그 effective destination을 따릅니다. 자세한 install / update / uninstall contract는 `INSTALL.md`가 self-contained operative contract입니다.
 
 ### 3. Review workflow
 
@@ -181,7 +185,7 @@ ai-harness-toolset 언인스톨해줘
 
 현재 primary target은 Windows + PowerShell 환경입니다.
 
-- Windows PowerShell 5.1 또는 PowerShell 7+
+- Windows 기본 제공 Windows PowerShell 5.1 (검증·지원 baseline)
 - git
 - Claude Code 또는 Codex CLI
 - 사용자 profile 아래 `.claude` / `.codex` 경로에 대한 read/write 권한

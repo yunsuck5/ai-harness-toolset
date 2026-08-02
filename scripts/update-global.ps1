@@ -35,7 +35,8 @@ $ErrorActionPreference = 'Stop'
 #   - install.json present but invalid         -> fail-fast (point to a fresh install or `-Mode verify`).
 #   - valid existing install                   -> delegate to install-update.ps1 -Mode update-source,
 #                                                 forwarding the source/ref/home/smoke arguments and
-#                                                 returning its exit code + output verbatim.
+#                                                 returning its exit code and structured status
+#                                                 without collapsing activation_pending into FAIL.
 
 . (Join-Path $PSScriptRoot 'lib/encoding.ps1')
 . (Join-Path $PSScriptRoot 'lib/path.ps1')
@@ -63,16 +64,60 @@ if ([string]::IsNullOrEmpty($InstallArea)) {
 $installAreaResolved = [System.IO.Path]::GetFullPath($InstallArea)
 $installUpdateScript = Join-Path $PSScriptRoot 'install-update.ps1'
 
-Write-Host 'update-global: mode=UPDATE (existing-install update)'
-Write-Host ('update-global: installArea={0}' -f $installAreaResolved)
+function script:Write-WrapperMessage {
+    param([string] $Message)
+    if ($Json) { [Console]::Error.WriteLine($Message) }
+    else       { Write-Host $Message }
+}
 
 function script:Stop-Update {
     param([string] $Message)
-    Write-Host ('update-global: FAIL ' + $Message)
-    Write-Host 'update-global: updateStatus=update_failed'
-    Write-Host 'update-global: FAIL'
+    script:Write-WrapperMessage ('update-global: FAIL ' + $Message)
+    script:Write-WrapperMessage 'update-global: updateStatus=update_failed'
+    script:Write-WrapperMessage 'update-global: FAIL'
     exit 1
 }
+
+function script:Get-DelegateStatus {
+    param([string] $Stdout, [switch] $JsonMode)
+
+    $jsonText = $null
+    if ($JsonMode) {
+        $jsonText = $Stdout.Trim()
+    }
+    else {
+        $begin = '--- BEGIN JSON ---'
+        $end = '--- END JSON ---'
+        $lines = @($Stdout -split "`r?`n")
+        $beginIndexes = New-Object 'System.Collections.Generic.List[int]'
+        $endIndexes = New-Object 'System.Collections.Generic.List[int]'
+        for ($i = 0; $i -lt $lines.Count; $i++) {
+            if ([string]::Equals($lines[$i], $begin, [System.StringComparison]::Ordinal)) {
+                $beginIndexes.Add($i)
+            }
+            if ([string]::Equals($lines[$i], $end, [System.StringComparison]::Ordinal)) {
+                $endIndexes.Add($i)
+            }
+        }
+        if ($beginIndexes.Count -ne 1) { throw ('delegate JSON begin marker count is {0}, expected 1' -f $beginIndexes.Count) }
+        if ($endIndexes.Count -ne 1) { throw ('delegate JSON end marker count is {0}, expected 1' -f $endIndexes.Count) }
+        $beginIndex = $beginIndexes[0]
+        $endIndex = $endIndexes[0]
+        if ($endIndex -le $beginIndex) { throw 'delegate JSON markers are out of order' }
+        if ($endIndex -eq ($beginIndex + 1)) { $jsonText = '' }
+        else { $jsonText = (($lines[($beginIndex + 1)..($endIndex - 1)]) -join "`n").Trim() }
+    }
+    if ([string]::IsNullOrWhiteSpace($jsonText)) { throw 'delegate JSON body is empty' }
+
+    $body = $jsonText | ConvertFrom-Json -ErrorAction Stop
+    if (@($body.PSObject.Properties.Name) -cnotcontains 'status' -or [string]::IsNullOrWhiteSpace([string]$body.status)) {
+        throw 'delegate JSON status is missing'
+    }
+    return [string]$body.status
+}
+
+script:Write-WrapperMessage 'update-global: mode=UPDATE (existing-install update)'
+script:Write-WrapperMessage ('update-global: installArea={0}' -f $installAreaResolved)
 
 # ---------------------------------------------------------------------------------------------------
 # 1. Existing-install precheck — update-global is EXISTING-install only.
@@ -103,7 +148,7 @@ $missingFields = @($script:InstallPipelineMetadataFields | Where-Object { $mdFie
 if ($missingFields.Count -gt 0) {
     script:Stop-Update ('install.json is present but invalid (missing required field(s): ' + ($missingFields -join ', ') + '). Use scripts/install-global.ps1 for a fresh install, or inspect with scripts/install-update.ps1 -Mode verify.')
 }
-Write-Host ('update-global: existing install detected (installMode={0}); delegating to install-update.ps1 -Mode update-source' -f [string]$md.installMode)
+script:Write-WrapperMessage ('update-global: existing install detected (installMode={0}); delegating to install-update.ps1 -Mode update-source' -f [string]$md.installMode)
 
 # ---------------------------------------------------------------------------------------------------
 # 2. Delegate to install-update.ps1 -Mode update-source (the canonical update implementation). Forward
@@ -128,21 +173,57 @@ if ($Json)               { $childArgs += '-Json' }
 
 $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $childArgs
 
-# Re-emit the delegate's output verbatim (stdout then stderr) and forward its exit code, so the
-# wrapper is transparent — it adds the lifecycle name, not new behavior.
-if (-not [string]::IsNullOrEmpty($proc.Stdout)) {
-    foreach ($line in ($proc.Stdout.TrimEnd("`r", "`n") -split "`r?`n")) { Write-Host $line }
+# Classify the delegate before releasing its stdout. A malformed delegate result must fail closed
+# without first contaminating -Json stdout with bytes that are not the promised machine document.
+$delegateStatus = $null
+$delegateParseError = $null
+try {
+    $delegateStatus = script:Get-DelegateStatus -Stdout $proc.Stdout -JsonMode:$Json
 }
+catch {
+    $delegateParseError = $_.Exception.Message
+}
+
+# Stderr is never the machine document and remains observable even when status parsing fails.
 if (-not [string]::IsNullOrEmpty($proc.Stderr)) {
-    foreach ($line in ($proc.Stderr.TrimEnd("`r", "`n") -split "`r?`n")) { [Console]::Error.WriteLine($line) }
+    [Console]::Error.Write($proc.Stderr)
+}
+
+if ($null -ne $delegateParseError) {
+    # 분류할 수 없는 delegate stdout도 버리지 않는다. JSON 모드에서는 machine stdout을
+    # 오염시키지 않도록 stderr로 격리하고, human 모드에서는 원래 stdout 채널에 보존한다.
+    if (-not [string]::IsNullOrEmpty($proc.Stdout)) {
+        if ($Json) {
+            [Console]::Error.Write($proc.Stdout)
+            if (-not $proc.Stdout.EndsWith("`n")) { [Console]::Error.WriteLine() }
+        }
+        else {
+            [Console]::Out.Write($proc.Stdout)
+            if (-not $proc.Stdout.EndsWith("`n")) { [Console]::Out.WriteLine() }
+        }
+    }
+    script:Write-WrapperMessage ('update-global: updateStatus=delegate_result_unavailable (install-update.ps1 exit {0}; {1})' -f $proc.ExitCode, $delegateParseError)
+    script:Write-WrapperMessage 'update-global: FAIL (delegate result could not be classified)'
+    exit 1
+}
+
+# Re-emit a successfully classified delegate result without mixing its streams. In -Json mode
+# stdout remains exactly the delegate JSON; wrapper-owned prose goes to stderr.
+if (-not [string]::IsNullOrEmpty($proc.Stdout)) {
+    if ($Json) { [Console]::Out.Write($proc.Stdout) }
+    else { foreach ($line in ($proc.Stdout.TrimEnd("`r", "`n") -split "`r?`n")) { Write-Host $line } }
 }
 
 if ($proc.ExitCode -eq 0) {
-    Write-Host 'update-global: updateStatus=delegated_ok'
-    Write-Host 'update-global: PASS (delegated to install-update.ps1 -Mode update-source)'
+    script:Write-WrapperMessage ('update-global: updateStatus=delegated_ok (delegateStatus={0})' -f $delegateStatus)
+    script:Write-WrapperMessage 'update-global: PASS (delegated to install-update.ps1 -Mode update-source)'
+}
+elseif ($delegateStatus -eq 'activation_pending') {
+    script:Write-WrapperMessage 'update-global: updateStatus=activation_pending'
+    script:Write-WrapperMessage 'update-global: INCOMPLETE (payload OK; activation follow-up required)'
 }
 else {
-    Write-Host ('update-global: updateStatus=delegated_nonzero (install-update.ps1 exit {0})' -f $proc.ExitCode)
-    Write-Host 'update-global: FAIL (delegate reported a non-zero exit; see its output above)'
+    script:Write-WrapperMessage ('update-global: updateStatus=delegated_nonzero (delegateStatus={0}; install-update.ps1 exit {1})' -f $delegateStatus, $proc.ExitCode)
+    script:Write-WrapperMessage 'update-global: FAIL (delegate reported a non-zero exit; see its output above)'
 }
 exit $proc.ExitCode

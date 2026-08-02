@@ -672,7 +672,7 @@ function script:Invoke-InspectMode {
         }
     }
 
-    # 4. activation surface byte-identity check (two managed blocks + one mirror per source skill).
+    # 4. activation surface byte-identity check (two managed blocks + one mirror per vendor per source skill).
     $surfacesObj = script:Get-ActivationSurfacePaths -InstallArea $installAreaResolved -ClaudeHome $ClaudeHome -CodexHome $CodexHome
     $surfaceResults = @()
     $activationDrift = $false
@@ -742,7 +742,7 @@ function script:Invoke-VerifyMode {
         foreach ($e in $verifyResult.errors) { $reasons.Add($e) }
     }
 
-    # Activation surface byte-identity (two managed blocks + one mirror per source skill). verify is
+    # Activation surface byte-identity (two managed blocks + one mirror per vendor per source skill). verify is
     # the superset of inspect, so the same activation check applies.
     $surfacesObj = script:Get-ActivationSurfacePaths -InstallArea $installAreaResolved -ClaudeHome $ClaudeHome -CodexHome $CodexHome
     $surfaceResults = @()

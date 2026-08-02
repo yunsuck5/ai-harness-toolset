@@ -255,19 +255,26 @@ Describe 'Get-UninstallPlan — activation surfaces' {
         $area = script:New-Case 'c-skill'; script:New-ExpectedInstallRoot -Area $area
         $hP = script:New-Homes 'c-skillP'
         script:Write-File (Join-Path $hP.ClaudeHome 'skills/ai-harness-review/SKILL.md') "---`nname: ai-harness-review`n---`n"
+        script:Write-File (Join-Path $hP.CodexHome 'skills/ai-harness-review/SKILL.md') "---`nname: ai-harness-review`n---`n"
         (script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $hP.ClaudeHome -CodexHome $hP.CodexHome) 'skill-mirror:ai-harness-review').Status | Should -Be 'removable'
+        (script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $hP.ClaudeHome -CodexHome $hP.CodexHome) 'skill-mirror:codex:ai-harness-review').Status | Should -Be 'removable'
 
         $hA = script:New-Homes 'c-skillA'
         (script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $hA.ClaudeHome -CodexHome $hA.CodexHome) 'skill-mirror:ai-harness-review').Status | Should -Be 'absent'
+        (script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $hA.ClaudeHome -CodexHome $hA.CodexHome) 'skill-mirror:codex:ai-harness-review').Status | Should -Be 'absent'
     }
 
     It 'skill mirror removal-target Path is the ai-harness-review DIRECTORY (not the SKILL.md file)' {
         $area = script:New-Case 'c-skilldir'; script:New-ExpectedInstallRoot -Area $area
         $h = script:New-Homes 'c-skilldir'
         script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-review/SKILL.md') 'skill'
-        $t = script:Get-Target (Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome) 'skill-mirror:ai-harness-review'
-        $t.Path | Should -Match 'ai-harness-review$'
-        $t.Path | Should -Not -Match 'SKILL\.md$'
+        script:Write-File (Join-Path $h.CodexHome 'skills/ai-harness-review/SKILL.md') 'skill'
+        $plan = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome
+        foreach ($name in @('skill-mirror:ai-harness-review', 'skill-mirror:codex:ai-harness-review')) {
+            $t = script:Get-Target $plan $name
+            $t.Path | Should -Match 'ai-harness-review$'
+            $t.Path | Should -Not -Match 'SKILL\.md$'
+        }
     }
 
     It 'skill dir present WITHOUT SKILL.md -> still removable (footprint-zero)' {
@@ -287,13 +294,19 @@ Describe 'Get-UninstallPlan — activation surfaces' {
         script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-review/SKILL.md') 'a'
         script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-extra/SKILL.md') 'b'
         script:Write-File (Join-Path $h.ClaudeHome 'skills/other-skill/SKILL.md') 'sibling'   # present but NOT in the installed payload
+        script:Write-File (Join-Path $h.CodexHome 'skills/ai-harness-review/SKILL.md') 'a'
+        script:Write-File (Join-Path $h.CodexHome 'skills/ai-harness-extra/SKILL.md') 'b'
+        script:Write-File (Join-Path $h.CodexHome 'skills/other-skill/SKILL.md') 'sibling'
         $plan = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome
         (script:Get-Target $plan 'skill-mirror:ai-harness-review').Status | Should -Be 'removable'
         (script:Get-Target $plan 'skill-mirror:ai-harness-extra').Status  | Should -Be 'removable'
-        # Exactly the two owned skills are enumerated; the non-owned sibling produces no surface.
-        @($plan.Targets | Where-Object { $_.Kind -eq 'skill-mirror' }).Count | Should -Be 2
+        (script:Get-Target $plan 'skill-mirror:codex:ai-harness-review').Status | Should -Be 'removable'
+        (script:Get-Target $plan 'skill-mirror:codex:ai-harness-extra').Status  | Should -Be 'removable'
+        # Exactly two vendor targets per owned skill are enumerated; non-owned siblings produce no surface.
+        @($plan.Targets | Where-Object { $_.Kind -eq 'skill-mirror' }).Count | Should -Be 4
         @($plan.Targets | Where-Object { $_.Name -match 'other-skill' }).Count | Should -Be 0
         ((script:Get-Target $plan 'skill-mirror:ai-harness-extra').Path) | Should -Match 'ai-harness-extra$'
+        ((script:Get-Target $plan 'skill-mirror:codex:ai-harness-extra').Path) | Should -Match 'ai-harness-extra$'
     }
 
     It 'present + managed install root WITHOUT current/ → blocked (owned skill inventory unknowable; no silent orphan)' {
@@ -362,6 +375,7 @@ Describe 'Get-UninstallPlan — read-only invariant' {
         script:Write-MarkedFile (Join-Path $h.ClaudeHome 'CLAUDE.md') 1
         script:Write-MarkedFile (Join-Path $h.CodexHome 'AGENTS.md') 1
         script:Write-File (Join-Path $h.ClaudeHome 'skills/ai-harness-review/SKILL.md') 'skill'
+        script:Write-File (Join-Path $h.CodexHome 'skills/ai-harness-review/SKILL.md') 'skill'
 
         $beforeArea = script:Snapshot $area; $beforeC = script:Snapshot $h.ClaudeHome; $beforeX = script:Snapshot $h.CodexHome
         $null = Get-UninstallPlan -InstallArea $area -ClaudeHome $h.ClaudeHome -CodexHome $h.CodexHome

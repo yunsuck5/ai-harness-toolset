@@ -10,7 +10,6 @@ install-update 도메인의 future-work queue — open / deferred / idea-only ro
 |---|---|---|
 | IU-B-01 | Smoke evidence preservation — runbook-only / helper-script / archive-manifest 선택 미정 | scoped goal 승인 시 착수 |
 | IU-B-03 | `scripts/lib/path.ps1` path normalization edge-case hardening(cross-cutting — install+review 공용) | scoped goal 승인 시 착수 |
-| IU-B-04 | Install validation report evidence hygiene — PASS verdict 와 anomalous wrapper signal 의 분리 | scoped goal 승인 시 착수 |
 | IU-B-05 | Snapshot auxiliary evidence exactness wording polish | scoped goal 승인 시 착수 |
 | IU-B-06 | Long-lived docs commit hash hygiene(cross-cutting — literal hash 를 장수명 문서에서 배제) | scoped goal 승인 시 착수 |
 | IU-B-14 | Uninstall finalizer의 terminal result write 실패가 관측되지 않을 수 있는 경계 재검토 | 기존 finalizer·reinstall-first 구조를 보존하는 result-write observability hardening goal 승인 시 착수 |

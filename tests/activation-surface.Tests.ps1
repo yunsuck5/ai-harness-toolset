@@ -68,18 +68,24 @@ Describe 'Get-ActivationSurfacePlan — managed-block surfaces always present' {
 }
 
 Describe 'Get-ActivationSurfacePlan — generic skill enumeration (Batch 2C-0)' {
-    It 'single skill preserves the ai-harness-review mirror (name, destination, class, SkillName)' {
+    It 'single skill becomes one Claude and one Codex mirror with stable IDs and destinations' {
         $p = script:New-Payload -Case 'single' -Skills @('ai-harness-review')
         $h = script:Homes 'single'
         $plan = Get-ActivationSurfacePlan -PayloadRoot $p -ClaudeHome $h.Claude -CodexHome $h.Codex
         $skills = script:Get-SkillSurfaces $plan
-        $skills.Count          | Should -Be 1
+        $skills.Count          | Should -Be 2
         $skills[0].Name        | Should -Be 'skill-mirror:ai-harness-review'
         $skills[0].Scope       | Should -Be 'Skill'
         $skills[0].Class       | Should -Be 'canonical-overwrite'
         $skills[0].CompareMode | Should -Be 'whole-file'
         $skills[0].SkillName   | Should -Be 'ai-harness-review'
         $skills[0].Destination | Should -Be (Join-Path $h.Claude 'skills/ai-harness-review/SKILL.md')
+        $skills[1].Name        | Should -Be 'skill-mirror:codex:ai-harness-review'
+        $skills[1].Scope       | Should -Be 'Skill'
+        $skills[1].Class       | Should -Be 'canonical-overwrite'
+        $skills[1].CompareMode | Should -Be 'whole-file'
+        $skills[1].SkillName   | Should -Be 'ai-harness-review'
+        $skills[1].Destination | Should -Be (Join-Path $h.Codex 'skills/ai-harness-review/SKILL.md')
         $skills[0].Source      | Should -Be (Join-Path $p 'snippets/claude-skills/ai-harness-review/SKILL.md')
     }
 
@@ -89,8 +95,14 @@ Describe 'Get-ActivationSurfacePlan — generic skill enumeration (Batch 2C-0)' 
         $h = script:Homes 'multi'
         $plan = Get-ActivationSurfacePlan -PayloadRoot $p -ClaudeHome $h.Claude -CodexHome $h.Codex
         $skills = script:Get-SkillSurfaces $plan
-        @($skills | ForEach-Object { $_.Name })      | Should -Be @('skill-mirror:ai-harness-brief', 'skill-mirror:ai-harness-review', 'skill-mirror:zeta-skill')
-        @($skills | ForEach-Object { $_.SkillName }) | Should -Be @('ai-harness-brief', 'ai-harness-review', 'zeta-skill')
+        @($skills | ForEach-Object { $_.Name }) | Should -Be @(
+            'skill-mirror:ai-harness-brief', 'skill-mirror:codex:ai-harness-brief',
+            'skill-mirror:ai-harness-review', 'skill-mirror:codex:ai-harness-review',
+            'skill-mirror:zeta-skill', 'skill-mirror:codex:zeta-skill')
+        @($skills | ForEach-Object { $_.SkillName }) | Should -Be @(
+            'ai-harness-brief', 'ai-harness-brief',
+            'ai-harness-review', 'ai-harness-review',
+            'zeta-skill', 'zeta-skill')
     }
 
     It 'a directory under claude-skills WITHOUT a SKILL.md is not a skill (skipped)' {
@@ -98,7 +110,7 @@ Describe 'Get-ActivationSurfacePlan — generic skill enumeration (Batch 2C-0)' 
         $h = script:Homes 'emptydir'
         $plan = Get-ActivationSurfacePlan -PayloadRoot $p -ClaudeHome $h.Claude -CodexHome $h.Codex
         $skills = script:Get-SkillSurfaces $plan
-        $skills.Count | Should -Be 1
+        $skills.Count | Should -Be 2
         @($skills | Where-Object { $_.Name -match 'not-a-skill' }).Count | Should -Be 0
     }
 

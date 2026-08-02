@@ -76,10 +76,13 @@ BeforeAll {
         script:Write-Marked (Join-Path $codex 'AGENTS.md') 1
         script:Write-File (Join-Path $claude 'skills/ai-harness-review/SKILL.md') "---`nname: ai-harness-review`n---`n"
         script:Write-File (Join-Path $claude 'skills/other-skill/SKILL.md') "---`nname: other-skill`n---`n"
+        script:Write-File (Join-Path $codex 'skills/ai-harness-review/SKILL.md') "---`nname: ai-harness-review`n---`n"
+        script:Write-File (Join-Path $codex 'skills/other-skill/SKILL.md') "---`nname: other-skill`n---`n"
         $tmp = script:New-Dir (Join-Path $root 'fin-temp')
         return [pscustomobject]@{ Root=$root; Claude=$claude; Codex=$codex; Area=$area; Tmp=$tmp;
             ClaudeMd=(Join-Path $claude 'CLAUDE.md'); CodexMd=(Join-Path $codex 'AGENTS.md');
-            Skill=(Join-Path $claude 'skills/ai-harness-review'); Sibling=(Join-Path $claude 'skills/other-skill') }
+            Skill=(Join-Path $claude 'skills/ai-harness-review'); Sibling=(Join-Path $claude 'skills/other-skill');
+            CodexSkill=(Join-Path $codex 'skills/ai-harness-review'); CodexSibling=(Join-Path $codex 'skills/other-skill') }
     }
 
     function script:Invoke-Apply { param($Fx, [string[]] $Extra = @())
@@ -324,6 +327,9 @@ Describe 'uninstall-global.ps1 -Apply' {
         (Test-Path -LiteralPath $fx.Skill)   | Should -BeFalse
         (Test-Path -LiteralPath $fx.Sibling) | Should -BeTrue
         (Test-Path -LiteralPath (Join-Path $fx.Claude 'skills')) | Should -BeTrue
+        (Test-Path -LiteralPath $fx.CodexSkill)   | Should -BeFalse
+        (Test-Path -LiteralPath $fx.CodexSibling) | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $fx.Codex 'skills')) | Should -BeTrue
         # install root deleted by the (async) finalizer
         (script:Wait-Until { -not (Test-Path -LiteralPath $fx.Area) } 25) | Should -BeTrue
     }
@@ -429,6 +435,9 @@ Describe 'uninstall-global.ps1 -Apply' {
         script:Write-File (Join-Path $claude 'skills/ai-harness-review/SKILL.md') 'a'
         script:Write-File (Join-Path $claude 'skills/ai-harness-extra/SKILL.md') 'b'
         script:Write-File (Join-Path $claude 'skills/other-skill/SKILL.md') 'sibling'   # present but NOT in the installed payload
+        script:Write-File (Join-Path $codex 'skills/ai-harness-review/SKILL.md') 'a'
+        script:Write-File (Join-Path $codex 'skills/ai-harness-extra/SKILL.md') 'b'
+        script:Write-File (Join-Path $codex 'skills/other-skill/SKILL.md') 'sibling'
         $tmp = script:New-Dir (Join-Path $root 'fin-temp')
 
         $origUP = $env:USERPROFILE
@@ -446,9 +455,13 @@ Describe 'uninstall-global.ps1 -Apply' {
         # launched — the finalizer only deletes the install root, never the skill surfaces).
         (Test-Path -LiteralPath (Join-Path $claude 'skills/ai-harness-review')) | Should -BeFalse
         (Test-Path -LiteralPath (Join-Path $claude 'skills/ai-harness-extra'))  | Should -BeFalse
+        (Test-Path -LiteralPath (Join-Path $codex 'skills/ai-harness-review')) | Should -BeFalse
+        (Test-Path -LiteralPath (Join-Path $codex 'skills/ai-harness-extra'))  | Should -BeFalse
         # The non-owned sibling skill (and the skills/ parent) is preserved.
         (Test-Path -LiteralPath (Join-Path $claude 'skills/other-skill/SKILL.md')) | Should -BeTrue
         (Test-Path -LiteralPath (Join-Path $claude 'skills')) | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $codex 'skills/other-skill/SKILL.md')) | Should -BeTrue
+        (Test-Path -LiteralPath (Join-Path $codex 'skills')) | Should -BeTrue
         # The install root is deleted by the (async) finalizer — its sole responsibility.
         (script:Wait-Until { -not (Test-Path -LiteralPath $area) } 25) | Should -BeTrue
     }

@@ -27,7 +27,7 @@ $ErrorActionPreference = 'Stop'
 # Full activation apply orchestrator (Phase 4a; generic deployed-extension surface set, Batch 2C-0).
 #
 # It applies the SAME activation surfaces that scripts/install-update.ps1 VERIFIES — two managed
-# blocks plus one canonical-overwrite mirror per source skill — resolved through the shared
+# blocks plus one canonical-overwrite mirror per vendor per source skill — resolved through the shared
 # scripts/lib/activation-surface.ps1 helper so apply coverage == verify coverage (no apply-vs-verify
 # destination drift, including the Codex AGENTS.override.md precedence).
 #
@@ -50,7 +50,8 @@ $ErrorActionPreference = 'Stop'
 # Snippet/source -> destination mapping (source of truth: scripts/lib/activation-surface.ps1):
 #   - snippets/CLAUDE_SNIPPET.md              -> <ClaudeHome>/CLAUDE.md            (managed-block)
 #   - snippets/AGENTS_SNIPPET.md              -> <CodexHome>/AGENTS.md|override     (managed-block)
-#   - snippets/claude-skills/<name>/SKILL.md  -> <ClaudeHome>/skills/<name>/SKILL.md (canonical-overwrite, one per source skill)
+#   - snippets/claude-skills/<name>/SKILL.md  -> <ClaudeHome>/skills/<name>/SKILL.md and <CodexHome>/skills/<name>/SKILL.md
+#                                                     (canonical-overwrite, one per vendor per source skill)
 # Where (overridable for tests so real %USERPROFILE% is never touched):
 #   - ClaudeHome default = %USERPROFILE%\.claude
 #   - CodexHome  default = %CODEX_HOME% if set, else %USERPROFILE%\.codex

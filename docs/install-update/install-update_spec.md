@@ -57,19 +57,19 @@
 
 - generated payload 의 source-of-truth 는 기존 installed payload 가 아니라 **trusted source identity(resolved commit SHA)** 다. 손상/drift/partial 상태의 회복은 분석·역행·부분 수리가 아니라 **manual source 재준비 + deterministic overwrite reinstall** 이다 — "복구" 는 별도 mode 가 아니다.
 - 본 도메인은 손상/drift 의 **detection 만 보장** 한다 — 자동 recovery/migration/repair writer 는 없다.
-- activation surface 는 generated payload 와 별도 영역이며 **2-class** 다 — (a) managed-block instruction file: marker-bounded replace + dry-run/pre-write backup/rollback/post-apply 검증(marker 밖 사용자 content 보존, whole-file overwrite 금지) (b) Claude skill mirror: source 기준 whole-file byte overwrite + post-write SHA-256 verify + 사용자 수정 overwrite 사전 고지(read-only dry-run preview 는 있으나 pre-write backup/rollback/sidecar 없음).
+- activation surface 는 generated payload 와 별도 영역이며 **2-class** 다 — (a) managed-block instruction file: marker-bounded replace + dry-run/pre-write backup/rollback/post-apply 검증(marker 밖 사용자 content 보존, whole-file overwrite 금지) (b) Claude/Codex vendor skill mirror: 하나의 source 기준 whole-file byte overwrite + post-write SHA-256 verify + 사용자 수정 overwrite 사전 고지(read-only dry-run preview 는 있으나 pre-write backup/rollback/sidecar 없음).
 
 ### activation surface 정책 (forced-copy + final-verification)
 
 - deployed runtime extension(= deployed activation surface — source skill, 도입 시 hook 등)은 source payload 복사만으로 설치 완료가 아니다 — runtime 목적지에 실재하고 canonical source 와 **byte-identical** 해야 하며, install/update 후 부재·drift 면 그 install/update 는 미완료다. 어느 경로에서도 missing/drifted surface 가 조용히 "완료" 로 통과하지 않는다(status 값·precedence 는 `INSTALL.md` 소유).
-- enumeration 은 **generic inventory model** 이다 — deterministic·local-first(directory enumeration 우선; 별도 registry 는 그 불충분이 입증되기 전 비도입). 모든 source skill 은 자동으로 forced mirror + final-verify 대상이다.
-- uninstall 은 **owned surface 만** 회수한다 — installed payload 의 source inventory 로 식별된 surface 만 제거하고 비-owned sibling 은 보존한다.
+- enumeration 은 **generic inventory model** 이다 — deterministic·local-first(directory enumeration 우선; 별도 registry 는 그 불충분이 입증되기 전 비도입). 모든 source skill 은 자동으로 Claude/Codex vendor별 forced mirror + final-verify 대상이다. 기존 Claude surface ID는 `skill-mirror:<name>`, Codex surface ID는 `skill-mirror:codex:<name>`이며 둘 다 `Scope Skill`이다.
+- uninstall 은 **owned surface 만** 회수한다 — installed payload 의 source inventory 로 식별된 두 vendor의 skill surface만 제거하고 각 vendor home의 비-owned sibling은 보존한다.
 - 새 deployed runtime extension 의 추가는 **같은 approved scope 안에서** 다음을 모두 점검/갱신해야 한다 — source inventory 규칙 · runtime mirror 목적지 · forced-copy 동작 · final verification · uninstall cleanup · surface 의 count/name/path/class 를 가정하는 tests · 기술 docs · (소유가 바뀌면) status surface. hook 도입 시에도 본 정책이 동일 적용되며, 정책의 존재가 hook 도입을 승인하지 않는다. 전역 배포 rule은 공통 admission·accountability 경계만 소유하고, install-update의 실제 도입 여부와 현행 비도입은 `INSTALL.md`가 소유한다.
 
 ### uninstall
 
 - uninstall 은 **별도 entrypoint** 다 — install/update entrypoint 의 mode 로 통합하지 않는다(install/update 의 좁은 mutation surface 와 metadata cross-binding source-of-truth 보존).
-- 성공 기준은 **verified footprint-zero 4-target** 이다 — ① install root 부재 ② owned skill mirror 부재 ③ Claude managed-block surface 의 marker pair 0 ④ Codex **effective** managed-block surface 의 marker pair 0(instruction file 자체는 보존). 비-effective Codex 파일의 stale marker pair 는 detect-warn 이며 제거하지 않는다. 성공은 "삭제 명령 발행" 이 아니라 "검증된 end state" 다.
+- 성공 기준은 **verified footprint-zero 4-target class** 다 — ① install root 부재 ② Claude/Codex 양쪽의 owned skill mirror 부재 ③ Claude managed-block surface 의 marker pair 0 ④ Codex **effective** managed-block surface 의 marker pair 0(instruction file 자체는 보존). 비-effective Codex 파일의 stale marker pair 는 detect-warn 이며 제거하지 않는다. 성공은 "삭제 명령 발행" 이 아니라 "검증된 end state" 다.
 - 자기-삭제 문제는 **temp finalizer trampoline** 으로 닫는다 — main entrypoint 는 install root 를 직접 삭제하지 않고, finalizer 는 parent 종료를 기다린 뒤 install-root path 를 재guard 하고 expected footprint 를 재확인한 후에만 삭제하며, best-effort self-clean 실패 시 exact temp path 를 보고한다(non-fatal).
 - managed-block 제거는 **marker-span excision** 이다 — instruction file 은 절대 삭제하지 않고(excision 으로 비어도 보존), 0-pair 는 idempotent no-op, 2+/incomplete/malformed/nested 는 fail-fast, marker 밖 byte 는 verbatim 보존하며, 선재 `.amb-backup` 은 자동 삭제하지 않는다(거취는 별도 사용자 결정).
 - install root 삭제는 blind recursive delete 가 아니다 — **expected-footprint enumeration** 과 대조해 unexpected content 는 fail-fast 하고(목록 값은 owner 소유), 모든 destructive op 에 path guard(정규화 후 expected canonical install area 와의 정확 일치 — 동등성 검사이며 `.claude` parent-name shape 에 의존하지 않는다)를 적용한다. self-삭제 finalizer 는 self-contained 를 유지하기 위해 expected install area 를 `finalizer-input.json` 으로 전달받아 동일 동등성 검사를 재수행한다.
@@ -89,7 +89,7 @@
 ## Owner surface 지도
 
 - **`INSTALL.md`** — 실행 operative contract(self-contained·anti-coupling — install 실행 중 `docs/**` 무참조): 설치/업데이트/재설치/uninstall 발견 절차 · 명령과 단계 순서 · 승인 문답 · metadata schema 필드 값 · final status vocabulary 와 precedence · exit code · run evidence 계약 · managed-block/skill adoption 규칙 · deterministic narrow entrypoint 경계 · bootstrap clone cleanup · acquisition cache 류 later-phase 결정.
-- **lifecycle scripts** — `scripts/install-global.ps1`(fresh install + first-time managed-block insertion bootstrap) · `scripts/install-update.ps1`(inspect/verify/update-source + mutation guard) · `scripts/update-global.ps1`(name-based update 재진입) · `scripts/activate-global.ps1`(activation orchestration·canonical-overwrite path) · `scripts/apply-managed-block.ps1`(managed-block replace/insert/remove IO) · `scripts/uninstall-global.ps1` · `scripts/uninstall-finalizer.ps1`.
+- **lifecycle scripts** — `scripts/install-global.ps1`(fresh install + first-time managed-block insertion bootstrap) · `scripts/install-update.ps1`(inspect/verify/update-source + mutation guard) · `scripts/update-global.ps1`(name-based update 재진입; delegate의 `activation_pending`을 INCOMPLETE로 보존하고 `-Json` stdout을 machine JSON으로 한정) · `scripts/activate-global.ps1`(activation orchestration·canonical-overwrite path) · `scripts/apply-managed-block.ps1`(managed-block replace/insert/remove IO) · `scripts/uninstall-global.ps1` · `scripts/uninstall-finalizer.ps1`.
 - **lib** — `scripts/lib/path.ps1`(ToolRoot 5-channel 해소·payload completeness 판정·source-repo 판정·ProjectRoot 해소) · `scripts/lib/resolve-script.ps1`(component script 해소·fallback 정책) · `scripts/lib/activation-surface.ps1`(activation surface plan 의 single home — source→destination map·mutation class) · `scripts/lib/managed-block.ps1`(managed-block primitive — set/add/remove) · `scripts/lib/uninstall-target.ps1`(read-only uninstall plan resolver) · `scripts/lib/install-pipeline-core.ps1`(temp-only pipeline library; entry 는 `tests/support/install-pipeline-fixture.ps1`).
 - **tests** — `tests/install-global.Tests.ps1` · `install-update.Tests.ps1` · `update-global.Tests.ps1` · `activate-global.Tests.ps1` · `activation-surface.Tests.ps1` · `apply-managed-block.Tests.ps1` · `managed-block.Tests.ps1` · `install-pipeline.Tests.ps1` · `uninstall-apply.Tests.ps1` · `uninstall-target.Tests.ps1` · `path.Tests.ps1` · `resolve-script.Tests.ps1`(행동 잠금·회귀 보호).
 - **templates** — `templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md`(installed-root landing page — update/uninstall discovery).
@@ -131,7 +131,7 @@
 
 ## Lifecycle state
 
-- lifecycle 문서: 없음 — trigger owner 경계 정렬 Design/Plan은 current-bearing 의미를 본 Spec/backlog에 흡수한 뒤 closeout에서 retire됐고 Work Packet은 만들지 않았다.
-- spec ↔ implementation: **live** — behavior owner(`INSTALL.md`·전역 배포 rule)와 문서 표면(Spec·backlog)의 역할 경계가 1:1로 동기화돼 있다. 이후 변경은 live-Spec 갱신 규칙을 따른다.
-- 도메인 성숙도: install/update/uninstall/activation lifecycle 구현·실호스트 검증·self-adoption 완료 — **LTS maintenance**(이력·ledger 는 git history). 현재 동봉 source skill 4종(ai-harness-review·ai-harness-brief·ai-harness-consultation·ai-harness-blind-advisory — concrete activation surface 6).
+- lifecycle 문서: 없음 — B02 Design/Plan의 current-bearing 의미를 본 Spec과 구현에 흡수했고 planning anchor는 git history에 보존된다. Work Packet은 만들지 않았다.
+- spec ↔ implementation: **live** — host 지원 문면, 두 vendor skill fan-out, wrapper 상태 전달이 behavior owner와 tests에 1:1로 동기화돼 있다.
+- 도메인 성숙도: install/update/uninstall/activation lifecycle **LTS maintenance**. 현재 동봉 source skill 4종은 Claude/Codex 양쪽으로 fan-out되어 concrete activation surface가 10개(두 managed block + vendor별 skill mirror 8개)다. 실제 global 배포와 fresh vendor discovery는 별도 사용자 gate다.
 - future work: open·deferred·idea-only 항목과 ID 발번(next ID)의 single home 은 `install-update_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
