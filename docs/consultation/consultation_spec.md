@@ -5,7 +5,7 @@
 ## Header
 
 - 이 문서 = `consultation` domain의 target-state Spec이다.
-- 이 체인이 끝나면 = source consultation skill이 아래 behavior·boundary와 의미 수준 1:1을 이루고, 별도 closeout에서 domain의 live 전환 여부를 판단할 수 있다.
+- 목표 종결 상태 = source consultation skill이 아래 behavior·boundary와 의미 수준 1:1을 이루고 lifecycle state `live`를 유지한다.
 - 이 문서가 아닌 것 = 작동 skill, canonical review, 다른 advisory workflow, 실행 기록이 아니다.
 
 ## 목표 상태
@@ -185,6 +185,7 @@ supported mode는 다음 넷이다.
 - web authorization provenance·outbound query boundary·required/optional fallback·actual source disclosure를 대조한다.
 - four-mode selection, member write-once file, capsule completeness, mandatory spot-check, read-basis disclosure, retention/cleanup을 대조한다.
 - explicit session identity·guard reapply·no-auto-resume·one recovery·completion-notification JOIN, wave당 max-3 concurrent member와 required-member new-shape canary를 대조한다.
+- complete body 뒤 canary/non-canary managed-artifact handoff failure와 completion-notification loss의 actual 검증은 sanctioned fault-injection/adapter test surface에서 수행한다. 그런 표면이 없으면 validation evidence에서 미검증으로 구분하고 정상 성공이나 명시 취소를 대체 증거로 쓰지 않는다.
 - 근거는 operator report 또는 `log/evidence/**`에 두고 Spec에 누적하지 않는다.
 
 ## Review focus
@@ -199,6 +200,6 @@ supported mode는 다음 넷이다.
 
 ## Lifecycle state
 
-- **prelive** — source implementation은 존재하지만 promoted-lifecycle closeout의 1:1 reconciliation과 operational verification이 아직 끝나지 않았다.
-- lifecycle docs는 Design / Plan / Work Packet이며 closeout에서 retire한다. backlog는 future-work queue로 유지한다.
+- **live** — target-state Spec과 source skill이 closeout reconciliation을 거쳤으며, 이후 의미 변경은 새 Design → Plan lifecycle을 사용한다.
+- Design / Plan / Work Packet은 revision 중에만 존재하고 closeout에서 retire한다. backlog는 future-work queue로 유지한다.
 - source skill 변경은 global installed copy나 activation을 자동 갱신하지 않는다.
