@@ -38,6 +38,7 @@ The placement criterion is **how a document is read**, not how many topics it to
 | `docs/brief/` | the **brief domain folder** — `brief_spec.md` (spec-of-record) + `brief_backlog.md` (future-work queue); the first migrated domain folder under the docs-working-model end-state (`rules/docs-working-model/docs-working-model.md`, *End-state placement and transition*) — lifecycle docs (`brief_design.md` / `brief_plan.md` / `brief_work_packet.md`) exist only during a change | when working with the Brief artifact / workflow |
 | `docs/review/` | the **review domain folder** — `review_spec.md` (spec-of-record: canonical review artifact model, verdict vocabulary, deterministic gates, reviewer-safe invocation, validation-evidence convention) + `review_backlog.md` (future-work queue); the second migrated domain folder — lifecycle docs (`review_design.md` / `review_plan.md` / `review_work_packet.md`) exist only during a change | when working with the review subsystem |
 | `docs/install-update/` | the **install-update domain folder** — `install-update_spec.md` (spec-of-record: layer/invocation-channel invariants, metadata/artifact identity, footprint contract, activation-surface policy, uninstall invariants, recovery posture) + `install-update_backlog.md` (future-work queue incl. deferred rows); the third migrated domain folder — lifecycle docs exist only during a change; **execution itself is root `INSTALL.md`** (self-contained operative contract) | when working with the install/update/uninstall/activation lifecycle |
+| `docs/blind-advisory/` | **blind-advisory 도메인 폴더** — `blind-advisory_spec.md`(명세 정본: 명시적 trigger, 최소 fresh read-only reviewer topology, raw final forwarding과 failure boundary) + `blind-advisory_backlog.md`(향후 작업 queue); 활성 동작은 `snippets/claude-skills/ai-harness-blind-advisory/SKILL.md`가 소유하며 lifecycle docs는 변경 중에만 존재 | Blind 결함 후보 prefilter를 다룰 때 |
 | `rule_docs/<id>/` | the **per-rule planning workspace** — a sibling top-level tree (**not** a `docs/` layer) for adding/revising a rule: lifecycle docs (`<id>_incubation` / `<id>_design` / `<id>_plan` / `<id>_work_packet`) during a change + an idle `.gitkeep` anchor with an optional `<id>_backlog.md` future-work overlay (persists between changes); the rule file is its own spec-of-record, so no spec here | when adding/revising a rule, or reading that rule's future-work backlog |
 
 ## 6. Where new documents belong (orientation)
@@ -57,9 +58,10 @@ This file is the single orientation home: §5 above is the placement map; the ta
 | install / update / uninstall behavior | `INSTALL.md` (self-contained operative contract) + `docs/install-update/install-update_spec.md` |
 | review workflow / result contract | `docs/review/review_spec.md` + `snippets/claude-skills/ai-harness-review/SKILL.md` |
 | Brief save / restore | `docs/brief/brief_spec.md` + `snippets/claude-skills/ai-harness-brief/SKILL.md` |
+| Blind 결함 후보 prefilter | `docs/blind-advisory/blind-advisory_spec.md` + `snippets/claude-skills/ai-harness-blind-advisory/SKILL.md` |
 | current progress / what to do next | on-demand briefing — `rules/docs-working-model/docs-working-model.md` (*On-demand status*); no committed project-current mirror |
 | decision records | the relevant owner surface / domain spec (historical decisions in git history) |
-| open backlog / deferred items | the per-domain `<domain>_backlog.md` (review · install-update · brief, plus prelive `consultation` and `blind-advisory`) or a revised rule's `rule_docs/<id>/<id>_backlog.md` |
+| open backlog / deferred items | the per-domain `<domain>_backlog.md` (review · install-update · brief · blind-advisory, plus prelive `consultation`) or a revised rule's `rule_docs/<id>/<id>_backlog.md` |
 | docs change / closeout / placement | `rules/docs-working-model/docs-working-model.md` |
 | instruction-surface / skill architecture | active owners: `snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md` + `snippets/rules/README.md` + `rules/README.md` (rules tiers) + root `CLAUDE.md` / `AGENTS.md` (repo-local surface); design / migration history in git history |
 
@@ -67,7 +69,7 @@ Removed-legacy "do not use" identifiers and historical bodies are not re-listed 
 
 ## 8. How humans should navigate docs
 
-Start from `README.md` (repo root) for the high-level overview and the day-to-day natural-language UX. For "what is done / what remains / what to do next," ask the agent for an on-demand status briefing (`rules/docs-working-model/docs-working-model.md`, *On-demand status*) or read the per-domain spec/backlog files (`docs/brief/` · `docs/review/` · `docs/install-update/`, plus prelive `docs/consultation/` and `docs/blind-advisory/`) and any revised rule's `rule_docs/<id>/<id>_backlog.md` directly; there is no committed project-current summary file.
+Start from `README.md` (repo root) for the high-level overview and the day-to-day natural-language UX. For "what is done / what remains / what to do next," ask the agent for an on-demand status briefing (`rules/docs-working-model/docs-working-model.md`, *On-demand status*) or read the per-domain spec/backlog files (`docs/brief/` · `docs/review/` · `docs/install-update/` · `docs/blind-advisory/`, plus prelive `docs/consultation/`) and any revised rule's `rule_docs/<id>/<id>_backlog.md` directly; there is no committed project-current summary file.
 
 ## 9. What not to do (orientation)
 
