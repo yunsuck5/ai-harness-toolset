@@ -211,6 +211,10 @@ BeforeAll {
             'no-result' {
                 $body += 'exit 0'
             }
+            'invalid-utf8-result' {
+                $body += '[System.IO.File]::WriteAllBytes($out, [byte[]](0xC3, 0x28))'
+                $body += 'exit 0'
+            }
             'nonzero-with-verdict' {
                 $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n`r`n## Blocking findings`r`n`r`nnone`r`n`r`n## Non-blocking concerns`r`n`r`nnone`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"'
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
@@ -240,6 +244,50 @@ BeforeAll {
         $text = ($body -join "`r`n") + "`r`n"
         script:Write-Utf8BomCrlfFile -Path $stubPath -Content $text
         return $stubPath
+    }
+
+    function script:Write-ResultProbeFailureWrapper {
+        param(
+            [string] $WrapperName,
+            [string] $ReviewRunScript,
+            [string] $ProjectRoot,
+            [string] $ReviewTaskId,
+            [string] $ToolRoot
+        )
+
+        $wrapperPath = Join-Path $TestDrive ($WrapperName + '.ps1')
+        $template = @'
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+function Test-Path {
+    [CmdletBinding(DefaultParameterSetName = 'Path')]
+    param(
+        [Parameter(ParameterSetName = 'Path', Position = 0)]
+        [string[]] $Path,
+        [Parameter(ParameterSetName = 'LiteralPath', Mandatory = $true)]
+        [string[]] $LiteralPath,
+        [Microsoft.PowerShell.Commands.TestPathType] $PathType = [Microsoft.PowerShell.Commands.TestPathType]::Any,
+        [switch] $IsValid
+    )
+
+    $actual = Microsoft.PowerShell.Management\Test-Path @PSBoundParameters
+    $candidate = if ($PSBoundParameters.ContainsKey('LiteralPath')) { [string] $LiteralPath[0] } else { [string] $Path[0] }
+    if ($actual -and $PathType -eq [Microsoft.PowerShell.Commands.TestPathType]::Leaf -and [System.IO.Path]::GetFileName($candidate) -ceq 'result.md') {
+        throw [System.UnauthorizedAccessException]::new('synthetic result probe access denied')
+    }
+    return $actual
+}
+
+& '__REVIEW_RUN__' -ReviewTaskId '__TASK_ID__' -Pass 'pass-01' -Perspective 'local-correctness' -Reviewer 'codex' -ProjectRoot '__PROJECT_ROOT__' -ToolRoot '__TOOL_ROOT__'
+exit $LASTEXITCODE
+'@
+        $content = $template.Replace('__REVIEW_RUN__', $ReviewRunScript.Replace("'", "''"))
+        $content = $content.Replace('__TASK_ID__', $ReviewTaskId.Replace("'", "''"))
+        $content = $content.Replace('__PROJECT_ROOT__', $ProjectRoot.Replace("'", "''"))
+        $content = $content.Replace('__TOOL_ROOT__', $ToolRoot.Replace("'", "''"))
+        script:Write-Utf8BomCrlfFile -Path $wrapperPath -Content $content
+        return $wrapperPath
     }
 
     function script:Invoke-ReviewPrepare {
@@ -634,6 +682,69 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Not -Match 'review-run: PASS'
 
         $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        (Get-Content -LiteralPath $resultMd -Raw -Encoding UTF8) | Should -Not -Match '## Reviewer run provenance'
+    }
+
+    It 'AC-RR6d: invalid UTF-8 result is structured unavailable and preserves the failed pass' {
+        $project = script:New-RunCase -CaseName 'rr6d'
+        $taskId = 'rr6d-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr6d-invalid-utf8' -Mode 'invalid-utf8-result'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'review result unavailable'
+        $r.Output | Should -Match 'Could not read or parse verdict'
+        $r.Output | Should -Match 'invalid UTF-8 byte sequence'
+        $r.Output | Should -Match 'runner left the pass untouched'
+        $r.Output | Should -Match 'no reviewer verdict was issued'
+        $r.Output | Should -Not -Match '(?m)^verdict:'
+        $r.Output | Should -Not -Match 'review-run: PASS'
+        $r.Output | Should -Not -Match 'Reviewer run provenance'
+        $r.Output | Should -Not -Match 'CategoryInfo|FullyQualifiedErrorId'
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        Test-Path -LiteralPath $resultMd -PathType Leaf | Should -BeTrue
+        $actualBytes = [System.IO.File]::ReadAllBytes($resultMd)
+        [Convert]::ToBase64String($actualBytes) | Should -Be ([Convert]::ToBase64String([byte[]](0xC3, 0x28)))
+    }
+
+    It 'AC-RR6e: result-path access failure is structured unavailable and preserves the failed pass' {
+        $project = script:New-RunCase -CaseName 'rr6e'
+        $taskId = 'rr6e-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr6e-result-probe-failure' -Mode 'verdict-yes'
+        $wrapper = script:Write-ResultProbeFailureWrapper -WrapperName 'rr6e-wrapper' -ReviewRunScript $script:RunScript -ProjectRoot $project -ReviewTaskId $taskId -ToolRoot $script:RepoRoot
+        $originalRunScript = $script:RunScript
+        try {
+            $script:RunScript = $wrapper
+            $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        }
+        finally {
+            $script:RunScript = $originalRunScript
+        }
+
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'review result unavailable'
+        $r.Output | Should -Match 'Could not inspect result path'
+        $r.Output | Should -Match 'synthetic result probe access denied'
+        $r.Output | Should -Match 'runner left the pass untouched'
+        $r.Output | Should -Match 'no reviewer verdict was issued'
+        $r.Output | Should -Not -Match '(?m)^verdict:'
+        $r.Output | Should -Not -Match 'review-run: PASS'
+        $r.Output | Should -Not -Match 'Reviewer run provenance'
+        $r.Output | Should -Not -Match 'CategoryInfo|FullyQualifiedErrorId'
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        Test-Path -LiteralPath $resultMd -PathType Leaf | Should -BeTrue
+        (Get-Content -LiteralPath $resultMd -Raw -Encoding UTF8) | Should -Match '(?m)^## Verdict\r?$'
         (Get-Content -LiteralPath $resultMd -Raw -Encoding UTF8) | Should -Not -Match '## Reviewer run provenance'
     }
 

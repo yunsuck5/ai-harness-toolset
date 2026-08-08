@@ -679,12 +679,25 @@ if ($codexResult.ExitCode -ne 0) {
     exit 1
 }
 
-if (-not (Test-Path -LiteralPath $resultMdPath -PathType Leaf)) {
+try {
+    $resultExists = Test-Path -LiteralPath $resultMdPath -PathType Leaf -ErrorAction Stop
+}
+catch {
+    Write-Host ('review-run: FAIL review result unavailable. Could not inspect result path {0}: {1}. The runner left the pass untouched; no reviewer verdict was issued. Restore result-path access before allocating a new pass-NN under the same ReviewTaskId/Perspective.' -f $resultMdPath, $_.Exception.Message)
+    exit 1
+}
+if (-not $resultExists) {
     Write-Host ('review-run: FAIL review result unavailable because result.md was not produced: {0}. No reviewer verdict was issued.' -f $resultMdPath)
     exit 1
 }
 
-$verdict = Get-VerdictFromResultMd -Path $resultMdPath
+try {
+    $verdict = Get-VerdictFromResultMd -Path $resultMdPath
+}
+catch {
+    Write-Host ('review-run: FAIL review result unavailable. Could not read or parse verdict from {0}: {1}. The runner left the pass untouched; no reviewer verdict was issued. Allocate a new pass-NN under the same ReviewTaskId/Perspective after fixing the reviewer output, prompt, or tooling.' -f $resultMdPath, $_.Exception.Message)
+    exit 1
+}
 if ([string]::IsNullOrEmpty($verdict)) {
     Write-Host ('review-run: FAIL review result unavailable. Could not parse verdict from {0}. The failed pass is preserved on disk; no reviewer verdict was issued. Allocate a new pass-NN under the same ReviewTaskId/Perspective after fixing the reviewer output, prompt, or tooling.' -f $resultMdPath)
     exit 1
