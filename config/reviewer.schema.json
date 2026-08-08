@@ -2,12 +2,14 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/yunsuck5/ai-harness-toolset/config/reviewer.schema.json",
   "title": "ai-harness-toolset reviewer config",
-  "description": "Schema and key reference for config/reviewer.json. The reviewer config file itself must stay pure JSON with no comments; this adjacent schema carries the per-key documentation. Only currently implemented runtime keys are described. Per-key resolution: 'model' is REQUIRED and has NO built-in fallback — review-run.ps1 and review-safety-negtest.ps1 fail-fast if it is absent or empty (a concrete model version is tied to an external lifecycle and must come from this source-of-truth; precedence: explicit -Model CLI parameter > matched categoryPolicy entry 'model' > this scalar value > fail-fast). 'reasoningEffort' is optional and resolves explicit -Effort CLI parameter > matched categoryPolicy entry 'reasoningEffort' > this scalar value > policy safe-default 'xhigh'. 'categoryPolicy' is an optional config-backed category->{model,reasoningEffort} lookup selected per-invocation by review-run.ps1 -EffortCategory (U9). NOTE: review-run.ps1 reads this config as plain JSON and does NOT validate it against this schema at runtime — the schema documents intent; runtime enforcement is the precedence/validation logic in review-run.ps1 (an out-of-enum reasoningEffort, scalar or category, fails fast there).",
+  "description": "Schema and key reference for config/reviewer.json. The reviewer config file itself must stay pure JSON with no comments; this adjacent schema carries the per-key documentation. Only currently implemented runtime keys are described. Per-key resolution: 'model' is REQUIRED and has NO built-in fallback — review-run.ps1 and review-safety-negtest.ps1 fail-fast if it is absent or empty (a concrete model version is tied to an external lifecycle and must come from this source-of-truth; precedence: explicit -Model CLI parameter > matched categoryPolicy entry 'model' > this scalar value > fail-fast). A model value is single-line; review-run.ps1 rejects CR/LF after resolution regardless of source before reviewer invocation. 'reasoningEffort' is optional and resolves explicit -Effort CLI parameter > matched categoryPolicy entry 'reasoningEffort' > this scalar value > policy safe-default 'xhigh'. 'categoryPolicy' is an optional config-backed category->{model,reasoningEffort} lookup selected per-invocation by review-run.ps1 -EffortCategory (U9). NOTE: review-run.ps1 reads this config as plain JSON and does NOT validate it against this schema at runtime — the schema documents intent; runtime enforcement is the precedence/validation logic in review-run.ps1 (an out-of-enum reasoningEffort, scalar or category, and a CR/LF-bearing resolved model fail fast there).",
   "type": "object",
   "properties": {
     "model": {
       "type": "string",
-      "description": "Reviewer model. REQUIRED. Read by review-run.ps1 (and review-safety-negtest.ps1) and passed to the Codex CLI as --model. Precedence: explicit -Model CLI parameter > matched categoryPolicy entry 'model' > this scalar value > fail-fast. There is NO built-in model default/fallback: a concrete model version is tied to an external lifecycle, so an absent/empty model fails fast rather than being masked by a hardcoded version. fallbackModel is not auto-used."
+      "minLength": 1,
+      "pattern": "^[^\\r\\n]+$",
+      "description": "Reviewer model. REQUIRED and single-line. Read by review-run.ps1 (and review-safety-negtest.ps1) and passed to the Codex CLI as --model. Precedence: explicit -Model CLI parameter > matched categoryPolicy entry 'model' > this scalar value > fail-fast. review-run.ps1 rejects CR/LF in the resolved value before reviewer invocation. There is NO built-in model default/fallback: a concrete model version is tied to an external lifecycle, so an absent/empty model fails fast rather than being masked by a hardcoded version. fallbackModel is not auto-used."
     },
     "reasoningEffort": {
       "type": "string",
@@ -44,7 +46,8 @@
         "model": {
           "type": "string",
           "minLength": 1,
-          "description": "Optional per-category reviewer model. When present and non-empty, review-run uses it (model-source: category) instead of the scalar 'model'. When absent, the scalar 'model' applies. A concrete model version is never hardcoded in a script — it lives here / in the scalar 'model'."
+          "pattern": "^[^\\r\\n]+$",
+          "description": "Optional single-line per-category reviewer model. When present and non-empty, review-run uses it (model-source: category) instead of the scalar 'model'. When absent, the scalar 'model' applies. review-run rejects CR/LF in the resolved value before reviewer invocation. A concrete model version is never hardcoded in a script — it lives here / in the scalar 'model'."
         },
         "reasoningEffort": {
           "type": "string",

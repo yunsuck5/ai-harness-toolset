@@ -255,5 +255,7 @@ Describe 'templates/review-input.md output contract regression' {
         $content | Should -Match 'result\.md'
         $content | Should -Match 'yes with risk'
         $content | Should -Match 'inline'
+        $content | Should -Match 'review-result unavailable'
+        $content | Should -Match '제조하지 말고'
     }
 }

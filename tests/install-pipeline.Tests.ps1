@@ -123,7 +123,7 @@ BeforeAll {
         $prevPref = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            $combined = & powershell.exe @procArgs 2>&1   # verify-ps1-allow: step-1-eap-continue-mitigated (intentional pre-Invoke-NativeProcess Step 1 pattern; synthesis report §10 excluded this site from Step D Invoke-NativeProcess migration)
+            $combined = & powershell.exe @procArgs 2>&1   # verify-ps1-allow: test-only-combined-child-output (EAP=Continue 아래 stdout/stderr를 assertion 진단용으로 결합하고 exit code를 별도 보존하며 structured-capture contract를 주장하지 않음)
             $exitCode = $LASTEXITCODE
         }
         finally {
@@ -686,7 +686,7 @@ Describe 'install-pipeline dry-run coverage extension' {
             & git add . 2>&1 | Out-Null
             & git commit -q -m 'seed' 2>&1 | Out-Null
             $script:DogHeadBefore = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse', 'HEAD')).Stdout.Trim()
-            $script:DogStatusBefore = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()   # verify-ps1-allow: step-e-out-of-scope-known (synthesis report §10 Step E migrated only the 4 git rev-parse Out-String lines; this git status capture pair was explicitly left for a future batch and not in this /goal's scope)
+            $script:DogStatusBefore = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()   # verify-ps1-allow: step-e-out-of-scope-known (classified retain: test-only clean-tree equality probe, no structured-capture claim)
         }
         finally { Pop-Location }
 
@@ -711,7 +711,7 @@ Describe 'install-pipeline dry-run coverage extension' {
         Push-Location $shared
         try {
             $headAfter   = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse', 'HEAD')).Stdout.Trim()
-            $statusAfter = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()   # verify-ps1-allow: step-e-out-of-scope-known (synthesis report §10 Step E migrated only the 4 git rev-parse Out-String lines; this git status capture pair was explicitly left for a future batch and not in this /goal's scope)
+            $statusAfter = ((& git status --porcelain=v1 2>&1) -join "`n").Trim()   # verify-ps1-allow: step-e-out-of-scope-known (classified retain: test-only clean-tree equality probe, no structured-capture claim)
         }
         finally { Pop-Location }
         $headAfter   | Should -Be $script:DogHeadBefore

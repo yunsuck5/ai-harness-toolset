@@ -98,7 +98,8 @@ BeforeAll {
             [string] $StubName,
             [string] $Mode = 'verdict-yes',
             [bool] $EmitEffortHeader = $true,
-            [bool] $EmitVersionHeader = $true
+            [bool] $EmitVersionHeader = $true,
+            [bool] $MakeResultReadOnly = $false
         )
         $stubDir = Join-Path $TestDrive 'pester-review-run-stubs'
         if (-not (Test-Path -LiteralPath $stubDir -PathType Container)) {
@@ -165,13 +166,18 @@ BeforeAll {
         if ($EmitVersionHeader) {
             $body += '[Console]::Error.WriteLine(''codex-cli 9.9.9-stub'')'
         }
-        # Capture the stdin payload review-run.ps1 pipes to Codex so tests can assert the
+        # Capture the stdin payload review-run.ps1 sends as raw bytes so tests can assert the
         # deterministic reviewer-mode preamble is injected ahead of the input.md content.
         $body += '$stdinText = [Console]::In.ReadToEnd()'
         $body += '[System.IO.File]::WriteAllText(($out + ''.stdin.txt''), $stdinText, $enc)'
 
         switch ($Mode) {
             'verdict-yes' {
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n`r`n## Blocking findings`r`n`r`nnone`r`n`r`n## Non-blocking concerns`r`n`r`nnone`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += 'exit 0'
+            }
+            'verdict-only' {
                 $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n"'
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
                 $body += 'exit 0'
@@ -182,15 +188,18 @@ BeforeAll {
                 # still satisfies review-verify -RequireResult (verdict shape + four H2s).
                 $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n`r`n## Blocking findings`r`n`r`nnone`r`n`r`n## Non-blocking concerns`r`n`r`nnone`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"'
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                if ($MakeResultReadOnly) {
+                    $body += 'Set-ItemProperty -LiteralPath $out -Name IsReadOnly -Value $true'
+                }
                 $body += 'exit 0'
             }
             'verdict-no' {
-                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nno`r`n"'
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nno`r`n`r`n## Blocking findings`r`n`r`nsynthetic blocker`r`n`r`n## Non-blocking concerns`r`n`r`nnone`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"'
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
                 $body += 'exit 0'
             }
             'verdict-yes-with-risk' {
-                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes with risk`r`n"'
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes with risk`r`n`r`n## Blocking findings`r`n`r`nnone`r`n`r`n## Non-blocking concerns`r`n`r`nsynthetic risk`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"'
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
                 $body += 'exit 0'
             }
@@ -198,6 +207,15 @@ BeforeAll {
                 $body += '$content = "# Review Result`r`n`r`nNo Verdict heading present.`r`n"'
                 $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
                 $body += 'exit 0'
+            }
+            'no-result' {
+                $body += 'exit 0'
+            }
+            'nonzero-with-verdict' {
+                $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n`r`n## Blocking findings`r`n`r`nnone`r`n`r`n## Non-blocking concerns`r`n`r`nnone`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"'
+                $body += '[System.IO.File]::WriteAllText($out, $content, $enc)'
+                $body += '[Console]::Error.WriteLine(''synthetic reviewer failure after result write'')'
+                $body += 'exit 73'
             }
             'verdict-maybe' {
                 $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nmaybe`r`n"'
@@ -314,6 +332,7 @@ BeforeAll {
             [string] $Effort,
             [string] $EffortCategory,
             [string] $ToolRoot,
+            [bool] $UseArgsFileStub = $true,
             # Strict C1: -Perspective is required; default 'local-correctness', -OmitPerspective
             # drops it (for the "without -Perspective fails" tests).
             [string] $Perspective = 'local-correctness',
@@ -346,7 +365,12 @@ BeforeAll {
         $previousStubFlag = $env:AI_HARNESS_CODEX_ARGS_FILE_STUB
         if (-not [string]::IsNullOrEmpty($StubPath)) {
             $env:AI_HARNESS_CODEX_COMMAND = $StubPath
-            $env:AI_HARNESS_CODEX_ARGS_FILE_STUB = '1'
+            if ($UseArgsFileStub) {
+                $env:AI_HARNESS_CODEX_ARGS_FILE_STUB = '1'
+            }
+            else {
+                $env:AI_HARNESS_CODEX_ARGS_FILE_STUB = $null
+            }
         }
         try {
             $proc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $procArgs
@@ -392,6 +416,54 @@ BeforeAll {
             Output   = $text
         }
     }
+
+    $script:NativeCodexCapturePath = Join-Path $TestDrive 'native-codex-capture.exe'
+    $nativeCaptureSource = @'
+using System;
+using System.IO;
+using System.Text;
+
+internal static class NativeCodexCapture
+{
+    private static int Main(string[] args)
+    {
+        string resultPath = null;
+        for (int i = 0; i + 1 < args.Length; i++)
+        {
+            if (String.Equals(args[i], "--output-last-message", StringComparison.Ordinal))
+            {
+                resultPath = args[i + 1];
+                break;
+            }
+        }
+        if (String.IsNullOrEmpty(resultPath))
+        {
+            Console.Error.WriteLine("capture: --output-last-message missing");
+            return 91;
+        }
+
+        byte[] input;
+        using (MemoryStream buffer = new MemoryStream())
+        {
+            Console.OpenStandardInput().CopyTo(buffer);
+            input = buffer.ToArray();
+        }
+        File.WriteAllBytes(resultPath + ".stdin.bin", input);
+        File.WriteAllLines(resultPath + ".argv.txt", args, new UTF8Encoding(false));
+        File.WriteAllText(resultPath,
+            "# Review Result\n\n## Verdict\n\nyes\n\n" +
+            "## Blocking findings\n\nnone\n\n" +
+            "## Non-blocking concerns\n\nnone\n\n" +
+            "## Review limitations\n\nnone\n\n" +
+            "## Assumptions relied on\n\nnone\n",
+            new UTF8Encoding(false));
+        Console.Error.WriteLine("codex-cli 9.9.9-native-capture");
+        Console.Error.WriteLine("reasoning effort: xhigh");
+        return 0;
+    }
+}
+'@
+    Add-Type -TypeDefinition $nativeCaptureSource -Language CSharp -OutputAssembly $script:NativeCodexCapturePath -OutputType ConsoleApplication
 }
 
 Describe 'review-run canonical pass directory' {
@@ -507,6 +579,64 @@ Describe 'review-run canonical pass directory' {
         Test-Path -LiteralPath (Join-Path $passDir 'result.json') -PathType Leaf    | Should -BeFalse
     }
 
+    It 'AC-RR6a: exit zero without result.md is review-result unavailable with no verdict or provenance' {
+        $project = script:New-RunCase -CaseName 'rr6a'
+        $taskId = 'rr6a-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr6a-no-result' -Mode 'no-result'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'review result unavailable'
+        $r.Output | Should -Match 'result\.md was not produced'
+        $r.Output | Should -Not -Match '(?m)^verdict:'
+        $r.Output | Should -Not -Match 'review-run: PASS'
+    }
+
+    It 'AC-RR6b: nonzero reviewer exit wins over a shape-valid file and emits no consumable verdict' {
+        $project = script:New-RunCase -CaseName 'rr6b'
+        $taskId = 'rr6b-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr6b-nonzero-result' -Mode 'nonzero-with-verdict'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'reviewer invocation unavailable'
+        $r.Output | Should -Match 'Codex CLI exit 73'
+        $r.Output | Should -Not -Match '(?m)^verdict:'
+        $r.Output | Should -Not -Match 'review-run: PASS'
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        Test-Path -LiteralPath $resultMd -PathType Leaf | Should -BeTrue
+        (Get-Content -LiteralPath $resultMd -Raw -Encoding UTF8) | Should -Not -Match '## Reviewer run provenance'
+    }
+
+    It 'AC-RR6c: a verdict-only body is result-unavailable and receives no PASS or provenance' {
+        $project = script:New-RunCase -CaseName 'rr6c'
+        $taskId = 'rr6c-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr6c-verdict-only' -Mode 'verdict-only'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'review result unavailable'
+        $r.Output | Should -Match 'review-verify exit'
+        $r.Output | Should -Not -Match '(?m)^verdict:'
+        $r.Output | Should -Not -Match 'review-run: PASS'
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        (Get-Content -LiteralPath $resultMd -Raw -Encoding UTF8) | Should -Not -Match '## Reviewer run provenance'
+    }
+
     It 'AC-RR7: corrective loop — pass-02 can run cleanly when pass-01 verdict was no' {
         $project = script:New-RunCase -CaseName 'rr7'
         $taskId  = 'rr7-task'
@@ -587,7 +717,7 @@ Describe 'review-run canonical pass directory' {
 
         $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $stdinCapture = $resultMd + '.stdin.txt'
-        Test-Path -LiteralPath $stdinCapture -PathType Leaf | Should -BeTrue -Because 'stub must have received piped stdin'
+        Test-Path -LiteralPath $stdinCapture -PathType Leaf | Should -BeTrue -Because 'stub must have received raw stdin'
 
         $enc = New-Object System.Text.UTF8Encoding($false)
         $stdin = [System.IO.File]::ReadAllText($stdinCapture, $enc)
@@ -598,7 +728,9 @@ Describe 'review-run canonical pass directory' {
         $stdin | Should -Match 'session-restore'
         $stdin | Should -Match 'Do NOT ask the user any question'
         $stdin | Should -Match '## Verdict'
-        # RV-B-05 V2 four required disclosure H2s must be named in the preamble so
+        $stdin | Should -Match 'do NOT manufacture a verdict'
+        $stdin | Should -Not -Match 'return "no" or "yes with risk"'
+        # The four required disclosure H2s must be named in the preamble so
         # the reviewer produces them; without this the post-Codex review-verify
         # -RequireResult rejects any result.md missing one.
         $stdin | Should -Match '## Blocking findings'
@@ -616,7 +748,7 @@ Describe 'review-run canonical pass directory' {
         ($stdin.IndexOf('## Non-blocking concerns')) | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Review limitations'))    | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Assumptions relied on')) | Should -BeLessThan $beginMarker
-        # RV-B-05 Batch II (light P3 wording) + Stage 4-R1 (Counter-argument
+        # Counter-argument runtime-alignment disclosure and the required H2
         # runtime alignment): the preamble must instruct the reviewer to
         # articulate the strongest case AGAINST its own conclusion in
         # ## Counter-argument (the dedicated pressure-test surface; spec-of-record:
@@ -638,6 +770,134 @@ Describe 'review-run canonical pass directory' {
         # input.md on disk is unchanged by the injection (canonical artifact preserved).
         $onDisk = [System.IO.File]::ReadAllText($inputPath, $enc)
         $onDisk | Should -Not -Match 'CODEX REVIEWER MODE'
+    }
+
+    It 'AC-RR11a: native launch sends UTF-8 Korean and the caller payload tail without added CRLF' {
+        $project = script:New-RunCase -CaseName 'rr11a'
+        $taskId = 'rr11a-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        $sentinel = '한글_輸入_무결성_ASCII_SENTINEL_0123456789'
+        $inputText = (script:Build-FilledInput).TrimEnd("`r", "`n") + "`n" + $sentinel
+        script:Write-Utf8NoBomFile -Path $inputPath -Content $inputText
+
+        $r = script:Invoke-ReviewRun `
+            -ProjectRoot $project `
+            -ReviewTaskId $taskId `
+            -Pass 'pass-01' `
+            -StubPath $script:NativeCodexCapturePath `
+            -UseArgsFileStub $false
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        $raw = [System.IO.File]::ReadAllBytes($resultMd + '.stdin.bin')
+        $strictUtf8 = New-Object System.Text.UTF8Encoding($false, $true)
+        $decoded = $strictUtf8.GetString($raw)
+        ($raw.Length -ge 3 -and $raw[0] -eq 0xEF -and $raw[1] -eq 0xBB -and $raw[2] -eq 0xBF) | Should -BeFalse
+        [System.BitConverter]::ToString($strictUtf8.GetBytes($decoded)) | Should -Be ([System.BitConverter]::ToString($raw))
+        $decoded.EndsWith($sentinel, [System.StringComparison]::Ordinal) | Should -BeTrue
+        $decoded | Should -Match 'CODEX REVIEWER MODE'
+        $decoded | Should -Match '한글_輸入_무결성'
+    }
+
+    It 'AC-RR11b: standard npm codex.ps1 layout bypasses the script shim and invokes adjacent node.exe directly' {
+        $project = script:New-RunCase -CaseName 'rr11b'
+        $taskId = 'rr11b-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Write-Utf8NoBomFile -Path $inputPath -Content ((script:Build-FilledInput) + "`n한국어 리뷰 입력.")
+
+        $shimRoot = Join-Path $TestDrive 'npm-shim-adjacent'
+        $codexJs = Join-Path $shimRoot 'node_modules/@openai/codex/bin/codex.js'
+        script:Write-Utf8NoBomFile -Path (Join-Path $shimRoot 'codex.ps1') -Content 'throw ''shim must not execute'''
+        script:Write-Utf8NoBomFile -Path $codexJs -Content '// controlled argv marker only'
+        Copy-Item -LiteralPath $script:NativeCodexCapturePath -Destination (Join-Path $shimRoot 'node.exe') -Force
+
+        $r = script:Invoke-ReviewRun `
+            -ProjectRoot $project `
+            -ReviewTaskId $taskId `
+            -Pass 'pass-01' `
+            -StubPath (Join-Path $shimRoot 'codex.ps1') `
+            -UseArgsFileStub $false
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        $argv = [System.IO.File]::ReadAllLines($resultMd + '.argv.txt', (New-Object System.Text.UTF8Encoding($false)))
+        $stdin = [System.IO.File]::ReadAllBytes($resultMd + '.stdin.bin')
+        $decodedStdin = (New-Object System.Text.UTF8Encoding($false, $true)).GetString($stdin)
+        $argv[0] | Should -Be ([System.IO.Path]::GetFullPath($codexJs))
+        $argv | Should -Contain '--output-last-message'
+        $sandboxIndex = [array]::IndexOf($argv, '--sandbox')
+        $approvalIndex = [array]::IndexOf($argv, '--ask-for-approval')
+        $sandboxIndex | Should -BeGreaterThan -1
+        $approvalIndex | Should -BeGreaterThan -1
+        $argv[$sandboxIndex + 1] | Should -Be 'read-only'
+        $argv[$approvalIndex + 1] | Should -Be 'never'
+        $argv | Should -Contain '--ignore-user-config'
+        $argv | Should -Contain 'web_search=disabled'
+        $decodedStdin | Should -Match 'CODEX REVIEWER MODE'
+        $decodedStdin | Should -Match '리뷰'
+    }
+
+    It 'AC-RR11c: a non-npm PowerShell launcher fails before reviewer execution instead of falling back to a text pipeline' {
+        $project = script:New-RunCase -CaseName 'rr11c'
+        $taskId = 'rr11c-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+        $unsupported = Join-Path $TestDrive 'unsupported-reviewer.ps1'
+        script:Write-Utf8NoBomFile -Path $unsupported -Content 'throw ''must not execute'''
+
+        $r = script:Invoke-ReviewRun `
+            -ProjectRoot $project `
+            -ReviewTaskId $taskId `
+            -Pass 'pass-01' `
+            -StubPath $unsupported `
+            -UseArgsFileStub $false
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'reviewer invocation unavailable'
+        $r.Output | Should -Match 'Unsupported Codex script launcher for byte-faithful stdin'
+        $r.Output | Should -Not -Match 'must not execute'
+    }
+
+    It 'AC-RR11d: standard npm layout falls back to PATH node.exe when no adjacent node exists' {
+        $project = script:New-RunCase -CaseName 'rr11d'
+        $taskId = 'rr11d-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $shimRoot = Join-Path $TestDrive 'npm-shim-path-node'
+        $nodeRoot = Join-Path $TestDrive 'path-node-bin'
+        $codexJs = Join-Path $shimRoot 'node_modules/@openai/codex/bin/codex.js'
+        script:Write-Utf8NoBomFile -Path (Join-Path $shimRoot 'codex.ps1') -Content 'throw ''shim must not execute'''
+        script:Write-Utf8NoBomFile -Path $codexJs -Content '// controlled argv marker only'
+        $null = New-Item -ItemType Directory -Path $nodeRoot -Force
+        Copy-Item -LiteralPath $script:NativeCodexCapturePath -Destination (Join-Path $nodeRoot 'node.exe') -Force
+
+        $previousPath = $env:PATH
+        try {
+            $env:PATH = $nodeRoot + [System.IO.Path]::PathSeparator + $previousPath
+            $r = script:Invoke-ReviewRun `
+                -ProjectRoot $project `
+                -ReviewTaskId $taskId `
+                -Pass 'pass-01' `
+                -StubPath (Join-Path $shimRoot 'codex.ps1') `
+                -UseArgsFileStub $false
+        }
+        finally {
+            $env:PATH = $previousPath
+        }
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        $argv = [System.IO.File]::ReadAllLines($resultMd + '.argv.txt', (New-Object System.Text.UTF8Encoding($false)))
+        $argv[0] | Should -Be ([System.IO.Path]::GetFullPath($codexJs))
     }
 
     It 'AC-RR9: invalid -Pass (not pass-NN) is rejected before any Codex invocation' {
@@ -836,7 +1096,7 @@ Describe 'review-run canonical pass directory' {
         $argv | Should -Not -Match ([regex]::Escape([string]$cfgModel))
     }
 
-    It 'AC-RR21: config-resolved model emits model: <value> and model-source: config (Batch D2)' {
+    It 'AC-RR21: config-resolved model emits the resolved model value and model-source: config (Batch D2)' {
         # Batch D2 run-fact expansion: with no -Model, review-run resolves config/reviewer.json
         # and emits both the resolved model value and model-source: config. The model value is
         # read dynamically from config (no concrete version hardcoded in this test or the runner).
@@ -1022,6 +1282,58 @@ Describe 'review-run canonical pass directory' {
         $v.Output | Should -Match 'disclosure sections present'
     }
 
+    It 'AC-RR27a: provenance append failure preserves the reviewer candidate and reports the persistence miss' {
+        $project = script:New-RunCase -CaseName 'rr27a'
+        $taskId  = 'rr27a-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $stub = script:Write-CodexStub -StubName 'rr27a-readonly' -Mode 'verdict-yes-full' -MakeResultReadOnly $true
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        $expected = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n`r`n## Blocking findings`r`n`r`nnone`r`n`r`n## Non-blocking concerns`r`n`r`nnone`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"
+        $enc = New-Object System.Text.UTF8Encoding($false)
+
+        try {
+            $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+            $r.ExitCode | Should -Be 0 -Because $r.Output
+            $r.Output | Should -Match '(?m)^review-run: PASS$'
+            $r.Output | Should -Match '(?m)^verdict: yes$'
+            (@($r.Output -split "`r?`n" | Where-Object { $_ -like 'provenance-persisted:*' })).Count | Should -Be 1
+            $r.Output | Should -Match '(?m)^provenance-persisted: FAILED -- .+$'
+            $r.Output | Should -Not -Match '(?m)^provenance-persisted: log/'
+
+            $expectedBytes = $enc.GetBytes($expected)
+            $actualBytes = [System.IO.File]::ReadAllBytes($resultMd)
+            [Convert]::ToBase64String($actualBytes) | Should -Be ([Convert]::ToBase64String($expectedBytes))
+            ([System.IO.File]::ReadAllText($resultMd, $enc)) | Should -Not -Match '(?m)^## Reviewer run provenance$'
+
+            $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+            $v.ExitCode | Should -Be 0 -Because $v.Output
+            $v.Output | Should -Match 'result\.md verdict shape valid \(verdict=yes\)'
+
+            # A read-only failure proves the runtime failure contract, while this function-local
+            # structure guard prevents a regression to read-then-rewrite of the candidate body.
+            $tokens = $null; $parseErrors = $null
+            $ast = [System.Management.Automation.Language.Parser]::ParseFile($script:RunScript, [ref]$tokens, [ref]$parseErrors)
+            @($parseErrors).Count | Should -Be 0
+            $provenanceFunction = @($ast.FindAll({
+                        param($node)
+                        $node -is [System.Management.Automation.Language.FunctionDefinitionAst] -and
+                        $node.Name -ceq 'Add-ReviewerProvenanceBlock'
+                    }, $true))
+            $provenanceFunction.Count | Should -Be 1
+            $provenanceFunction[0].Extent.Text | Should -Match '\[System\.IO\.File\]::AppendAllText'
+            $provenanceFunction[0].Extent.Text | Should -Not -Match '\[System\.IO\.File\]::WriteAllText'
+        }
+        finally {
+            if (Test-Path -LiteralPath $resultMd -PathType Leaf) {
+                Set-ItemProperty -LiteralPath $resultMd -Name IsReadOnly -Value $false
+            }
+        }
+    }
+
     It 'AC-RR28: P3 — not-observed version is persisted in the provenance block (no silent success)' {
         # Honesty path persisted: with no version banner, the block records reviewer-version:
         # not-observed (not a fabricated or hardcoded value), and review-verify still passes.
@@ -1121,6 +1433,99 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match '(?m)^requested-effort: xhigh$'
         $r.Output | Should -Match '(?m)^effort-source: config$'
         $r.Output | Should -Match '(?m)^model-source: config$'
+    }
+
+    It 'AC-RR31a: CR or LF in -EffortCategory fails before reviewer invocation and cannot inject result headings' {
+        $cases = @(
+            [pscustomobject]@{ Name = 'lf';   Value = "no-such-category`n## Verdict" },
+            [pscustomobject]@{ Name = 'crlf'; Value = "no-such-category`r`n## Blocking findings" },
+            [pscustomobject]@{ Name = 'cr';   Value = "no-such-category`r## Verdict" }
+        )
+
+        foreach ($case in $cases) {
+            $project = script:New-RunCase -CaseName ('rr31a-' + $case.Name)
+            $taskId = 'rr31a-' + $case.Name + '-task'
+            $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+            $prep.ExitCode | Should -Be 0 -Because $prep.Output
+            $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+            script:Set-InputFilled -InputPath $inputPath
+
+            $stub = script:Write-CodexStub -StubName ('rr31a-' + $case.Name) -Mode 'verdict-yes-full'
+            $r = script:Invoke-ReviewRun `
+                -ProjectRoot $project `
+                -ReviewTaskId $taskId `
+                -Pass 'pass-01' `
+                -StubPath $stub `
+                -EffortCategory $case.Value
+
+            $r.ExitCode | Should -Not -Be 0
+            $r.Output | Should -Match 'EffortCategory must be a single-line value; CR/LF is not allowed'
+            $r.Output | Should -Not -Match 'review-run: PASS'
+            $r.Output | Should -Not -Match '(?m)^verdict:'
+            $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+            Test-Path -LiteralPath $resultMd -PathType Leaf | Should -BeFalse
+        }
+    }
+
+    It 'AC-RR31b: CR or LF in a resolved explicit, category, or config model fails before reviewer invocation' {
+        $cases = @(
+            [pscustomobject]@{ Name = 'explicit-lf'; Source = 'explicit'; Value = "fixture-model`n## Verdict"; InjectedLine = '## Verdict' },
+            [pscustomobject]@{ Name = 'category-crlf'; Source = 'category'; Value = "fixture-model`r`n## Blocking findings"; InjectedLine = '## Blocking findings' },
+            [pscustomobject]@{ Name = 'config-cr'; Source = 'config'; Value = "fixture-model`r## Verdict"; InjectedLine = '## Verdict' }
+        )
+
+        foreach ($case in $cases) {
+            $project = script:New-RunCase -CaseName ('rr31b-' + $case.Name)
+            $taskId = 'rr31b-' + $case.Name + '-task'
+            $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+            $prep.ExitCode | Should -Be 0 -Because $prep.Output
+            $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+            script:Set-InputFilled -InputPath $inputPath
+
+            $stub = script:Write-CodexStub -StubName ('rr31b-' + $case.Name) -Mode 'verdict-yes-full'
+            $invokeArgs = @{
+                ProjectRoot = $project
+                ReviewTaskId = $taskId
+                Pass = 'pass-01'
+                StubPath = $stub
+            }
+
+            if ($case.Source -eq 'explicit') {
+                $invokeArgs.Model = $case.Value
+            }
+            else {
+                $toolRoot = script:New-CategoryToolRoot -CaseName ('rr31b-' + $case.Name)
+                $configPath = Join-Path $toolRoot 'config/reviewer.json'
+                $enc = New-Object System.Text.UTF8Encoding($false)
+                $cfg = ([System.IO.File]::ReadAllText($configPath, $enc) | ConvertFrom-Json)
+                if ($case.Source -eq 'category') {
+                    $cfg.categoryPolicy.'simple-local'.model = $case.Value
+                    $invokeArgs.EffortCategory = 'simple-local'
+                }
+                else {
+                    $cfg.model = $case.Value
+                }
+                $json = (($cfg | ConvertTo-Json -Depth 8) -replace "`r`n", "`n").TrimEnd("`n") + "`n"
+                [System.IO.File]::WriteAllText($configPath, $json, $enc)
+                $invokeArgs.ToolRoot = $toolRoot
+            }
+
+            $r = script:Invoke-ReviewRun @invokeArgs
+            $r.ExitCode | Should -Not -Be 0
+            $r.Output | Should -Match 'resolved reviewer model must be a single-line value; CR/LF is not allowed'
+            $r.Output | Should -Match ('\(source: ' + [regex]::Escape($case.Source) + '\)')
+            $r.Output | Should -Not -Match 'review-run: PASS'
+            $r.Output | Should -Not -Match '(?m)^verdict:'
+            $r.Output | Should -Not -Match '(?m)^model:'
+            $r.Output | Should -Not -Match '(?m)^model-source:'
+            $r.Output | Should -Not -Match '(?m)^provenance-persisted:'
+            @($r.Output -split "`r`n|`r|`n") | Should -Not -Contain $case.InjectedLine
+
+            $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+            Test-Path -LiteralPath $resultMd -PathType Leaf | Should -BeFalse
+            Test-Path -LiteralPath ($resultMd + '.argv.txt') -PathType Leaf | Should -BeFalse
+            Test-Path -LiteralPath ($resultMd + '.stdin.txt') -PathType Leaf | Should -BeFalse
+        }
     }
 
     It 'AC-RR32: explicit -Effort wins over a matched -EffortCategory (per-axis precedence; U9)' {

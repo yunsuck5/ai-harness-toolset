@@ -84,13 +84,13 @@
 - reviewer가 실제로 읽어야 할 파일과 경로
 - reviewer가 답해야 할 중립적 질문
 - reviewer가 하면 안 되는 일 (제약)
-- `yes / no / yes with risk` 중 하나를 요구하는 최종 verdict 지시
+- 판단 가능한 경우 `yes / no / yes with risk` 중 하나를 요구하고, 판단 자체가 불가능하면 verdict를 만들지 않도록 하는 최종 지시
 
 좋은 입력은 검증 근거를 과장하지 않고, 이미 알고 있는 제한과 위험을 숨기지 않습니다.
 
 ### result.md (reviewer + runner)
 
-`result.md`는 두 부분으로 이루어집니다. verdict와 finding 본문은 reviewer가 작성하고, 실행 사실(provenance) 블록은 runner가 끝에 덧붙입니다.
+기계적으로 완전한 candidate `result.md`는 두 부분으로 이루어집니다. verdict와 finding 본문은 reviewer가 작성하고, 실행 사실(provenance) 블록은 runner가 complete shape 확인 뒤 끝에 덧붙입니다. reviewer 실행이 실패했거나 결과가 없거나 required shape를 만들지 못했다면 그 pass는 **invocation/result unavailable** 실패로 남고, provenance와 H1 verdict token을 만들어 채우지 않습니다. shape를 통과했더라도 본문이 내부적으로 모순되면 operator가 review result unavailable로 판정하며, 이때 provenance는 실행 기록으로 남지만 candidate token은 최종 reviewer verdict로 소비하지 않습니다.
 
 결과를 읽을 때는 verdict 한 줄만 보지 말고, 함께 기록되는 disclosure 섹션을 같이 읽어야 합니다.
 
@@ -103,7 +103,7 @@
 
 ## 7. verdict의 의미
 
-verdict는 정확히 세 값만 사용합니다.
+사용 가능한 reviewer judgment의 verdict는 정확히 세 값만 사용합니다.
 
 ```text
 yes
@@ -116,6 +116,8 @@ yes with risk
 - **yes with risk** — blocking finding은 없지만 명시된 위험이 있다는 뜻입니다. **`yes`의 동의어가 아닙니다.** 사람이 그 위험을 이해하고 수용하거나, 위험을 줄이는 추가 수정·재리뷰가 필요합니다.
 
 어떤 verdict도 commit / push / publish / release를 자동으로 승인하지 않습니다. 다음 단계는 항상 사용자가 별도로 결정합니다.
+
+세 값은 실패 상태 이름이 아닙니다. evidence 부족 때문에 blocker 존재 여부 자체를 판단할 수 없거나 결과 파일이 없거나 깨졌다면 verdict는 0개이며, `N/A — no usable reviewer judgment issued`로 보고합니다. 이는 네 번째 verdict가 아니며 `no`나 `yes with risk`로 억지 변환하지 않습니다.
 
 ## 8. local-correctness와 system-coherence
 
@@ -209,7 +211,7 @@ AI agent는 리뷰 시스템을 단순 실행기로 쓰면 안 됩니다. agent�
 - 리뷰 기록은 `log/review/<task>/<perspective>/pass-NN/`에 남는 runtime artifact다.
 - `local-correctness`는 변경 자체의 정확성을, `system-coherence`는 전체 구조 정합성을 본다.
 - `pass-NN`은 리뷰 종류가 아니라 수정 후 재검토 횟수다.
-- verdict는 `yes`, `no`, `yes with risk` 세 개뿐이다.
+- 사용 가능한 judgment의 verdict는 `yes`, `no`, `yes with risk` 세 개뿐이고, invocation/result unavailable에는 verdict가 없다.
 - `yes with risk`는 `yes`가 아니며 위험 수용이 필요하다.
 - verdict는 commit/push/publish/release 승인이 아니다.
 - 결과는 verdict 한 줄이 아니라 disclosure 섹션까지 함께 읽는다.

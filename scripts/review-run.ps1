@@ -39,10 +39,17 @@ if ([string]::IsNullOrEmpty($Perspective)) {
     Write-Host 'review-run: FAIL -Perspective is required. The canonical review artifact layout is log/review/<review-task-id>/<perspective>/pass-NN/; there is no two-level fallback. Pass the same -Perspective used at review-prepare.'
     exit 1
 }
+if ((-not [string]::IsNullOrEmpty($EffortCategory)) -and
+    ($EffortCategory.IndexOf("`r", [System.StringComparison]::Ordinal) -ge 0 -or
+     $EffortCategory.IndexOf("`n", [System.StringComparison]::Ordinal) -ge 0)) {
+    Write-Host 'review-run: FAIL -EffortCategory must be a single-line value; CR/LF is not allowed.'
+    exit 1
+}
 
 . (Join-Path $PSScriptRoot 'lib/encoding.ps1')
 . (Join-Path $PSScriptRoot 'lib/path.ps1')
 . (Join-Path $PSScriptRoot 'lib/json.ps1')
+. (Join-Path $PSScriptRoot 'lib/native-process.ps1')
 . (Join-Path $PSScriptRoot 'lib/resolve-script.ps1')
 
 function Get-CodexAdapterVersion {
@@ -71,6 +78,66 @@ function Get-CodexAdapterVersion {
     return ''
 }
 
+function Resolve-CodexNativeLaunch {
+    # Codex adapter-local launcher resolution. Windows PowerShell resolves the npm
+    # global command to codex.ps1, whose pipeline-input branch re-encodes text under
+    # Windows PowerShell 5.1. Resolve that standard npm shim to the node entrypoint
+    # it wraps so Invoke-NativeProcess can own raw stdin bytes end to end.
+    param([string] $Command)
+
+    $resolved = Get-Command -Name $Command -ErrorAction Stop | Select-Object -First 1
+    $path = [string] $resolved.Path
+    if ([string]::IsNullOrEmpty($path)) {
+        $path = [string] $resolved.Source
+    }
+    if ([string]::IsNullOrEmpty($path)) {
+        throw ('Codex command could not be resolved to a filesystem path: {0}' -f $Command)
+    }
+    $path = [System.IO.Path]::GetFullPath($path)
+    $extension = [System.IO.Path]::GetExtension($path).ToLowerInvariant()
+
+    if ($extension -eq '.exe' -or $extension -eq '.com') {
+        return [pscustomobject]@{
+            Executable      = $path
+            PrefixArguments = @()
+            Source          = 'native'
+        }
+    }
+
+    if ($extension -eq '.ps1' -or $extension -eq '.cmd') {
+        $baseName = [System.IO.Path]::GetFileNameWithoutExtension($path)
+        $shimDir = [System.IO.Path]::GetDirectoryName($path)
+        $codexJs = Join-Path $shimDir 'node_modules/@openai/codex/bin/codex.js'
+        if ($baseName -ine 'codex' -or -not (Test-Path -LiteralPath $codexJs -PathType Leaf)) {
+            throw ('Unsupported Codex script launcher for byte-faithful stdin: {0}. Expected the standard npm codex.ps1/codex.cmd layout.' -f $path)
+        }
+
+        $adjacentNode = Join-Path $shimDir 'node.exe'
+        if (Test-Path -LiteralPath $adjacentNode -PathType Leaf) {
+            $nodePath = [System.IO.Path]::GetFullPath($adjacentNode)
+        }
+        else {
+            $nodeCommand = Get-Command -Name 'node.exe' -CommandType Application -ErrorAction Stop | Select-Object -First 1
+            $nodePath = [string] $nodeCommand.Path
+            if ([string]::IsNullOrEmpty($nodePath)) {
+                $nodePath = [string] $nodeCommand.Source
+            }
+            if ([string]::IsNullOrEmpty($nodePath)) {
+                throw 'node.exe could not be resolved for the standard npm Codex launcher.'
+            }
+            $nodePath = [System.IO.Path]::GetFullPath($nodePath)
+        }
+
+        return [pscustomobject]@{
+            Executable      = $nodePath
+            PrefixArguments = @([System.IO.Path]::GetFullPath($codexJs))
+            Source          = 'npm-node-entrypoint'
+        }
+    }
+
+    throw ('Unsupported Codex command type for byte-faithful stdin: {0}' -f $path)
+}
+
 function Invoke-CodexExec {
     param(
         [string] $InputPath,
@@ -90,7 +157,7 @@ function Invoke-CodexExec {
     # instead of a canonical verdict, which then fails verdict parsing. This preamble
     # declares reviewer mode in-band so the review-result contract takes precedence over
     # any restore/session protocol — for ALL installed/global review usage, not one task.
-    # It is prepended only to the piped stdin; input.md on disk is unchanged (canonical
+    # It is prepended only to the raw-byte stdin payload; input.md on disk is unchanged (canonical
     # artifact + write-once preserved; review-input-verify still validates the real file).
     $reviewerPreamble = @'
 ===== AI-HARNESS-TOOLSET CODEX REVIEWER MODE (do not deviate) =====
@@ -101,14 +168,16 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
 - Do NOT look for, read, or require <ProjectRoot>/log/brief/BRIEF.md or any Brief. Its absence is irrelevant in reviewer mode and is NOT a reason to pause.
 - Do NOT perform any operator-side Brief restore, session restore, continuation, or session-recovery protocol, and do NOT proactively offer to restore from a Brief.
 - Do NOT ask the user any question, and do NOT request clarification. There is no interactive user in this run.
-- ALWAYS produce a canonical review result as your final message: exactly one top-level "## Verdict" heading whose first non-empty following line is EXACTLY one of: yes | no | yes with risk. You may also add "## Findings", "## Risks", "## Counter-argument", "## Notes".
-- ALWAYS include each of these four H2 disclosure headings exactly once in result.md, case-sensitive (parser-required by review-verify -RequireResult since RV-B-05 V2): "## Blocking findings", "## Non-blocking concerns", "## Review limitations", "## Assumptions relied on". If a section has no substance, set its body to the single word "none".
+- When you can issue a usable reviewer judgment, produce a canonical review result as your final message: exactly one top-level "## Verdict" heading whose first non-empty following line is EXACTLY one of: yes | no | yes with risk. You may also add "## Findings", "## Risks", "## Counter-argument", "## Notes".
+- For a usable judgment, ALWAYS include each of these four H2 disclosure headings exactly once in result.md, case-sensitive (parser-required by review-verify -RequireResult): "## Blocking findings", "## Non-blocking concerns", "## Review limitations", "## Assumptions relied on". If a section has no substance, set its body to the single word "none".
 - Before issuing the final verdict, articulate the strongest case AGAINST your own conclusion in "## Counter-argument" (especially when the verdict is "yes" or "yes with risk") — this is the dedicated pressure-test surface for the verdict. If no material counter-argument exists after deliberate pressure-test, use a short literal such as "none" or "no material counter-argument identified" — avoid ceremonial boilerplate. "## Counter-argument" is optional and strongly-recommended (NOT parser-required); "## Notes" remains available for general observations, framing self-audit, evidence pointers, or other reviewer narrative.
-- If the input is insufficient to approve, do NOT ask — return "no" or "yes with risk" and record the missing evidence under "## Findings" / "## Risks".
-- Writing a question, an operator-side Brief / session-restore or continuation message, or any final message without a canonical "## Verdict" heading is a review FAILURE.
+- If the evidence identifies a concrete blocker or bounded risk, issue the corresponding verdict and disclose it. If the available input is too incomplete to determine whether a blocker exists, do NOT manufacture a verdict: return a concise failure explanation without a "## Verdict" heading so the runner preserves the pass as review-result unavailable.
+- Writing a question or an operator-side Brief / session-restore or continuation message is a review FAILURE. A final message without a canonical "## Verdict" heading is intentionally unusable as a reviewer judgment and the runner must fail the pass without manufacturing a source verdict.
 ===== BEGIN REVIEW INPUT (input.md) =====
 '@
     $payload = $reviewerPreamble + "`n" + $content
+    $strictUtf8 = New-Object System.Text.UTF8Encoding($false, $true)
+    $payloadBytes = $strictUtf8.GetBytes($payload)
 
     $codexCmd = $env:AI_HARNESS_CODEX_COMMAND
     if ([string]::IsNullOrEmpty($codexCmd)) {
@@ -163,73 +232,52 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
     }
     $reviewerSafePosture = ($postureParts -join ' ')
 
-    $stderrTemp = [System.IO.Path]::GetTempFileName()
     $appliedEffort = ''
     $reviewerVersion = ''
-    $prevPref = $ErrorActionPreference
-    # Native stderr must be captured to a file (not merged) so the Codex exec
-    # header line "reasoning effort: <value>" can be read back as the applied-effort
-    # run-fact. Under file-level $ErrorActionPreference = 'Stop', capturing native
-    # stderr promotes the first stderr line to a terminating NativeCommandError
-    # before $LASTEXITCODE can be read (rules/powershell-and-file-encoding.md), so the
-    # capture is wrapped in EAP=Continue save/restore.
-    $ErrorActionPreference = 'Continue'
-    try {
-        # Stub-args-file protocol is Pester-only opt-in; selecting it by .ps1 suffix would misclassify the npm Windows codex.ps1 shim, which is a real CLI and must take the stdin-pipe branch.
-        if ($env:AI_HARNESS_CODEX_ARGS_FILE_STUB -eq '1') {
-            $argsTempPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), ('codex-stub-argv-' + [guid]::NewGuid().ToString('N') + '.json'))
-            $argsObj = [ordered]@{ argv = $codexArgs }
-            $argsJson = ($argsObj | ConvertTo-Json -Depth 8) -replace "`r`n", "`n"
-            $stubEnc = New-Object System.Text.UTF8Encoding($false)
-            [System.IO.File]::WriteAllText($argsTempPath, $argsJson, $stubEnc)
+    # Stub-args-file is a Pester-only adapter. It still receives the exact same raw
+    # payload bytes as the production path; only argv transport differs for test control.
+    if ($env:AI_HARNESS_CODEX_ARGS_FILE_STUB -eq '1') {
+        $argsTempPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), ('codex-stub-argv-' + [guid]::NewGuid().ToString('N') + '.json'))
+        $argsObj = [ordered]@{ argv = $codexArgs }
+        $argsJson = ($argsObj | ConvertTo-Json -Depth 8) -replace "`r`n", "`n"
+        $stubEnc = New-Object System.Text.UTF8Encoding($false)
+        [System.IO.File]::WriteAllText($argsTempPath, $argsJson, $stubEnc)
 
-            try {
-                $stubArgs = @(
-                    '-NoProfile', '-ExecutionPolicy', 'Bypass',
-                    '-File', $codexCmd,
-                    '-CodexArgsFile', $argsTempPath
-                )
-                # Pipe the same reviewer-mode payload the real CLI receives, so the stub can
-                # assert the reviewer-mode preamble is present on stdin (regression coverage).
-                $null = $payload | & powershell.exe @stubArgs 2> $stderrTemp
-                $code = $LASTEXITCODE
-            }
-            finally {
-                if (Test-Path -LiteralPath $argsTempPath) {
-                    Remove-Item -LiteralPath $argsTempPath -Force -ErrorAction SilentlyContinue
-                }
+        try {
+            $stubArgs = @(
+                '-NoProfile', '-ExecutionPolicy', 'Bypass',
+                '-File', $codexCmd,
+                '-CodexArgsFile', $argsTempPath
+            )
+            $processResult = Invoke-NativeProcess `
+                -Executable 'powershell.exe' `
+                -Arguments $stubArgs `
+                -StandardInputBytes $payloadBytes
+        }
+        finally {
+            if (Test-Path -LiteralPath $argsTempPath) {
+                Remove-Item -LiteralPath $argsTempPath -Force -ErrorAction SilentlyContinue
             }
         }
-        else {
-            $null = $payload | & $codexCmd @codexArgs 2> $stderrTemp
-            $code = $LASTEXITCODE
-        }
     }
-    finally {
-        $ErrorActionPreference = $prevPref
+    else {
+        $launch = Resolve-CodexNativeLaunch -Command $codexCmd
+        $processResult = Invoke-NativeProcess `
+            -Executable $launch.Executable `
+            -Arguments (@($launch.PrefixArguments) + $codexArgs) `
+            -StandardInputBytes $payloadBytes
     }
 
-    # Read the captured native stderr back and extract the applied reasoning-effort
-    # run-fact. PowerShell wraps native stderr lines as NativeCommandError records
-    # ("<exe> : <line>") when redirected with 2>, so the match is intentionally not
-    # line-anchored and is restricted to the known effort value set; this finds the
-    # Codex exec header "reasoning effort: <value>" whether or not it carries the
-    # PowerShell error-record prefix. Absence is surfaced by the caller as an
-    # unobserved run-fact, never as a silent success. On a non-zero exit the captured
-    # stderr is echoed for diagnosis; on success it is not, to keep run output clean.
-    if (Test-Path -LiteralPath $stderrTemp) {
-        $errEnc = New-Object System.Text.UTF8Encoding($false)
-        $errText = [System.IO.File]::ReadAllText($stderrTemp, $errEnc)
-        if ($errText -match 'reasoning effort:\s*(none|minimal|low|medium|high|xhigh)\b') {
-            $appliedEffort = $matches[1]
-        }
-        # Adapter version run-fact (P2): runtime-observed from the same reviewer run banner.
-        # Isolated behind the codex adapter reader; absence -> '' (caller reports not-observed).
-        $reviewerVersion = Get-CodexAdapterVersion -StderrText $errText
-        if ($code -ne 0 -and -not [string]::IsNullOrEmpty($errText)) {
-            [Console]::Error.Write($errText)
-        }
-        Remove-Item -LiteralPath $stderrTemp -Force -ErrorAction SilentlyContinue
+    $code = $processResult.ExitCode
+    $errText = $processResult.Stderr
+    if ($errText -match 'reasoning effort:\s*(none|minimal|low|medium|high|xhigh)\b') {
+        $appliedEffort = $matches[1]
+    }
+    # Adapter version run-fact (P2): runtime-observed from the same reviewer run banner.
+    # Isolated behind the codex adapter reader; absence -> '' (caller reports not-observed).
+    $reviewerVersion = Get-CodexAdapterVersion -StderrText $errText
+    if ($code -ne 0 -and -not [string]::IsNullOrEmpty($errText)) {
+        [Console]::Error.Write($errText)
     }
 
     return [pscustomobject]@{ ExitCode = $code; AppliedEffort = $appliedEffort; ReviewerSafePosture = $reviewerSafePosture; ReviewerVersion = $reviewerVersion }
@@ -479,7 +527,7 @@ function Add-ReviewerProvenanceBlock {
     $enc = New-Object System.Text.UTF8Encoding($false)
     $existing = [System.IO.File]::ReadAllText($ResultMdPath, $enc)
     $boundary = if ($existing.EndsWith("`n")) { "`n---`n`n" } else { "`n`n---`n`n" }
-    [System.IO.File]::WriteAllText($ResultMdPath, ($existing + $boundary + $blockText), $enc)
+    [System.IO.File]::AppendAllText($ResultMdPath, ($boundary + $blockText), $enc)
 }
 
 if ($Reviewer -ne 'codex') {
@@ -585,6 +633,11 @@ if ([string]::IsNullOrEmpty($model)) {
     Write-Host 'review-run: FAIL reviewer model could not be resolved. Set "model" in config/reviewer.json (or pass -Model). There is no built-in model fallback: a concrete model version is tied to an external lifecycle and must come from the config source-of-truth.'
     exit 1
 }
+if ($model.IndexOf("`r", [System.StringComparison]::Ordinal) -ge 0 -or
+    $model.IndexOf("`n", [System.StringComparison]::Ordinal) -ge 0) {
+    Write-Host ('review-run: FAIL resolved reviewer model must be a single-line value; CR/LF is not allowed (source: {0}).' -f $modelSource)
+    exit 1
+}
 
 $effortResolved = Get-ReviewerEffort -ExplicitEffort $Effort -ToolPath $tool -CategoryEntry $categoryResolved.Entry
 $effort = $effortResolved.Effort
@@ -600,6 +653,7 @@ if ($allowedEfforts -cnotcontains $effort) {
 
 $toolRootSource = Get-ToolRootSource -ToolRoot $ToolRoot
 $verifyInputScript = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-input-verify.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
+$verifyResultScript = Resolve-RunScript -Tool $tool -RelativePath 'scripts/review-verify.ps1' -LocalDir $PSScriptRoot -ToolRootSource $toolRootSource
 
 $verifyInputArgs = @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass',
@@ -613,20 +667,48 @@ if ($verifyInputExit -ne 0) {
     exit 1
 }
 
-$codexResult = Invoke-CodexExec -InputPath $inputPath -Model $model -Effort $effort -ResultMdPath $resultMdPath
+try {
+    $codexResult = Invoke-CodexExec -InputPath $inputPath -Model $model -Effort $effort -ResultMdPath $resultMdPath
+}
+catch {
+    Write-Host ('review-run: FAIL reviewer invocation unavailable: {0}' -f $_.Exception.Message)
+    exit 1
+}
 if ($codexResult.ExitCode -ne 0) {
-    Write-Host ('review-run: FAIL Codex CLI exit {0}' -f $codexResult.ExitCode)
+    Write-Host ('review-run: FAIL reviewer invocation unavailable (Codex CLI exit {0}); no reviewer verdict was issued.' -f $codexResult.ExitCode)
     exit 1
 }
 
 if (-not (Test-Path -LiteralPath $resultMdPath -PathType Leaf)) {
-    Write-Host ('review-run: FAIL result.md was not produced: {0}' -f $resultMdPath)
+    Write-Host ('review-run: FAIL review result unavailable because result.md was not produced: {0}. No reviewer verdict was issued.' -f $resultMdPath)
     exit 1
 }
 
 $verdict = Get-VerdictFromResultMd -Path $resultMdPath
 if ([string]::IsNullOrEmpty($verdict)) {
-    Write-Host ('review-run: FAIL. Could not parse verdict from {0}. The failed pass is preserved on disk; allocate a new pass-NN under the same ReviewTaskId/Perspective after fixing the reviewer output, prompt, or tooling.' -f $resultMdPath)
+    Write-Host ('review-run: FAIL review result unavailable. Could not parse verdict from {0}. The failed pass is preserved on disk; no reviewer verdict was issued. Allocate a new pass-NN under the same ReviewTaskId/Perspective after fixing the reviewer output, prompt, or tooling.' -f $resultMdPath)
+    exit 1
+}
+
+# Do not publish PASS, a source verdict, or provenance for a body that only has a
+# parseable verdict token. The canonical verifier owns the complete successful-result
+# shape (verdict plus the four disclosure H2s). The skill repeats this verification
+# after provenance append as the post-hoc artifact check.
+$verifyResultArgs = @(
+    '-NoProfile', '-ExecutionPolicy', 'Bypass',
+    '-File', $verifyResultScript,
+    '-ReviewTaskId', $ReviewTaskId,
+    '-Perspective', $Perspective,
+    '-Pass', $Pass,
+    '-ProjectRoot', $project,
+    '-ToolRoot', $tool,
+    '-RequireResult'
+)
+$verifyResult = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $verifyResultArgs
+if ($verifyResult.ExitCode -ne 0) {
+    $verifyLines = @($verifyResult.Stdout -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $verifyStatus = if ($verifyLines.Count -gt 0) { $verifyLines[$verifyLines.Count - 1] } else { 'no verifier status line' }
+    Write-Host ('review-run: FAIL review result unavailable (review-verify exit {0}): {1}. The failed pass is preserved on disk; no reviewer verdict was issued.' -f $verifyResult.ExitCode, $verifyStatus)
     exit 1
 }
 
@@ -634,10 +716,10 @@ $relPass = (Resolve-ProjectRelativePath -Path $passDir -ProjectRoot $project) -r
 $relResult = (Resolve-ProjectRelativePath -Path $resultMdPath -ProjectRoot $project) -replace '\\', '/'
 
 # Persist runtime-observed reviewer provenance into result.md (P3). Only reached after the
-# reviewer body was produced AND its verdict shape is usable, so provenance is never fabricated
-# for a failed/absent review result. Provenance is a SUPPLEMENTARY record: per the spec's
-# append-failure design, a persistence failure here must NOT invalidate an otherwise valid
-# verdict, but it is reported loudly (provenance-persisted: FAILED ...) — never a silent success.
+# reviewer body was produced AND its candidate shape is mechanically complete, so provenance is
+# never fabricated for a failed/absent/shape-invalid result. Provenance is a SUPPLEMENTARY record:
+# per the spec's append-failure design, a persistence failure here must NOT invalidate an otherwise
+# complete candidate token, but it is reported loudly (provenance-persisted: FAILED ...) — never a silent success.
 $provenancePersisted = $true
 $provenanceError = ''
 try {
@@ -702,7 +784,8 @@ Write-Host ('pass-dir: {0}' -f $relPass)
 Write-Host ('result: {0}' -f $relResult)
 # P3 provenance-persistence status (additive H1 run-fact; the P2/Batch D2 lines above are
 # unchanged). On success the runtime provenance block is now inside result.md; on failure the
-# verdict still stands but the persistence miss is surfaced, not swallowed.
+# mechanically complete candidate token remains available for operator intake, while the
+# persistence miss is surfaced rather than swallowed.
 if ($provenancePersisted) {
     Write-Host ('provenance-persisted: {0}' -f $relResult)
 }

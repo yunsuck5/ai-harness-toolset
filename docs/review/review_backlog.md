@@ -7,7 +7,6 @@ next ID: RV-B-20
 | RV-B-01 | Review 2-pass / profile — user-facing 텍스트용 2차 profiling pass 의 가치 판정 | 별도 scoped goal + profiling 가치 입증 |
 | RV-B-03 | result.md wrapper/fence 렌더링 정규화 여부(on-disk artifact hygiene; verdict shape 변경 아님) | fence 로 인한 실독 사례 누적 시 별도 scoped goal |
 | RV-B-04 | no-exec/no-write reviewer 의 잔여 role-boundary framing(R1 evidence convention 은 closed) | 별도 scoped goal |
-| RV-B-05 | review input governance open channel — 누적 governance 신호의 묶음 처리 + verdict-vocabulary 추가 이행 | 명확한 패턴 누적 시 별도 scoped goal |
 | RV-B-09 | (수용된 잔여 위험) operator narrow-scope over-confidence — 좁힌 input 작성 경향; mitigation = 독립 Codex review + skill 의 target-accuracy 규율 + retraction 규율 | 현 패턴을 넘는 구체 신규 증거 |
 | RV-B-10 | (수용된 잔여 위험) `;`-chain 마지막 비-0 종료가 review-verify 성공을 가리는 보고 관례 위험 | 현 패턴을 넘는 구체 신규 증거 |
 | RV-B-11 | (idea-only — implementation backlog 아님) devil's-advocate pre-pass orchestration | 반복 false-negative 또는 model-bias 의 구체 증거 + 사용자 별도 결정 + 별도 scoped goal |
@@ -17,5 +16,3 @@ next ID: RV-B-20
 | RV-B-15 | (milestone-tracking) adoption smoke test · actual reviewer workflow test · actual development workflow usage test 는 서로 분리된 milestone 이다(한 번에 닫히지 않는 별개 검증 단계) | 해당 milestone 중 하나를 실제 착수할 때 + 별도 scoped goal |
 | RV-B-16 | consultation advisory material의 canonical review input/reporting 수용 interface 여부(review owner 판단; consultation의 output·artifact·status·synthesis 의미는 소유하지 않음) | canonical-linked consultation 사례 누적 + 사용자 결정 + 별도 scoped goal |
 | RV-B-17 | reviewer config 의 categoryPolicy 재검토 — 카테고리 항목 구성과 카테고리별 model·effort 값 조정 논의(현행 = 전 카테고리 동일 model + xhigh safe-floor; 최신모델 일괄 갱신은 2026-07-11 선행 완료) | O(subagent-work-orchestration) promote 완료 후 + 사용자 별도 결정 + 별도 scoped goal |
-| RV-B-18 | canonical review input UTF-8 stdin fidelity — Windows PowerShell 5.1에서 `review-run.ps1`의 non-ASCII `input.md` payload를 reviewer에게 byte-faithful하게 전달하도록 교정 | current native-process byte-stdin unit closeout + actual runner-path raw-byte reproduction(non-ASCII corruption / ASCII control) + 사용자 별도 결정 + 별도 scoped goal |
-| RV-B-19 | canonical review result integrity — evidence 부족 또는 reviewer result-unavailable 상태와 강제 3-verdict taxonomy의 관계 재검토(fourth verdict·behavior 변경 미결정) | evidence-insufficient/no-result 실제 사례와 current result contract를 owner-local하게 재대조할 별도 scoped goal + 사용자 결정 |

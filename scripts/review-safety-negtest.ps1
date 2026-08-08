@@ -135,9 +135,12 @@ $codexArgs = @(
 
 $codexExit = $null
 $prevPref = $ErrorActionPreference
-# Native stderr capture under EAP=Continue save/restore (rules/powershell-and-file-encoding.md):
-# the same pattern review-run.ps1 uses so a Codex stderr line is not promoted to a terminating
-# NativeCommandError before $LASTEXITCODE is read.
+# Intentional partial-stream capture under EAP=Continue save/restore
+# (rules/powershell-and-file-encoding.md): this standalone negative test needs the exact
+# stderr file plus independent filesystem corroboration and does not claim the structured
+# three-field contract. This probe validates the CLI posture flags and filesystem denial,
+# not adapter-local launcher transport; the production review runner's direct npm-node argv
+# forwarding and raw-byte transport are covered by review-run tests.
 $ErrorActionPreference = 'Continue'
 try {
     if ($env:AI_HARNESS_CODEX_ARGS_FILE_STUB -eq '1') {

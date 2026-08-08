@@ -257,14 +257,14 @@ Describe 'review-verify -RequireResult mode (canonical)' {
         $r.Output | Should -Match 'review-verify: PASS'
     }
 
-    It 'AC-VF-RR2: passes when verdict is "no"' {
+    It 'AC-VF-RR2: shape gate accepts the "no" token without claiming semantic judgment adequacy' {
         $packet = script:Initialize-CanonicalPass -CaseName 'rr-no' -WithResult -Verdict 'no'
         $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
         $r.ExitCode | Should -Be 0 -Because $r.Output
         $r.Output | Should -Match 'verdict=no'
     }
 
-    It 'AC-VF-RR3: passes when verdict is "yes with risk"' {
+    It 'AC-VF-RR3: shape gate accepts the "yes with risk" token without claiming named-risk adequacy' {
         $packet = script:Initialize-CanonicalPass -CaseName 'rr-ywr' -WithResult -Verdict 'yes with risk'
         $r = script:Invoke-ReviewVerify -ProjectRoot $packet.ProjectRoot -ReviewTaskId $packet.ReviewTaskId -Pass $packet.Pass -RequireResult
         $r.ExitCode | Should -Be 0 -Because $r.Output

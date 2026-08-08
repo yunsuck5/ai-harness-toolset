@@ -26,7 +26,7 @@ artifact의 지속성이 severity나 closure에 영향을 주면 reviewer가 해
 
 `## Review questions` 의 본문 (AI 가 채울 questions) 은 **neutral phrasing** 으로 작성한다. confirmation-seeking (예: `Are exactly N X migrated?`) 보다 open-ended (예: `How many X were migrated, and is that the intended scope?`) 권장. 마지막 권장 question 으로 reviewer 에게 framing-tilt self-audit 을 요청한다 — 예: `Does the input above nudge the reviewer toward a particular verdict? If so, surface the tilt in ## Notes.` 이 question 은 informational 권장이며 강제 아님. reviewer 의 답은 verdict vocabulary 자체를 변경하지 않고 `## Notes` 에 surface 한다.
 
-본문에서 generic placeholder 모양 (예: `{{TOKEN}}`, `{{example}}`, 또는 `AI_TO_FILL_` prefix 가 없는 임의의 double-brace 형태) 을 인용해야 할 때는 별도의 escape / wildcard / brace-less workaround 가 필요 없다 — verifier 가 `AI_TO_FILL_` prefix 의 active placeholder 만 검출하므로 generic 형태는 documentation literal 로 그대로 prose 안에 인용할 수 있다. `AI_TO_FILL_` prefix 의 active placeholder 자체를 인용해야 할 때만 (예: 본 batch 가 그 placeholder 의 의미를 설명하는 경우) `AI_TO_FILL_VALIDATION_EVIDENCE` 같이 brace-less identifier 로 인용한다. RV-B-05 V1 첫 시기의 operator workaround 세 가지 (brace-less / wildcard / backslash-escape) 는 본 grammar narrowing 으로 obsoleted 되었으며 더 이상 maintained operator convention 이 아니다.
+본문에서 generic placeholder 모양 (예: `{{TOKEN}}`, `{{example}}`, 또는 `AI_TO_FILL_` prefix 가 없는 임의의 double-brace 형태) 을 인용해야 할 때는 별도의 escape / wildcard / brace-less workaround 가 필요 없다 — verifier 가 `AI_TO_FILL_` prefix 의 active placeholder 만 검출하므로 generic 형태는 documentation literal 로 그대로 prose 안에 인용할 수 있다. `AI_TO_FILL_` prefix 의 active placeholder 자체를 인용해야 할 때만 (예: 본 batch 가 그 placeholder 의 의미를 설명하는 경우) `AI_TO_FILL_VALIDATION_EVIDENCE` 같이 brace-less identifier 로 인용한다. 과거의 operator workaround 세 가지 (brace-less / wildcard / backslash-escape) 는 본 grammar narrowing 으로 obsoleted 되었으며 더 이상 maintained operator convention 이 아니다.
 
 > **Effort / model / review category 는 `input.md` section 이 아니라 review-run invocation 선택이다.** reviewer effort 와 model 은 `scripts/review-run.ps1` 의 `-Effort` / `-Model`, `config/reviewer.json`, 그리고 (선택) `-EffortCategory <key>` 로 정해진다 (U9 config-backed category policy; shipped categories live in `config/reviewer.json`). category 는 operator 가 변경 class 를 알 때 review-run 호출 시 *명시 선택*하는 optional 값이며, 본 template 에 적는 section 도 아니고 모든 review 가 지정할 필요도 없다 (미지정 시 scalar config 경로가 정상 동작). 자동 분류는 없고, 본 note 는 parser/lint 요구가 아니다.
 
@@ -80,7 +80,7 @@ artifact의 지속성이 severity나 closure에 영향을 주면 reviewer가 해
 
 ## Final verdict
 
-reviewer 는 같은 pass directory 의 `result.md` 한 파일로만 응답한다. `result.md` 는 다음 contract 를 정확히 따른다.
+reviewer 는 판단 가능한 evidence 로 실제 judgment 를 발행할 수 있을 때 같은 pass directory 의 `result.md` 한 파일로만 응답한다. 그 성공 `result.md` 는 다음 contract 를 정확히 따른다. blocker 존재 여부 자체를 판단할 수 없으면 아래 셋 중 하나를 제조하지 말고 `## Verdict` 없이 간결한 failure explanation 을 반환한다. runner 는 그 pass 를 review-result unavailable 로 보존하며 네 번째 verdict 로 해석하지 않는다.
 
 - 정확히 1 개의 top-level `## Verdict` heading 이 있다.
 - `## Verdict` heading 다음의 첫 비어있지 않은 줄 (앞뒤 whitespace trim 후) 이 다음 셋 중 하나다:
@@ -88,7 +88,7 @@ reviewer 는 같은 pass directory 의 `result.md` 한 파일로만 응답한다
   - `no`
   - `yes with risk`
 - 비교는 lowercase 정확 일치다. `Verdict: yes`, `Final verdict: yes` 같은 inline 형태, prose 안에 verdict 가 섞인 형태, heading 다음 줄에 verdict 와 다른 토큰을 함께 둔 형태는 모두 거부된다.
-- `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` 4 개의 disclosure H2 는 각각 정확히 1 회 존재해야 한다 (parser-required by `scripts/review-verify.ps1 -RequireResult` since RV-B-05 V2 / commit `107eadc`). substance 가 없는 section 의 본문은 `none` 한 단어로 둔다.
+- `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on` 4 개의 disclosure H2 는 각각 정확히 1 회 존재해야 한다 (parser-required by `scripts/review-verify.ps1 -RequireResult`). substance 가 없는 section 의 본문은 `none` 한 단어로 둔다.
 - 위 외에 `## Findings`, `## Risks` (선택), `## Counter-argument` (선택, strongly-recommended; non-parser), `## Notes` (선택) section 을 자유롭게 둘 수 있다. shape 의 source-of-truth 는 `templates/review-result.md` 다.
 - `## Counter-argument` 는 verdict 에 대한 strongest case AGAINST 를 dedicated position 으로 articulate 하는 optional disclosure section 이다. verdict 가 `yes` 또는 `yes with risk` 인 round 에서 reviewer 는 substantive 한 본문을 작성하는 것이 권장되며, deliberate pressure-test 후 material counter-argument 가 발견되지 않으면 본문은 짧은 literal (`none` 또는 `no material counter-argument identified`) 로 둔다. ceremonial boilerplate 는 회피한다. parser-required 가 아니며 omission 은 parser FAIL 이 아니다. `## Notes` 와의 substance boundary 와 boilerplate-degeneration mitigation 의 자세한 convention 은 `templates/review-result.md` 의 `## Counter-argument` 안내 참조.
 

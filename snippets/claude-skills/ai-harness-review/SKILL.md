@@ -24,7 +24,7 @@ This skill drives the ai-harness-toolset canonical review flow. The canonical re
 
 The scripts emit the canonical three-level `<review-task-id>/<perspective>/pass-NN/` layout directly; the only on-disk record per pass is the `input.md` + `result.md` pair. Legacy two-level `<review-task-id>/pass-NN/` records from before strict C1 may still exist on disk — they are manual-readable historical runtime artifacts only, not tool-supported canonical records (the scripts neither emit nor verify them, and nothing is migrated or deleted).
 
-Adoption path: copy this file to `<ProjectRoot>/.claude/skills/ai-harness-review/SKILL.md` (project-local, recommended) or `%USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md` (user-global, opt-in). No file is auto-installed.
+Operational install / activation mirrors this payload to both vendor-native user-global homes: `%USERPROFILE%\.claude\skills\ai-harness-review\SKILL.md` and the active Codex home's `skills\ai-harness-review\SKILL.md` (`%CODEX_HOME%` when set, otherwise `%USERPROFILE%\.codex`). Project-local adoption is a separate, explicit project-specific choice and is not part of operational install.
 
 ## Two supported intents
 
@@ -34,7 +34,7 @@ Adoption path: copy this file to `<ProjectRoot>/.claude/skills/ai-harness-review
 
 2. **Caller self-review, then a reviewer pass, then a single merged final verdict.** The user names a subsystem and wants you to read it yourself first, then run the reviewer, then merge into one verdict.
    - Examples: "현재 구현된 서버의 소켓 라이브러리를 니가 직접 리뷰하고, 그후에 코덱스 리뷰로 한번 더 리뷰 후 최종 결론 도출해", "self-review then codex review and give the final verdict".
-   - Use Mode B target selection. The subsystem is reviewed even if the working tree has no current changes. Carry your own findings into the `## Context` and `## Review questions` sections of `input.md`. Merge both readings into one final verdict (`no` if either is `no`; `yes with risk` if either is `yes with risk`; only `yes` if both are `yes`).
+   - Use Mode B target selection. The subsystem is reviewed even if the working tree has no current changes. Carry your own findings into the `## Context` and `## Review questions` sections of `input.md`. Merge both readings only when both are usable judgments (`no` if either is `no`; `yes with risk` if either is `yes with risk`; only `yes` if both are `yes`). If the reviewer invocation/result is unavailable, report no merged verdict.
 
 Two dimensions (review style / target scope) are independent in principle. The canonical pairings above cover the usual case. If the user clearly mixes them, follow what they said.
 
@@ -145,7 +145,7 @@ If you ran a caller self-review (intent 2), summarize your own findings inside `
 
 ### 5. Run the reviewer exactly once
 
-Invoke `<ToolRoot>/scripts/review-run.ps1 -ReviewTaskId <id> -Perspective <viewpoint> -Pass <pass-NN>` once (the same `-Perspective` you used in step 3; it is required). It calls `scripts/review-input-verify.ps1` against the `input.md` you wrote, invokes the reviewer CLI once (`--ask-for-approval never`, `--sandbox read-only`, `--output-last-message <review-task-id>/<perspective>/pass-NN/result.md`), validates the `## Verdict` shape, and exits.
+Invoke `<ToolRoot>/scripts/review-run.ps1 -ReviewTaskId <id> -Perspective <viewpoint> -Pass <pass-NN>` once (the same `-Perspective` you used in step 3; it is required). It calls `scripts/review-input-verify.ps1` against the `input.md` you wrote, sends the reviewer preamble plus `input.md` as strict UTF-8 raw stdin bytes, invokes the reviewer CLI once (`--ask-for-approval never`, `--sandbox read-only`, `--output-last-message <review-task-id>/<perspective>/pass-NN/result.md`), validates the mechanically complete candidate shape (verdict plus four disclosure H2s), and exits. Its H1 verdict token and provenance are run facts, not yet a consumable reviewer judgment; step 6 performs the post-hoc artifact check and operator semantic intake.
 
 `review-run.ps1` resolves the reviewer **model** and **reasoning effort** by precedence: model = explicit `-Model` > matched `categoryPolicy` entry `model` > `config/reviewer.json` `model` > **fail-fast** (there is no built-in model default or fallback; an absent or empty model stops the run before the reviewer is invoked — the config is the source of truth, and no concrete model version is baked into a script as a default or fallback); effort = explicit `-Effort` > matched `categoryPolicy` entry `reasoningEffort` > `config/reviewer.json` `reasoningEffort` > the policy safe-default `xhigh`. Leave effort at the configured / safe-default value for the normal case. Pass an explicit `-Effort` downgrade **only** for a packet that is clearly simple local-correctness (a small, mechanical, unambiguous surface); do **not** downgrade for system-coherence, contract, boundary, or otherwise ambiguous reviews. `-Effort` is a cost / latency control, not a coverage-reduction lever — a lower effort never narrows what the reviewer must cover and never substitutes for a weaker packet (effort ⟂ coverage).
 
@@ -170,7 +170,7 @@ Hard rules for step 5:
 - Do not bypass `scripts/review-input-verify.ps1`.
 - Do not edit `input.md` once `review-run.ps1` has started. If the input needs correction, allocate a new pass under the same `<review-task-id>/<perspective>/` (go back to step 3 with a new `pass-NN`).
 
-If `review-run.ps1` exits non-zero, stop. Report the exit code and the last status line printed. Report whether `result.md` exists in the pass directory. Do not silently retry, even by adjusting argument shape — surface a corrected proposed invocation and wait for explicit go-ahead.
+If `review-run.ps1` exits non-zero, stop. Distinguish **reviewer invocation unavailable** (the process could not provide a successful run) from **review result unavailable** (no result, malformed result, or no usable reviewer judgment). Report the exit code and the last status line printed, and state whether `result.md` exists. Neither state has a consumable reviewer verdict; do not infer one from a partial file or manufacture one from the failure reason. Do not silently retry, even by adjusting argument shape — surface a corrected proposed invocation and wait for explicit go-ahead.
 
 The stop/report-vs-self-correct boundary applies here too: if running `review-run.ps1` would require touching anything outside the review's approved scope — for example user-global files under `%USERPROFILE%\.claude\` or `%USERPROFILE%\.codex\`, the channel 3 install payload under `%USERPROFILE%\ai-harness-toolset\current\`, the `<ProjectRoot>/log/` runtime tree beyond the prepared pass directory, or any repo-outside material — stop and report instead of silently expanding scope. The reviewer pass directory is the only runtime artifact you write to in this step.
 
@@ -184,6 +184,7 @@ After `review-verify.ps1` exits cleanly, read `log/review/<review-task-id>/<pers
 - Confirm the first non-empty line after `## Verdict` (whitespace-trimmed) is exactly one of `yes`, `no`, `yes with risk` — lowercase, no qualifier, no inline form.
 - Read the four V2 required disclosure H2 sections (each present exactly once, with `none` as the body when empty): `## Blocking findings`, `## Non-blocking concerns`, `## Review limitations`, `## Assumptions relied on`.
 - Also read optional sections (`## Findings`, `## Risks`, `## Counter-argument`, `## Notes`) if present. The four required H2s are the mechanical-enforced disclosure positions; the optional sections are free-form reviewer narrative. `## Counter-argument` is the dedicated verdict pressure-test position (strongly-recommended for `yes` / `yes with risk` verdicts) — read its substance, and evaluate whether the body is substantive or ceremonial boilerplate. Recurring boilerplate or omission across many passes is escalation evidence input for a separate later batch decision (parser-required gate or heavier mechanism); a single boilerplate / omission case is not by itself a blocking finding. **Precedence rule**: when `## Blocking findings` and a free-form `## Findings` section disagree on whether something is blocking, `## Blocking findings` is the source of truth. If `result.md` passes the shape gate (`review-verify -RequireResult`) but the body discloses a limitation, assumption, or risk that affects commit fitness, surface it to the user — shape PASS is not an automatic commit-fitness guarantee.
+- Treat a shape-valid but internally unusable judgment as **review result unavailable**, not as a fourth verdict and not as a parser rule to add. Examples include `no` while `## Blocking findings` says `none`, or `yes with risk` with no named risk substance. Report the contradiction, preserve the pass, consume no verdict, and request a fresh pass only through the normal explicit retry gate. The runner may already have emitted a provisional H1 token and appended provenance after mechanical shape validation; neither becomes a consumable verdict, while provenance remains an honest run fact. This is operator intake judgment; `review-verify.ps1` remains a shape checker and does not perform semantic lint.
 - Also read the `## Reviewer run provenance` block if `review-run.ps1` appended one. This is a **runner-appended, machine-emitted run-fact block — NOT reviewer judgment and NOT parser-gated** (it does not affect `review-verify`'s `## Verdict` + four-H2 count; `review-verify` does not gate on it). It records the runtime provenance of *this* run — reviewer adapter kind, reviewer version (or `not-observed`), model / model-source, requested-effort / effort-source / applied-effort, effort-category / effort-policy-match (U9), reviewer-safe posture, and engine identity (tool-root / project-root / tool-root-source) — sourced from runtime / config / active reviewer adapter / reviewer self-report, **never `input.md` caller declaration**. Surface its values in step 7's **reviewer guard status**. The two authorship layers are distinct: the reviewer-adapter **verdict/disclosure body** is the reviewer's judgment, while the runner-appended **provenance block** is machine run-fact (result.md is dual-authored: the reviewer writes the verdict + disclosure body, and `review-run.ps1` appends the provenance block).
 
 The verdict has a narrowed meaning — `yes` = no blocking finding (not commit/push approval); `no` = blocking finding exists (corrective needed); `yes with risk` = no blocking finding but the risks under `## Risks` (and any flagged limitations / assumptions) require explicit supervisor or user acceptance before commit / push. `yes with risk` is not the automatic equivalent of `yes` for the next step. The full verdict → next-action mapping is applied in step 7 (Report the final verdict); this step is the practical operator-side mirror of that mapping. When reporting back to the user, report the verdict verbatim plus the four disclosure sections so the user has the same surface the reviewer surfaced.
@@ -198,15 +199,15 @@ If the verdict line is anything other than the three values, treat the run as fa
 
 ### 7. Report the final verdict
 
-End your response with a clearly labeled final verdict, exactly one of:
+When and only when the final pass contains a usable reviewer judgment, end your response with a clearly labeled final verdict, exactly one of:
 
 - `yes`
 - `no`
 - `yes with risk`
 
-For intent 1 (reviewer-only), this is the verdict line from `result.md`.
+For intent 1 (reviewer-only), this is the usable verdict line from `result.md`. If invocation/result is unavailable, do not emit one of the three values; report `Reviewer verdict: N/A — no usable reviewer judgment issued` and stop.
 
-For intent 2 (caller self-review + reviewer), produce a single merged final verdict:
+For intent 2 (caller self-review + reviewer), produce a single merged final verdict only when both judgments are usable. If the reviewer judgment is unavailable, do not merge the caller judgment with a nonexistent reviewer verdict; report the unavailable state and stop.
 
 - If either side is `no`, merged = `no`.
 - If either side is `yes with risk`, merged = `yes with risk`. Carry the named risks forward.
@@ -243,11 +244,11 @@ Always include the operator final report fields below, kept visually distinct. T
 
 **Run / process reporting** (kept visually distinct):
 
-- **Entry-point error** — none, or the exit code plus the last status line. State whether a pass directory was allocated and whether `result.md` exists for it.
+- **Invocation / result status** — `usable judgment`, `reviewer invocation unavailable`, or `review result unavailable`; for a failure include the exit code and last status line. State whether a pass directory was allocated and whether `result.md` exists. A failure state has `Reviewer verdict: N/A — no usable reviewer judgment issued`.
 - **Retry decision** — none, or what was retried, why, and whether explicit scoped re-approval was sought.
 - **Review task** — `<review-task-id>` for this work.
 - **Final pass** — the final `pass-NN` (e.g., `pass-01`, `pass-03`) and the canonical path `log/review/<review-task-id>/<perspective>/pass-NN/result.md` (report the final pass per perspective).
-- **Final reviewer result** — the reviewer verdict verbatim from the final pass's `result.md`.
+- **Final reviewer result** — the usable reviewer verdict verbatim, or `N/A — no usable reviewer judgment issued` for invocation/result unavailable.
 - For intent 2: your own self-review summary in 3–6 lines and the merged final verdict.
 
 If, during this review or in any subsequent turn, you discover that an earlier judgment, input wording, validation execution claim, review framing, scope classification, or target-file selection you made was wrong, **do not hide it** — apply the retraction / correction reporting protocol. Surface (a) what you are retracting or correcting, (b) why the prior judgment was wrong, and (c) what the current state is. This pairs with the stale-by-omission rule on the ex-post side — the stale-by-omission rule covers pre-call disclosure, while this retraction protocol covers in-progress / post-discovery correction. Silently overwriting prior judgments breaks the operator-honesty invariant the verdict relies on.
@@ -258,7 +259,7 @@ This skill must never run `git commit`, `git push`, `git tag`, `git merge`, or a
 
 ## Failure handling
 
-- Entry-point non-zero exit: report exit code and the last status line. Do not retry without explicit scoped user approval; present the corrected invocation first and wait for go-ahead. This applies to every flavor (input-verify, reviewer error, verdict parse error).
+- Entry-point non-zero exit: report exit code, the last status line, and whether it is reviewer invocation unavailable or review result unavailable. The source verdict is N/A. Do not retry without explicit scoped user approval; present the corrected invocation first and wait for go-ahead. This applies to every flavor (input-verify, reviewer error, missing result, verdict parse error).
 - Reviewer CLI not installed or not on PATH: report that the CLI environment is not ready (the reviewer CLI must be installed and resolvable on the user's PATH). Do not attempt to install anything.
 - Verdict parse failure: the failed pass directory is preserved on disk. Report its canonical path `log/review/<review-task-id>/<perspective>/pass-NN/` and stop. Do not edit files inside that pass directory.
 - If `input.md` and `result.md` both exist but the pass is older than the source / docs / template / snippet content it covers, that pass is stale. Allocate a fresh `pass-NN` under the same `<review-task-id>/<perspective>/` rather than reusing the stale pass's verdict.
