@@ -78,7 +78,7 @@ BeforeAll {
 }
 
 Describe 'review-prepare canonical layout' {
-    It 'AC-PR1: explicit -Pass pass-01 creates canonical pass directory and seeds input.md from template' {
+    It 'AC-PR1: explicit -Pass pass-01 creates a canonical pass directory with empty input.md' {
         $project = script:New-PrepareCaseRoot -CaseName 'pr1'
         $taskId  = 'topology-simplification-2026-05-16'
 
@@ -97,10 +97,8 @@ Describe 'review-prepare canonical layout' {
 
         $enc = New-Object System.Text.UTF8Encoding($false)
         $body = [System.IO.File]::ReadAllText($inputPath, $enc)
-        # Body comes from templates/review-input.md
-        $templatePath = Join-Path $script:RepoRoot 'templates/review-input.md'
-        $expected = [System.IO.File]::ReadAllText($templatePath, $enc)
-        $body | Should -Be $expected
+        # Default behavior is the only behavior: an empty canvas authored by the operator.
+        $body | Should -Be ''
     }
 
     It 'AC-PR2: pass auto-allocation picks pass-01 first, then pass-02 on the next call' {
@@ -129,7 +127,7 @@ Describe 'review-prepare canonical layout' {
         $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
 
-        # Operator hand-edits input.md after seeding (this is the normal authoring step).
+        # Operator authors input.md after allocation (this is the normal authoring step).
         [System.IO.File]::WriteAllText($inputPath, "edited body`n", $enc)
         $beforeRetry = [System.IO.File]::ReadAllText($inputPath, $enc)
 
@@ -255,32 +253,16 @@ Describe 'review-prepare canonical layout' {
         Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId)) -PathType Container | Should -BeFalse
     }
 
-    It 'AC-PR11: -NoSeed creates the pass dir and an EMPTY input.md (not byte-equal to the template) while keeping the PASS/path stdout' {
+    It 'AC-PR11: legacy -NoSeed is rejected and creates no pass directory' {
         $project = script:New-PrepareCaseRoot -CaseName 'pr11'
         $taskId  = 'no-seed-task'
 
         $r = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -ExtraArgs @('-NoSeed')
-        $r.ExitCode | Should -Be 0 -Because $r.Output
-        $r.Output | Should -Match 'review-prepare: PASS'
-        $r.Output | Should -Match ('review-task-id: ' + [regex]::Escape($taskId))
-        $r.Output | Should -Match 'pass: pass-01'
-        $r.Output | Should -Match 'pass-dir: log/review/no-seed-task/local-correctness/pass-01'
-        $r.Output | Should -Match 'input: log/review/no-seed-task/local-correctness/pass-01/input.md'
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'NoSeed'
 
         $passDir = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01')
-        Test-Path -LiteralPath $passDir -PathType Container | Should -BeTrue
-
-        $inputPath = Join-Path $passDir 'input.md'
-        Test-Path -LiteralPath $inputPath -PathType Leaf | Should -BeTrue
-
-        $enc = New-Object System.Text.UTF8Encoding($false)
-        $body = [System.IO.File]::ReadAllText($inputPath, $enc)
-        # No-seed mode writes an empty canvas, not the full template body.
-        $body | Should -Be ''
-
-        $templatePath = Join-Path $script:RepoRoot 'templates/review-input.md'
-        $template = [System.IO.File]::ReadAllText($templatePath, $enc)
-        $body | Should -Not -Be $template
+        Test-Path -LiteralPath $passDir -PathType Container | Should -BeFalse
     }
 }
 

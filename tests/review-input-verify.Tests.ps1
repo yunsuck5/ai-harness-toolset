@@ -242,8 +242,8 @@ Describe 'review-input-verify' {
     }
 }
 
-Describe 'templates/review-input.md output contract regression' {
-    It 'AC-IV-OC1: template includes strict result.md output contract phrases' {
+Describe 'templates/review-input.md compact authoring reference' {
+    It 'AC-IV-OC1: template keeps the input skeleton without duplicating the result runtime shape' {
         $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
         $templatePath = Join-Path $repoRoot 'templates/review-input.md'
         Test-Path -LiteralPath $templatePath -PathType Leaf | Should -BeTrue
@@ -251,11 +251,68 @@ Describe 'templates/review-input.md output contract regression' {
         $enc = New-Object System.Text.UTF8Encoding($false)
         $content = [System.IO.File]::ReadAllText($templatePath, $enc)
 
-        $content | Should -Match '## Verdict'
-        $content | Should -Match 'result\.md'
-        $content | Should -Match 'yes with risk'
-        $content | Should -Match 'inline'
-        $content | Should -Match 'review-result unavailable'
-        $content | Should -Match '제조하지 말고'
+        foreach ($heading in @('## Context', '## Required inspection paths', '## Review questions', '## Constraints', '## Final verdict')) {
+            $content | Should -Match ('(?m)^' + [regex]::Escape($heading) + '$')
+        }
+        $content | Should -Match '\{\{AI_TO_FILL_CONTEXT\}\}'
+        $content | Should -Match '(?m)^yes / no / yes with risk$'
+        $content | Should -Match 'runner preamble'
+        $content | Should -Match 'transient라는 이유만으로 finding을 자동 nonblocking 처리하지 않으며'
+        $content | Should -Match 'committed temporary artifact도 존재하는 동안 실제 review target이다'
+        $content | Should -Match '원본 path/section에서 exact text를 확인하고'
+        $content | Should -Match '변동 가능한 count는 작성 직전 현재 상태에서 기계 재계산하며'
+        $content | Should -Match 'false-positive 판정에는 evidence와 사용자의 명시 결정을 요구한다'
+        $content | Should -Not -Match '(?m)^## (Blocking findings|Non-blocking concerns|Review limitations|Assumptions relied on|Findings|Risks)$'
+    }
+}
+
+Describe 'source ai-harness-review skill compact judgment core' {
+    It 'AC-IV-OC2: skill retains coverage, freshness, adjudication, and conflict-stop semantics' {
+        $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+        $skillPath = Join-Path $repoRoot 'snippets/claude-skills/ai-harness-review/SKILL.md'
+        Test-Path -LiteralPath $skillPath -PathType Leaf | Should -BeTrue
+
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $content = [System.IO.File]::ReadAllText($skillPath, $enc)
+
+        $content | Should -Match '`local-correctness` and `system-coherence`'
+        $content | Should -Match '`coverage-limited`'
+        $content | Should -Match 'caller-side `no-reviewable-change` report, not a verdict'
+        $content | Should -Match 'original path and section and confirm the exact text'
+        $content | Should -Match 'Recalculate mutable counts against current state immediately before authoring'
+        $content | Should -Match 'false-positive dismissal requires evidence and an explicit user decision'
+        $content | Should -Match 'usable member results conflict'
+        $content | Should -Match 'no evidence-bound basis to reduce the conflict'
+        $content | Should -Match 'stop and report it; do not merge or conclude'
+        $content | Should -Match 'failed or semantically unusable unit'
+        $content | Should -Match 'proposed corrected invocation or input'
+        $content | Should -Match 'wait for explicit scoped user approval before allocating or running a new pass'
+        $content | Should -Match 'Once `review-run` starts, do not edit `input\.md`'
+        $content | Should -Match 'newly prepared canonical pass directory is the only runtime artifact location this workflow may write'
+        $content | Should -Match 'Do not edit an existing or failed pass'
+        $content | Should -Match 'stop and report instead of expanding scope'
+        $content | Should -Match 'reviewer CLI is unavailable'
+        $content | Should -Match 'do not install or refresh it'
+    }
+}
+
+Describe 'templates/review-result.md compact result skeleton' {
+    It 'AC-IV-OC3: result template has no default verdict or generic Findings/Risks buckets' {
+        $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
+        $templatePath = Join-Path $repoRoot 'templates/review-result.md'
+        Test-Path -LiteralPath $templatePath -PathType Leaf | Should -BeTrue
+
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $content = [System.IO.File]::ReadAllText($templatePath, $enc)
+
+        (@($content -split "`r?`n" | Where-Object { $_ -ceq '## Verdict' })).Count | Should -Be 1
+        $content | Should -Match '(?ms)^## Verdict\r?\n\r?\n\{\{AI_TO_FILL_VERDICT\}\}'
+        foreach ($heading in @('## Blocking findings', '## Non-blocking concerns', '## Review limitations', '## Assumptions relied on')) {
+            (@($content -split "`r?`n" | Where-Object { $_ -ceq $heading })).Count | Should -Be 1
+        }
+        $content | Should -Not -Match '(?m)^## (Findings|Risks)$'
+        $content | Should -Match '(?m)^## Counter-argument$'
+        $content | Should -Match '(?m)^## Notes$'
+        $content | Should -Match 'named risk의 단일 위치'
     }
 }

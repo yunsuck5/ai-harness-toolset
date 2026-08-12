@@ -93,6 +93,135 @@ BeforeAll {
         return ([System.IO.Path]::GetFullPath($tr))
     }
 
+    function script:New-CountingVerifyToolRoot {
+        param(
+            [string] $CaseName,
+            [switch] $FailOnSecond,
+            [switch] $FailOnSecondToStderr
+        )
+
+        $tr = script:New-CategoryToolRoot -CaseName ('counting-' + $CaseName)
+        $scriptsDir = Join-Path $tr 'scripts'
+        $verifyPath = Join-Path $scriptsDir 'review-verify.ps1'
+        $realVerifyPath = Join-Path $scriptsDir 'review-verify-real.ps1'
+        Move-Item -LiteralPath $verifyPath -Destination $realVerifyPath -Force
+        if ($FailOnSecond) {
+            script:Write-Utf8NoBomFile -Path (Join-Path $scriptsDir 'fail-on-second.marker') -Content "1`n"
+        }
+        if ($FailOnSecondToStderr) {
+            script:Write-Utf8NoBomFile -Path (Join-Path $scriptsDir 'fail-on-second-stderr.marker') -Content "1`n"
+        }
+
+        $wrapper = @'
+[CmdletBinding()]
+param(
+    [string] $ReviewTaskId,
+    [string] $Pass,
+    [string] $Perspective,
+    [string] $ProjectRoot,
+    [string] $ToolRoot,
+    [switch] $RequireResult
+)
+$ErrorActionPreference = 'Stop'
+$countPath = Join-Path $PSScriptRoot 'review-verify-count.txt'
+$count = if (Test-Path -LiteralPath $countPath -PathType Leaf) { [int]([System.IO.File]::ReadAllText($countPath).Trim()) } else { 0 }
+$count++
+[System.IO.File]::WriteAllText($countPath, [string]$count, (New-Object System.Text.UTF8Encoding($false)))
+if ($count -eq 2 -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'fail-on-second.marker') -PathType Leaf)) {
+    Write-Host 'synthetic tail verifier failure'
+    exit 9
+}
+if ($count -eq 2 -and (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'fail-on-second-stderr.marker') -PathType Leaf)) {
+    [Console]::Error.WriteLine('synthetic tail verifier stderr failure')
+    exit 9
+}
+$forward = @(
+    '-NoProfile', '-ExecutionPolicy', 'Bypass',
+    '-File', (Join-Path $PSScriptRoot 'review-verify-real.ps1'),
+    '-ReviewTaskId', $ReviewTaskId,
+    '-Pass', $Pass,
+    '-Perspective', $Perspective,
+    '-ProjectRoot', $ProjectRoot,
+    '-ToolRoot', $ToolRoot
+)
+if ($RequireResult) { $forward += '-RequireResult' }
+& powershell.exe @forward
+exit $LASTEXITCODE
+'@
+        script:Write-Utf8BomCrlfFile -Path $verifyPath -Content $wrapper
+        return $tr
+    }
+
+    function script:New-ThrowingTailNativeToolRoot {
+        param([string] $CaseName)
+
+        $tr = script:New-CategoryToolRoot -CaseName ('throwing-native-' + $CaseName)
+        $libDir = Join-Path $tr 'scripts/lib'
+        $nativePath = Join-Path $libDir 'native-process.ps1'
+        $realNativePath = Join-Path $libDir 'native-process-real.ps1'
+        $nativeContent = [System.IO.File]::ReadAllText($nativePath)
+        $realNativeContent = $nativeContent.Replace('function Invoke-NativeProcess {', 'function Invoke-NativeProcessReal {')
+        if ($realNativeContent -ceq $nativeContent) {
+            throw 'fixture could not rename Invoke-NativeProcess'
+        }
+        script:Write-Utf8BomCrlfFile -Path $realNativePath -Content $realNativeContent
+
+        $wrapper = @'
+[CmdletBinding()]
+param()
+
+. (Join-Path $PSScriptRoot 'native-process-real.ps1')
+
+function Invoke-NativeProcess {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Executable,
+        [Parameter(Mandatory = $false)]
+        [string[]] $Arguments = @(),
+        [Parameter(Mandatory = $false)]
+        [string] $WorkingDirectory,
+        [Parameter(Mandatory = $false)]
+        [AllowEmptyCollection()]
+        [ValidateNotNull()]
+        [byte[]] $StandardInputBytes
+    )
+
+    $isVerifierInvocation = $false
+    for ($i = 0; $i + 1 -lt $Arguments.Count; $i++) {
+        if ($Arguments[$i] -ceq '-File' -and
+            [System.IO.Path]::GetFileName([string] $Arguments[$i + 1]) -ceq 'review-verify.ps1') {
+            $isVerifierInvocation = $true
+            break
+        }
+    }
+    if ($isVerifierInvocation) {
+        $countPath = Join-Path $PSScriptRoot 'native-verify-count.txt'
+        $count = if (Test-Path -LiteralPath $countPath -PathType Leaf) { [int]([System.IO.File]::ReadAllText($countPath).Trim()) } else { 0 }
+        $count++
+        [System.IO.File]::WriteAllText($countPath, [string] $count, (New-Object System.Text.UTF8Encoding($false)))
+        if ($count -eq 2) {
+            throw 'synthetic tail native invocation exception'
+        }
+    }
+
+    $forward = @{
+        Executable = $Executable
+        Arguments  = $Arguments
+    }
+    if ($PSBoundParameters.ContainsKey('WorkingDirectory')) {
+        $forward.WorkingDirectory = $WorkingDirectory
+    }
+    if ($PSBoundParameters.ContainsKey('StandardInputBytes')) {
+        $forward.StandardInputBytes = $StandardInputBytes
+    }
+    return Invoke-NativeProcessReal @forward
+}
+'@
+        script:Write-Utf8BomCrlfFile -Path $nativePath -Content $wrapper
+        return $tr
+    }
+
     function script:Write-CodexStub {
         param(
             [string] $StubName,
@@ -380,6 +509,7 @@ exit $LASTEXITCODE
             [string] $Effort,
             [string] $EffortCategory,
             [string] $ToolRoot,
+            [string] $RunScriptPath,
             [bool] $UseArgsFileStub = $true,
             # Strict C1: -Perspective is required; default 'local-correctness', -OmitPerspective
             # drops it (for the "without -Perspective fails" tests).
@@ -387,9 +517,10 @@ exit $LASTEXITCODE
             [switch] $OmitPerspective
         )
         if ([string]::IsNullOrEmpty($ToolRoot)) { $ToolRoot = $script:RepoRoot }
+        if ([string]::IsNullOrEmpty($RunScriptPath)) { $RunScriptPath = $script:RunScript }
         $procArgs = @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
-            '-File', $script:RunScript,
+            '-File', $RunScriptPath,
             '-ReviewTaskId', $ReviewTaskId,
             '-Pass', $Pass,
             '-Reviewer', $Reviewer,
@@ -565,13 +696,13 @@ Describe 'review-run canonical pass directory' {
         Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
-    It 'AC-RR4: placeholder-only input.md fails through review-input-verify and Codex is not invoked' {
+    It 'AC-RR4: empty input.md fails through review-input-verify and Codex is not invoked' {
         $project = script:New-RunCase -CaseName 'rr4'
         $taskId  = 'rr4-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $prep.ExitCode | Should -Be 0 -Because $prep.Output
 
-        # input.md is the unmodified seeded template, which still contains {{AI_TO_FILL_*}} tokens.
+        # Prepare now creates an empty input.md; the input gate rejects it before Codex.
         $stub = script:Write-CodexStub -StubName 'rr4-yes' -Mode 'verdict-yes'
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Not -Be 0
@@ -838,6 +969,10 @@ Describe 'review-run canonical pass directory' {
         $stdin | Should -Match 'BRIEF'
         $stdin | Should -Match 'session-restore'
         $stdin | Should -Match 'Do NOT ask the user any question'
+        $stdin | Should -Match 'Do NOT silently repair packet defects'
+        $stdin | Should -Match 'reconstruct missing evidence'
+        $stdin | Should -Match 'expand the requested scope'
+        $stdin | Should -Match 'missing, stale, ambiguous, or inaccessible material'
         $stdin | Should -Match '## Verdict'
         $stdin | Should -Match 'do NOT manufacture a verdict'
         $stdin | Should -Not -Match 'return "no" or "yes with risk"'
@@ -855,20 +990,23 @@ Describe 'review-run canonical pass directory' {
         # marker below..." earlier in the preamble.
         $beginMarker = $stdin.IndexOf('===== BEGIN REVIEW INPUT')
         $beginMarker | Should -BeGreaterThan 0
+        ($stdin.IndexOf('Do NOT silently repair packet defects')) | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Blocking findings'))     | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Non-blocking concerns')) | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Review limitations'))    | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Assumptions relied on')) | Should -BeLessThan $beginMarker
-        # Counter-argument runtime-alignment disclosure and the required H2
-        # runtime alignment): the preamble must instruct the reviewer to
-        # articulate the strongest case AGAINST its own conclusion in
-        # ## Counter-argument (the dedicated pressure-test surface; spec-of-record:
-        # docs/review/review_spec.md) before issuing the verdict. Wording-only; no
-        # new parser-required H2 (## Counter-argument remains optional /
-        # strongly-recommended / non-parser).
+        # Generic Findings/Risks buckets are no longer recommended. Named risk uses the
+        # required Non-blocking concerns position.
+        $stdin | Should -Not -Match '## Findings'
+        $stdin | Should -Not -Match '## Risks'
+        $stdin | Should -Match 'every named non-blocking risk'
+        # Counter-argument remains an optional, strongly-recommended, non-parser
+        # pressure-test surface; the preamble must not mix an imperative with optionality.
         $stdin | Should -Match 'strongest case AGAINST'
         $stdin | Should -Match 'pressure-test'
         $stdin | Should -Match '## Counter-argument'
+        $stdin | Should -Match 'strongly recommended but optional and NOT parser-required'
+        $stdin | Should -Not -Match 'Before issuing the final verdict, articulate'
         ($stdin.IndexOf('strongest case AGAINST')) | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('pressure-test'))          | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Counter-argument'))    | Should -BeLessThan $beginMarker
@@ -1393,6 +1531,98 @@ Describe 'review-run canonical pass directory' {
         $v.Output | Should -Match 'disclosure sections present'
     }
 
+    It 'AC-RR27-T1: runner tail verifier failure after provenance append publishes no PASS/H1 verdict and preserves the pass' {
+        $project = script:New-RunCase -CaseName 'rr27-tail-fail'
+        $taskId  = 'rr27-tail-fail-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CountingVerifyToolRoot -CaseName 'tail-fail' -FailOnSecond
+        $stub = script:Write-CodexStub -StubName 'rr27-tail-fail-full' -Mode 'verdict-yes-full'
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -ToolRoot $toolRoot
+
+        $r.ExitCode | Should -Not -Be 0
+        $r.Output | Should -Match 'synthetic tail verifier failure'
+        $r.Output | Should -Match 'review result unavailable after provenance append attempt'
+        $r.Output | Should -Not -Match '(?m)^review-run: PASS$'
+        $r.Output | Should -Not -Match '(?m)^verdict: yes$'
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        Test-Path -LiteralPath $resultMd -PathType Leaf | Should -BeTrue
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $content = [System.IO.File]::ReadAllText($resultMd, $enc)
+        $content | Should -Match '(?m)^## Reviewer run provenance$'
+
+        $countPath = Join-Path $toolRoot 'scripts/review-verify-count.txt'
+        [System.IO.File]::ReadAllText($countPath).Trim() | Should -Be '2'
+    }
+
+    It 'AC-RR27-T2: simultaneous append and tail-verifier failures report both causes without PASS/H1 publication' {
+        $project = script:New-RunCase -CaseName 'rr27-both-fail'
+        $taskId  = 'rr27-both-fail-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-CountingVerifyToolRoot -CaseName 'both-fail' -FailOnSecondToStderr
+        $stub = script:Write-CodexStub -StubName 'rr27-both-fail-full' -Mode 'verdict-yes-full' -MakeResultReadOnly $true
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+
+        try {
+            $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -ToolRoot $toolRoot
+            $r.ExitCode | Should -Not -Be 0
+            $r.Output | Should -Match 'stderr:.*synthetic tail verifier stderr failure'
+            $r.Output | Should -Match 'Provenance append also failed:'
+            $r.Output | Should -Not -Match '(?m)^review-run: PASS$'
+            $r.Output | Should -Not -Match '(?m)^verdict: yes$'
+            $countPath = Join-Path $toolRoot 'scripts/review-verify-count.txt'
+            [System.IO.File]::ReadAllText($countPath).Trim() | Should -Be '2'
+            ([System.IO.File]::ReadAllText($resultMd)) | Should -Not -Match '(?m)^## Reviewer run provenance$'
+        }
+        finally {
+            if (Test-Path -LiteralPath $resultMd -PathType Leaf) {
+                Set-ItemProperty -LiteralPath $resultMd -Name IsReadOnly -Value $false
+            }
+        }
+    }
+
+    It 'AC-RR27-T3: simultaneous append failure and tail native exception preserve both diagnostics without success publication' {
+        $project = script:New-RunCase -CaseName 'rr27-native-exception'
+        $taskId  = 'rr27-native-exception-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        $toolRoot = script:New-ThrowingTailNativeToolRoot -CaseName 'tail-exception'
+        $runScript = Join-Path $toolRoot 'scripts/review-run.ps1'
+        $stub = script:Write-CodexStub -StubName 'rr27-native-exception-full' -Mode 'verdict-yes-full' -MakeResultReadOnly $true
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+
+        try {
+            $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -ToolRoot $toolRoot -RunScriptPath $runScript
+            $r.ExitCode | Should -Not -Be 0
+            $r.Output | Should -Match 'review result unavailable after provenance append attempt'
+            $r.Output | Should -Match 'review-verify invocation exception\): synthetic tail native invocation exception'
+            $r.Output | Should -Match 'Provenance append also failed:'
+            $r.Output | Should -Not -Match '(?m)^review-run: PASS$'
+            $r.Output | Should -Not -Match '(?m)^verdict:'
+            $r.Output | Should -Not -Match '(?m)^reviewer:'
+            $r.Output | Should -Not -Match '(?m)^model:'
+            $r.Output | Should -Not -Match '(?m)^provenance-persisted:'
+            [System.IO.File]::ReadAllText((Join-Path $toolRoot 'scripts/lib/native-verify-count.txt')).Trim() | Should -Be '2'
+            ([System.IO.File]::ReadAllText($resultMd)) | Should -Not -Match '(?m)^## Reviewer run provenance$'
+        }
+        finally {
+            if (Test-Path -LiteralPath $resultMd -PathType Leaf) {
+                Set-ItemProperty -LiteralPath $resultMd -Name IsReadOnly -Value $false
+            }
+        }
+    }
+
     It 'AC-RR27a: provenance append failure preserves the reviewer candidate and reports the persistence miss' {
         $project = script:New-RunCase -CaseName 'rr27a'
         $taskId  = 'rr27a-task'
@@ -1401,13 +1631,14 @@ Describe 'review-run canonical pass directory' {
         $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
+        $toolRoot = script:New-CountingVerifyToolRoot -CaseName 'append-fail'
         $stub = script:Write-CodexStub -StubName 'rr27a-readonly' -Mode 'verdict-yes-full' -MakeResultReadOnly $true
         $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $expected = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n`r`n## Blocking findings`r`n`r`nnone`r`n`r`n## Non-blocking concerns`r`n`r`nnone`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"
         $enc = New-Object System.Text.UTF8Encoding($false)
 
         try {
-            $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
+            $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub -ToolRoot $toolRoot
             $r.ExitCode | Should -Be 0 -Because $r.Output
             $r.Output | Should -Match '(?m)^review-run: PASS$'
             $r.Output | Should -Match '(?m)^verdict: yes$'
@@ -1419,6 +1650,8 @@ Describe 'review-run canonical pass directory' {
             $actualBytes = [System.IO.File]::ReadAllBytes($resultMd)
             [Convert]::ToBase64String($actualBytes) | Should -Be ([Convert]::ToBase64String($expectedBytes))
             ([System.IO.File]::ReadAllText($resultMd, $enc)) | Should -Not -Match '(?m)^## Reviewer run provenance$'
+            $countPath = Join-Path $toolRoot 'scripts/review-verify-count.txt'
+            [System.IO.File]::ReadAllText($countPath).Trim() | Should -Be '2'
 
             $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
             $v.ExitCode | Should -Be 0 -Because $v.Output

@@ -168,9 +168,11 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
 - Do NOT look for, read, or require <ProjectRoot>/log/brief/BRIEF.md or any Brief. Its absence is irrelevant in reviewer mode and is NOT a reason to pause.
 - Do NOT perform any operator-side Brief restore, session restore, continuation, or session-recovery protocol, and do NOT proactively offer to restore from a Brief.
 - Do NOT ask the user any question, and do NOT request clarification. There is no interactive user in this run.
-- When you can issue a usable reviewer judgment, produce a canonical review result as your final message: exactly one top-level "## Verdict" heading whose first non-empty following line is EXACTLY one of: yes | no | yes with risk. You may also add "## Findings", "## Risks", "## Counter-argument", "## Notes".
+- Do NOT silently repair packet defects, reconstruct missing evidence, or expand the requested scope. Report missing, stale, ambiguous, or inaccessible material as an explicit limitation, gap, risk, finding, or re-review request.
+- When you can issue a usable reviewer judgment, produce a canonical review result as your final message: exactly one top-level "## Verdict" heading whose first non-empty following line is EXACTLY one of: yes | no | yes with risk. You may also add "## Counter-argument" and "## Notes".
 - For a usable judgment, ALWAYS include each of these four H2 disclosure headings exactly once in result.md, case-sensitive (parser-required by review-verify -RequireResult): "## Blocking findings", "## Non-blocking concerns", "## Review limitations", "## Assumptions relied on". If a section has no substance, set its body to the single word "none".
-- Before issuing the final verdict, articulate the strongest case AGAINST your own conclusion in "## Counter-argument" (especially when the verdict is "yes" or "yes with risk") — this is the dedicated pressure-test surface for the verdict. If no material counter-argument exists after deliberate pressure-test, use a short literal such as "none" or "no material counter-argument identified" — avoid ceremonial boilerplate. "## Counter-argument" is optional and strongly-recommended (NOT parser-required); "## Notes" remains available for general observations, framing self-audit, evidence pointers, or other reviewer narrative.
+- Put every named non-blocking risk, including the risk supporting "yes with risk", in "## Non-blocking concerns"; do not create generic Findings/Risks buckets.
+- Deliberately pressure-test your conclusion. For "yes" or "yes with risk", a "## Counter-argument" section articulating the strongest case AGAINST the verdict is strongly recommended but optional and NOT parser-required. If no material counter-argument exists, use "none" or "no material counter-argument identified" instead of ceremonial boilerplate. "## Notes" remains available for framing self-audit, evidence pointers, or other observations.
 - If the evidence identifies a concrete blocker or bounded risk, issue the corresponding verdict and disclose it. If the available input is too incomplete to determine whether a blocker exists, do NOT manufacture a verdict: return a concise failure explanation without a "## Verdict" heading so the runner preserves the pass as review-result unavailable.
 - Writing a question or an operator-side Brief / session-restore or continuation message is a review FAILURE. A final message without a canonical "## Verdict" heading is intentionally unusable as a reviewer judgment and the runner must fail the pass without manufacturing a source verdict.
 ===== BEGIN REVIEW INPUT (input.md) =====
@@ -705,8 +707,8 @@ if ([string]::IsNullOrEmpty($verdict)) {
 
 # Do not publish PASS, a source verdict, or provenance for a body that only has a
 # parseable verdict token. The canonical verifier owns the complete successful-result
-# shape (verdict plus the four disclosure H2s). The skill repeats this verification
-# after provenance append as the post-hoc artifact check.
+# shape (verdict plus the four disclosure H2s). This pre-append check prevents a
+# malformed candidate from receiving provenance.
 $verifyResultArgs = @(
     '-NoProfile', '-ExecutionPolicy', 'Bypass',
     '-File', $verifyResultScript,
@@ -747,6 +749,40 @@ try {
 catch {
     $provenancePersisted = $false
     $provenanceError = $_.Exception.Message
+}
+
+# Re-run the same canonical verifier after the provenance append attempt. This moves
+# the former operator-side post-hoc call into the runner tail; it does not add a new
+# parser rule and does not validate provenance content. An append failure remains
+# nonfatal when the unchanged candidate still passes. A final-shape failure, however,
+# must stop before PASS/H1 success publication. Preserve any actual provenance already
+# written and report both failures when append and verification fail together.
+$finalVerifyResult = $null
+$finalVerifyInvocationError = ''
+try {
+    $finalVerifyResult = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $verifyResultArgs
+}
+catch {
+    $finalVerifyInvocationError = $_.Exception.Message
+}
+$appendFailureStatus = if ($provenancePersisted) { '' } else { (' Provenance append also failed: {0}.' -f $provenanceError) }
+if (-not [string]::IsNullOrEmpty($finalVerifyInvocationError)) {
+    Write-Host ('review-run: FAIL review result unavailable after provenance append attempt (review-verify invocation exception): {0}.{1} The failed pass is preserved; no reviewer verdict was issued.' -f $finalVerifyInvocationError, $appendFailureStatus)
+    exit 1
+}
+if ($finalVerifyResult.ExitCode -ne 0) {
+    $finalVerifyDiagnostics = @()
+    $finalVerifyStdoutLines = @(([string] $finalVerifyResult.Stdout) -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    $finalVerifyStderrLines = @(([string] $finalVerifyResult.Stderr) -split "`r?`n" | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if ($finalVerifyStdoutLines.Count -gt 0) {
+        $finalVerifyDiagnostics += ('stdout: {0}' -f ($finalVerifyStdoutLines -join ' | '))
+    }
+    if ($finalVerifyStderrLines.Count -gt 0) {
+        $finalVerifyDiagnostics += ('stderr: {0}' -f ($finalVerifyStderrLines -join ' | '))
+    }
+    $finalVerifyStatus = if ($finalVerifyDiagnostics.Count -gt 0) { $finalVerifyDiagnostics -join '; ' } else { 'no verifier status line' }
+    Write-Host ('review-run: FAIL review result unavailable after provenance append attempt (review-verify exit {0}): {1}.{2} The failed pass is preserved; no reviewer verdict was issued.' -f $finalVerifyResult.ExitCode, $finalVerifyStatus, $appendFailureStatus)
+    exit 1
 }
 
 Write-Host ('review-run: PASS')
