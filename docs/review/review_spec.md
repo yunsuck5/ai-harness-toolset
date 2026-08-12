@@ -95,6 +95,6 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 
 ## Lifecycle state
 
-- lifecycle 문서: `review_design.md` / `review_plan.md` active — working-tree candidate와 사용자 gate 동안 존치하고 closeout에서만 retire한다; Work Packet은 만들지 않는다.
-- spec ↔ implementation: **sync-required** — canonical review 문면 축소·empty-input 발급·runner-tail final shape 검증 target state를 먼저 기록했으며 active surface·tests가 따라오는 중이다.
+- lifecycle 문서: 없음 — temporary Design / Plan은 closeout에서 retire(삭제)되었고 planning anchor commit이 기록을 git history에 보존한다; 이 lifecycle에서는 Work Packet을 만들지 않았다.
+- spec ↔ implementation: **live** — canonical review 문면 축소·empty-input 발급·runner-tail final shape 검증 target state가 active surface·tests와 동기화되어 있다.
 - future work: open 항목·수용된 잔여 위험·idea-only 항목과 ID 발번(next ID)의 single home 은 `review_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
