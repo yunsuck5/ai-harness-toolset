@@ -24,21 +24,21 @@ Review style and target scope are independent. Follow an explicit mixed request.
 
 - Inspect `git status --porcelain=v1` and `git diff`. Do not restart, rebase, switch, stash, reset, stage, or edit source merely to run review.
 - `<ProjectRoot>` is the inspected repo. Resolve `<ToolRoot>` in order: explicit argument → `AI_HARNESS_TOOL_ROOT` → `%USERPROFILE%\ai-harness-toolset\current` → source-repo dogfooding → stop. Do not auto-install.
-- When the target changes review machinery (runner/verifier/skill/templates/config or its contract), use the global stable ToolRoot or a pre-change independent checkout. Never use the in-development runner as its own review engine; if the stable engine fails, stop without fallback.
+- When the target changes review machinery (runner/verifier/skill/templates/config or its contract), confirm and record the global stable installation's current payload-head provenance through the canonical three-way cross-binding `payload-manifest.json.head == payload-marker.json.head == install.json.lastUpdatedHead`; `install.json.installedHead` is initial-install history and is not part of this identity. Missing, unreadable, or unequal values make the installed-engine provenance incomplete. This cross-binding establishes only the payload head jointly named by the installation metadata; it does not by itself prove payload integrity, a pre-change baseline, or engine eligibility. For every selected target component—the uncommitted working-tree change and/or each committed delta against its stated base—bind its pre-change baseline and exact reviewed state, then compare each target-relevant review-engine payload across the candidate engine, the applicable baseline, and every reviewed state with text line endings normalized; a combined target requires both the committed endpoint and the current working tree. Use an engine only when affirmative evidence shows that it is pre-change and excludes every included review-machinery change. An engine containing any included change is in-development and ineligible; for a payload changed by the target, identity with its reviewed after-state proves that inclusion, while byte difference alone does not prove eligibility and unrelated drift cannot mask an included change. Treat incomplete baseline/payload/state coverage or provenance as ineligible. Prefer an eligible global stable ToolRoot. If it is unavailable or ineligible (unusable, inclusive of a reviewed change, or not affirmatively established as pre-change), use only an already-existing, user-provided pre-change independent checkout; this workflow does not create that checkout. An independent checkout need not carry installation cross-binding metadata, but its checkout provenance and the same baseline/payload/reviewed-state comparison must affirmatively establish that it excludes every included review-machinery change. If neither eligible option is available or the selected independent engine is unusable, stop and request an eligible checkout without falling back to the in-development runner.
 
 ### 1. Bind the target accurately
 
-**Mode A:** use the tracked changed set, excluding `log/`, generated artifacts, `.gitignore`-only noise, and genuinely unrelated edits. Untracked files are included only when user intent clearly covers them. If no reviewable change exists, report that and stop.
+**Mode A:** follow the user's stated target: use the uncommitted working-tree changed set and/or the committed delta against a stated base (for example, `main..HEAD`), excluding `log/`, generated artifacts, `.gitignore`-only noise, and genuinely unrelated edits. Include untracked files only when user intent clearly covers them. If no reviewable change exists, report that and stop.
 
 **Mode B:** resolve the named subsystem from `git ls-files`, regardless of dirty state. Prefer a directory match, then filename match; exclude tests/fixtures only when the request does not cover them. Current diff is context and must not redefine the named subsystem.
 
-Cross-check the chosen files against status/diff. Disclose every deliberate omission under `## Known concerns`. Do not shrink scope for cost, latency, or an easier verdict. Ask at most one clarification only if the named subsystem does not resolve, spans unrelated trees, or Mode A/B intent is genuinely ambiguous.
+Cross-check the chosen files against status, the working-tree diff, and the stated-base diff as applicable. Disclose every deliberate omission under `## Known concerns`. Do not shrink scope for cost, latency, or an easier verdict. Ask at most one clarification only if the named subsystem does not resolve, spans unrelated trees, or Mode A/B intent is genuinely ambiguous.
 
 Use repo-relative forward-slash paths and never list `log/` runtime artifacts as target files.
 
 ### 2. Allocate one write-once unit
 
-Choose a task-stable `<review-task-id>` and explicit viewpoint `<perspective>`. Invoke once:
+Choose a task-stable `<review-task-id>` and explicit viewpoint `<perspective>`. Reuse the same `<review-task-id>` for every pass of the same task; choose a new one only when the task itself changes. Invoke once:
 
 ```powershell
 <ToolRoot>/scripts/review-prepare.ps1 `
@@ -50,7 +50,7 @@ Prepare creates an empty `input.md`. Author it in the next step. If the pass alr
 
 ### 3. Author `input.md`
 
-Use `<ToolRoot>/templates/review-input.md` as the writing reference. The input verifier requires these five H2 bodies to be non-empty: `Context`, `Required inspection paths`, `Review questions`, `Constraints`, and `Final verdict`. The last body retains the literal `yes / no / yes with risk` required by the existing input gate. The runner preamble—not this packet—owns the reviewer output runtime instruction.
+Use `<ToolRoot>/templates/review-input.md` as the writing reference. The input verifier requires these five H2 bodies to be non-empty: `Context`, `Required inspection paths`, `Review questions`, `Constraints`, and `Final verdict`. The last body must retain the literal string `yes / no / yes with risk` required by the existing input gate; leave that string in place and do not write a verdict there. Replace every active `AI_TO_FILL_*` placeholder before running; the input verifier rejects any that remains. The runner preamble—not this packet—owns the reviewer output runtime instruction.
 
 Fill the compact informational positions when relevant:
 
@@ -65,7 +65,7 @@ Fill the compact informational positions when relevant:
 
 Before stating a regex/parser/script behavior as fact, run a narrow reproducible check or disclose it as unverified.
 
-**Off-repo/sibling material (B2 hold).** Treat it as advisory, never source-of-truth. The read-only reviewer can often access additional sibling and `log/` paths: attempt the exact path read first and report the actual outcome/error rather than assuming denial. Because the current runner has no explicit external-root transport, also inline the verbatim body of any load-bearing off-repo material inside `Context` so a path failure cannot change the evidence base. Keep this fallback until the separately gated external-path integration lands.
+**Off-repo/sibling material (exact-path read plus inline fallback until the separately gated runner integration for external read paths lands).** Treat it as advisory, never source-of-truth. The read-only reviewer can often access additional sibling and `log/` paths: attempt the exact path read first and report the actual outcome/error rather than assuming denial. Because the current runner has no explicit external-root transport, also inline the verbatim body of any load-bearing off-repo material inside `Context` so a path failure cannot change the evidence base. Keep this fallback until the separately gated external-path integration lands.
 
 ### 4. Run each review unit once
 
@@ -77,7 +77,7 @@ Rules:
 - Once `review-run` starts, do not edit `input.md`. During this run step, the newly prepared canonical pass directory is the only runtime artifact location this workflow may write. Do not edit an existing or failed pass; if continuation or recovery requires mutation outside the new pass directory or approved review scope, stop and report instead of expanding scope.
 - If the reviewer CLI is unavailable, report the environment gap and stop; do not install or refresh it.
 - Model/effort come from explicit values or `config/reviewer.json`; missing model and malformed matched category fail fast. Effort never substitutes for coverage. Do not downgrade contract, boundary, system-coherence, or review-subsystem changes.
-- A new/changed template, contract, perspective, or artifact-binding uses canary-first: complete one unit `prepare → run (tail verify included) → read` before the remaining units. A standard dual review on an already-proven pipeline needs no canary.
+- A new/changed template, contract, perspective, or artifact-binding in the engine pipeline being used uses canary-first: complete one unit `prepare → run (tail verify included) → read` before the remaining units. A standard dual review on an already-proven pipeline needs no canary.
 - An already-proven read-only dual review records its fixed two-member set and runs the two units concurrently by default. After a required canary, launch only the remaining set; run a single remainder singly, or multiple remainders concurrently with separate pass paths, isolated output, and a complete join. Prepare allocation and all mutation/git operations stay foreground and serial. Do not shard system-coherence, drop a slow member, poll, or conclude with a missing/stale member.
 - If usable member results conflict and there is no evidence-bound basis to reduce the conflict, stop and report it; do not merge or conclude.
 - If runner exits nonzero, classify reviewer invocation unavailable vs review result unavailable, report exit/last status/result existence, preserve the pass, and stop. Neither state has a verdict.
