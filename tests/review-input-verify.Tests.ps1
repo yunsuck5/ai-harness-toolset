@@ -267,7 +267,7 @@ Describe 'templates/review-input.md compact authoring reference' {
 }
 
 Describe 'source ai-harness-review skill compact judgment core' {
-    It 'AC-IV-OC2: skill retains coverage, freshness, adjudication, and conflict-stop semantics' {
+    It 'AC-IV-OC2: skill retains compact judgment core and two canonical point-of-use contract lines' {
         $repoRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).ProviderPath
         $skillPath = Join-Path $repoRoot 'snippets/claude-skills/ai-harness-review/SKILL.md'
         Test-Path -LiteralPath $skillPath -PathType Leaf | Should -BeTrue
@@ -293,6 +293,22 @@ Describe 'source ai-harness-review skill compact judgment core' {
         $content | Should -Match 'stop and report instead of expanding scope'
         $content | Should -Match 'reviewer CLI is unavailable'
         $content | Should -Match 'do not install or refresh it'
+        $introMatch = [regex]::Match($content, '(?ms)\A(?<body>.*?)(?=^## Supported intents$)')
+        $introMatch.Success | Should -BeTrue
+        $intro = $introMatch.Groups['body'].Value
+        $verdictGuidanceLines = @($intro -split '\r?\n' | Where-Object { $_ -match 'canonical reviewer verdict' })
+        $verdictGuidanceLines.Count | Should -Be 1
+        $verdictGuidance = $verdictGuidanceLines[0]
+        # 이 두 줄만 배포 SKILL의 canonical contract line으로 정확히 보존한다. 자연어 의미동등성 parser가 아니다.
+        ($verdictGuidance -ceq 'Only a semantically usable reviewer-unit result produced through `review-run.ps1` supplies a canonical reviewer verdict; caller self-review supplies packet context and a separate caller judgment, never a substitute reviewer verdict.') | Should -BeTrue
+
+        $allocateMatch = [regex]::Match($content, '(?ms)^### 2\. Allocate one write-once unit\r?\n(?<body>.*?)(?=^### 3\. Author `input\.md`$)')
+        $allocateMatch.Success | Should -BeTrue
+        $allocate = $allocateMatch.Groups['body'].Value
+        $stageGuidanceLines = @($allocate -split '\r?\n' | Where-Object { $_ -match 'for `<stage>`' })
+        $stageGuidanceLines.Count | Should -Be 1
+        $stageGuidance = $stageGuidanceLines[0]
+        ($stageGuidance -ceq 'Use `design`, `implementation`, `test`, `review`, or `release` for `<stage>`; choose `implementation` for an ordinary code change unless a more specific review stage applies.') | Should -BeTrue
     }
 }
 

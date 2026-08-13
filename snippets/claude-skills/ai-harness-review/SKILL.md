@@ -11,6 +11,8 @@ Canonical dual-perspective coverage consists of two focused units: `local-correc
 
 The calling agent performs the workflow. The user does not supply CLI arguments.
 
+Only a semantically usable reviewer-unit result produced through `review-run.ps1` supplies a canonical reviewer verdict; caller self-review supplies packet context and a separate caller judgment, never a substitute reviewer verdict.
+
 ## Supported intents
 
 1. **Reviewer-only (Mode A).** Review the current work; skip caller self-review.
@@ -45,6 +47,8 @@ Choose a task-stable `<review-task-id>` and explicit viewpoint `<perspective>`. 
   -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>] `
   -Stage <stage> -Purpose <line> -ProjectRoot <ProjectRoot> -ToolRoot <ToolRoot>
 ```
+
+Use `design`, `implementation`, `test`, `review`, or `release` for `<stage>`; choose `implementation` for an ordinary code change unless a more specific review stage applies.
 
 Prepare creates an empty `input.md`. Author it in the next step. If the pass already exists or an earlier pass is wrong/stale, allocate the next pass under the same task/perspective; never repair an old pass in place.
 
