@@ -95,6 +95,6 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 
 ## Lifecycle state
 
-- lifecycle 문서: `review_design.md`와 `review_plan.md`가 active이며 Work Packet은 만들지 않았다. current-bearing target meaning은 이 Spec과 active SKILL에 흡수하고 planning artifact는 closeout 전까지 존치한다.
-- spec ↔ implementation: **sync-required** — Stage 호출 전 정보와 canonical verdict 주체 경계를 target state와 candidate SKILL에 동기화했으며 corrected-state 검증·review와 closeout을 남겨 둔다.
+- lifecycle 문서: 없음 — Stage 호출 전 정보와 canonical reviewer verdict 주체 경계의 current-bearing 의미는 이 Spec과 active SKILL에 흡수되었고 retired Design/Plan은 git history에 보존된다. Work Packet은 만들지 않았다.
+- spec ↔ implementation: **live** — Stage 호출 전 정보와 canonical reviewer verdict 주체 경계의 target-state 의미가 active SKILL과 동기화되어 있다.
 - future work: open 항목·수용된 잔여 위험·idea-only 항목과 ID 발번(next ID)의 single home 은 `review_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
