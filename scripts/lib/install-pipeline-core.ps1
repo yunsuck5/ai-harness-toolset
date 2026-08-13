@@ -31,14 +31,14 @@ function Invoke-InstallPipelineNativeGit {
     return [pscustomobject]@{ ExitCode = $code; Stdout = $stdout }
 }
 
-# install-pipeline-core library — install/update/restore runtime pipeline (temp-only skeleton).
-# Dot-sourced from tests/support/install-pipeline-fixture.ps1 (fixture / test harness
-# entry; moved from the former scripts/install-pipeline.ps1 path to make the role explicit)
-# and from tests/install-pipeline.Tests.ps1 (Pester suite).
+# install-pipeline-core library — shared install/update/restore runtime pipeline.
+# Product lifecycle entrypoints and the temp-only fixture entry both dot-source this
+# library. `INSTALL.md` owns the operative
+# contract; this file implements the shared resolver/materialization/dispatch/verify core.
 #
 # Runtime pipeline grouping (resolver → materialization → dispatcher → verify). The
-#   operative contract is this library plus its Pester suite; the grouping's decision
-#   record / rationale is preserved in git history (not an operative authority):
+#   grouping's decision record / rationale is preserved in git history (not an operative
+#   authority), while Pester guards the active implementation behavior:
 #   - source / ref resolver (resolved tuple shape).
 #   - overwrite materialization core (deterministic copy into current/).
 #   - dispatcher (4 action labels routed through one pipeline shape).
@@ -257,7 +257,8 @@ function Invoke-InstallPipelineGitUrlClone {
         [Parameter(Mandatory = $true)]
         [string] $InstallArea,
         [Parameter(Mandatory = $true)]
-        [string] $RepoUrl
+        [string] $RepoUrl,
+        [string] $Remote = ''
     )
 
     if (-not (Test-Path -LiteralPath $InstallArea -PathType Container)) {
@@ -283,7 +284,9 @@ function Invoke-InstallPipelineGitUrlClone {
 
     # Invoke-InstallPipelineNativeGit pins $ErrorActionPreference=Continue around the call
     # so NativeCommandError on git stderr does not preempt the exit-code-driven throw below.
-    $res = Invoke-InstallPipelineNativeGit -Arguments @('clone', '-q', $RepoUrl, $cache)
+    $remoteName = $Remote
+    if ([string]::IsNullOrEmpty($remoteName)) { $remoteName = $script:InstallPipelineGitUrlDefaultRemote }
+    $res = Invoke-InstallPipelineNativeGit -Arguments @('clone', '-q', '--origin', $remoteName, $RepoUrl, $cache)
     if ($res.ExitCode -ne 0) {
         throw "Invoke-InstallPipelineGitUrlClone: git clone failed (repoUrl=$RepoUrl, dest=$cache; exitCode=$($res.ExitCode))"
     }
@@ -535,6 +538,32 @@ function Resolve-InstallPipelineRef {
     return (@($res.Stdout) -join "`n").Trim()
 }
 
+# D3 source validity belongs to the exact selected Git tree, not to the checkout currently
+# visible in the source worktree. This keeps validation and archive materialization bound to
+# the same resolved SHA without checking out or otherwise mutating a caller-owned local clone.
+function Test-InstallPipelineSourceRefRoot {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $SourceLocation,
+        [Parameter(Mandatory = $true)]
+        [string] $Ref
+    )
+
+    if (-not (Test-Path -LiteralPath $SourceLocation -PathType Container)) { return $false }
+    $gitPath = Join-Path -Path $SourceLocation -ChildPath '.git'
+    if (-not (Test-Path -LiteralPath $gitPath)) { return $false }
+
+    foreach ($marker in @('scripts/verify-ps1.ps1', 'templates/review-input.md', 'config/reviewer.json')) {
+        $objectSpec = '{0}:{1}' -f $Ref, $marker
+        $res = Invoke-InstallPipelineNativeGit -CaptureStdout -Arguments @('-C', $SourceLocation, 'cat-file', '-t', $objectSpec)
+        if ($res.ExitCode -ne 0) { return $false }
+        $objectType = (@($res.Stdout) -join "`n").Trim()
+        if ($objectType -cne 'blob') { return $false }
+    }
+    return $true
+}
+
 function Test-InstallPipelineSourceCut {
     [CmdletBinding()]
     param(
@@ -747,15 +776,15 @@ function Invoke-InstallPipelineDispatch {
         throw "Invoke-InstallPipelineDispatch: action $($Tuple.action) requires existing install metadata; none found at $InstallArea (run -Action install first)."
     }
 
-    # Source-repo multi-marker check (Test-IsSourceRepoRoot, 3-marker AND): the source we are about to
-    # archive from must be a valid ai-harness source repo. Apply to both modes — for
-    # local-clone the source is tuple.sourceLocation (user-supplied path), for git-url
-    # the source is tuple.toolRoot (= cache after clone). Arbitrary git repos / arbitrary
-    # URLs must not pass the install / update / restore pipeline.
+    # Source-repo multi-marker check (3-marker AND): inspect the exact selected Git tree that
+    # Invoke-InstallMaterialization archives below. The source checkout/default branch is not
+    # validity evidence; local-clone worktrees remain untouched and git-url non-default targets
+    # are judged from Tuple.resolvedRefSha rather than the clone's checkout.
     $d3Target = [string]$Tuple.toolRoot
-    if (-not (Test-IsSourceRepoRoot -Path $d3Target)) {
+    $d3Ref = [string]$Tuple.resolvedRefSha
+    if (-not (Test-InstallPipelineSourceRefRoot -SourceLocation $d3Target -Ref $d3Ref)) {
         $hintLoc = [string]$Tuple.sourceLocation
-        throw "Invoke-InstallPipelineDispatch: source is not a valid ai-harness source repo (D3 multi-marker check failed) at $d3Target (sourceLocation=$hintLoc). Required markers: scripts/verify-ps1.ps1, templates/review-input.md, config/reviewer.json."
+        throw "Invoke-InstallPipelineDispatch: selected source ref is not a valid ai-harness source repo (D3 multi-marker check failed) at ref $d3Ref in $d3Target (sourceLocation=$hintLoc). Required marker blobs: scripts/verify-ps1.ps1, templates/review-input.md, config/reviewer.json."
     }
 
     Invoke-InstallMaterialization -Tuple $Tuple -InstallArea $InstallArea

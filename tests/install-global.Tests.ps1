@@ -28,6 +28,23 @@ BeforeAll {
         param([hashtable] $Params)
         return Invoke-LifecycleScript -ScriptPath $script:InstallGlobal -Params $Params
     }
+
+    function script:Invoke-InstallGlobalFixtureGit {
+        [CmdletBinding()]
+        param(
+            [Parameter(Mandatory = $true)]
+            [string[]] $Arguments
+        )
+
+        $proc = Invoke-NativeProcess -Executable 'git' -Arguments $Arguments
+        if ($proc.ExitCode -ne 0) {
+            $detail = (([string] $proc.Stdout) + "`n" + ([string] $proc.Stderr)).Trim()
+            throw ('install-global fixture git 실패: git {0}; exitCode={1}; output={2}' -f
+                ($Arguments -join ' '), $proc.ExitCode, $detail)
+        }
+
+        return (([string] $proc.Stdout).Trim())
+    }
 }
 
 Describe 'install-global.ps1 fresh install (IU-B-09)' {
@@ -57,6 +74,117 @@ Describe 'install-global.ps1 fresh install (IU-B-09)' {
         ([regex]::Matches($claudeMd, '(?m)^' + [regex]::Escape($script:Begin) + '$')).Count | Should -Be 1
         $agentsMd = script:Read-NoBom -Path (Join-Path $h.Codex 'AGENTS.md')
         ([regex]::Matches($agentsMd, '(?m)^' + [regex]::Escape($script:Begin) + '$')).Count | Should -Be 1
+    }
+
+    It 'Q09-IG-E2E-1: git-url fresh install은 custom remote와 non-default selected SHA를 end-to-end로 결박한다' {
+        $src = New-LifecycleFixtureSource -TestDriveRoot $TestDrive -CaseName 'q09-git-url-e2e'
+        $h   = New-LifecycleHomes -TestDriveRoot $TestDrive -CaseName 'q09-git-url-e2e'
+
+        $selectedBranch = 'release-q09'
+        $remoteAlias    = 'upstream'
+        $sentinelRel    = 'config/q09-selected-target.txt'
+        $sentinelText   = 'selected-release-q09'
+
+        # 선택 branch는 D3-valid 상태를 유지하면서 main과 구별되는 payload를 갖는다.
+        $null = script:Invoke-InstallGlobalFixtureGit -Arguments @(
+            '-C', $src, 'checkout', '-q', '-b', $selectedBranch
+        )
+        script:Write-NoBom -Path (Join-Path $src $sentinelRel) -Content $sentinelText
+        $null = script:Invoke-InstallGlobalFixtureGit -Arguments @(
+            '-C', $src, 'add', '--', $sentinelRel
+        )
+        $null = script:Invoke-InstallGlobalFixtureGit -Arguments @(
+            '-C', $src, 'commit', '-q', '-m', 'seed selected release target'
+        )
+        $selectedSha = script:Invoke-InstallGlobalFixtureGit -Arguments @(
+            '-C', $src, 'rev-parse', 'HEAD'
+        )
+
+        # clone의 default checkout인 main은 D3-invalid로 만들어 selected-tree 검사를 구별한다.
+        $null = script:Invoke-InstallGlobalFixtureGit -Arguments @(
+            '-C', $src, 'checkout', '-q', 'main'
+        )
+        Remove-Item -LiteralPath (Join-Path $src 'scripts/verify-ps1.ps1') -Force
+        $null = script:Invoke-InstallGlobalFixtureGit -Arguments @(
+            '-C', $src, 'add', '-A', '--', 'scripts/verify-ps1.ps1'
+        )
+        $null = script:Invoke-InstallGlobalFixtureGit -Arguments @(
+            '-C', $src, 'commit', '-q', '-m', 'make default branch D3-invalid'
+        )
+        $defaultSha = script:Invoke-InstallGlobalFixtureGit -Arguments @(
+            '-C', $src, 'rev-parse', 'HEAD'
+        )
+
+        $selectedSha | Should -Match '^[0-9a-f]{40}$'
+        $defaultSha  | Should -Match '^[0-9a-f]{40}$'
+        $selectedSha | Should -Not -BeExactly $defaultSha
+
+        # 외부 network 없이 local bare repo를 실제 RepoUrl로 사용한다.
+        $barePath = [System.IO.Path]::GetFullPath(
+            (Join-Path $TestDrive 'lifecycle-bare-q09-git-url-e2e.git')
+        )
+        $null = script:Invoke-InstallGlobalFixtureGit -Arguments @(
+            'clone', '--bare', '-q', $src, $barePath
+        )
+
+        $r = script:Install -Params @{
+            InstallArea = $h.Area
+            RepoUrl     = $barePath
+            Branch      = $selectedBranch
+            Remote      = $remoteAlias
+            ClaudeHome  = $h.Claude
+            CodexHome   = $h.Codex
+            SkipSmoke   = $true
+        }
+
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match 'installMode=git-url'
+        $r.Output | Should -Match 'verify reached verify_pass'
+        $r.Output | Should -Match 'installStatus=installed'
+        $r.Output | Should -Match ('installedHead=' + [regex]::Escape($selectedSha))
+
+        $metadata = script:Read-NoBom -Path (Join-Path $h.Area 'install.json') |
+            ConvertFrom-Json
+        [string] $metadata.installMode     | Should -BeExactly 'git-url'
+        [string] $metadata.repoUrl         | Should -BeExactly $barePath
+        [string] $metadata.sourcePath      | Should -BeExactly ''
+        [string] $metadata.toolRoot        | Should -BeExactly ''
+        [string] $metadata.branch          | Should -BeExactly $selectedBranch
+        [string] $metadata.remote          | Should -BeExactly $remoteAlias
+        [string] $metadata.installedHead   | Should -BeExactly $selectedSha
+        [string] $metadata.lastUpdatedHead | Should -BeExactly $selectedSha
+
+        $manifest = script:Read-NoBom -Path (Join-Path $h.Area 'payload-manifest.json') |
+            ConvertFrom-Json
+        $marker = script:Read-NoBom -Path (Join-Path $h.Area 'payload-marker.json') |
+            ConvertFrom-Json
+
+        [string] $manifest.head       | Should -BeExactly $selectedSha
+        [string] $marker.head         | Should -BeExactly $selectedSha
+        [string] $marker.manifestPath | Should -BeExactly 'payload-manifest.json'
+
+        $installedSentinel = Join-Path $h.Area ('current/' + $sentinelRel)
+        (Test-Path -LiteralPath $installedSentinel -PathType Leaf) | Should -BeTrue
+        (script:Read-NoBom -Path $installedSentinel) | Should -BeExactly $sentinelText
+        @($manifest.files | Where-Object {
+            [string] $_.path -ceq $sentinelRel
+        }).Count | Should -Be 1
+
+        # default main에는 첫 marker가 없으므로, 이 셋의 materialization은 selected SHA D3를 증명한다.
+        foreach ($relativePath in @(
+            'scripts/verify-ps1.ps1',
+            'templates/review-input.md',
+            'config/reviewer.json'
+        )) {
+            $installedPath = Join-Path $h.Area ('current/' + $relativePath)
+            (Test-Path -LiteralPath $installedPath -PathType Leaf) | Should -BeTrue
+            @($manifest.files | Where-Object {
+                [string] $_.path -ceq $relativePath
+            }).Count | Should -Be 1
+        }
+
+        # run-scoped clone은 성공 경로 종료 시 남지 않는다.
+        (Test-Path -LiteralPath (Join-Path $h.Area 'source-cache')) | Should -BeFalse
     }
 
     It 'AC-IG-MULTISKILL: a second source skill is also force-mirrored + finally verified (generic enumeration)' {
@@ -105,6 +233,14 @@ Describe 'install-global.ps1 fresh install (IU-B-09)' {
         $r2.ExitCode | Should -Not -Be 0
         $r2.Output | Should -Match 'install_failed'
         $r2.Output | Should -Match 'update-global'
+        $r2.Output | Should -Match 'install\.json\.installMode'
+        $r2.Output | Should -Match 'git-url'
+        $r2.Output | Should -Match 'exactly one target selector'
+        $r2.Output | Should -Match '\-Branch'
+        $r2.Output | Should -Match '\-Ref'
+        $r2.Output | Should -Match 'advertised 40-hex branch-tip'
+        $r2.Output | Should -Match 'local-clone, pass neither selector'
+        $r2.Output | Should -Match 'install-update\.ps1 -Mode update-source'
         # install.json byte-unchanged by the refused second install.
         (script:Read-NoBom -Path (Join-Path $h.Area 'install.json')) | Should -Be $before
     }

@@ -135,7 +135,8 @@ BeforeAll {
             [Parameter(Mandatory = $true)] [string] $Head,
             [string] $InstallMode = 'local-clone',
             [string] $RepoUrl = '',
-            [string] $Branch = 'main'
+            [string] $Branch = 'main',
+            [string] $Remote = 'origin'
         )
         # Populate current/<payloadRoots> with payload-snippet activation sources.
         $currentDir = Join-Path $InstallArea 'current'
@@ -165,7 +166,7 @@ BeforeAll {
             sourcePath            = $mdSourcePath
             toolRoot              = $mdToolRoot
             branch                = $Branch
-            remote                = 'origin'
+            remote                = $Remote
             installedHead         = $Head
             lastUpdatedHead       = $Head
             installedAt           = $now
@@ -357,6 +358,8 @@ Describe 'install-update.ps1 — inspect mode' {
         # Move source HEAD forward.
         $newHead = script:Add-FixtureGitCommit -Root $src.Root -Suffix 't02'
         $newHead | Should -Not -BeExactly $src.Head
+        # A lower-precedence activation drift must still be evaluated and reported.
+        script:Write-TextFile (Join-Path $homes.ClaudeHome 'CLAUDE.md') '# drifted activation surface'
 
         $r = script:Invoke-InstallUpdate -CallParams @{
             Mode = 'inspect'
@@ -370,16 +373,18 @@ Describe 'install-update.ps1 — inspect mode' {
         $r.Json.payloadDeltaRequired | Should -BeExactly $true
         $r.Json.sourceResolvedHead | Should -BeExactly $newHead
         $r.Json.lastUpdatedHead   | Should -BeExactly $src.Head
+        (@($r.Json.activationSurfaces)).Count | Should -BeGreaterThan 0
+        (@($r.Json.activationSurfaces | Where-Object { $_.byteIdentical -eq $false })).Count | Should -BeGreaterThan 0
+        (@($r.Json.reasons) -join "`n") | Should -Match 'activation surface drift'
     }
 
-    It 'T02b: git-url mode derives branch from install.json (non-main) for source HEAD resolve' {
+    It 'T02b: git-url mode resolves an explicitly selected recorded non-main branch' {
         $bare = script:New-FixtureBareRepoWithBranch -CaseName 't02b' -BranchName 'release-x'
         $bare.BranchHead | Should -Not -BeExactly $bare.MainHead
         $area = script:New-FixtureInstallArea -CaseName 't02b'
         $homes = script:New-FixtureHomeRoots -CaseName 't02b'
-        # Installed identity = main HEAD, but the install tracks the 'release-x' branch.
-        # No -Branch / -SourcePath is passed to inspect, so the branch must come from
-        # install.json.branch; resolving release-x (≠ main) yields source-drift.
+        # Installed identity = main HEAD, but the install tracks the 'release-x' branch. The
+        # recorded branch is a source-identity hint, not a target default, so the caller repeats it.
         script:Initialize-CleanInstallFixture -InstallArea $area -ClaudeHome $homes.ClaudeHome -CodexHome $homes.CodexHome -SourcePath $bare.BareUrl -Head $bare.MainHead -InstallMode 'git-url' -RepoUrl $bare.BareUrl -Branch 'release-x'
 
         $r = script:Invoke-InstallUpdate -CallParams @{
@@ -387,11 +392,93 @@ Describe 'install-update.ps1 — inspect mode' {
             InstallArea = $area
             ClaudeHome = $homes.ClaudeHome
             CodexHome = $homes.CodexHome
+            Branch = 'release-x'
         }
-        $r.ExitCode | Should -BeExactly 0
+        $r.ExitCode | Should -BeExactly 0 -Because (($r.Stdout + "`n" + $r.Stderr).Trim())
         $r.Json.status | Should -BeExactly 'inspect_source_drift'
         $r.Json.sourceResolvedHead | Should -BeExactly $bare.BranchHead
         $r.Json.lastUpdatedHead    | Should -BeExactly $bare.MainHead
+    }
+
+    It 'T02c: git-url mode with a recorded branch but no explicit target selector reports unresolved source' {
+        $bare = script:New-FixtureBareRepoWithBranch -CaseName 't02c' -BranchName 'release-x'
+        $area = script:New-FixtureInstallArea -CaseName 't02c'
+        $homes = script:New-FixtureHomeRoots -CaseName 't02c'
+        script:Initialize-CleanInstallFixture -InstallArea $area -ClaudeHome $homes.ClaudeHome -CodexHome $homes.CodexHome -SourcePath $bare.BareUrl -Head $bare.MainHead -InstallMode 'git-url' -RepoUrl $bare.BareUrl -Branch 'release-x'
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'inspect'; InstallArea = $area
+            ClaudeHome = $homes.ClaudeHome; CodexHome = $homes.CodexHome
+        }
+        $r.ExitCode | Should -BeExactly 0
+        $r.Json.status | Should -BeExactly 'inspect_source_drift'
+        $r.Json.sourceResolvedHead | Should -BeNullOrEmpty
+        $r.Json.manifestMarkerCrossBindingOk | Should -BeTrue
+        (@($r.Json.activationSurfaces)).Count | Should -BeGreaterThan 0
+        (@($r.Json.activationSurfaces | Where-Object { $_.byteIdentical -eq $false })).Count | Should -BeExactly 0
+        (@($r.Json.reasons) -join "`n") | Should -Match 'requires exactly one target selector'
+    }
+
+    It 'T02d: git-url exact Ref accepts an advertised branch-tip SHA and rejects a symbolic Ref' {
+        $bare = script:New-FixtureBareRepoWithBranch -CaseName 't02d' -BranchName 'release-x'
+        $area = script:New-FixtureInstallArea -CaseName 't02d'
+        $homes = script:New-FixtureHomeRoots -CaseName 't02d'
+        script:Initialize-CleanInstallFixture -InstallArea $area -ClaudeHome $homes.ClaudeHome -CodexHome $homes.CodexHome -SourcePath $bare.BareUrl -Head $bare.MainHead -InstallMode 'git-url' -RepoUrl $bare.BareUrl -Branch 'release-x'
+
+        $exact = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'inspect'; InstallArea = $area; Ref = $bare.BranchHead
+            ClaudeHome = $homes.ClaudeHome; CodexHome = $homes.CodexHome
+        }
+        $exact.ExitCode | Should -BeExactly 0 -Because (($exact.Stdout + "`n" + $exact.Stderr).Trim())
+        $exact.Json.status | Should -BeExactly 'inspect_source_drift'
+        $exact.Json.sourceResolvedHead | Should -BeExactly $bare.BranchHead
+
+        $symbolic = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'inspect'; InstallArea = $area; Ref = 'release-x'
+            ClaudeHome = $homes.ClaudeHome; CodexHome = $homes.CodexHome
+        }
+        $symbolic.Json.sourceResolvedHead | Should -BeNullOrEmpty
+        (@($symbolic.Json.reasons) -join "`n") | Should -Match 'exact 40-hex commit'
+    }
+
+    It 'T02e: inspect evaluates payload, unresolved-source, and activation diagnostics before applying precedence' {
+        $bare = script:New-FixtureBareRepoWithBranch -CaseName 't02e' -BranchName 'release-x'
+        $area = script:New-FixtureInstallArea -CaseName 't02e'
+        $homes = script:New-FixtureHomeRoots -CaseName 't02e'
+        script:Initialize-CleanInstallFixture -InstallArea $area -ClaudeHome $homes.ClaudeHome -CodexHome $homes.CodexHome -SourcePath $bare.BareUrl -Head $bare.MainHead -InstallMode 'git-url' -RepoUrl $bare.BareUrl -Branch 'release-x'
+
+        $marker = Read-InstallPipelineMarker -InstallArea $area
+        $marker.head = ('0' * 40)
+        Write-InstallPipelineMarker -InstallArea $area -Marker $marker
+        script:Write-TextFile (Join-Path $homes.CodexHome 'AGENTS.md') '# drifted activation surface'
+        $missingRef = ('f' * 40)
+
+        $inspect = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'inspect'; InstallArea = $area; Ref = $missingRef
+            ClaudeHome = $homes.ClaudeHome; CodexHome = $homes.CodexHome
+        }
+        $inspect.ExitCode | Should -BeExactly 0
+        $inspect.Json.status | Should -BeExactly 'inspect_payload_drift'
+        $inspect.Json.sourceResolvedHead | Should -BeNullOrEmpty
+        $inspect.Json.manifestMarkerCrossBindingOk | Should -BeFalse
+        (@($inspect.Json.activationSurfaces)).Count | Should -BeGreaterThan 0
+        (@($inspect.Json.activationSurfaces | Where-Object { $_.byteIdentical -eq $false })).Count | Should -BeGreaterThan 0
+        $joinedReasons = @($inspect.Json.reasons) -join "`n"
+        $joinedReasons | Should -Match 'cross-binding mismatch'
+        $joinedReasons | Should -Match 'not currently advertised as a remote branch tip'
+        $joinedReasons | Should -Match 'activation surface drift'
+
+        $before = script:Get-PathTreeSnapshot -Root $area
+        $update = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'; InstallArea = $area; Ref = $missingRef
+            ClaudeHome = $homes.ClaudeHome; CodexHome = $homes.CodexHome; SkipSmoke = $true
+        }
+        $update.ExitCode | Should -BeExactly 1
+        $update.Json.status | Should -BeExactly 'failed'
+        (@($update.Json.reasons) -join "`n") | Should -Match 'source HEAD could not be resolved'
+        $after = script:Get-PathTreeSnapshot -Root $area
+        script:Assert-PathTreeUnchanged -Before $before -After $after -Label 'InstallArea (composite inspect failure)'
+        Test-Path -LiteralPath (Join-Path $area 'source-cache') | Should -BeFalse
     }
 
     It 'T03: payload-drift (marker.head ≠ install.json.lastUpdatedHead) → inspect_payload_drift, exit 0' {
@@ -860,7 +947,12 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         function script:New-UpdatableFixture {
             # A fixture whose source repo carries the payload roots so update-source can
             # archive a new HEAD into current/. Returns source + install area + homes + seedHead.
-            param([string] $CaseName)
+            param(
+                [string] $CaseName,
+                [switch] $GitUrl,
+                [string] $Branch = 'main',
+                [string] $Remote = 'origin'
+            )
             $src = script:New-FixtureGitRepo -CaseName $CaseName
             # Add the 4 payload roots + D3 markers to the source so it is a valid ai-harness source.
             Push-Location $src.Root
@@ -880,6 +972,14 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
             }
             finally { Pop-Location }
 
+            $bareUrl = $null
+            if ($GitUrl) {
+                $bareUrl = Join-Path $TestDrive ('updatable-bare-' + $CaseName + '.git')
+                if (Test-Path -LiteralPath $bareUrl) { Remove-Item -LiteralPath $bareUrl -Recurse -Force }
+                & git clone --bare -q $src.Root $bareUrl 2>&1 | Out-Null
+                $bareUrl = [System.IO.Path]::GetFullPath($bareUrl)
+            }
+
             $area = script:New-FixtureInstallArea -CaseName $CaseName
             $homes = script:New-FixtureHomeRoots -CaseName $CaseName
             # Materialize the install at seedHead via the canonical fixture entry (install action),
@@ -889,12 +989,20 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
             $null = New-Item -ItemType Directory -Path $proj -Force
             $null = New-Item -ItemType Directory -Path (Join-Path $proj '.git') -Force
             $fixtureEntry = Join-Path $script:RepoRoot 'tests/support/install-pipeline-fixture.ps1'
-            $install = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+            $installArgs = @(
                 '-NoProfile','-ExecutionPolicy','Bypass','-File',$fixtureEntry,
-                '-Action','install','-InstallArea',$area,'-InstallMode','local-clone',
-                '-SourcePath',$src.Root,'-Branch','main','-Remote','origin',
-                '-ProjectRoot',$proj,'-RuntimeToolRoot',$proj
+                '-Action','install','-InstallArea',$area
             )
+            if ($GitUrl) {
+                $installArgs += @('-InstallMode','git-url','-RepoUrl',$bareUrl)
+            }
+            else {
+                $installArgs += @('-InstallMode','local-clone','-SourcePath',$src.Root)
+            }
+            if (-not [string]::IsNullOrEmpty($Branch)) { $installArgs += @('-Branch', $Branch) }
+            if (-not [string]::IsNullOrEmpty($Remote)) { $installArgs += @('-Remote', $Remote) }
+            $installArgs += @('-ProjectRoot',$proj,'-RuntimeToolRoot',$proj)
+            $install = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments $installArgs
             if ($install.ExitCode -ne 0) { throw ("fixture install failed: " + $install.Stdout + $install.Stderr) }
 
             # Make activation surfaces byte-identical to the installed payload snippets so the
@@ -910,7 +1018,289 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
             script:Write-TextFile (Join-Path $homes.ClaudeHome 'skills/ai-harness-review/SKILL.md') $skillText
             script:Write-TextFile (Join-Path $homes.CodexHome  'skills/ai-harness-review/SKILL.md') $skillText
 
-            return [pscustomobject]@{ Source = $src; Area = $area; Homes = $homes; SeedHead = $seedHead }
+            return [pscustomobject]@{ Source = $src; RepoUrl = $bareUrl; Area = $area; Homes = $homes; SeedHead = $seedHead }
+        }
+
+        function script:Add-GitUrlPayloadCommit {
+            param(
+                [psobject] $Fixture,
+                [string] $Suffix,
+                [switch] $NoPush
+            )
+            Push-Location $Fixture.Source.Root
+            try {
+                script:Write-TextFile (Join-Path $Fixture.Source.Root ('config/target-' + $Suffix + '.txt')) ('target-' + $Suffix)
+                & git add . 2>&1 | Out-Null
+                & git commit -q -m ('git-url payload ' + $Suffix) 2>&1 | Out-Null
+                $head = (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse','HEAD')).Stdout.Trim()
+                if (-not $NoPush) {
+                    & git push -q $Fixture.RepoUrl 'HEAD:refs/heads/main' 2>&1 | Out-Null
+                }
+            }
+            finally { Pop-Location }
+            return $head
+        }
+
+        function script:Initialize-Q09GitRaceShim {
+            $realGitPath = (
+                Get-Command git.exe -CommandType Application -ErrorAction Stop |
+                    Select-Object -First 1
+            ).Source
+
+            $shimDir = Join-Path $TestDrive 'q09-git-race-shim'
+            $null = New-Item -ItemType Directory -Path $shimDir -Force
+            $shimPath = Join-Path $shimDir 'git.exe'
+
+            # 같은 PowerShell host에서 suite를 재호출해도 type-name collision이 나지 않게 한다.
+            $typeName = 'Q09GitRaceShim_' + [Guid]::NewGuid().ToString('N')
+            $source = @'
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+
+internal static class __TYPE_NAME__
+{
+    private sealed class Capture
+    {
+        internal int ExitCode;
+        internal byte[] Stdout;
+        internal byte[] Stderr;
+    }
+
+    private static string QuoteArgument(string value)
+    {
+        if (String.IsNullOrEmpty(value))
+        {
+            return "\"\"";
+        }
+
+        if (value.IndexOfAny(new char[] { ' ', '\t', '\r', '\n', '\v', '"' }) < 0)
+        {
+            return value;
+        }
+
+        StringBuilder quoted = new StringBuilder();
+        quoted.Append('"');
+        int backslashes = 0;
+
+        foreach (char character in value)
+        {
+            if (character == '\\')
+            {
+                backslashes++;
+                continue;
+            }
+
+            if (character == '"')
+            {
+                quoted.Append('\\', (backslashes * 2) + 1);
+                quoted.Append('"');
+                backslashes = 0;
+                continue;
+            }
+
+            if (backslashes > 0)
+            {
+                quoted.Append('\\', backslashes);
+                backslashes = 0;
+            }
+            quoted.Append(character);
+        }
+
+        if (backslashes > 0)
+        {
+            quoted.Append('\\', backslashes * 2);
+        }
+        quoted.Append('"');
+        return quoted.ToString();
+    }
+
+    private static string BuildArguments(string[] arguments)
+    {
+        StringBuilder result = new StringBuilder();
+        for (int index = 0; index < arguments.Length; index++)
+        {
+            if (index > 0)
+            {
+                result.Append(' ');
+            }
+            result.Append(QuoteArgument(arguments[index]));
+        }
+        return result.ToString();
+    }
+
+    private static Capture Run(string executable, string[] arguments)
+    {
+        ProcessStartInfo startInfo = new ProcessStartInfo();
+        startInfo.FileName = executable;
+        startInfo.Arguments = BuildArguments(arguments);
+        startInfo.UseShellExecute = false;
+        startInfo.CreateNoWindow = true;
+        startInfo.RedirectStandardOutput = true;
+        startInfo.RedirectStandardError = true;
+
+        using (Process process = new Process())
+        using (MemoryStream stdout = new MemoryStream())
+        using (MemoryStream stderr = new MemoryStream())
+        {
+            process.StartInfo = startInfo;
+            if (!process.Start())
+            {
+                throw new InvalidOperationException("git race shim could not start real git");
+            }
+
+            Task stdoutDrain = process.StandardOutput.BaseStream.CopyToAsync(stdout);
+            Task stderrDrain = process.StandardError.BaseStream.CopyToAsync(stderr);
+
+            process.WaitForExit();
+            Task.WaitAll(stdoutDrain, stderrDrain);
+
+            return new Capture
+            {
+                ExitCode = process.ExitCode,
+                Stdout = stdout.ToArray(),
+                Stderr = stderr.ToArray()
+            };
+        }
+    }
+
+    private static void WriteCapture(Capture capture)
+    {
+        Stream stdout = Console.OpenStandardOutput();
+        Stream stderr = Console.OpenStandardError();
+
+        if (capture.Stdout != null && capture.Stdout.Length > 0)
+        {
+            stdout.Write(capture.Stdout, 0, capture.Stdout.Length);
+            stdout.Flush();
+        }
+        if (capture.Stderr != null && capture.Stderr.Length > 0)
+        {
+            stderr.Write(capture.Stderr, 0, capture.Stderr.Length);
+            stderr.Flush();
+        }
+    }
+
+    private static void WriteShimError(string message, Capture detail)
+    {
+        Stream stderr = Console.OpenStandardError();
+        byte[] prefix = new UTF8Encoding(false).GetBytes(
+            "q09 git race shim: " + message + Environment.NewLine
+        );
+        stderr.Write(prefix, 0, prefix.Length);
+
+        if (detail != null)
+        {
+            if (detail.Stdout != null && detail.Stdout.Length > 0)
+            {
+                stderr.Write(detail.Stdout, 0, detail.Stdout.Length);
+            }
+            if (detail.Stderr != null && detail.Stderr.Length > 0)
+            {
+                stderr.Write(detail.Stderr, 0, detail.Stderr.Length);
+            }
+        }
+        stderr.Flush();
+    }
+
+    private static int Main(string[] args)
+    {
+        string realGit = Environment.GetEnvironmentVariable("AHT_Q09_REAL_GIT");
+        if (String.IsNullOrEmpty(realGit))
+        {
+            Console.Error.WriteLine("q09 git race shim: AHT_Q09_REAL_GIT is missing");
+            return 90;
+        }
+
+        Capture primary;
+        try
+        {
+            primary = Run(realGit, args);
+        }
+        catch (Exception exception)
+        {
+            Console.Error.WriteLine(
+                "q09 git race shim: real git invocation failed: " + exception.Message
+            );
+            return 91;
+        }
+
+        string targetUrl = Environment.GetEnvironmentVariable("AHT_Q09_RACE_URL");
+        string expectedOld = Environment.GetEnvironmentVariable("AHT_Q09_RACE_OLD");
+        string newHead = Environment.GetEnvironmentVariable("AHT_Q09_RACE_NEW");
+        string markerPath = Environment.GetEnvironmentVariable("AHT_Q09_RACE_MARKER");
+
+        bool exactTarget =
+            args.Length == 3 &&
+            String.Equals(args[0], "ls-remote", StringComparison.Ordinal) &&
+            String.Equals(args[1], targetUrl, StringComparison.Ordinal) &&
+            String.Equals(args[2], "refs/heads/*", StringComparison.Ordinal);
+
+        if (!exactTarget || primary.ExitCode != 0 ||
+            String.IsNullOrEmpty(expectedOld) ||
+            String.IsNullOrEmpty(newHead) ||
+            String.IsNullOrEmpty(markerPath) ||
+            File.Exists(markerPath))
+        {
+            WriteCapture(primary);
+            return primary.ExitCode;
+        }
+
+        string lsRemoteText = Encoding.UTF8.GetString(primary.Stdout ?? new byte[0]);
+        string advertisedPattern =
+            "(?m)^" + Regex.Escape(expectedOld) + @"\s+refs/heads/[^\r\n]+$";
+        if (!Regex.IsMatch(lsRemoteText, advertisedPattern))
+        {
+            WriteCapture(primary);
+            WriteShimError(
+                "target ls-remote did not advertise the expected old head " + expectedOld,
+                null
+            );
+            return 92;
+        }
+
+        Capture advance = Run(realGit, new string[]
+        {
+            "--git-dir", targetUrl,
+            "update-ref", "refs/heads/main", newHead, expectedOld
+        });
+        if (advance.ExitCode != 0)
+        {
+            WriteCapture(primary);
+            WriteShimError("bare main update-ref failed", advance);
+            return 93;
+        }
+
+        File.WriteAllText(
+            markerPath,
+            "triggerCount=1\n" +
+            "url=" + targetUrl + "\n" +
+            "pattern=refs/heads/*\n" +
+            "old=" + expectedOld + "\n" +
+            "new=" + newHead + "\n",
+            new UTF8Encoding(false)
+        );
+
+        WriteCapture(primary);
+        return primary.ExitCode;
+    }
+}
+'@
+            $source = $source.Replace('__TYPE_NAME__', $typeName)
+            Add-Type `
+                -TypeDefinition $source `
+                -Language CSharp `
+                -OutputAssembly $shimPath `
+                -OutputType ConsoleApplication
+
+            return [pscustomobject]@{
+                Directory   = $shimDir
+                Path        = $shimPath
+                RealGitPath = $realGitPath
+            }
         }
     }
 
@@ -923,7 +1313,7 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         (script:Resolve-TwoChoiceKeySequence -Keys @())                  | Should -BeExactly 'no'    # empty → fail-safe No
     }
 
-    It 'B2-T2: command-implied — update-source via child process (noninteractive) applies the delta → complete (no selector required)' {
+    It 'B2-T2: local-clone command-implied update-source applies the delta without a git-url selector' {
         $fx = script:New-UpdatableFixture -CaseName 'b2t2'
         # Advance the source HEAD so a payload delta exists.
         $newHead = script:Add-FixtureGitCommit -Root $fx.Source.Root -Suffix 'b2t2'
@@ -944,6 +1334,285 @@ Describe 'install-update.ps1 — update-source apply orchestration (Batch 2)' {
         $r.Json.status | Should -BeExactly 'complete'
         # Payload advanced to the new source HEAD.
         [string](Read-InstallPipelineMetadata -InstallArea $fx.Area).lastUpdatedHead | Should -BeExactly $newHead
+    }
+
+    It 'Q09-T1: git-url exact advertised Ref is applied as the preflight-bound one-shot target and preserves branch and remote metadata' {
+        $fx = script:New-UpdatableFixture -CaseName 'q09t1' -GitUrl
+        $newHead = script:Add-GitUrlPayloadCommit -Fixture $fx -Suffix 'q09t1'
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'; InstallArea = $fx.Area; Ref = $newHead
+            ClaudeHome = $fx.Homes.ClaudeHome; CodexHome = $fx.Homes.CodexHome
+            SkipSmoke = $true
+        }
+        $r.ExitCode | Should -BeExactly 0 -Because (($r.Stdout + "`n" + $r.Stderr).Trim())
+        $r.Json.status | Should -BeExactly 'complete'
+        $r.Json.sourceResolvedHead | Should -BeExactly $newHead
+        $md = Read-InstallPipelineMetadata -InstallArea $fx.Area
+        [string]$md.lastUpdatedHead | Should -BeExactly $newHead
+        [string]$md.branch | Should -BeExactly 'main'
+        [string]$md.remote | Should -BeExactly 'origin'
+        [string](Read-InstallPipelineManifest -InstallArea $fx.Area).head | Should -BeExactly $newHead
+        [string](Read-InstallPipelineMarker -InstallArea $fx.Area).head | Should -BeExactly $newHead
+        Test-Path -LiteralPath (Join-Path $fx.Area 'source-cache') | Should -BeFalse
+    }
+
+    It 'Q09-T2: git-url selector omission, selector duplication, and SourcePath override all fail before persistent mutation' {
+        $fx = script:New-UpdatableFixture -CaseName 'q09t2' -GitUrl
+        $newHead = script:Add-GitUrlPayloadCommit -Fixture $fx -Suffix 'q09t2'
+
+        $cases = @(
+            @{ Label = 'no selector'; Extra = @{}; Match = 'requires exactly one target selector' },
+            @{ Label = 'both selectors'; Extra = @{ Ref = $newHead; Branch = 'main' }; Match = 'requires exactly one target selector' },
+            @{ Label = 'SourcePath override'; Extra = @{ Ref = $newHead; SourcePath = $fx.Source.Root }; Match = 'does not accept -SourcePath' }
+        )
+        foreach ($case in $cases) {
+            $before = script:Get-PathTreeSnapshot -Root $fx.Area
+            $params = @{
+                Mode = 'update-source'; InstallArea = $fx.Area
+                ClaudeHome = $fx.Homes.ClaudeHome; CodexHome = $fx.Homes.CodexHome
+                SkipSmoke = $true
+            }
+            foreach ($key in $case.Extra.Keys) { $params[$key] = $case.Extra[$key] }
+            $r = script:Invoke-InstallUpdate -CallParams $params
+            $r.ExitCode | Should -BeExactly 1 -Because $case.Label
+            $r.Json.status | Should -BeExactly 'failed' -Because $case.Label
+            (@($r.Json.reasons) -join "`n") | Should -Match $case.Match
+            $after = script:Get-PathTreeSnapshot -Root $fx.Area
+            script:Assert-PathTreeUnchanged -Before $before -After $after -Label ('InstallArea (' + $case.Label + ')')
+            Test-Path -LiteralPath (Join-Path $fx.Area 'source-cache') | Should -BeFalse
+        }
+    }
+
+    It 'Q09-T3: a previously advertised but no-longer-tip historical Ref is rejected during inspect' {
+        $fx = script:New-UpdatableFixture -CaseName 'q09t3' -GitUrl
+        $historical = script:Add-GitUrlPayloadCommit -Fixture $fx -Suffix 'q09t3a'
+        $current = script:Add-GitUrlPayloadCommit -Fixture $fx -Suffix 'q09t3b'
+        $historical | Should -Not -BeExactly $current
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'inspect'; InstallArea = $fx.Area; Ref = $historical
+            ClaudeHome = $fx.Homes.ClaudeHome; CodexHome = $fx.Homes.CodexHome
+        }
+        $r.ExitCode | Should -BeExactly 0 -Because (($r.Stdout + "`n" + $r.Stderr).Trim())
+        $r.Json.status | Should -BeExactly 'inspect_source_drift'
+        $r.Json.sourceResolvedHead | Should -BeNullOrEmpty
+        (@($r.Json.reasons) -join "`n") | Should -Match 'not currently advertised as a remote branch tip'
+    }
+
+    It 'Q09-T3b: public update-source keeps the preflight-bound exact Ref when the advertised branch advances before the fresh clone' {
+        $fx = script:New-UpdatableFixture -CaseName 'q09t3b' -GitUrl
+        $approvedHead = script:Add-GitUrlPayloadCommit `
+            -Fixture $fx `
+            -Suffix 'q09t3b-approved'
+
+        # B는 A의 descendant지만 아직 main을 이동시키지 않는다.
+        $newTip = script:Add-GitUrlPayloadCommit `
+            -Fixture $fx `
+            -Suffix 'q09t3b-new-tip' `
+            -NoPush
+        $newTip | Should -Not -BeExactly $approvedHead
+
+        $shim = script:Initialize-Q09GitRaceShim
+
+        # update-ref가 B를 가리킬 수 있도록 B object를 비-advertised private ref로
+        # bare repo에 미리 보낸다. refs/heads/*에는 여전히 main=A만 보인다.
+        $stageRef = 'refs/q09-stage/q09t3b-new-tip'
+        $stage = Invoke-NativeProcess `
+            -Executable $shim.RealGitPath `
+            -Arguments @(
+                '-C', $fx.Source.Root,
+                'push', '-q', $fx.RepoUrl,
+                ('{0}:{1}' -f $newTip, $stageRef)
+            )
+        $stage.ExitCode | Should -BeExactly 0 -Because (
+            ($stage.Stdout + "`n" + $stage.Stderr).Trim()
+        )
+
+        $beforeRemote = Invoke-NativeProcess `
+            -Executable $shim.RealGitPath `
+            -Arguments @(
+                '--git-dir', $fx.RepoUrl,
+                'rev-parse', 'refs/heads/main'
+            )
+        $beforeRemote.ExitCode | Should -BeExactly 0 -Because (
+            ($beforeRemote.Stdout + "`n" + $beforeRemote.Stderr).Trim()
+        )
+        $beforeRemote.Stdout.Trim() | Should -BeExactly $approvedHead
+
+        $triggerPath = Join-Path $TestDrive 'q09t3b-race-trigger.txt'
+        $raceVariables = [ordered]@{
+            AHT_Q09_REAL_GIT    = $shim.RealGitPath
+            AHT_Q09_RACE_URL    = $fx.RepoUrl
+            AHT_Q09_RACE_OLD    = $approvedHead
+            AHT_Q09_RACE_NEW    = $newTip
+            AHT_Q09_RACE_MARKER = $triggerPath
+        }
+
+        $environmentNames = @('PATH') + @($raceVariables.Keys)
+        $previousEnvironment = @{}
+        foreach ($name in $environmentNames) {
+            $previousEnvironment[$name] =
+                [Environment]::GetEnvironmentVariable($name, 'Process')
+        }
+
+        try {
+            [Environment]::SetEnvironmentVariable(
+                'PATH',
+                ($shim.Directory + [string][IO.Path]::PathSeparator +
+                    [string]$previousEnvironment['PATH']),
+                'Process'
+            )
+            foreach ($name in $raceVariables.Keys) {
+                [Environment]::SetEnvironmentVariable(
+                    $name,
+                    [string]$raceVariables[$name],
+                    'Process'
+                )
+            }
+
+            # 실제 public child entrypoint를 한 번 호출한다.
+            $r = script:Invoke-InstallUpdate -CallParams @{
+                Mode        = 'update-source'
+                InstallArea = $fx.Area
+                Ref         = $approvedHead
+                ClaudeHome  = $fx.Homes.ClaudeHome
+                CodexHome   = $fx.Homes.CodexHome
+                SkipSmoke   = $true
+            }
+        }
+        finally {
+            foreach ($name in $environmentNames) {
+                [Environment]::SetEnvironmentVariable(
+                    $name,
+                    $previousEnvironment[$name],
+                    'Process'
+                )
+            }
+        }
+
+        # shim이 정확한 ls-remote URL + refs/heads/* 호출에서 한 번 발동했음을 증명한다.
+        Test-Path -LiteralPath $triggerPath -PathType Leaf | Should -BeTrue
+        $trigger = Get-Content -LiteralPath $triggerPath -Raw -Encoding UTF8
+        $trigger | Should -Match '(?m)^triggerCount=1$'
+        $trigger | Should -Match (
+            '(?m)^url=' + [regex]::Escape($fx.RepoUrl) + '$'
+        )
+        $trigger | Should -Match '(?m)^pattern=refs/heads/\*$'
+        $trigger | Should -Match (
+            '(?m)^old=' + [regex]::Escape($approvedHead) + '$'
+        )
+        $trigger | Should -Match (
+            '(?m)^new=' + [regex]::Escape($newTip) + '$'
+        )
+
+        $afterRemote = Invoke-NativeProcess `
+            -Executable $shim.RealGitPath `
+            -Arguments @(
+                '--git-dir', $fx.RepoUrl,
+                'rev-parse', 'refs/heads/main'
+            )
+        $afterRemote.ExitCode | Should -BeExactly 0 -Because (
+            ($afterRemote.Stdout + "`n" + $afterRemote.Stderr).Trim()
+        )
+        $afterRemote.Stdout.Trim() | Should -BeExactly $newTip
+
+        # public orchestration은 preflight가 본 A를 apply에 전달하고, fresh clone의
+        # A commit을 materialize해야 한다. apply 시점 tip B로 조용히 retarget하면 안 된다.
+        $r.ExitCode | Should -BeExactly 0 -Because (
+            ($r.Stdout + "`n" + $r.Stderr).Trim()
+        )
+        $r.Json.status | Should -BeExactly 'complete'
+        $r.Json.sourceResolvedHead | Should -BeExactly $approvedHead
+
+        $metadata = Read-InstallPipelineMetadata -InstallArea $fx.Area
+        [string]$metadata.lastUpdatedHead | Should -BeExactly $approvedHead
+        [string]$metadata.branch | Should -BeExactly 'main'
+        [string]$metadata.remote | Should -BeExactly 'origin'
+        [string](Read-InstallPipelineManifest -InstallArea $fx.Area).head | Should -BeExactly $approvedHead
+        [string](Read-InstallPipelineMarker -InstallArea $fx.Area).head | Should -BeExactly $approvedHead
+
+        # A/B tree를 직접 구분해 metadata-only false-pass를 막는다.
+        Test-Path -LiteralPath (
+            Join-Path $fx.Area 'current/config/target-q09t3b-approved.txt'
+        ) -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath (
+            Join-Path $fx.Area 'current/config/target-q09t3b-new-tip.txt'
+        ) | Should -BeFalse
+
+        (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue
+        Test-Path -LiteralPath (Join-Path $fx.Area 'source-cache') | Should -BeFalse
+    }
+
+    It 'Q09-T4: apply refuses when the fresh clone target differs from the preflight-bound SHA' {
+        $fx = script:New-UpdatableFixture -CaseName 'q09t4' -GitUrl
+        $newHead = script:Add-GitUrlPayloadCommit -Fixture $fx -Suffix 'q09t4'
+        $before = script:Get-PathTreeSnapshot -Root $fx.Area
+
+        $res = script:Invoke-UpdateSourceApply -InstallArea $fx.Area `
+            -ClaudeHome $fx.Homes.ClaudeHome -CodexHome $fx.Homes.CodexHome `
+            -Ref $newHead -ExpectedResolvedHead $fx.SeedHead -SkipSmoke
+        $res.ExitCode | Should -BeExactly 1
+        $res.Status | Should -BeExactly 'failed'
+        (@($res.Reasons) -join "`n") | Should -Match 'target changed after preflight'
+        $after = script:Get-PathTreeSnapshot -Root $fx.Area
+        script:Assert-PathTreeUnchanged -Before $before -After $after -Label 'InstallArea (preflight/apply mismatch)'
+        Test-Path -LiteralPath (Join-Path $fx.Area 'source-cache') | Should -BeFalse
+    }
+
+    It 'Q09-T5: git-url payload-drift recovery carries the explicit target SHA through preflight into reinstall-first apply' {
+        $fx = script:New-UpdatableFixture -CaseName 'q09t5' -GitUrl
+        $marker = Read-InstallPipelineMarker -InstallArea $fx.Area
+        $marker.head = ('0' * 40)
+        Write-InstallPipelineMarker -InstallArea $fx.Area -Marker $marker
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'; InstallArea = $fx.Area; Ref = $fx.SeedHead
+            ClaudeHome = $fx.Homes.ClaudeHome; CodexHome = $fx.Homes.CodexHome
+            SkipSmoke = $true
+        }
+        $r.ExitCode | Should -BeExactly 0 -Because (($r.Stdout + "`n" + $r.Stderr).Trim())
+        $r.Json.status | Should -BeExactly 'complete'
+        $r.Json.sourceResolvedHead | Should -BeExactly $fx.SeedHead
+        (Invoke-InstallPipelineVerify -InstallArea $fx.Area).ok | Should -BeTrue
+    }
+
+    It 'Q09-T6: git-url recorded Branch update uses the recorded non-origin remote alias and preserves source metadata' {
+        $fx = script:New-UpdatableFixture -CaseName 'q09t6' -GitUrl -Branch 'main' -Remote 'upstream'
+        $newHead = script:Add-GitUrlPayloadCommit -Fixture $fx -Suffix 'q09t6'
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'; InstallArea = $fx.Area; Branch = 'main'
+            ClaudeHome = $fx.Homes.ClaudeHome; CodexHome = $fx.Homes.CodexHome
+            SkipSmoke = $true
+        }
+        $r.ExitCode | Should -BeExactly 0 -Because (($r.Stdout + "`n" + $r.Stderr).Trim())
+        $r.Json.status | Should -BeExactly 'complete'
+        $r.Json.sourceResolvedHead | Should -BeExactly $newHead
+        $md = Read-InstallPipelineMetadata -InstallArea $fx.Area
+        [string]$md.lastUpdatedHead | Should -BeExactly $newHead
+        [string]$md.branch | Should -BeExactly 'main'
+        [string]$md.remote | Should -BeExactly 'upstream'
+        Test-Path -LiteralPath (Join-Path $fx.Area 'source-cache') | Should -BeFalse
+    }
+
+    It 'Q09-T7: git-url exact Ref remains reachable when recorded branch and remote are empty' {
+        $fx = script:New-UpdatableFixture -CaseName 'q09t7' -GitUrl -Branch '' -Remote ''
+        $newHead = script:Add-GitUrlPayloadCommit -Fixture $fx -Suffix 'q09t7'
+
+        $r = script:Invoke-InstallUpdate -CallParams @{
+            Mode = 'update-source'; InstallArea = $fx.Area; Ref = $newHead
+            ClaudeHome = $fx.Homes.ClaudeHome; CodexHome = $fx.Homes.CodexHome
+            SkipSmoke = $true
+        }
+        $r.ExitCode | Should -BeExactly 0 -Because (($r.Stdout + "`n" + $r.Stderr).Trim())
+        $r.Json.status | Should -BeExactly 'complete'
+        $r.Json.sourceResolvedHead | Should -BeExactly $newHead
+        $md = Read-InstallPipelineMetadata -InstallArea $fx.Area
+        [string]$md.lastUpdatedHead | Should -BeExactly $newHead
+        [string]$md.branch | Should -BeExactly ''
+        [string]$md.remote | Should -BeExactly ''
+        Test-Path -LiteralPath (Join-Path $fx.Area 'source-cache') | Should -BeFalse
     }
 
     It 'B2-T2b: command-implied does NOT override the source-cut guard — noninteractive update-source with a differing -Branch → failed, no mutation' {
@@ -1254,6 +1923,7 @@ Describe 'install-update — Phase 2 bootstrap / name-based update discoverabili
         $script:Md  = Get-Content -LiteralPath $script:InstallMd -Raw -Encoding UTF8
         $script:S71 = script:Get-InstallMdSection -Content $script:Md -HeadingRegex '^#{2,3}\s+7\.1\s'
         $script:S72 = script:Get-InstallMdSection -Content $script:Md -HeadingRegex '^#{2,3}\s+7\.2\s'
+        $script:InstalledRootReadme = Read-Utf8 -Path (Join-Path $script:RepoRoot 'templates/install-root/AI_HARNESS_TOOLSET_ROOT_README.md')
     }
 
     It 'P2-T1 (I06): §7.1 carries a self-contained name-based update quickstart (NL request + inspect/update-source/verify)' {
@@ -1301,6 +1971,29 @@ Describe 'install-update — Phase 2 bootstrap / name-based update discoverabili
         foreach ($lit in $script:TierA) { $script:S72 | Should -Not -Match ([regex]::Escape($lit)) }
         foreach ($rx in $script:TierB)  { $script:S72 | Should -Not -Match $rx }
     }
+
+    It 'Q09-DOC-1: operative and installed landing contracts require one explicit git-url selector and bind inspect/update to the same exact Ref' {
+        foreach ($body in @($script:S71, $script:InstalledRootReadme)) {
+            $body | Should -Match '40-hex'
+            $body | Should -Match '-Ref'
+            $body | Should -Match '-Branch'
+            $body | Should -Match '(?i)(exactly one|정확히 하나)'
+            $body | Should -Match '(?i:(same|같은)).*target|target.*(?i:(same|같은))'
+            $body | Should -Match '(?i:(never pass|거부)).*?-SourcePath|-SourcePath.*?(?i:(rejected|거부))'
+            $checkoutIndex = $body.IndexOf('checkout --detach', [System.StringComparison]::Ordinal)
+            $headIndex = $body.IndexOf('rev-parse HEAD', [System.StringComparison]::Ordinal)
+            $contractIndex = if ($headIndex -ge 0) { $body.IndexOf('INSTALL.md', $headIndex, [System.StringComparison]::Ordinal) } else { -1 }
+            $checkoutIndex | Should -BeGreaterThan -1
+            $headIndex | Should -BeGreaterThan $checkoutIndex
+            $contractIndex | Should -BeGreaterThan $headIndex
+            $body | Should -Match 'git -C <bootstrap-clone> checkout --detach'
+            $body | Should -Match 'git -C <bootstrap-clone> rev-parse HEAD'
+        }
+        $script:S71 | Should -Match 'install-update\.ps1 -Mode inspect[^\r\n]+-Ref'
+        $script:S71 | Should -Match 'update-global\.ps1[^\r\n]+-Ref'
+        $script:InstalledRootReadme | Should -Match 'install-update\.ps1 -Mode inspect[^\r\n]+-Ref'
+        $script:InstalledRootReadme | Should -Match 'update-global\.ps1[^\r\n]+-Ref'
+    }
 }
 
 Describe 'install-update — Phase 3 source identity / acquisition ergonomics docs' {
@@ -1328,8 +2021,8 @@ Describe 'install-update — Phase 3 source identity / acquisition ergonomics do
         $script:S71_3 | Should -Match 'cleanup ownership'
         $script:S71_3 | Should -Match 'AcquisitionClonePath'
         $script:S71_3 | Should -Match '-SourcePath'
-        # the -SourcePath rationale must be accurate: git-url apply IGNORES -SourcePath (no source-cut from it).
-        $script:S71_3 | Should -Match '사용하지 않'
+        # The old inspect/apply mismatch is now a hard guard: git-url rejects -SourcePath.
+        $script:S71_3 | Should -Match 'fail-fast 거부'
     }
 
     It 'P3-T3 (polish): §7.1 says an installed update entrypoint does not change the cloned-latest-script rule' {

@@ -306,6 +306,56 @@ function script:Test-MetadataSchemaOk {
     return $ok
 }
 
+# git-url inspect/update-source target contract. Source identity may come from install.json, but the
+# target never does: the caller must choose either an exact advertised branch-tip commit or the
+# recorded tracking branch. This helper is pure validation; it performs no network or filesystem IO.
+function script:Get-GitUrlTargetSelector {
+    [CmdletBinding()]
+    param(
+        [psobject] $Metadata,
+        [string] $SourcePath,
+        [string] $RepoUrl,
+        [string] $Branch,
+        [string] $Remote,
+        [string] $Ref
+    )
+
+    $mode = ''
+    if ($null -ne $Metadata -and (@($Metadata.PSObject.Properties.Name) -ccontains 'installMode')) {
+        $mode = [string]$Metadata.installMode
+    }
+    if ($mode -ne 'git-url') {
+        return [pscustomobject]@{ Ok = $true; Kind = $null; Value = $null; Reason = $null }
+    }
+    if (-not [string]::IsNullOrEmpty($SourcePath)) {
+        return [pscustomobject]@{ Ok = $false; Kind = $null; Value = $null; Reason = 'git-url install does not accept -SourcePath; inspect and apply must use the recorded URL source' }
+    }
+
+    $hasBranch = -not [string]::IsNullOrEmpty($Branch)
+    $hasRef = -not [string]::IsNullOrEmpty($Ref)
+    if ($hasBranch -eq $hasRef) {
+        return [pscustomobject]@{ Ok = $false; Kind = $null; Value = $null; Reason = 'git-url inspect/update-source requires exactly one target selector: -Ref <40-hex advertised branch-tip commit> or -Branch <recorded branch>' }
+    }
+    if ($hasRef -and $Ref -notmatch '^[0-9a-f]{40}$') {
+        return [pscustomobject]@{ Ok = $false; Kind = $null; Value = $null; Reason = 'git-url -Ref must be an exact 40-hex commit; use -Branch for a symbolic branch name' }
+    }
+
+    # Ref is a one-shot payload target and intentionally not a source identity field. Explicit URL,
+    # Branch, and Remote values remain subject to the existing source-cut policy.
+    $invocationParams = @{ installMode = 'git-url' }
+    if (-not [string]::IsNullOrEmpty($RepoUrl)) { $invocationParams['repoUrl'] = $RepoUrl }
+    if ($hasBranch) { $invocationParams['branch'] = $Branch }
+    if (-not [string]::IsNullOrEmpty($Remote)) { $invocationParams['remote'] = $Remote }
+    if (Test-InstallPipelineSourceCut -Metadata $Metadata -InvocationParams $invocationParams) {
+        return [pscustomobject]@{ Ok = $false; Kind = $null; Value = $null; Reason = 'source-cut detected: explicit repoUrl/branch/remote differs from install.json; target selection does not authorize source identity changes' }
+    }
+
+    if ($hasRef) {
+        return [pscustomobject]@{ Ok = $true; Kind = 'ref'; Value = $Ref.ToLowerInvariant(); Reason = $null }
+    }
+    return [pscustomobject]@{ Ok = $true; Kind = 'branch'; Value = $Branch; Reason = $null }
+}
+
 function script:Resolve-SourceHead {
     [CmdletBinding()]
     param(
@@ -313,8 +363,21 @@ function script:Resolve-SourceHead {
         [string] $SourcePath,
         [string] $RepoUrl,
         [string] $Branch,
+        [string] $Remote,
         [string] $Ref
     )
+
+    $metadataMode = ''
+    if ($null -ne $Metadata -and (@($Metadata.PSObject.Properties.Name) -ccontains 'installMode')) {
+        $metadataMode = [string]$Metadata.installMode
+    }
+    $gitUrlSelector = $null
+    if ($metadataMode -eq 'git-url') {
+        $gitUrlSelector = script:Get-GitUrlTargetSelector -Metadata $Metadata -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref
+        if (-not $gitUrlSelector.Ok) {
+            return [pscustomobject]@{ Head = $null; Reason = $gitUrlSelector.Reason }
+        }
+    }
 
     # Argument > metadata-derived. If neither is available, return null with reason.
     $useLocal = $false
@@ -365,36 +428,67 @@ function script:Resolve-SourceHead {
         return [pscustomobject]@{ Head = $head; Reason = $null }
     }
     elseif ($useUrl) {
-        # ref precedence: explicit -Ref → explicit -Branch → install.json.branch → 'main' fallback.
-        # Without metadata.branch derivation, a git-url install tracking a non-main branch would
-        # be resolved against the wrong ref and falsely reported as drifted/clean (INSTALL.md §7.1
-        # step 1 reads branch/remote from install.json).
-        $refArg = $null
-        if (-not [string]::IsNullOrEmpty($Ref)) {
-            $refArg = $Ref
+        $selector = $gitUrlSelector
+        if ($null -eq $selector) {
+            # Preserve the pre-existing explicit-URL diagnostic path for non-git-url metadata. The
+            # canonical local-clone update path does not use -RepoUrl; its mode/source mismatch is
+            # outside this git-url target-binding change.
+            $legacyRefArg = if (-not [string]::IsNullOrEmpty($Ref)) { $Ref } elseif (-not [string]::IsNullOrEmpty($Branch)) { $Branch } else { 'main' }
+            $legacyResult = Invoke-GitCapture -Arguments @('ls-remote', $urlValue, $legacyRefArg)
+            if ($legacyResult.ExitCode -ne 0) {
+                return [pscustomobject]@{ Head = $null; Reason = ('git ls-remote {0} {1} failed (exit {2})' -f $urlValue, $legacyRefArg, $legacyResult.ExitCode) }
+            }
+            $legacyLines = @($legacyResult.StdOut -split "`r?`n" | Where-Object { -not [string]::IsNullOrEmpty($_) })
+            if ($legacyLines.Count -eq 0) {
+                return [pscustomobject]@{ Head = $null; Reason = ('git ls-remote returned no refs for ' + $legacyRefArg) }
+            }
+            $legacySha = ($legacyLines[0] -split '\s+')[0].Trim()
+            if ($legacySha -notmatch '^[0-9a-f]{40}$') {
+                return [pscustomobject]@{ Head = $null; Reason = ('git ls-remote returned non-sha first token: ' + $legacySha) }
+            }
+            return [pscustomobject]@{ Head = $legacySha; Reason = $null }
         }
-        elseif (-not [string]::IsNullOrEmpty($Branch)) {
-            $refArg = $Branch
-        }
-        elseif ($null -ne $Metadata -and (@($Metadata.PSObject.Properties.Name) -ccontains 'branch') -and -not [string]::IsNullOrEmpty([string]$Metadata.branch)) {
-            $refArg = [string]$Metadata.branch
-        }
-        else {
-            $refArg = 'main'
-        }
+
+        # `git ls-remote <url> <40-hex>` interprets the SHA as a refname pattern and returns no
+        # rows. Exact one-shot targets therefore enumerate advertised branch refs and compare the
+        # SHA column. Symbolic branch tracking uses the full refs/heads/<branch> name and filters
+        # the returned ref name exactly, so a same-tail tag or wildcard-like input cannot win.
+        $refArg = if ($selector.Kind -eq 'ref') { 'refs/heads/*' } else { 'refs/heads/' + $selector.Value }
         $result = Invoke-GitCapture -Arguments @('ls-remote', $urlValue, $refArg)
         if ($result.ExitCode -ne 0) {
             return [pscustomobject]@{ Head = $null; Reason = ('git ls-remote {0} {1} failed (exit {2})' -f $urlValue, $refArg, $result.ExitCode) }
         }
         $lines = @($result.StdOut -split "`r?`n" | Where-Object { -not [string]::IsNullOrEmpty($_) })
-        if ($lines.Count -eq 0) {
-            return [pscustomobject]@{ Head = $null; Reason = ('git ls-remote returned no refs for ' + $refArg) }
+        $targetMatches = @()
+        foreach ($line in $lines) {
+            $parts = @($line.Trim() -split '\s+')
+            if ($parts.Count -lt 2) { continue }
+            $sha = [string]$parts[0]
+            $refName = [string]$parts[1]
+            if ($sha -notmatch '^[0-9a-f]{40}$') { continue }
+            if ($selector.Kind -eq 'ref') {
+                if ([string]::Equals($sha, $selector.Value, [System.StringComparison]::OrdinalIgnoreCase) -and $refName.StartsWith('refs/heads/', [System.StringComparison]::Ordinal)) {
+                    $targetMatches += $sha.ToLowerInvariant()
+                }
+            }
+            elseif ([string]::Equals($refName, $refArg, [System.StringComparison]::Ordinal)) {
+                $targetMatches += $sha.ToLowerInvariant()
+            }
         }
-        $firstSha = ($lines[0] -split "\s+")[0].Trim()
-        if ($firstSha -notmatch '^[0-9a-f]{40}$') {
-            return [pscustomobject]@{ Head = $null; Reason = ('git ls-remote returned non-sha first token: ' + $firstSha) }
+        $targetMatches = @($targetMatches | Select-Object -Unique)
+        if ($targetMatches.Count -eq 0) {
+            $reason = if ($selector.Kind -eq 'ref') {
+                'exact -Ref commit is not currently advertised as a remote branch tip: ' + $selector.Value
+            }
+            else {
+                'git ls-remote returned no exact branch ref for ' + $refArg
+            }
+            return [pscustomobject]@{ Head = $null; Reason = $reason }
         }
-        return [pscustomobject]@{ Head = $firstSha; Reason = $null }
+        if ($targetMatches.Count -ne 1) {
+            return [pscustomobject]@{ Head = $null; Reason = ('git ls-remote target was ambiguous for {0}: {1}' -f $refArg, ($targetMatches -join ', ')) }
+        }
+        return [pscustomobject]@{ Head = $targetMatches[0]; Reason = $null }
     }
     else {
         return [pscustomobject]@{ Head = $null; Reason = 'no source identity available (no -SourcePath/-RepoUrl, and install.json missing or installMode unknown)' }
@@ -532,6 +626,9 @@ function script:Invoke-InspectMode {
     $installMode     = [string]$metadata.installMode
     $lastUpdatedHead = [string]$metadata.lastUpdatedHead
 
+    # Metadata is now valid. Inspect evaluates every local/source/activation diagnostic group
+    # before selecting one terminal status; no later group is silently represented by a default.
+
     # 2. manifest + marker presence + cross-binding (lenient — Invoke-InstallPipelineVerify
     #    does the strict version; here we only need to classify payload-drift).
     $manifestPath = Get-InstallPipelineManifestPath -InstallArea $installAreaResolved
@@ -585,23 +682,6 @@ function script:Invoke-InspectMode {
         $manifestMarkerCrossBindingOk = $false
     }
 
-    if ($payloadDrift) {
-        return [pscustomobject]@{
-            Status                       = 'inspect_payload_drift'
-            ExitCode                     = 0
-            InstallAreaPath              = $installAreaResolved
-            InstallState                 = $installState
-            MetadataValid                = $metadataValid
-            InstallMode                  = $installMode
-            LastUpdatedHead              = $lastUpdatedHead
-            SourceResolvedHead           = $null
-            PayloadDeltaRequired         = $false
-            ManifestMarkerCrossBindingOk = $manifestMarkerCrossBindingOk
-            ActivationSurfaces           = @()
-            Reasons                      = @($reasons)
-        }
-    }
-
     # 2b. Managed root README integrity (Phase 3.5.1). The root README is a managed install artifact
     #     (a byte-identical copy of the in-payload template). A missing / stale / corrupt root README
     #     is an install-integrity failure, classified with the other installed-artifact integrity
@@ -610,66 +690,28 @@ function script:Invoke-InspectMode {
     #     looked fully healthy). Recovery is reinstall-first deterministic overwrite (INSTALL.md §9),
     #     surfaced via the reason; it is NOT a no-op self-heal (the standard update-source apply path
     #     re-materializes it as canonical output). Template-conditional: skipped when the payload
-    #     carries no template. Checked before source resolve (a local-artifact integrity concern that
-    #     does not need the source) and ahead of the activation check, preserving the existing
-    #     payload-drift > source-drift > activation-drift precedence.
+    #     carries no template. Source and activation diagnostics are still evaluated below so the
+    #     returned diagnostic group contains observations rather than unevaluated defaults.
     $rootReadmeState = Get-InstallPipelineRootReadmeState -InstallArea $installAreaResolved
     if (@('missing','stale') -contains $rootReadmeState.State) {
         $reasons.Add($rootReadmeState.Reason)
-        return [pscustomobject]@{
-            Status                       = 'inspect_payload_drift'
-            ExitCode                     = 0
-            InstallAreaPath              = $installAreaResolved
-            InstallState                 = $installState
-            MetadataValid                = $metadataValid
-            InstallMode                  = $installMode
-            LastUpdatedHead              = $lastUpdatedHead
-            SourceResolvedHead           = $null
-            PayloadDeltaRequired         = $false
-            ManifestMarkerCrossBindingOk = $manifestMarkerCrossBindingOk
-            ActivationSurfaces           = @()
-            Reasons                      = @($reasons)
-        }
+        $payloadDrift = $true
     }
 
     # 3. source HEAD resolve + source-drift check.
-    $srcResolved = script:Resolve-SourceHead -Metadata $metadata -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Ref $Ref
+    $srcResolved = script:Resolve-SourceHead -Metadata $metadata -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref
     $sourceResolvedHead = $srcResolved.Head
     $payloadDeltaRequired = $false
+    $sourceDrift = $false
     if ($null -eq $sourceResolvedHead) {
         $reasons.Add('source HEAD resolve failed: ' + $srcResolved.Reason)
-        return [pscustomobject]@{
-            Status                       = 'inspect_source_drift'
-            ExitCode                     = 0
-            InstallAreaPath              = $installAreaResolved
-            InstallState                 = $installState
-            MetadataValid                = $metadataValid
-            InstallMode                  = $installMode
-            LastUpdatedHead              = $lastUpdatedHead
-            SourceResolvedHead           = $null
-            PayloadDeltaRequired         = $true
-            ManifestMarkerCrossBindingOk = $manifestMarkerCrossBindingOk
-            ActivationSurfaces           = @()
-            Reasons                      = @($reasons)
-        }
+        $sourceDrift = $true
+        $payloadDeltaRequired = $true
     }
-    if ($sourceResolvedHead -ne $lastUpdatedHead) {
+    elseif ($sourceResolvedHead -ne $lastUpdatedHead) {
+        $sourceDrift = $true
         $payloadDeltaRequired = $true
         $reasons.Add(('source HEAD ({0}) differs from install.json.lastUpdatedHead ({1})' -f $sourceResolvedHead, $lastUpdatedHead))
-        return [pscustomobject]@{
-            Status                       = 'inspect_source_drift'
-            ExitCode                     = 0
-            InstallAreaPath              = $installAreaResolved
-            InstallState                 = $installState
-            MetadataValid                = $metadataValid
-            InstallMode                  = $installMode
-            LastUpdatedHead              = $lastUpdatedHead
-            SourceResolvedHead           = $sourceResolvedHead
-            PayloadDeltaRequired         = $true
-            ManifestMarkerCrossBindingOk = $manifestMarkerCrossBindingOk
-            ActivationSurfaces           = @()
-            Reasons                      = @($reasons)
-        }
     }
 
     # 4. activation surface byte-identity check (two managed blocks + one mirror per vendor per source skill).
@@ -685,26 +727,22 @@ function script:Invoke-InspectMode {
         }
     }
 
-    if ($activationDrift) {
-        return [pscustomobject]@{
-            Status                       = 'inspect_activation_drift'
-            ExitCode                     = 0
-            InstallAreaPath              = $installAreaResolved
-            InstallState                 = $installState
-            MetadataValid                = $metadataValid
-            InstallMode                  = $installMode
-            LastUpdatedHead              = $lastUpdatedHead
-            SourceResolvedHead           = $sourceResolvedHead
-            PayloadDeltaRequired         = $payloadDeltaRequired
-            ManifestMarkerCrossBindingOk = $manifestMarkerCrossBindingOk
-            ActivationSurfaces           = $surfaceResults
-            Reasons                      = @($reasons)
-        }
+    # 5. One terminal classification after all groups were actually evaluated. Local payload
+    # integrity outranks source drift, which outranks activation drift.
+    $inspectStatus = if ($payloadDrift) {
+        'inspect_payload_drift'
     }
-
-    # 5. all green.
+    elseif ($sourceDrift) {
+        'inspect_source_drift'
+    }
+    elseif ($activationDrift) {
+        'inspect_activation_drift'
+    }
+    else {
+        'inspect_clean'
+    }
     return [pscustomobject]@{
-        Status                       = 'inspect_clean'
+        Status                       = $inspectStatus
         ExitCode                     = 0
         InstallAreaPath              = $installAreaResolved
         InstallState                 = $installState
@@ -715,7 +753,7 @@ function script:Invoke-InspectMode {
         PayloadDeltaRequired         = $payloadDeltaRequired
         ManifestMarkerCrossBindingOk = $manifestMarkerCrossBindingOk
         ActivationSurfaces           = $surfaceResults
-        Reasons                      = @()
+        Reasons                      = @($reasons)
     }
 }
 
@@ -1024,6 +1062,7 @@ function script:Invoke-UpdateSourceApply {
         [string] $Branch,
         [string] $Remote,
         [string] $Ref,
+        [string] $ExpectedResolvedHead,
         [switch] $SkipSmoke
     )
 
@@ -1058,24 +1097,36 @@ function script:Invoke-UpdateSourceApply {
             $tupleToolRoot = $sourceLocation
         }
         elseif ($installMode -eq 'git-url') {
+            $selector = script:Get-GitUrlTargetSelector -Metadata $metadata -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref
+            if (-not $selector.Ok) {
+                $reasons.Add($selector.Reason)
+                return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @(); InstallMode = $installMode; LastUpdatedHead = $prevLastUpdatedHead; SourceResolvedHead = $null; PayloadDeltaRequired = $true }
+            }
+            if ([string]::IsNullOrEmpty($ExpectedResolvedHead) -or $ExpectedResolvedHead -notmatch '^[0-9a-f]{40}$') {
+                $reasons.Add('git-url update-source requires the 40-hex preflight target SHA; apply will not reselect a target independently')
+                return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @(); InstallMode = $installMode; LastUpdatedHead = $prevLastUpdatedHead; SourceResolvedHead = $null; PayloadDeltaRequired = $true }
+            }
             $url = if (-not [string]::IsNullOrEmpty($RepoUrl)) { $RepoUrl } else { [string]$metadata.repoUrl }
             if ([string]::IsNullOrEmpty($url)) {
                 $reasons.Add('git-url update-source needs a repo URL (-RepoUrl or install.json.repoUrl)')
                 return [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $installAreaResolved; Reasons = @($reasons); ActivationSurfaces = @() }
             }
-            # Full (non-shallow) clone into the run-scoped source-cache work area, so every ref
-            # SHA is available; cleaned up after the run regardless of outcome.
-            $cacheDir = Invoke-InstallPipelineGitUrlClone -InstallArea $installAreaResolved -RepoUrl $url
+            # Full (non-shallow) clone into the run-scoped source-cache work area, using the
+            # recorded remote alias for explicit Branch resolution.
+            $remoteForClone = if (-not [string]::IsNullOrEmpty($Remote)) { $Remote } else { [string]$metadata.remote }
+            $cacheDir = Invoke-InstallPipelineGitUrlClone -InstallArea $installAreaResolved -RepoUrl $url -Remote $remoteForClone
             $cleanupCache = $true
-            $branchForHead = if (-not [string]::IsNullOrEmpty($Branch)) { $Branch } elseif (@($metadata.PSObject.Properties.Name) -ccontains 'branch') { [string]$metadata.branch } else { '' }
             if (-not [string]::IsNullOrEmpty($Ref)) {
                 $resolvedHead = Resolve-InstallPipelineRef -SourceLocation $cacheDir -Ref $Ref
             }
-            elseif (-not [string]::IsNullOrEmpty($branchForHead)) {
-                $resolvedHead = Get-InstallPipelineGitUrlRemoteHead -InstallArea $installAreaResolved -Remote $Remote -Branch $branchForHead
+            elseif (-not [string]::IsNullOrEmpty($Branch)) {
+                $resolvedHead = Get-InstallPipelineGitUrlRemoteHead -InstallArea $installAreaResolved -Remote $remoteForClone -Branch $Branch
             }
             else {
-                $resolvedHead = Get-InstallPipelineSourceHead -SourceLocation $cacheDir
+                throw 'git-url target selector disappeared after preflight validation'
+            }
+            if (-not [string]::Equals($resolvedHead, $ExpectedResolvedHead, [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw ('git-url target changed after preflight (expected {0}; fresh clone resolved {1}); refusing materialization' -f $ExpectedResolvedHead, $resolvedHead)
             }
             $sourceLocation = $url
             $tupleToolRoot = $cacheDir
@@ -1285,7 +1336,7 @@ function script:Invoke-Main {
             if ($pre.Status -eq 'inspect_mode_unknown') {
                 $result = [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('cannot update-source: install metadata unknown') + @($pre.Reasons)); ActivationSurfaces = @() }
             }
-            elseif (($pre.Status -eq 'inspect_source_drift') -and ($null -eq $pre.SourceResolvedHead)) {
+            elseif (($pre.InstallMode -eq 'git-url') -and ($null -eq $pre.SourceResolvedHead)) {
                 $result = [pscustomobject]@{ Status = 'failed'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = @(@('cannot update-source: source HEAD could not be resolved') + @($pre.Reasons)); ActivationSurfaces = @() }
             }
             elseif ($pre.Status -eq 'inspect_clean') {
@@ -1331,7 +1382,7 @@ function script:Invoke-Main {
                             $result = [pscustomobject]@{ Status = 'update_aborted_no_approval'; ExitCode = 1; InstallAreaPath = $pre.InstallAreaPath; Reasons = $abortReasons; ActivationSurfaces = @(); InstallMode = $pre.InstallMode; LastUpdatedHead = $pre.LastUpdatedHead; SourceResolvedHead = $pre.SourceResolvedHead; PayloadDeltaRequired = $true }
                         }
                         else {
-                            $result = script:Invoke-UpdateSourceApply -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref -SkipSmoke:$SkipSmoke
+                            $result = script:Invoke-UpdateSourceApply -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref -ExpectedResolvedHead $pre.SourceResolvedHead -SkipSmoke:$SkipSmoke
                         }
                     }
                 }
@@ -1340,7 +1391,7 @@ function script:Invoke-Main {
                     # approval. Guards inside Invoke-UpdateSourceApply (source-cut, missing/invalid
                     # metadata, missing source identity, unresolved HEAD) still return failed without
                     # mutation; verify / activation / cleanup outcomes map to their fixed statuses.
-                    $result = script:Invoke-UpdateSourceApply -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref -SkipSmoke:$SkipSmoke
+                    $result = script:Invoke-UpdateSourceApply -InstallArea $InstallArea -ClaudeHome $ClaudeHome -CodexHome $CodexHome -SourcePath $SourcePath -RepoUrl $RepoUrl -Branch $Branch -Remote $Remote -Ref $Ref -ExpectedResolvedHead $pre.SourceResolvedHead -SkipSmoke:$SkipSmoke
                 }
             }
         }

@@ -177,6 +177,19 @@ try {
         }
     }
 
+    $gitUrlUpdateHasBranch = $false
+    $gitUrlUpdateHasRef = $false
+    if ($mode -eq 'git-url' -and $Action -eq 'update-source') {
+        $gitUrlUpdateHasBranch = -not [string]::IsNullOrEmpty($Branch)
+        $gitUrlUpdateHasRef = -not [string]::IsNullOrEmpty($Ref)
+        if ($gitUrlUpdateHasBranch -eq $gitUrlUpdateHasRef) {
+            throw 'install-pipeline: FAIL git-url update-source requires exactly one target selector: -Ref <40-hex commit> or -Branch <recorded branch>.'
+        }
+        if ($gitUrlUpdateHasRef -and $Ref -notmatch '^[0-9a-f]{40}$') {
+            throw 'install-pipeline: FAIL git-url -Ref must be an exact 40-hex commit; use -Branch for a symbolic branch name.'
+        }
+    }
+
     # Resolve the source-side ToolRoot for this action's tuple:
     # - local-clone: tuple.toolRoot = absolute path of user-supplied sourcePath (persistent identity).
     # - git-url    : tuple.toolRoot = absolute path of the run-scoped temporary work area
@@ -203,7 +216,11 @@ try {
         # area from a failed clone (`git clone` exits non-zero after creating the dir) is
         # also cleaned up in the top-level `finally`.
         $script:CleanupCache = $true
-        $tuplePath = Invoke-InstallPipelineGitUrlClone -InstallArea $InstallArea -RepoUrl $sourceLoc
+        $remoteForClone = $Remote
+        if ([string]::IsNullOrEmpty($remoteForClone) -and $null -ne $existing) {
+            $remoteForClone = [string]$existing.remote
+        }
+        $tuplePath = Invoke-InstallPipelineGitUrlClone -InstallArea $InstallArea -RepoUrl $sourceLoc -Remote $remoteForClone
     }
 
     # Resolve ref. install / update-source / restore each take a different path.
@@ -219,22 +236,16 @@ try {
         }
         'update-source' {
             if ($mode -eq 'git-url') {
-                # Fresh clone already populated origin/<branch> refs; resolve that head.
-                $branchForHead = $Branch
-                if ([string]::IsNullOrEmpty($branchForHead) -and $null -ne $existing) {
-                    $branchForHead = [string]$existing.branch
-                }
-                $remoteForHead = $Remote
-                if ([string]::IsNullOrEmpty($remoteForHead) -and $null -ne $existing) {
-                    $remoteForHead = [string]$existing.remote
-                }
-                if (-not [string]::IsNullOrEmpty($branchForHead)) {
-                    $refSha = Get-InstallPipelineGitUrlRemoteHead -InstallArea $InstallArea -Remote $remoteForHead -Branch $branchForHead
+                # The product entrypoint requires an explicit one-shot exact ref or the explicitly
+                # selected recorded branch. Keep the temp-only fixture aligned: no metadata/default
+                # target fallback and no symbolic value in -Ref.
+                if ($gitUrlUpdateHasRef) {
+                    # Product preflight owns advertised-tip eligibility. Apply consumes that fixed
+                    # one-shot SHA and requires only that the fresh clone can still resolve it.
+                    $refSha = Resolve-InstallPipelineRef -SourceLocation $tuplePath -Ref $Ref
                 }
                 else {
-                    # No branch recorded — fall back to the fresh clone's HEAD (= remote
-                    # default branch tip). INSTALL.md does not require -Branch for git-url.
-                    $refSha = Get-InstallPipelineSourceHead -SourceLocation $tuplePath
+                    $refSha = Get-InstallPipelineGitUrlRemoteHead -InstallArea $InstallArea -Remote $remoteForClone -Branch $Branch
                 }
             }
             else {

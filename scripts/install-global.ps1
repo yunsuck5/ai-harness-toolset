@@ -128,7 +128,7 @@ if (Test-Path -LiteralPath $installAreaResolved -PathType Leaf) {
 if (Test-Path -LiteralPath $installAreaResolved -PathType Container) {
     $existingMd = Join-Path $installAreaResolved 'install.json'
     if (Test-Path -LiteralPath $existingMd -PathType Leaf) {
-        script:Stop-Install ('an existing install is already present (install.json found) at ' + $installAreaResolved + '. Fresh install refuses to overwrite it. Use scripts/update-global.ps1 (or scripts/install-update.ps1 -Mode update-source) to update an existing install.')
+        script:Stop-Install ('an existing install is already present (install.json found) at ' + $installAreaResolved + '. Fresh install refuses to overwrite it. Read install.json.installMode before choosing the existing-install command. For git-url, scripts/update-global.ps1 requires exactly one target selector: -Branch <non-empty install.json.branch> or -Ref <exact advertised 40-hex branch-tip SHA>; when install.json.branch is empty, use -Ref. Do not omit or combine the selectors. For local-clone, pass neither selector. scripts/install-update.ps1 -Mode update-source is the compatibility path and follows the same selector rule.')
     }
     $children = @(Get-ChildItem -LiteralPath $installAreaResolved -Force -ErrorAction SilentlyContinue)
     if ($children.Count -gt 0) {
@@ -156,7 +156,7 @@ try {
     else {
         # git-url: full clone into the run-scoped source-cache work area (under the install area),
         # cleaned up after the run regardless of outcome.
-        $cacheDir     = Invoke-InstallPipelineGitUrlClone -InstallArea $installAreaResolved -RepoUrl $RepoUrl
+        $cacheDir     = Invoke-InstallPipelineGitUrlClone -InstallArea $installAreaResolved -RepoUrl $RepoUrl -Remote $Remote
         $cleanupCache = $true
         if (-not [string]::IsNullOrEmpty($Branch)) {
             $resolvedHead = Get-InstallPipelineGitUrlRemoteHead -InstallArea $installAreaResolved -Remote $Remote -Branch $Branch

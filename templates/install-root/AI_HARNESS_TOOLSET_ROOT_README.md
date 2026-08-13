@@ -4,21 +4,24 @@ This directory is the **ai-harness-toolset global install area**. The **InstallA
 
 This file is an **operator landing page**, not the full operative contract. The full install/update contract is the **latest source clone's `INSTALL.md`** — re-adopt it for any update (see "Updating" below).
 
-## Updating this install ("update to the latest version")
+## 이 install 업데이트하기 ("최신 버전으로 업데이트")
 
-The operator-facing update entrypoint is **`scripts/update-global.ps1`** (existing-install update). The lifecycle entrypoints are named so you pick by name: fresh install = `scripts/install-global.ps1`, **update an existing install = `scripts/update-global.ps1`**, uninstall = `scripts/uninstall-global.ps1`. Normal update flow is **(optional) inspect → update-global → (optional) verify**.
+기존 install의 operator-facing 진입점은 **`scripts/update-global.ps1`**이다. fresh install은 `scripts/install-global.ps1`, 기존 install update는 `scripts/update-global.ps1`, uninstall은 `scripts/uninstall-global.ps1`을 사용한다. 정상 순서는 **inspect → update-global → (선택) verify**다.
 
-1. **Clone the latest source** and read its `INSTALL.md` — that cloned `INSTALL.md` is the operative contract for the update.
-2. Run the **cloned latest source's** `scripts/update-global.ps1` (not this installed copy). Use the cloned latest even if this installed copy already has it — and note a legacy installed payload may **predate** `update-global.ps1` entirely — because the latest source's script + `INSTALL.md` are the update source-of-truth while this installed payload may still be at an older version during bootstrap:
-   - `scripts/update-global.ps1 -InstallArea <this directory>`
-   - `update-global.ps1` is a thin wrapper: it fail-fasts (and points you to fresh install via `install-global.ps1`) if this is not a valid existing install, otherwise it delegates to the underlying `install-update.ps1 -Mode update-source` and preserves its outcome. In particular, `activation_pending` remains **INCOMPLETE**, not FAIL; with `-Json`, delegate JSON stays alone on stdout and wrapper prose goes to stderr.
-3. The read-only checks are run with `install-update.ps1` directly (these are not wrapped by `update-global.ps1`):
-   - preflight: `scripts/install-update.ps1 -Mode inspect -InstallArea <this directory>`
-   - confirm:  `scripts/install-update.ps1 -Mode verify  -InstallArea <this directory>`
-4. For an existing install, pass `-InstallArea <this directory>` and usually **omit `-RepoUrl`** — the source is derived from `install.json`. Passing a differently-spelled URL (for example a `.git`-suffix or trailing-slash difference) can trip the source-cut guard; omitting it is the safe default.
-   - `-InstallArea` is **this install-root directory** (the one holding `current/` + `install.json` + `payload-manifest.json` + `payload-marker.json`), **not** `current/`. Passing `current/` is reported as `inspect_mode_unknown` with a "did you mean its parent" hint.
+1. 이 install의 `install.json`을 읽고 git-url target을 명시적으로 고른다. recorded branch가 non-empty이면 그 exact branch ref의 현재 advertised HEAD를 40-hex SHA로 고정한다. branch가 empty이면 remote symbolic/default HEAD의 SHA가 현재 advertised branch tip인지 확인해 exact `-Ref`만 사용하고 branch를 추정하거나 기록하지 않는다.
+2. source를 temporary clone한 뒤 selected SHA를 `git -C <bootstrap-clone> checkout --detach <resolved SHA>`로 checkout하고 `git -C <bootstrap-clone> rev-parse HEAD`가 그 SHA와 정확히 같은지 확인한다. 이 equality를 확인하기 전에는 clone의 `INSTALL.md`나 script를 읽거나 실행하지 않는다.
+3. verified exact checkout의 `INSTALL.md`를 operative contract로 읽고, 같은 checkout의 read-only preflight를 같은 target으로 실행한다:
+   - `scripts/install-update.ps1 -Mode inspect -InstallArea <this directory> -Ref <resolved 40-hex SHA>`
+4. **같은 verified checkout**의 update entrypoint를 같은 target으로 실행한다(설치된 사본이 아니다). legacy payload에는 `update-global.ps1` 자체가 없을 수 있다:
+   - `scripts/update-global.ps1 -InstallArea <this directory> -Ref <the same resolved 40-hex SHA>`
+   - `update-global.ps1`은 valid existing install을 확인한 뒤 `install-update.ps1 -Mode update-source`에 delegate하는 thin wrapper다. `activation_pending`은 FAIL이 아니라 **INCOMPLETE**로 유지하고, `-Json`에서는 delegate JSON만 stdout에 둔다.
+5. 갱신 후 read-only verifier로 확인한다:
+   - `scripts/install-update.ps1 -Mode verify -InstallArea <this directory>`
+6. git-url inspect/update는 target selector를 정확히 하나 요구한다: exact one-shot `-Ref <advertised 40-hex branch-tip commit>` 또는 non-empty recorded `-Branch <branch>`. 생략하거나 둘을 함께 넘기지 않는다. `-Ref`는 recorded branch와 remote를 빈 값까지 보존한다. moving `-Branch`가 bootstrap SHA와 다른 SHA를 resolve하면 새 target을 checkout·검증하고 그 target의 `INSTALL.md`를 다시 읽기 전에는 update하지 않는다.
+7. 기존 git-url install에서는 보통 `-RepoUrl`을 생략하고 `-SourcePath`는 절대 넘기지 않는다. URL은 `install.json`에서 오고 target은 위 selector가 정한다. `-SourcePath`는 inspect와 apply가 다른 source를 볼 수 있어 거부된다.
+   - `-InstallArea`는 `current/`가 아니라 `current/`와 세 sibling JSON을 담은 **install-root directory**다. `current/`를 넘기면 parent hint와 함께 `inspect_mode_unknown`으로 보고된다.
 
-**Underlying / compat path.** `scripts/install-update.ps1 -Mode update-source` is the canonical update **implementation** that `update-global.ps1` wraps. You can call it directly as the compat path (`-Mode inspect` / `-Mode update-source` / `-Mode verify`) — it is unchanged — but `update-global.ps1` is the recommended operator-facing name.
+**Underlying / compat path.** `scripts/install-update.ps1 -Mode update-source`는 `update-global.ps1`이 감싸는 canonical implementation이다. git-url에서는 같은 필수 selector와 함께 직접 호출할 수 있고, local-clone에서는 git-url selector를 넘기지 않는다. operator-facing 이름은 `update-global.ps1`을 권장한다.
 
 ## What update-source does (and does not) do
 

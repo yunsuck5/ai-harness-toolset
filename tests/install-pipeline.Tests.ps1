@@ -77,6 +77,18 @@ BeforeAll {
         finally { Pop-Location }
     }
 
+    function script:Add-FixtureCommitWithoutD3Marker {
+        param([string] $SourceRoot)
+        Push-Location $SourceRoot
+        try {
+            Remove-Item -LiteralPath (Join-Path $SourceRoot 'scripts/verify-ps1.ps1') -Force
+            & git add -A -- scripts/verify-ps1.ps1 2>&1 | Out-Null
+            & git commit -q -m 'remove D3 marker' 2>&1 | Out-Null
+            return (Invoke-NativeProcess -Executable 'git' -Arguments @('rev-parse', 'HEAD')).Stdout.Trim()
+        }
+        finally { Pop-Location }
+    }
+
     function script:New-InstallArea {
         param([string] $CaseName)
         $root = Join-Path $TestDrive ('install-area-' + $CaseName)
@@ -480,6 +492,52 @@ Describe 'install-pipeline entry — source-repo marker validation (F1)' {
 
         # current/ must not be created on rejection.
         Test-Path -LiteralPath (Join-Path $area 'current') | Should -BeFalse
+    }
+
+    It 'AC-IP-MARKER-2: valid checkout cannot mask an invalid selected ref' {
+        $src = script:New-FixtureSourceRepo -CaseName 'marker-2' -MarkerSuffix 'v1'
+        $validHead = $src.Head
+        $invalidHead = script:Add-FixtureCommitWithoutD3Marker -SourceRoot $src.Root
+        $null = Invoke-NativeProcess -Executable 'git' -Arguments @('-C', $src.Root, 'checkout', '--detach', '-q', $validHead)
+        Test-IsSourceRepoRoot -Path $src.Root | Should -BeTrue
+
+        $area = script:New-InstallArea -CaseName 'marker-2'
+        $tuple = New-InstallPipelineTuple `
+            -Action 'install' `
+            -InstallMode 'local-clone' `
+            -SourceLocation $src.Root `
+            -ResolvedRefSha $invalidHead `
+            -RefKind 'commit' `
+            -ToolRoot $src.Root `
+            -ProjectRoot $area `
+            -SourceUpdatePolicy 'read-current-only'
+
+        { Invoke-InstallPipelineDispatch -Tuple $tuple -InstallArea $area } |
+            Should -Throw -ExpectedMessage ('*selected source ref*multi-marker check failed*' + $invalidHead + '*')
+        Test-Path -LiteralPath (Join-Path $area 'current') | Should -BeFalse
+        Test-Path -LiteralPath (Join-Path $area 'install.json') | Should -BeFalse
+    }
+
+    It 'AC-IP-MARKER-3: invalid checkout cannot reject a valid selected ref' {
+        $src = script:New-FixtureSourceRepo -CaseName 'marker-3' -MarkerSuffix 'v1'
+        $validHead = $src.Head
+        $null = script:Add-FixtureCommitWithoutD3Marker -SourceRoot $src.Root
+        Test-IsSourceRepoRoot -Path $src.Root | Should -BeFalse
+
+        $area = script:New-InstallArea -CaseName 'marker-3'
+        $tuple = New-InstallPipelineTuple `
+            -Action 'install' `
+            -InstallMode 'local-clone' `
+            -SourceLocation $src.Root `
+            -ResolvedRefSha $validHead `
+            -RefKind 'commit' `
+            -ToolRoot $src.Root `
+            -ProjectRoot $area `
+            -SourceUpdatePolicy 'read-current-only'
+
+        Invoke-InstallPipelineDispatch -Tuple $tuple -InstallArea $area
+        Test-Path -LiteralPath (Join-Path $area 'current/scripts/verify-ps1.ps1') -PathType Leaf | Should -BeTrue
+        (script:Read-MetadataFromArea -InstallArea $area).lastUpdatedHead | Should -Be $validHead
     }
 }
 
@@ -1077,7 +1135,7 @@ Describe 'install-pipeline git-url mode minimum source acquisition' {
         $newHead | Should -Not -Be $bare.HeadAtClone
 
         $r2 = script:Invoke-InstallPipeline -Params @{
-            Action='update-source'; InstallArea=$area;
+            Action='update-source'; InstallArea=$area; Branch='main';
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
         $r2.ExitCode | Should -Be 0 -Because $r2.Output
@@ -1147,7 +1205,7 @@ Describe 'install-pipeline git-url mode minimum source acquisition' {
         # Advance the bare so v2 is the new HEAD. update-source moves lastUpdatedHead to v2.
         [void] (script:Add-FixtureBareCommit -SourceRoot $bare.Source.Root -BareUrl $bare.BareUrl -MarkerSuffix 'v2')
         script:Invoke-InstallPipeline -Params @{
-            Action='update-source'; InstallArea=$area;
+            Action='update-source'; InstallArea=$area; Branch='main';
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         } | Out-Null
 
@@ -1263,7 +1321,7 @@ Describe 'install-pipeline git-url mode minimum source acquisition' {
         Remove-Item -LiteralPath $bare.BareUrl -Recurse -Force
 
         $r = script:Invoke-InstallPipeline -Params @{
-            Action='update-source'; InstallArea=$area;
+            Action='update-source'; InstallArea=$area; Branch='main';
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
         $r.ExitCode | Should -Not -Be 0
@@ -1295,7 +1353,7 @@ Describe 'install-pipeline git-url mode minimum source acquisition' {
         Test-Path -LiteralPath $forbidden | Should -BeFalse
     }
 
-    It 'AC-IP-GITURL-NO-BRANCH-1: update-source without recorded branch falls back to the fresh clone HEAD (per INSTALL.md no -Branch requirement)' {
+    It 'AC-IP-GITURL-NO-BRANCH-1: update-source without a target selector fails; an exact advertised commit succeeds' {
         # Install without -Branch — relies on the remote default branch.
         $bare = script:New-FixtureBareRepo -CaseName 'giturl-nobranch-1' -MarkerSuffix 'v1'
         $area = script:New-InstallArea -CaseName 'giturl-nobranch-1'
@@ -1313,14 +1371,25 @@ Describe 'install-pipeline git-url mode minimum source acquisition' {
         $md1.toolRoot  | Should -BeNullOrEmpty
         $md1.installedHead | Should -Be $bare.HeadAtClone
 
-        # Advance the bare and update-source — without a recorded branch.
+        # Advance the bare. A selector-free update must not silently consume the remote default.
         $newHead = script:Add-FixtureBareCommit -SourceRoot $bare.Source.Root -BareUrl $bare.BareUrl -MarkerSuffix 'v2'
 
         $r2 = script:Invoke-InstallPipeline -Params @{
             Action='update-source'; InstallArea=$area;
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
-        $r2.ExitCode | Should -Be 0 -Because $r2.Output
+        $r2.ExitCode | Should -Not -Be 0
+        $r2.Output | Should -Match 'requires exactly one target selector'
+
+        $mdAfterFailure = script:Read-MetadataFromArea -InstallArea $area
+        $mdAfterFailure.lastUpdatedHead | Should -Be $bare.HeadAtClone
+
+        # Passing the exact advertised branch-tip commit closes the one-shot update.
+        $r3 = script:Invoke-InstallPipeline -Params @{
+            Action='update-source'; InstallArea=$area; Ref=$newHead;
+            ProjectRoot=$proj; RuntimeToolRoot=$proj
+        }
+        $r3.ExitCode | Should -Be 0 -Because $r3.Output
 
         $md2 = script:Read-MetadataFromArea -InstallArea $area
         $md2.installedHead   | Should -Be $bare.HeadAtClone
@@ -1355,7 +1424,7 @@ Describe 'install-pipeline git-url mode minimum source acquisition' {
         # Advance bare and update-source. Convergence: toolRoot must end up empty.
         $newHead = script:Add-FixtureBareCommit -SourceRoot $bare.Source.Root -BareUrl $bare.BareUrl -MarkerSuffix 'v2'
         $r = script:Invoke-InstallPipeline -Params @{
-            Action='update-source'; InstallArea=$area;
+            Action='update-source'; InstallArea=$area; Branch='main';
             ProjectRoot=$proj; RuntimeToolRoot=$proj
         }
         $r.ExitCode | Should -Be 0 -Because $r.Output

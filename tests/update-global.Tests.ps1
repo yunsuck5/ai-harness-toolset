@@ -28,7 +28,8 @@ BeforeAll {
             [Parameter(Mandatory = $true)] [string] $CaseName,
             [Parameter(Mandatory = $true)] [string] $DelegateStdout,
             [string] $DelegateStderr = '',
-            [int] $DelegateExitCode = 1
+            [int] $DelegateExitCode = 1,
+            [string] $CapturePath = ''
         )
 
         $root = Join-Path $TestDrive ('update-wrapper-stub-' + $CaseName)
@@ -42,6 +43,7 @@ BeforeAll {
 
         $stdout64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($DelegateStdout))
         $stderr64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($DelegateStderr))
+        $capture64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($CapturePath))
         $stubLines = @(
             '[CmdletBinding()]'
             'param('
@@ -51,6 +53,11 @@ BeforeAll {
             ')'
             ('$stdout = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(''' + $stdout64 + '''))')
             ('$stderr = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(''' + $stderr64 + '''))')
+            ('$capture = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(''' + $capture64 + '''))')
+            'if (-not [string]::IsNullOrEmpty($capture)) {'
+            '    $captured = [ordered]@{ Mode = $Mode; Branch = $Branch; BranchBound = $PSBoundParameters.ContainsKey(''Branch''); Remote = $Remote; RemoteBound = $PSBoundParameters.ContainsKey(''Remote''); Ref = $Ref; RefBound = $PSBoundParameters.ContainsKey(''Ref'') }'
+            '    [System.IO.File]::WriteAllText($capture, ($captured | ConvertTo-Json -Compress), (New-Object System.Text.UTF8Encoding($false)))'
+            '}'
             'if (-not [string]::IsNullOrEmpty($stdout)) { [Console]::Out.Write($stdout) }'
             'if (-not [string]::IsNullOrEmpty($stderr)) { [Console]::Error.Write($stderr) }'
             ('exit ' + $DelegateExitCode)
@@ -243,5 +250,49 @@ Describe 'update-global.ps1 (IU-B-09)' {
         $proc.Stdout | Should -Match 'update-global: updateStatus=activation_pending'
         $proc.Stdout | Should -Match 'update-global: INCOMPLETE'
         $proc.Stdout | Should -Not -Match 'update-global: FAIL'
+    }
+
+    It 'AC-UG-12: the thin wrapper forwards explicit Ref and Branch selectors without deriving either from metadata' {
+        $src = New-LifecycleFixtureSource -TestDriveRoot $TestDrive -CaseName 'ug-selector-forward'
+        $h   = New-LifecycleHomes -TestDriveRoot $TestDrive -CaseName 'ug-selector-forward'
+        $ri = script:Install -Params @{ InstallArea = $h.Area; SourcePath = $src; ClaudeHome = $h.Claude; CodexHome = $h.Codex; SkipSmoke = $true }
+        $ri.ExitCode | Should -Be 0
+
+        $refCapture = Join-Path $TestDrive 'ug-selector-ref.json'
+        $refValue = ('a' * 40)
+        $refWrapper = script:New-UpdateWrapperStub -CaseName 'selector-ref' -DelegateStdout '{"status":"noop_already_current","exitCode":0}' -DelegateExitCode 0 -CapturePath $refCapture
+        $refProc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $refWrapper,
+            '-InstallArea', $h.Area, '-Ref', $refValue,
+            '-ClaudeHome', $h.Claude, '-CodexHome', $h.Codex,
+            '-SkipSmoke', '-Json')
+        $refProc.ExitCode | Should -Be 0 -Because (($refProc.Stdout + "`n" + $refProc.Stderr).Trim())
+        $refCall = Read-Utf8 -Path $refCapture | ConvertFrom-Json
+        $refCall.Mode | Should -BeExactly 'update-source'
+        $refCall.RefBound | Should -BeTrue
+        $refCall.Ref | Should -BeExactly $refValue
+        $refCall.BranchBound | Should -BeFalse
+
+        $branchCapture = Join-Path $TestDrive 'ug-selector-branch.json'
+        $branchWrapper = script:New-UpdateWrapperStub -CaseName 'selector-branch' -DelegateStdout '{"status":"noop_already_current","exitCode":0}' -DelegateExitCode 0 -CapturePath $branchCapture
+        $branchProc = Invoke-NativeProcess -Executable 'powershell.exe' -Arguments @(
+            '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $branchWrapper,
+            '-InstallArea', $h.Area, '-Branch', 'main', '-Remote', 'upstream',
+            '-ClaudeHome', $h.Claude, '-CodexHome', $h.Codex,
+            '-SkipSmoke', '-Json')
+        $branchProc.ExitCode | Should -Be 0 -Because (($branchProc.Stdout + "`n" + $branchProc.Stderr).Trim())
+        $branchCall = Read-Utf8 -Path $branchCapture | ConvertFrom-Json
+        $branchCall.Mode | Should -BeExactly 'update-source'
+        $branchCall.BranchBound | Should -BeTrue
+        $branchCall.Branch | Should -BeExactly 'main'
+        $branchCall.RemoteBound | Should -BeTrue
+        $branchCall.Remote | Should -BeExactly 'upstream'
+        $branchCall.RefBound | Should -BeFalse
+
+        # Keep the source-level assertion as a narrow guard against metadata-derived target fallback.
+        $content = Read-Utf8 -Path $script:UpdateGlobal
+        $content | Should -Match 'if \(-not \[string\]::IsNullOrEmpty\(\$Branch\)\)\s*\{\s*\$childArgs \+= @\(''-Branch'', \$Branch\) \}'
+        $content | Should -Match 'if \(-not \[string\]::IsNullOrEmpty\(\$Ref\)\)\s*\{\s*\$childArgs \+= @\(''-Ref'', \$Ref\) \}'
+        $content | Should -Not -Match '(?i)metadata\.branch.*childArgs|childArgs.*metadata\.branch'
     }
 }
