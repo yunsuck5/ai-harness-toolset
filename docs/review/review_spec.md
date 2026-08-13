@@ -95,6 +95,6 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 
 ## Lifecycle state
 
-- lifecycle 문서: temporary Design / Plan active — engine eligibility·Mode A target·task-id·input gate·canary 경계 정정 batch를 설명하며 Work Packet은 만들지 않는다; candidate에서는 존치하고 사용자 착륙 게이트 뒤 closeout에서만 retire한다.
-- spec ↔ implementation: **sync-required** — 위 target state를 active SKILL에 동기화하는 중이며 affected existing test로 compact core의 회귀 여부를 확인한다.
+- lifecycle 문서: 없음 — engine eligibility·Mode A target·task-id·input gate·canary 경계 정정의 current-bearing 의미를 이 Spec과 active SKILL에 흡수했고 planning anchor는 git history에 보존된다. Work Packet은 만들지 않았다.
+- spec ↔ implementation: **live** — 위 target state가 active SKILL과 동기화됐고 affected existing test로 compact core의 회귀 여부를 확인했다.
 - future work: open 항목·수용된 잔여 위험·idea-only 항목과 ID 발번(next ID)의 single home 은 `review_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
