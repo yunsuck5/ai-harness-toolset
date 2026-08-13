@@ -134,7 +134,7 @@
 
 ## Lifecycle state
 
-- lifecycle 문서: `install-update_design.md` / `install-update_plan.md`가 Q-09 git-url target 결박의 current-bearing 방향·batch 경계를 소유한다. Work Packet은 만들지 않았다.
-- spec ↔ implementation: **sync-required** — selector와 시간 경계, selected-SHA D3/archive, exact bootstrap checkout, branch·remote 불변/empty-branch route, full inspect diagnostics의 target-state 의미를 기록했고 behavior owner와 affected tests가 따라잡는 중이다.
+- lifecycle 문서: 없음 — Q-09 git-url target 결박의 current-bearing 의미는 이 Spec과 active owner surface에 흡수되었고 retired Design/Plan은 git history에 보존된다. Work Packet은 만들지 않았다.
+- spec ↔ implementation: **live** — selector와 시간 경계, selected-SHA D3/archive, exact bootstrap checkout, branch·remote 불변/empty-branch route, full inspect diagnostics의 target-state 의미가 behavior owner와 affected tests에 1:1 동기화되어 있다.
 - 도메인 성숙도: install/update/uninstall/activation lifecycle **LTS maintenance**. 현재 동봉 source skill 4종은 Claude/Codex 양쪽으로 fan-out되어 concrete activation surface가 10개(두 managed block + vendor별 skill mirror 8개)다. 실제 global 배포와 fresh vendor discovery는 별도 사용자 gate다.
 - future work: open·deferred·idea-only 항목과 ID 발번(next ID)의 single home 은 `install-update_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
