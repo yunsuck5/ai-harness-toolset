@@ -40,17 +40,23 @@ Use repo-relative forward-slash paths and never list `log/` runtime artifacts as
 
 ### 2. Allocate one write-once unit
 
-Choose a task-stable `<review-task-id>` and explicit viewpoint `<perspective>`. Reuse the same `<review-task-id>` for every pass of the same task; choose a new one only when the task itself changes. Invoke once:
+Choose a public, purpose/gate-bound `<review-task-id>` for one independent review campaign and an explicit viewpoint `<perspective>`. One external task may have multiple campaigns; reuse the key only for another perspective or corrective/stale pass in the same campaign, and choose a new key for an independent review or a materially different purpose, gate, or Stage. Do not use person, machine, session, or process identity as the key. Invoke once:
 
 ```powershell
 <ToolRoot>/scripts/review-prepare.ps1 `
-  -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>] `
+  -ReviewTaskId <id> -Perspective <viewpoint> [-Pass <pass-NN>] [-ContinueCampaign] `
   -Stage <stage> -Purpose <line> -ProjectRoot <ProjectRoot> -ToolRoot <ToolRoot>
 ```
 
 Use `design`, `implementation`, `test`, `review`, or `release` for `<stage>`; choose `implementation` for an ordinary code change unless a more specific review stage applies.
 
-Prepare creates an empty `input.md`. Author it in the next step. If the pass already exists or an earlier pass is wrong/stale, allocate the next pass under the same task/perspective; never repair an old pass in place.
+Without `-ContinueCampaign`, prepare claims a new campaign and fails if the task root already exists. Use `-ContinueCampaign` only after inspecting the existing canonical record and asserting that this is the same campaign: the first perspective starts without it; a second perspective or corrective/stale pass uses it. The switch is not authority or machine proof of purpose equality. `Purpose` is descriptive and printed for confirmation, but is not persisted or identity-binding.
+
+Continuation requires at least one existing canonical `input.md`; task-root-only or input-less legacy/crash residue is not adopted. Before the first mutation, prepare checks the existing ancestry from the project log root through the task entry; before continuation or write, it also checks the canonical anchor and the ancestry from the task entry to the selected write parent. It fails closed on a reparse entry or wrong directory/file shape. This guards static existing entries, not a hostile mid-invocation path replacement.
+
+Prepare chooses one explicit or auto candidate, exclusively claims that pass directory, and creates a new empty `input.md` without clobbering. Exactly one winner is required only when invocations compete for the same preselected pass coordinate. If an explicit claim takes `pass-02` before a later auto scan legitimately selects `pass-03`, both distinct allocations may succeed; the auto call did not retry a collision. A same-coordinate collision or incomplete allocation fails nonzero with no next-pass retry or automatic cleanup, and an orphan remains occupied. If `pass-99` is already occupied for the selected perspective, stop only that perspective and report range exhaustion; an explicit lower number cannot bypass it, while another perspective keeps its independent numbering. A lower allocation rechecks `pass-99` before publishing success. Confirmed concurrent occupancy makes the lower call nonzero and preserves its claimed pass as an occupied orphan. If the parent or enumeration cannot be inspected, the call is also nonzero but does not claim `pass-99` occupancy or lower-artifact persistence; inspect state manually and do not auto-retry or clean up. Do not roll over automatically to a new campaign key.
+
+Author the new empty `input.md` in the next step. Never repair an old pass in place.
 
 ### 3. Author `input.md`
 
@@ -73,7 +79,7 @@ Before stating a regex/parser/script behavior as fact, run a narrow reproducible
 
 ### 4. Run each review unit once
 
-Invoke `review-run.ps1` once with the same task, perspective, pass, ProjectRoot, and ToolRoot. It verifies input, invokes the reviewer once under the reviewer-safe posture, validates candidate shape, attempts provenance append, and re-validates final canonical shape in its tail. Do not call a second verifier as a mandatory workflow step.
+Invoke `review-run.ps1` once with the same ReviewTaskId, perspective, pass, ProjectRoot, and ToolRoot. It verifies input, invokes the reviewer once under the reviewer-safe posture, validates candidate shape, attempts provenance append, and re-validates final canonical shape in its tail. Do not call a second verifier as a mandatory workflow step.
 
 Rules:
 

@@ -31,6 +31,41 @@ BeforeAll {
         return ([System.IO.Path]::GetFullPath($p))
     }
 
+    function script:New-TestJunction {
+        param(
+            [string] $LinkPath,
+            [string] $TargetPath
+        )
+
+        $parent = Split-Path -LiteralPath $LinkPath
+        if (-not (Test-Path -LiteralPath $parent -PathType Container)) {
+            $null = New-Item -ItemType Directory -Path $parent -Force
+        }
+        $null = New-Item -ItemType Junction -Path $LinkPath -Target $TargetPath -ErrorAction Stop
+        $item = Get-Item -LiteralPath $LinkPath -Force -ErrorAction Stop
+        if (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -eq 0) {
+            throw "New-TestJunction: created path is not a reparse point: $LinkPath"
+        }
+        return $item.FullName
+    }
+
+    function script:Try-NewTestFileSymbolicLink {
+        param(
+            [string] $LinkPath,
+            [string] $TargetPath
+        )
+
+        try {
+            $null = New-Item -ItemType SymbolicLink -Path $LinkPath -Target $TargetPath -ErrorAction Stop
+            $item = Get-Item -LiteralPath $LinkPath -Force -ErrorAction Stop
+            return (($item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0)
+        }
+        catch {
+            Remove-Item -LiteralPath $LinkPath -Force -ErrorAction SilentlyContinue
+            return $false
+        }
+    }
+
     function script:New-MultiMarkerSourceRepo {
         param([string] $Name)
         $root = script:New-CaseDir -Name $Name
@@ -615,5 +650,321 @@ Describe 'Assert-InTaskRoot task-root containment' {
         $logRoot = script:New-CaseDir -Name 'persp-tr3'
         $prefix = [System.IO.Path]::GetFullPath((Join-Path $logRoot 'review/task-x-evil/pass-01'))
         { Assert-InTaskRoot -Path $prefix -ProjectLogRoot $logRoot -ReviewTaskId 'task-x' } | Should -Throw
+    }
+}
+
+Describe 'review campaign anchor and exclusive pass allocation' {
+    BeforeEach { script:Clear-EnvToolRoot }
+
+    It 'AC-CAM-PATH1: task root만으로는 anchor가 아니며 canonical input.md가 생기면 anchor가 된다' {
+        $taskDir = script:New-CaseDir -Name 'campaign-anchor'
+
+        Test-ReviewCampaignAnchor -TaskDir $taskDir | Should -BeFalse
+
+        $orphanPass = Join-Path $taskDir 'local-correctness/pass-01'
+        $null = [System.IO.Directory]::CreateDirectory($orphanPass)
+        Test-ReviewCampaignAnchor -TaskDir $taskDir | Should -BeFalse
+
+        script:Write-Utf8NoBomFile -Path (Join-Path $orphanPass 'input.md') -Content ''
+        Test-ReviewCampaignAnchor -TaskDir $taskDir | Should -BeTrue
+    }
+
+    It 'AC-CAM-PATH1a: task root junction은 외부 canonical-looking input을 campaign anchor로 채택하지 않는다' {
+        $caseRoot = script:New-CaseDir -Name 'campaign-anchor-task-reparse'
+        $outsideTask = Join-Path $caseRoot 'outside-task'
+        $outsidePass = Join-Path $outsideTask 'local-correctness/pass-01'
+        $null = [System.IO.Directory]::CreateDirectory($outsidePass)
+        script:Write-Utf8NoBomFile -Path (Join-Path $outsidePass 'input.md') -Content ''
+
+        $taskLink = Join-Path $caseRoot 'task-link'
+        $null = script:New-TestJunction -LinkPath $taskLink -TargetPath $outsideTask
+
+        Test-ReviewCampaignAnchor -TaskDir $taskLink | Should -BeFalse
+    }
+
+    It 'AC-CAM-PATH1b: perspective 또는 pass junction 아래 input은 campaign anchor가 아니다' {
+        $caseRoot = script:New-CaseDir -Name 'campaign-anchor-child-reparse'
+
+        $perspectiveTask = Join-Path $caseRoot 'perspective-task'
+        $null = [System.IO.Directory]::CreateDirectory($perspectiveTask)
+        $outsidePerspective = Join-Path $caseRoot 'outside-perspective'
+        $outsidePerspectivePass = Join-Path $outsidePerspective 'pass-01'
+        $null = [System.IO.Directory]::CreateDirectory($outsidePerspectivePass)
+        script:Write-Utf8NoBomFile -Path (Join-Path $outsidePerspectivePass 'input.md') -Content ''
+        $null = script:New-TestJunction `
+            -LinkPath (Join-Path $perspectiveTask 'local-correctness') `
+            -TargetPath $outsidePerspective
+        Test-ReviewCampaignAnchor -TaskDir $perspectiveTask | Should -BeFalse
+
+        $passTask = Join-Path $caseRoot 'pass-task'
+        $passParent = Join-Path $passTask 'local-correctness'
+        $null = [System.IO.Directory]::CreateDirectory($passParent)
+        $outsidePass = Join-Path $caseRoot 'outside-pass'
+        $null = [System.IO.Directory]::CreateDirectory($outsidePass)
+        script:Write-Utf8NoBomFile -Path (Join-Path $outsidePass 'input.md') -Content ''
+        $null = script:New-TestJunction `
+            -LinkPath (Join-Path $passParent 'pass-01') `
+            -TargetPath $outsidePass
+        Test-ReviewCampaignAnchor -TaskDir $passTask | Should -BeFalse
+    }
+
+    It 'AC-CAM-PATH1c: input.md reparse path은 campaign anchor가 아니다' {
+        $caseRoot = script:New-CaseDir -Name 'campaign-anchor-input-reparse'
+        $taskDir = Join-Path $caseRoot 'task'
+        $passDir = Join-Path $taskDir 'local-correctness/pass-01'
+        $null = [System.IO.Directory]::CreateDirectory($passDir)
+        $inputLink = Join-Path $passDir 'input.md'
+        $outsideInput = Join-Path $caseRoot 'outside-input.md'
+        script:Write-Utf8NoBomFile -Path $outsideInput -Content 'outside'
+
+        $fileLinkCreated = script:Try-NewTestFileSymbolicLink -LinkPath $inputLink -TargetPath $outsideInput
+        if (-not $fileLinkCreated) {
+            # File symlink creation can require host policy/privilege. A directory junction at the
+            # exact input.md token still fixes the fail-closed reparse-path fallback on such hosts.
+            $outsideInputDir = Join-Path $caseRoot 'outside-input-dir'
+            $null = [System.IO.Directory]::CreateDirectory($outsideInputDir)
+            $null = script:New-TestJunction -LinkPath $inputLink -TargetPath $outsideInputDir
+        }
+
+        Test-ReviewCampaignAnchor -TaskDir $taskDir | Should -BeFalse
+    }
+
+    It 'AC-CAM-PATH1d: input.md가 directory인 wrong-shape record는 campaign anchor가 아니다' {
+        $caseRoot = script:New-CaseDir -Name 'campaign-anchor-input-wrong-shape'
+        $taskDir = Join-Path $caseRoot 'task'
+        $wrongInput = Join-Path $taskDir 'local-correctness/pass-01/input.md'
+        $null = [System.IO.Directory]::CreateDirectory($wrongInput)
+
+        Test-ReviewCampaignAnchor -TaskDir $taskDir | Should -BeFalse
+    }
+
+    It 'AC-CAM-PATH4: selected pass parent의 static junction을 write 전에 거부하고 외부 target을 건드리지 않는다' {
+        $caseRoot = script:New-CaseDir -Name 'write-parent-reparse'
+        $taskDir = Join-Path $caseRoot 'task'
+        $anchorPass = Join-Path $taskDir 'local-correctness/pass-01'
+        $null = [System.IO.Directory]::CreateDirectory($anchorPass)
+        script:Write-Utf8NoBomFile -Path (Join-Path $anchorPass 'input.md') -Content ''
+
+        $outsidePerspective = Join-Path $caseRoot 'outside-system-coherence'
+        $null = [System.IO.Directory]::CreateDirectory($outsidePerspective)
+        $selectedPassParent = Join-Path $taskDir 'system-coherence'
+        $null = script:New-TestJunction -LinkPath $selectedPassParent -TargetPath $outsidePerspective
+        $outsidePass = Join-Path $outsidePerspective 'pass-01'
+
+        {
+            [void] (Assert-NoStaticReparsePointInReviewPath -RootPath $taskDir -Path $selectedPassParent)
+            $null = New-ReviewPassAllocation -PassDir $outsidePass
+        } | Should -Throw '*static reparse point*'
+        Test-Path -LiteralPath $outsidePass | Should -BeFalse
+    }
+
+    It 'AC-CAM-PATH4a: log/review junction은 task claim 전에 거부되어 외부 target을 건드리지 않는다' {
+        $caseRoot = script:New-CaseDir -Name 'review-root-reparse'
+        $logRoot = Join-Path $caseRoot 'log'
+        $null = [System.IO.Directory]::CreateDirectory($logRoot)
+        $outsideReview = Join-Path $caseRoot 'outside-review'
+        $null = [System.IO.Directory]::CreateDirectory($outsideReview)
+        $reviewLink = Join-Path $logRoot 'review'
+        $null = script:New-TestJunction -LinkPath $reviewLink -TargetPath $outsideReview
+        $taskDir = Join-Path $reviewLink 'campaign'
+
+        {
+            [void] (Assert-NoStaticReparsePointInReviewPath -RootPath $logRoot -Path $taskDir)
+            [void] (New-ExclusiveReviewDirectory -Path $taskDir)
+        } | Should -Throw '*static reparse point*'
+        Test-Path -LiteralPath (Join-Path $outsideReview 'campaign') | Should -BeFalse
+    }
+
+    It 'AC-CAM-PATH4b: selected write ancestry의 file shape는 directory 생성 전에 거부된다' {
+        $caseRoot = script:New-CaseDir -Name 'write-parent-wrong-shape'
+        $taskDir = Join-Path $caseRoot 'task'
+        $null = [System.IO.Directory]::CreateDirectory($taskDir)
+        $selectedPassParent = Join-Path $taskDir 'local-correctness'
+        script:Write-Utf8NoBomFile -Path $selectedPassParent -Content 'not-a-directory'
+
+        { Assert-NoStaticReparsePointInReviewPath -RootPath $taskDir -Path $selectedPassParent } |
+            Should -Throw '*not a directory*'
+        Test-Path -LiteralPath (Join-Path $selectedPassParent 'pass-01') | Should -BeFalse
+    }
+
+    It 'AC-CAM-PATH4c: dangling log/review junction도 target resolution 없이 task claim 전에 거부된다' {
+        $caseRoot = script:New-CaseDir -Name 'review-root-dangling-reparse'
+        $logRoot = Join-Path $caseRoot 'log'
+        $null = [System.IO.Directory]::CreateDirectory($logRoot)
+        $outsideReview = Join-Path $caseRoot 'outside-review'
+        $null = [System.IO.Directory]::CreateDirectory($outsideReview)
+        $reviewLink = Join-Path $logRoot 'review'
+        $null = script:New-TestJunction -LinkPath $reviewLink -TargetPath $outsideReview
+        Remove-Item -LiteralPath $outsideReview -Recurse -Force
+
+        $entry = @(Get-ChildItem -LiteralPath $logRoot -Force | Where-Object Name -CEQ 'review')
+        $entry.Count | Should -Be 1
+        (($entry[0].Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) | Should -BeTrue
+        $nativeEntry = Get-ReviewPathEntryAttributes -Path $reviewLink
+        $nativeEntry.Exists | Should -BeTrue
+        (($nativeEntry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) | Should -BeTrue
+
+        $taskDir = Join-Path $reviewLink 'campaign'
+        { Assert-NoStaticReparsePointInReviewPath -RootPath $logRoot -Path $taskDir } |
+            Should -Throw '*static reparse point*'
+    }
+
+    It 'AC-CAM-PATH4d: dangling selected perspective junction도 pass allocation 전에 거부된다' {
+        $caseRoot = script:New-CaseDir -Name 'write-parent-dangling-reparse'
+        $taskDir = Join-Path $caseRoot 'task'
+        $null = [System.IO.Directory]::CreateDirectory($taskDir)
+        $outsidePerspective = Join-Path $caseRoot 'outside-local-correctness'
+        $null = [System.IO.Directory]::CreateDirectory($outsidePerspective)
+        $selectedPassParent = Join-Path $taskDir 'local-correctness'
+        $null = script:New-TestJunction -LinkPath $selectedPassParent -TargetPath $outsidePerspective
+        Remove-Item -LiteralPath $outsidePerspective -Recurse -Force
+
+        $entry = @(Get-ChildItem -LiteralPath $taskDir -Force | Where-Object Name -CEQ 'local-correctness')
+        $entry.Count | Should -Be 1
+        (($entry[0].Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) | Should -BeTrue
+        $nativeEntry = Get-ReviewPathEntryAttributes -Path $selectedPassParent
+        $nativeEntry.Exists | Should -BeTrue
+        (($nativeEntry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) | Should -BeTrue
+
+        { Assert-NoStaticReparsePointInReviewPath -RootPath $taskDir -Path $selectedPassParent } |
+            Should -Throw '*static reparse point*'
+    }
+
+    It 'AC-CAM-PATH2: exclusive pass allocation은 input.md 0-byte를 한 번만 만들고 재호출을 거부한다' {
+        $parent = script:New-CaseDir -Name 'exclusive-allocation'
+        $passDir = Join-Path $parent 'pass-01'
+
+        $allocation = New-ReviewPassAllocation -PassDir $passDir
+        $allocation.PassDir | Should -Be ([System.IO.Path]::GetFullPath($passDir))
+        $allocation.InputPath | Should -Be ([System.IO.Path]::GetFullPath((Join-Path $passDir 'input.md')))
+        (Get-Item -LiteralPath $allocation.InputPath).Length | Should -Be 0
+
+        { New-ReviewPassAllocation -PassDir $passDir } | Should -Throw '*directory claim conflict*'
+        @((Get-ChildItem -LiteralPath $passDir -File)).Count | Should -Be 1
+        (Get-ChildItem -LiteralPath $passDir -File).Name | Should -Be 'input.md'
+    }
+
+    It 'AC-CAM-PATH2a: lower claim 뒤 pass-99가 보이면 post-check는 실패하고 두 claim을 보존한다' {
+        $parent = script:New-CaseDir -Name 'pass99-post-claim'
+        $lower = New-ReviewPassAllocation -PassDir (Join-Path $parent 'pass-01')
+        $terminal = New-ReviewPassAllocation -PassDir (Join-Path $parent 'pass-99')
+
+        { Assert-ReviewPass99NotOccupied -PassParent $parent } |
+            Should -Throw '*range exhausted (max 99)*'
+        Test-Path -LiteralPath $lower.InputPath -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath $terminal.InputPath -PathType Leaf | Should -BeTrue
+        (Get-Item -LiteralPath $lower.InputPath).Length | Should -Be 0
+        (Get-Item -LiteralPath $terminal.InputPath).Length | Should -Be 0
+    }
+
+    It 'AC-CAM-PATH2b: post-check의 required parent가 없거나 검사 불가하면 성공으로 축약하지 않는다' {
+        $parent = Join-Path (script:New-CaseDir -Name 'pass99-required-parent') 'missing-perspective'
+
+        { Assert-ReviewPass99NotOccupied -PassParent $parent -RequireExistingParent } |
+            Should -Throw '*could not inspect selected perspective parent*'
+    }
+
+    It 'AC-CAM-PATH3: 두 child가 동일 preselected auto candidate를 경쟁하면 정확히 하나만 성공하고 retry하지 않는다' {
+        $caseRoot = script:New-CaseDir -Name 'allocation-barrier'
+        $passParent = Join-Path $caseRoot 'local-correctness'
+        $null = [System.IO.Directory]::CreateDirectory($passParent)
+        $candidate = Get-NextPassName -TaskDir $passParent
+        $candidate | Should -Be 'pass-01'
+        $passDir = Join-Path $passParent $candidate
+
+        $childPath = Join-Path $caseRoot 'allocation-child.ps1'
+        $childBody = @'
+param(
+    [string] $PathLib,
+    [string] $PassDir,
+    [string] $ReadyPath,
+    [string] $ReleasePath,
+    [string] $ResultPath
+)
+$ErrorActionPreference = 'Stop'
+. $PathLib
+[System.IO.File]::WriteAllText($ReadyPath, 'ready')
+$deadline = [DateTime]::UtcNow.AddSeconds(10)
+while (-not (Test-Path -LiteralPath $ReleasePath -PathType Leaf)) {
+    if ([DateTime]::UtcNow -ge $deadline) {
+        [System.IO.File]::WriteAllText($ResultPath, 'barrier-timeout')
+        exit 2
+    }
+    Start-Sleep -Milliseconds 10
+}
+try {
+    $null = New-ReviewPassAllocation -PassDir $PassDir
+    [System.IO.File]::WriteAllText($ResultPath, 'success')
+    exit 0
+}
+catch {
+    [System.IO.File]::WriteAllText($ResultPath, ('failure: ' + $_.Exception.Message))
+    exit 1
+}
+'@
+        script:Write-Utf8NoBomFile -Path $childPath -Content $childBody
+
+        $ready1 = Join-Path $caseRoot 'ready-1.txt'
+        $ready2 = Join-Path $caseRoot 'ready-2.txt'
+        $result1 = Join-Path $caseRoot 'result-1.txt'
+        $result2 = Join-Path $caseRoot 'result-2.txt'
+        $release = Join-Path $caseRoot 'release.txt'
+
+        function Start-AllocationChild {
+            param([string] $ReadyPath, [string] $ResultPath)
+
+            $arguments = @(
+                '-NoProfile',
+                '-ExecutionPolicy', 'Bypass',
+                '-File', ('"{0}"' -f $childPath),
+                '-PathLib', ('"{0}"' -f $script:PathLib),
+                '-PassDir', ('"{0}"' -f $passDir),
+                '-ReadyPath', ('"{0}"' -f $ReadyPath),
+                '-ReleasePath', ('"{0}"' -f $release),
+                '-ResultPath', ('"{0}"' -f $ResultPath)
+            )
+            return Start-Process -FilePath 'powershell.exe' -ArgumentList $arguments -PassThru -WindowStyle Hidden
+        }
+
+        $child1 = Start-AllocationChild -ReadyPath $ready1 -ResultPath $result1
+        $child2 = Start-AllocationChild -ReadyPath $ready2 -ResultPath $result2
+        try {
+            $deadline = [DateTime]::UtcNow.AddSeconds(10)
+            while ((-not (Test-Path -LiteralPath $ready1 -PathType Leaf)) -or
+                   (-not (Test-Path -LiteralPath $ready2 -PathType Leaf))) {
+                if ([DateTime]::UtcNow -ge $deadline) {
+                    throw '두 allocation child가 barrier에 도달하지 못했다.'
+                }
+                Start-Sleep -Milliseconds 10
+            }
+            script:Write-Utf8NoBomFile -Path $release -Content 'release'
+
+            $child1.WaitForExit(10000) | Should -BeTrue
+            $child2.WaitForExit(10000) | Should -BeTrue
+        }
+        finally {
+            foreach ($child in @($child1, $child2)) {
+                if (-not $child.HasExited) {
+                    $child.Kill()
+                    $child.WaitForExit()
+                }
+                $child.Dispose()
+            }
+        }
+
+        Test-Path -LiteralPath $result1 -PathType Leaf | Should -BeTrue
+        Test-Path -LiteralPath $result2 -PathType Leaf | Should -BeTrue
+        $statuses = @(
+            (Get-Content -Raw -Encoding UTF8 -LiteralPath $result1),
+            (Get-Content -Raw -Encoding UTF8 -LiteralPath $result2)
+        )
+        @($statuses | Where-Object { $_ -eq 'success' }).Count | Should -Be 1
+        @($statuses | Where-Object { $_ -like 'failure: *directory claim conflict*' }).Count | Should -Be 1
+
+        @((Get-ChildItem -LiteralPath $passParent -Directory)).Count | Should -Be 1
+        Test-Path -LiteralPath (Join-Path $passParent 'pass-02') | Should -BeFalse
+        $inputPath = Join-Path $passDir 'input.md'
+        Test-Path -LiteralPath $inputPath -PathType Leaf | Should -BeTrue
+        (Get-Item -LiteralPath $inputPath).Length | Should -Be 0
     }
 }

@@ -60,11 +60,15 @@
   result.md
 ```
 
-- `<review-task-id>`: 하나의 작업 또는 하나의 리뷰 게이트를 식별하는 이름입니다. 채팅 세션 id가 아닙니다.
+- `<review-task-id>`: 하나의 목적·리뷰 gate에 결박된 독립 campaign의 공개 key입니다. 외부 작업 하나에도 campaign은 여러 개일 수 있으며, 사람·machine·채팅 session id나 권한 token이 아닙니다.
 - `<perspective>`: 리뷰 관점입니다. 대표적으로 `local-correctness`, `system-coherence`. 필수 값이며 생략하면 실패합니다.
-- `pass-NN`: 같은 관점 안에서의 재검토 시도 번호입니다(`pass-01`, `pass-02`, ...). 리뷰 "종류"가 아니라 수정 후 다시 본 횟수입니다.
+- `pass-NN`: 같은 campaign·관점 안에서의 재검토 시도 번호입니다(`pass-01`, `pass-02`, ...). 리뷰 "종류"가 아니라 수정 후 다시 본 횟수입니다.
 
 각 `pass-NN` 디렉터리는 한 번 쓰면 끝(write-once)입니다. 입력이나 결과가 틀렸거나 오래되면 같은 관점 아래 새 `pass-NN`을 만들고, 기존 pass를 고쳐 덮어쓰지 않습니다.
+
+처음 관점은 새 campaign으로 시작합니다. 같은 campaign의 두 번째 관점이나 corrective pass만 AI agent가 `-ContinueCampaign`으로 명시하며, 별도 독립 평가나 목적·gate·Stage가 달라진 리뷰는 새 key를 씁니다. `Purpose` 설명은 identity 증명이 아닙니다. continuation에는 기존 canonical `input.md`가 필요하므로 task root만 있거나 input이 없는 legacy/crash 흔적은 자동 채택하지 않습니다. prepare는 첫 변경 전에 project log root부터 task entry까지, continuation/write 전에는 canonical anchor와 task entry부터 선택 write parent까지의 기존 ancestry를 다시 확인하고 reparse entry나 잘못된 file/directory shape가 있으면 실패합니다. 다만 검사 뒤 외부 actor가 경로를 바꾸는 hostile mid-invocation race까지 막는 보안 장치는 아닙니다.
+
+prepare는 같은 preselected `pass-NN` 좌표를 경쟁한 호출 중 배타적으로 claim한 하나만 새 빈 `input.md`를 만들게 합니다. explicit 호출이 `pass-02`를 먼저 차지한 뒤 auto 호출이 새 scan에서 `pass-03`을 정상 선택하면 서로 다른 두 allocation이므로 둘 다 성공할 수 있습니다. 같은 좌표 충돌자는 다음 번호로 자동 재시도하지 않고, 중단으로 남은 pass도 자동 cleanup·재사용하지 않습니다. 선택한 perspective에서 `pass-99`가 이미 사용됐으면 lower pass로 우회하거나 새 campaign으로 자동 rollover하지 않고 그 perspective만 멈춰 보고하며, 다른 perspective의 번호는 독립적으로 계속됩니다. lower allocation은 성공을 발표하기 전에 같은 perspective의 `pass-99`를 다시 확인합니다. concurrent 점유가 확인되면 nonzero이고 lower pass는 occupied orphan으로 보존됩니다. parent나 열거를 확인할 수 없으면 역시 nonzero지만 `pass-99` 점유나 lower artifact 잔존을 단정하지 않으며, 수동 확인 전 자동 retry·cleanup하지 않습니다.
 
 보조적으로, 프로젝트 상태 전달용 Brief는 다음 경로에 남습니다.
 
@@ -112,7 +116,7 @@ yes with risk
 ```
 
 - **yes** — 진행을 막는 blocking finding이 없다는 뜻입니다. **commit/push/배포 승인이 아닙니다.**
-- **no** — blocking finding이 있다는 뜻입니다. 승인된 작업 범위 안의 finding이면 수정 후 같은 작업·관점 아래 새 pass로 다시 리뷰합니다.
+- **no** — blocking finding이 있다는 뜻입니다. 승인된 작업 범위 안의 finding이면 수정 후 같은 campaign·관점 아래 새 pass로 다시 리뷰합니다.
 - **yes with risk** — blocking finding은 없지만 명시된 위험이 있다는 뜻입니다. **`yes`의 동의어가 아닙니다.** 사람이 그 위험을 이해하고 수용하거나, 위험을 줄이는 추가 수정·재리뷰가 필요합니다.
 
 어떤 verdict도 commit / push / publish / release를 자동으로 승인하지 않습니다. 다음 단계는 항상 사용자가 별도로 결정합니다.
@@ -151,7 +155,7 @@ yes with risk
 
 리뷰 후 소스나 문서가 바뀌면 이전 리뷰는 더 이상 그 상태를 설명하지 못합니다(stale).
 
-`corrected-state review`는 수정 전 상태를 리뷰하고 끝내는 것이 아니라, **수정이 반영된 working tree를 같은 작업·관점 아래 새 `pass-NN`으로 다시 리뷰**하는 것을 뜻합니다. 그래서 "한 번 리뷰했으니 끝"이 아니라, 변경이 생기면 그 변경된 상태가 다시 검토 대상이 됩니다.
+`corrected-state review`는 수정 전 상태를 리뷰하고 끝내는 것이 아니라, **수정이 반영된 working tree를 같은 campaign·관점 아래 `-ContinueCampaign`으로 새 `pass-NN`을 배정해 다시 리뷰**하는 것을 뜻합니다. 그래서 "한 번 리뷰했으니 끝"이 아니라, 변경이 생기면 그 변경된 상태가 다시 검토 대상이 됩니다.
 
 ## 10. 사람이 결과를 해석하는 방법
 
@@ -208,7 +212,7 @@ AI agent는 리뷰 시스템을 단순 실행기로 쓰면 안 됩니다. agent�
 
 ## 14. 짧은 요약
 
-- 리뷰 기록은 `log/review/<task>/<perspective>/pass-NN/`에 남는 runtime artifact다.
+- 리뷰 기록은 `log/review/<review-task-id>/<perspective>/pass-NN/`에 남는 runtime artifact이며, `review-task-id`는 하나의 purpose/gate-bound campaign key다.
 - `local-correctness`는 변경 자체의 정확성을, `system-coherence`는 전체 구조 정합성을 본다.
 - `pass-NN`은 리뷰 종류가 아니라 수정 후 재검토 횟수다.
 - 사용 가능한 judgment의 verdict는 `yes`, `no`, `yes with risk` 세 개뿐이고, invocation/result unavailable에는 verdict가 없다.

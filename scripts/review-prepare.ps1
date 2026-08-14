@@ -2,6 +2,8 @@
 param(
     [string] $ReviewTaskId,
 
+    [switch] $ContinueCampaign,
+
     [string] $Pass,
 
     # Required review viewpoint (strict C1 canonical layout). The pass directory is always
@@ -62,40 +64,130 @@ catch {
     exit 1
 }
 
+$hasExplicitPass = -not [string]::IsNullOrEmpty($Pass)
+if ($hasExplicitPass) {
+    try {
+        [void] (Assert-ValidPass -Value $Pass)
+    }
+    catch {
+        Write-Host ('review-prepare: FAIL invalid Pass: {0}' -f $Pass)
+        exit 1
+    }
+}
+
 $taskDir = Get-ReviewTaskRoot -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId
 [void] (Assert-InReviewRoot -Path $taskDir -ProjectLogRoot $logRoot)
 
-# Pass parent = <taskDir>/<perspective> (canonical three-level). Get-NextPassName scans this
-# parent, so pass-NN auto-allocation is per-perspective.
-$passParent = Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Perspective $Perspective
-
-if ([string]::IsNullOrEmpty($Pass)) {
-    $Pass = Get-NextPassName -TaskDir $passParent
-}
-
+# The lexical review/task path is not a physical containment proof. Inspect the existing ancestry
+# from ProjectLogRoot through review/<ReviewTaskId> before new-campaign claim or continuation so a
+# static log/review junction cannot redirect either admission or the first mutation outside log/.
 try {
-    [void] (Assert-ValidPass -Value $Pass)
+    [void] (Assert-NoStaticReparsePointInReviewPath -RootPath $logRoot -Path $taskDir)
 }
 catch {
-    Write-Host ('review-prepare: FAIL invalid Pass: {0}' -f $Pass)
+    Write-Host ('review-prepare: FAIL review/task ancestry is not statically safe before campaign admission: {0}' -f $_.Exception.Message)
     exit 1
+}
+
+# An omitted -ContinueCampaign means a new public campaign claim. Existing task roots are never
+# silently joined. Continuation is admitted only when the task root already carries a canonical
+# <perspective>/pass-NN/input.md anchor; directory existence alone is not an anchored campaign.
+if ($ContinueCampaign) {
+    if (-not (Test-ReviewCampaignAnchor -TaskDir $taskDir)) {
+        Write-Host ('review-prepare: FAIL -ContinueCampaign requires an existing anchored campaign with a canonical <perspective>/pass-NN/input.md: {0}' -f $taskDir)
+        exit 1
+    }
+}
+else {
+    $reviewRoot = [System.IO.Path]::GetDirectoryName($taskDir)
+    try {
+        $null = [System.IO.Directory]::CreateDirectory($reviewRoot)
+        [void] (New-ExclusiveReviewDirectory -Path $taskDir)
+    }
+    catch {
+        Write-Host ('review-prepare: FAIL new campaign claim was not acquired for ReviewTaskId {0}: {1}' -f $ReviewTaskId, $_.Exception.Message)
+        exit 1
+    }
+}
+
+# Pass parent = <taskDir>/<perspective> (canonical three-level). Get-NextPassName scans this
+# parent, so pass-NN auto-allocation is per-perspective. The candidate is calculated once;
+# allocation conflict never rescans or retries with another pass.
+$passParent = Get-ReviewPassParent -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Perspective $Perspective
+
+try {
+    [void] (Assert-NoStaticReparsePointInReviewPath -RootPath $taskDir -Path $passParent)
+}
+catch {
+    Write-Host ('review-prepare: FAIL selected review write path is not statically safe: {0}' -f $_.Exception.Message)
+    exit 1
+}
+
+# pass numbering and exhaustion are per-perspective. Once the selected perspective's pass-99
+# coordinate is occupied by any filesystem entry, only that perspective is exhausted: neither
+# auto allocation nor a lower explicit pass may mutate it or roll over to another identifier.
+try {
+    [void] (Assert-ReviewPass99NotOccupied -PassParent $passParent)
+}
+catch {
+    Write-Host ('review-prepare: FAIL selected perspective pass range is exhausted or could not be inspected: {0}' -f $_.Exception.Message)
+    exit 1
+}
+
+if (-not $hasExplicitPass) {
+    try {
+        $Pass = Get-NextPassName -TaskDir $passParent
+        [void] (Assert-ValidPass -Value $Pass)
+    }
+    catch {
+        Write-Host ('review-prepare: FAIL automatic pass candidate unavailable: {0}' -f $_.Exception.Message)
+        exit 1
+    }
 }
 
 $passDir = Get-ReviewPassDir -ProjectLogRoot $logRoot -ReviewTaskId $ReviewTaskId -Pass $Pass -Perspective $Perspective
 [void] (Assert-InReviewRoot -Path $passDir -ProjectLogRoot $logRoot)
 
-if (Test-Path -LiteralPath $passDir -PathType Container) {
-    Write-Host ('review-prepare: FAIL pass directory already exists: {0}. Each pass is write-once; allocate a new pass-NN under the same ReviewTaskId/Perspective.' -f $passDir)
+try {
+    $null = [System.IO.Directory]::CreateDirectory($passParent)
+}
+catch {
+    Write-Host ('review-prepare: FAIL could not create the perspective directory: {0}. Cause: {1}' -f $passParent, $_.Exception.Message)
     exit 1
 }
-
-$inputPath = Join-Path -Path $passDir -ChildPath 'input.md'
 
 # Prepare owns allocation only. The operator authors the complete request; the
 # distributed template remains an on-demand writing reference, never an automatic
 # reviewer-prompt seed.
-$null = New-Item -ItemType Directory -Path $passDir -Force
-Write-Utf8NoBom -Path $inputPath -Content ''
+try {
+    $allocation = New-ReviewPassAllocation -PassDir $passDir
+}
+catch {
+    Write-Host ('review-prepare: FAIL exclusive pass allocation failed; the selected pass is not retried automatically: {0}' -f $_.Exception.Message)
+    exit 1
+}
+$passDir = $allocation.PassDir
+$inputPath = $allocation.InputPath
+
+# A pass-99 claim can race the pre-allocation check on a different path. Recheck after a lower
+# allocation is fully claimed but before success publication. If pass-99 won that overlapping
+# ordering, fail nonzero and preserve this lower allocation as an occupied write-once orphan.
+if ($Pass -cne 'pass-99') {
+    try {
+        [void] (Assert-ReviewPass99NotOccupied -PassParent $passParent -RequireExistingParent)
+    }
+    catch {
+        if ($_.Exception.Data['AiHarnessReviewPass99Reason'] -eq 'occupied') {
+            Write-Host ('review-prepare: FAIL pass-99 became occupied while allocating {0}; the claimed lower pass is preserved as an orphan and must not be reused: {1}' -f
+                $Pass, $_.Exception.Message)
+        }
+        else {
+            Write-Host ('review-prepare: FAIL post-allocation pass-99 state could not be confirmed after allocating {0}: {1}. Do not infer pass-99 occupancy or lower-pass persistence; do not auto-retry or clean up.' -f
+                $Pass, $_.Exception.Message)
+        }
+        exit 1
+    }
+}
 
 $relPass = (Resolve-ProjectRelativePath -Path $passDir -ProjectRoot $project) -replace '\\', '/'
 $relInput = (Resolve-ProjectRelativePath -Path $inputPath -ProjectRoot $project) -replace '\\', '/'

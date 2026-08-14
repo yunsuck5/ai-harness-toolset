@@ -499,7 +499,356 @@ function Get-NextPassName {
     }
     $next = $maxN + 1
     if ($next -gt 99) {
-        throw "Get-NextPassName: pass-NN range exhausted (max 99) under $TaskDir. Use a fresh ReviewTaskId."
+        throw "Get-NextPassName: pass-NN range exhausted (max 99) under $TaskDir. Stop and report the exhausted selected perspective; do not allocate a lower pass or another ReviewTaskId automatically."
     }
     return ('pass-{0:00}' -f $next)
+}
+
+function Assert-ReviewPass99NotOccupied {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $PassParent,
+        [switch] $RequireExistingParent
+    )
+
+    if ([string]::IsNullOrEmpty($PassParent)) {
+        throw 'Assert-ReviewPass99NotOccupied: -PassParent is required.'
+    }
+
+    $parentFull = [System.IO.Path]::GetFullPath($PassParent)
+    try {
+        $parentItem = Get-Item -LiteralPath $parentFull -Force -ErrorAction Stop
+    }
+    catch {
+        $isAbsent = ($_.CategoryInfo.Category -eq [System.Management.Automation.ErrorCategory]::ObjectNotFound)
+        if ($isAbsent -and (-not $RequireExistingParent)) {
+            return $true
+        }
+        throw ('Assert-ReviewPass99NotOccupied: could not inspect selected perspective parent: {0}. Cause: {1}' -f
+            $parentFull, $_.Exception.Message)
+    }
+    if (-not $parentItem.PSIsContainer) {
+        throw "Assert-ReviewPass99NotOccupied: selected perspective parent is not a directory: $parentFull"
+    }
+    if (Test-ReviewFileSystemInfoIsReparsePoint -Item $parentItem) {
+        throw "Assert-ReviewPass99NotOccupied: selected perspective parent is a reparse point: $parentFull"
+    }
+
+    $pass99Full = [System.IO.Path]::GetFullPath((Join-Path -Path $parentFull -ChildPath 'pass-99'))
+    try {
+        foreach ($entry in [System.IO.Directory]::EnumerateFileSystemEntries($parentFull)) {
+            if ([string]::Equals(
+                [System.IO.Path]::GetFullPath($entry),
+                $pass99Full,
+                [System.StringComparison]::OrdinalIgnoreCase
+            )) {
+                $occupied = New-Object System.InvalidOperationException(
+                    "Assert-ReviewPass99NotOccupied: pass-NN range exhausted (max 99) under $parentFull. Stop and report the exhausted selected perspective; do not allocate a lower pass or another ReviewTaskId automatically."
+                )
+                $occupied.Data['AiHarnessReviewPass99Reason'] = 'occupied'
+                throw $occupied
+            }
+        }
+    }
+    catch {
+        if ($_.Exception.Data['AiHarnessReviewPass99Reason'] -eq 'occupied') {
+            throw
+        }
+        throw ('Assert-ReviewPass99NotOccupied: could not inspect pass-99 occupancy under selected perspective: {0}. Cause: {1}' -f
+            $parentFull, $_.Exception.Message)
+    }
+
+    return $true
+}
+
+function Test-ReviewFileSystemInfoIsReparsePoint {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        $Item
+    )
+
+    if ($null -eq $Item) {
+        throw 'Test-ReviewFileSystemInfoIsReparsePoint: -Item is required.'
+    }
+
+    return (($Item.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0)
+}
+
+function Initialize-ReviewPathEntryNativeType {
+    [CmdletBinding()]
+    param()
+
+    if ($null -ne ('AiHarnessToolset.Native.ReviewPathEntry' -as [type])) {
+        return
+    }
+
+    $source = @'
+using System.Runtime.InteropServices;
+
+namespace AiHarnessToolset.Native
+{
+    public static class ReviewPathEntry
+    {
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        public static extern uint GetFileAttributesW(string path);
+    }
+}
+'@
+
+    Add-Type -TypeDefinition $source -Language CSharp -ErrorAction Stop
+}
+
+function Get-ReviewPathEntryAttributes {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    if ([string]::IsNullOrEmpty($Path)) {
+        throw 'Get-ReviewPathEntryAttributes: -Path is required.'
+    }
+
+    $full = [System.IO.Path]::GetFullPath($Path)
+    [void] (Initialize-ReviewPathEntryNativeType)
+    $attributes = [AiHarnessToolset.Native.ReviewPathEntry]::GetFileAttributesW($full)
+    if ($attributes -ne [uint32]::MaxValue) {
+        return [pscustomobject]@{
+            Exists     = $true
+            Attributes = [System.IO.FileAttributes] $attributes
+        }
+    }
+
+    # Capture the thread-local error immediately. Only actual path absence is safe to collapse into
+    # the first-missing-component result; every other inspection failure stays fail-closed.
+    $errorCode = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+    if ($errorCode -eq 2 -or $errorCode -eq 3) {
+        return [pscustomobject]@{
+            Exists     = $false
+            Attributes = [System.IO.FileAttributes] 0
+        }
+    }
+
+    $detail = (New-Object System.ComponentModel.Win32Exception($errorCode)).Message
+    throw "Get-ReviewPathEntryAttributes: native entry inspection failed (Win32 error $errorCode): $detail Path=$full"
+}
+
+function Assert-NoStaticReparsePointInReviewPath {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $RootPath,
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    if ([string]::IsNullOrEmpty($RootPath)) {
+        throw 'Assert-NoStaticReparsePointInReviewPath: -RootPath is required.'
+    }
+    if ([string]::IsNullOrEmpty($Path)) {
+        throw 'Assert-NoStaticReparsePointInReviewPath: -Path is required.'
+    }
+
+    $rootFull = [System.IO.Path]::GetFullPath($RootPath)
+    $pathFull = [System.IO.Path]::GetFullPath($Path)
+    $sep = [System.IO.Path]::DirectorySeparatorChar
+    $rootNorm = $rootFull.TrimEnd($sep)
+    $cmp = [System.StringComparison]::OrdinalIgnoreCase
+    $prefix = $rootNorm + $sep
+
+    if ([string]::Equals($pathFull, $rootNorm, $cmp)) {
+        $relative = ''
+    }
+    elseif ($pathFull.StartsWith($prefix, $cmp)) {
+        $relative = $pathFull.Substring($prefix.Length)
+    }
+    else {
+        throw "Assert-NoStaticReparsePointInReviewPath: path is outside inspection root. Path=$pathFull Root=$rootNorm"
+    }
+
+    # Walk from the caller-selected lexical root toward the selected write parent. Native entry
+    # attributes describe a junction/symlink itself even when its target is dangling, so target
+    # resolution is never used as the existence test. Once a component entry is actually absent, no
+    # deeper static component can exist through that path; a hostile replacement after this check is
+    # a separate TOCTOU race and is not claimed here.
+    $components = @()
+    if (-not [string]::IsNullOrEmpty($relative)) {
+        $components = @($relative -split '[\\/]' | Where-Object { -not [string]::IsNullOrEmpty($_) })
+    }
+
+    $current = $rootNorm
+    foreach ($component in @('') + $components) {
+        if (-not [string]::IsNullOrEmpty($component)) {
+            $current = Join-Path -Path $current -ChildPath $component
+        }
+
+        try {
+            $entry = Get-ReviewPathEntryAttributes -Path $current
+            if (-not $entry.Exists) {
+                return $true
+            }
+        }
+        catch {
+            throw ('Assert-NoStaticReparsePointInReviewPath: could not inspect existing path component: {0}. Cause: {1}' -f
+                $current, $_.Exception.Message)
+        }
+
+        if (($entry.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+            throw "Assert-NoStaticReparsePointInReviewPath: static reparse point is not allowed in the selected review write path: $current"
+        }
+        if (($entry.Attributes -band [System.IO.FileAttributes]::Directory) -eq 0) {
+            throw "Assert-NoStaticReparsePointInReviewPath: existing write-path component is not a directory: $current"
+        }
+    }
+
+    return $true
+}
+
+function Test-ReviewCampaignAnchor {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $TaskDir
+    )
+
+    try {
+        if (-not (Test-Path -LiteralPath $TaskDir -PathType Container -ErrorAction Stop)) {
+            return $false
+        }
+        $taskItem = Get-Item -LiteralPath $TaskDir -Force -ErrorAction Stop
+        if (Test-ReviewFileSystemInfoIsReparsePoint -Item $taskItem) {
+            return $false
+        }
+
+        $perspectiveDirs = Get-ChildItem -LiteralPath $TaskDir -Directory -Force -ErrorAction Stop
+        foreach ($perspectiveDir in $perspectiveDirs) {
+            if ((-not (Test-ValidPerspective -Value $perspectiveDir.Name)) -or
+                (Test-ReviewFileSystemInfoIsReparsePoint -Item $perspectiveDir)) {
+                continue
+            }
+
+            $passDirs = Get-ChildItem -LiteralPath $perspectiveDir.FullName -Directory -Force -ErrorAction Stop
+            foreach ($passDir in $passDirs) {
+                if (($passDir.Name -cnotmatch '^pass-(0[1-9]|[1-9][0-9])$') -or
+                    (Test-ReviewFileSystemInfoIsReparsePoint -Item $passDir)) {
+                    continue
+                }
+
+                $files = Get-ChildItem -LiteralPath $passDir.FullName -File -Force -ErrorAction Stop
+                foreach ($file in $files) {
+                    if (($file.Name -ceq 'input.md') -and
+                        (-not (Test-ReviewFileSystemInfoIsReparsePoint -Item $file))) {
+                        return $true
+                    }
+                }
+            }
+        }
+    }
+    catch {
+        # Anchor admission is fail-closed: an uninspectable path is not evidence of a canonical
+        # campaign and must never cause prepare to join it.
+        return $false
+    }
+
+    return $false
+}
+
+function Initialize-ReviewDirectoryNativeType {
+    [CmdletBinding()]
+    param()
+
+    if ($null -ne ('AiHarnessToolset.Native.ReviewDirectory' -as [type])) {
+        return
+    }
+
+    $source = @'
+using System;
+using System.Runtime.InteropServices;
+
+namespace AiHarnessToolset.Native
+{
+    public static class ReviewDirectory
+    {
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        public static extern bool CreateDirectoryW(
+            string path,
+            IntPtr securityAttributes
+        );
+    }
+}
+'@
+
+    Add-Type -TypeDefinition $source -Language CSharp -ErrorAction Stop
+}
+
+function New-ExclusiveReviewDirectory {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $Path
+    )
+
+    if ([string]::IsNullOrEmpty($Path)) {
+        throw 'New-ExclusiveReviewDirectory: -Path is required.'
+    }
+
+    $full = [System.IO.Path]::GetFullPath($Path)
+    [void] (Initialize-ReviewDirectoryNativeType)
+
+    $created = [AiHarnessToolset.Native.ReviewDirectory]::CreateDirectoryW(
+        $full,
+        [System.IntPtr]::Zero
+    )
+    if ($created) {
+        return $full
+    }
+
+    # Read the native error immediately after the failed call; any intervening native call could
+    # replace the thread-local value and misclassify a collision as another failure.
+    $errorCode = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+    if ($errorCode -eq 80 -or $errorCode -eq 183) {
+        throw "New-ExclusiveReviewDirectory: directory claim conflict (path already exists): $full"
+    }
+
+    $detail = (New-Object System.ComponentModel.Win32Exception($errorCode)).Message
+    throw "New-ExclusiveReviewDirectory: directory claim failed (Win32 error $errorCode): $detail Path=$full"
+}
+
+function New-ReviewPassAllocation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory = $true)]
+        [string] $PassDir
+    )
+
+    $claimedPassDir = New-ExclusiveReviewDirectory -Path $PassDir
+    $inputPath = Join-Path -Path $claimedPassDir -ChildPath 'input.md'
+
+    try {
+        $stream = [System.IO.File]::Open(
+            $inputPath,
+            [System.IO.FileMode]::CreateNew,
+            [System.IO.FileAccess]::Write,
+            [System.IO.FileShare]::None
+        )
+        try {
+            # A zero-byte file is the intentional operator-authored canvas and has no BOM.
+        }
+        finally {
+            $stream.Dispose()
+        }
+    }
+    catch {
+        throw ('New-ReviewPassAllocation: pass directory was claimed but empty input.md creation failed. ' +
+            'The claimed directory is preserved as a write-once orphan and must not be reused: {0}. Cause: {1}' -f
+            $claimedPassDir, $_.Exception.Message)
+    }
+
+    return [pscustomobject]@{
+        PassDir   = $claimedPassDir
+        InputPath = $inputPath
+    }
 }

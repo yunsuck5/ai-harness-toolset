@@ -428,7 +428,8 @@ exit $LASTEXITCODE
             # for tests that do not care about the viewpoint. -OmitPerspective drops it entirely
             # (for the "without -Perspective fails" tests).
             [string] $Perspective = 'local-correctness',
-            [switch] $OmitPerspective
+            [switch] $OmitPerspective,
+            [switch] $ContinueCampaign
         )
         $procArgs = @(
             '-NoProfile', '-ExecutionPolicy', 'Bypass',
@@ -441,6 +442,9 @@ exit $LASTEXITCODE
         )
         if (-not [string]::IsNullOrEmpty($Pass)) {
             $procArgs += @('-Pass', $Pass)
+        }
+        if ($ContinueCampaign) {
+            $procArgs += '-ContinueCampaign'
         }
         if ((-not $OmitPerspective) -and (-not [string]::IsNullOrEmpty($Perspective))) {
             $procArgs += @('-Perspective', $Perspective)
@@ -894,7 +898,7 @@ Describe 'review-run canonical pass directory' {
         $r1.Output | Should -Match 'verdict: no'
 
         # Allocate the next pass.
-        $prep2 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId
+        $prep2 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -ContinueCampaign
         $prep2.ExitCode | Should -Be 0 -Because $prep2.Output
         $prep2.Output | Should -Match 'pass: pass-02'
         $input2 = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-02/input.md')
@@ -2099,7 +2103,7 @@ Describe 'review-run strict C1 (perspective-required) layout' {
         $r1.Output | Should -Match 'verdict: no'
 
         # Allocate the next pass under the SAME perspective (per-perspective auto-allocation).
-        $prep2 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Perspective 'local-correctness'
+        $prep2 = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Perspective 'local-correctness' -ContinueCampaign
         $prep2.ExitCode | Should -Be 0 -Because $prep2.Output
         $prep2.Output | Should -Match 'pass: pass-02'
         script:Set-InputFilled -InputPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-02/input.md'))
