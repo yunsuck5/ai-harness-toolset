@@ -17,18 +17,18 @@
 - **`Design`** — 변경의 이유·방향·owner 경계·trade-off·non-goal·semantic target을 담는 임시 lifecycle artifact.
 - **`Plan`** — Design을 batch 순서·scope·hard boundary·validation·review focus 같은 승인 대상 결정으로 분해하는 임시 lifecycle artifact.
 - **`Spec`** — domain의 target-state 명세이며 closeout 후 implementation과 의미 수준 1:1로 유지되는 live 문서.
-- **`Implementation`** — final Spec을 구현하고 closeout에서 Spec과 1:1로 대조되는 active surface.
+- **`Implementation`** — final Spec을 구현하고 final corrected-state review 전에 Spec과 1:1로 reconcile되며 retirement-only closeout에서 그 정합을 확인하는 active surface.
 - **`final Spec only`** — implementation이 Design·Plan이나 별도 문서가 아니라 완성된 Spec 하나만 구현 기준으로 삼는 원칙.
 - **`stage rewind`** — 하위 단계가 상위 단계를 위반하면 상위 단계로 돌아가 다시 진행하는 절차.
 - **`owner surface`** — behavior를 실제로 정의하는 script·test·template·snippet·skill·config·root instruction·rule 등의 active surface.
 - **`managed trigger`** — ai-harness가 소유한 action을 새 direct prompt 없이 시작·재개·자동 전이시키는 명시 채택된 조건 또는 호출. 보편 admission·accountability와 비소급 비인증 경계는 `snippets/rules/no-background-or-hidden-state.md`가 소유하고, 구체 trigger·action·authority·closure는 각 owner surface가 소유한다.
 - **`source-of-truth` (single home)** — 한 사실에는 권위 있는 home 하나만 두고 다른 위치는 복사가 아니라 pointer만 두는 원칙.
 - **`stable filename rule`** — lifecycle 문서가 정해진 domain/rule-prefixed role filename을 재사용하고 topic별 파일·우회 subfolder 증식을 금지하는 규칙.
-- **`Work Packet`** — 회차성 조사·분류·구현 메모를 담는 committed temporary·비승인 문서. domain/rule의 정해진 role path에 두며 실행 명령·실행 기록은 넣지 않고 해당 closeout에서 흡수 후 삭제한다.
+- **`Work Packet`** — 회차성 조사·분류·구현 메모를 담는 committed temporary·비승인 문서. domain/rule의 정해진 role path에 두며 실행 명령·실행 기록은 넣지 않고 final corrected-state review 전에 current-bearing 의미를 적정 owner·operator report·backlog 중 맞는 home에 흡수한 뒤 retirement-only closeout에서 삭제한다.
 - **`incubation`** — domain 또는 rule 후보가 promotion·discard·continue 판단 전 repo 안에서 non-authoritative하게 성숙하는 pre-promotion lifecycle.
 - **`rule-candidate incubation` (`rule_docs/`)** — terminal output이 단일 rule인 후보가 `rule_docs/<candidate>/`에서 진행하는 incubation. `rule_docs/`는 기존 rule revision도 수용하는 1:1 rule-bound planning workspace이며 candidate-only bucket이 아니다.
 - **`incubation anchoring`** — 검증된 incubation 문서가 승인된 첫 commit으로 repo에 들어오는 시점.
-- **`sync-required`** — 기존 live Spec이 새 target state로 갱신됐지만 implementation closeout 재동기화가 끝나지 않은 상태.
+- **`sync-required`** — 기존 live Spec이 새 target state로 갱신된 뒤 revised target-state/implementation alignment를 `live`로 돌리는 승인 closeout 전까지의 상태.
 - **`future-work queue`** — 아직 시작하지 않은 일을 reopen/start condition·monotonic next-ID와 함께 두는 non-authoritative domain/rule backlog. Spec·구현 승인이 아니며 닫힌 row는 기본 삭제한다.
 - **`proportionality rule`** — 의미 보존 교정은 직접 수정할 수 있지만 boundary·behavior·owner·validation 의미 변경은 정규 lifecycle을 요구하는 규칙.
 - **`domain-local closure`** — domain이 자기 Spec·active surface·명시된 안정 interface만으로 이해되는 성질.
@@ -46,7 +46,8 @@
 - **`ToolRoot`** — 설치된 toolset의 `config`·`scripts`·`snippets`·`templates` root.
 - **`ProjectLogRoot`** — `<ProjectRoot>/log` runtime factual-record root.
 - **`candidate-lifecycle closeout`** — promotion 또는 discard로 후보 lifecycle을 끝내고 `_incubation.md`를 처분하는 closeout.
-- **`promoted-lifecycle closeout`** — promoted artifact의 Design·Plan·Work Packet을 흡수 후 retire하는 closeout.
+- **`promoted-lifecycle closeout`** — promoted artifact의 current-bearing 의미를 최종 review 전에 owner에 흡수한 뒤 Design·Plan·Work Packet을 retire하는 closeout.
+- **`retirement-only closeout`** — 최종 content readiness와 corrected-state review 뒤 제안된 transaction 자체가 DWM-qualified planning retirement와 affected Spec lifecycle-marker disposition만 포함하며 다른 source delta가 0일 때 새 target-state meaning 없이 수행하는 사용자 승인 closeout.
 - **`prelive`** — promotion 뒤 첫 closeout 전 domain Spec 상태; discoverable target-state blueprint지만 implementation authority는 아니다.
 - **`consultation`** — operator가 행동 전에 read-only 의견·반론·조사를 수집하고 한계를 포함해 종합하는 비판정 advisory workflow.
 - **`operator synthesis`** — consultation의 usable response·불일치·한계·남은 결정을 operator가 근거와 함께 종합한 결과.

@@ -48,8 +48,9 @@ A durable normative change follows:
 
 ```text
 live Spec + implementation → Design → Plan → target-state Spec/rule
-  → optional Work Packet → implementation → closeout sync
-  → Design/Plan/Work Packet retire → Spec/rule + implementation live
+  → optional Work Packet → implementation → meaning reconciliation / absorption / reference correction
+  → corrected-state review → user-approved retirement-only closeout
+  → Design/Plan/Work Packet retire + Spec marker flip → Spec/rule + implementation live
 ```
 
 A rule is its own spec-of-record and therefore has no duplicate rule Spec.
@@ -77,8 +78,8 @@ Decision-shaped grammar alone is not an approval defect. A lower artifact is def
 A domain Spec is:
 
 - **`prelive`** after its first target-state writing and before first closeout;
-- **`sync-required`** when a previously-live Spec has been updated and implementation is catching up;
-- **`live`** after closeout reconciliation.
+- **`sync-required`** when a previously-live Spec has been updated and remains before the approved closeout that returns the revised target-state/implementation alignment to `live`;
+- **`live`** after the approved retirement-only closeout.
 
 Exactly one bolded lifecycle marker appears in the Spec's Lifecycle state meaning area. A `prelive` Spec is governance-discoverable but is not closeout-verified implementation authority.
 
@@ -94,7 +95,7 @@ A Work Packet is a round-scoped, non-authoritative temporary artifact for line-l
 - It does not carry command sequences, staging procedures, review/validation results, or readiness judgments.
 - Its normal path is `docs/<domain>/<domain>_work_packet.md` or `rule_docs/<id>/<id>_work_packet.md`; subfolder lifecycle evasion is not allowed.
 - A Plan declares its purpose, absorption target, and retire condition.
-- At promoted-lifecycle closeout, current-bearing content is absorbed into the correct owner/report and the Work Packet is deleted.
+- Before the final corrected-state review, current-bearing content is absorbed into the correct owner/report; the Work Packet is then deleted only by the promoted-lifecycle closeout.
 - The regular lifecycle, including its optional Work Packet role, begins at Design; before then `_incubation.md` is the candidate's planning home.
 
 ## Incubation (pre-promotion)
@@ -144,7 +145,7 @@ Synchronization is meaning-level, not line or sentence mirroring.
 - “Reconstructibility” is a review aid: the same behavior and normative meaning should be recoverable, not identical prose or code.
 - If a change alters no target-state sentence meaning, it is refactoring; otherwise the Spec/rule changes with it.
 
-For a live domain, Design → Plan updates the live Spec in place to the new target state and marks it `sync-required`; closeout returns it to `live`. A first Spec uses `prelive`.
+For a live domain, Design → Plan updates the live Spec in place to the new target state and marks it `sync-required`. Reconciliation, validation, and corrected-state review occur before closeout; the approved closeout returns the marker to `live`. A first Spec uses `prelive`.
 
 ## Proportionality
 
@@ -156,6 +157,8 @@ A direct edit states that it is meaning-preserving. If unresolved doubt concerns
 
 Inspection and reporting are unconditional; updating is conditional. For every listed surface the closeout report says `updated: <file> — <what>` or `checked: <file> — no change required`. Silent omission fails closeout.
 
+Retirement-only closeout을 목표로 할 때 이 inspection에서 발견된 conditional update는 최종 corrected-state review **전에** candidate에 반영한다. Review 뒤에 새 content update가 필요해지면 closeout을 계속하지 않고 candidate 단계로 되돌린다. Closeout 시점의 report는 이미 검토된 처분을 확인할 뿐 source content를 새로 고치지 않는다.
+
 - **Level 1 — orientation:** `docs/README.md` and any affected unmigrated orientation surface.
 - **Level 2 — owner-local:** domain Spec/backlog, or terminal rule and its existing rule backlog.
 
@@ -165,15 +168,33 @@ When a rule changes a form-bound statement, only forms/checks that directly embo
 
 ## Lifecycle closeout
 
-Closeout requires:
+### Readiness와 closeout의 분리
 
-- target-state meaning and implementation reconciled 1:1;
-- current-bearing Design/Plan/Work Packet meaning absorbed into the Spec/rule, active owner, report, or backlog;
-- inbound references corrected;
-- Design and Plan retired by deletion;
-- Work Packet deleted.
+Promoted-lifecycle closeout은 두 번째 content-correction 단계가 아니다. 다음 content readiness는 최종 corrected-state review 전에 candidate 안에서 완료한다.
 
-Candidate promotion/discard closes the candidate lifecycle first. Promoted-lifecycle closeout later disposes Design/Plan/Work Packet. Each temporary artifact is deleted at its own closeout.
+- target-state meaning과 implementation의 1:1 reconciliation;
+- Design/Plan/Work Packet의 current-bearing 의미를 Spec/rule, active owner, operator report 또는 backlog에 흡수;
+- 실제 stale해지는 inbound reference와 필요한 orientation/backlog 처분의 정정;
+- candidate 판단에 필요한 적용 가능한 validation·실사용 확인.
+
+이 readiness가 반영된 candidate를 최종 corrected-state review한 뒤, 사용자가 lifecycle closeout을 명시 승인해야 retirement를 수행할 수 있다. 그 승인은 commit/push/publish/deploy 권한을 대신하지 않는다. Review 뒤에 source content를 더 고쳐야 하면 closeout이 아니라 candidate correction이며, 그 corrected candidate가 ordinary review 대상이다.
+
+### `retirement-only closeout` exact shape
+
+`retirement-only closeout`은 **promoted-lifecycle closeout의 좁은 하위 분류**다. Candidate promotion/discard/withdrawal에는 적용하지 않는다. 판정 대상은 readiness가 끝난 뒤 제안된 **closeout transaction 자체의 전체 source delta**다.
+
+다음 조건을 모두 충족해야 한다.
+
+1. **Domain variant:** affected owner 각각의 stable role path에서 Design·Plan을 완전히 삭제하고, 해당 revision에 Work Packet이 존재했다면 그것도 완전히 삭제한다. 그 revision의 target-state content가 corrected-state review에 포함된 Spec은 affected Spec이며 marker disposition은 아래 공통 규칙을 따른다.
+2. **Terminal-rule variant:** affected rule owner의 `rule_docs/<id>/` stable role path에서 Design·Plan을 완전히 삭제하고, 존재했다면 Work Packet도 삭제한다. Terminal rule은 byte·mode·path가 동일하다. Proposed transaction에서 retire되는 각 terminal-rule revision에 대해, final corrected-state reviewed candidate가 실제로 직접 동기화한 foreign-Spec thin-interface path set과 그 Plan이 aggregate/dependency 목록과 구별해 명시한 **foreign-Spec direct-sync target** path set은 빈 집합을 포함해 정확히 같아야 한다. 누락·stale/false·extra·오지정 declaration이 하나라도 있으면 `not retirement-only`로 candidate correction/review에 되돌린다. 일치한 set의 Spec만 affected Spec이며 marker disposition은 아래 공통 규칙을 따른다. 이 분류는 foreign Spec의 meaning ownership을 terminal-rule Plan에 이전하지 않는다. 그 Spec의 marker 외 byte·mode·path와 다른 surviving file은 동일하다.
+3. **Affected Spec marker disposition:** proposed closeout transaction에 포함된 모든 stable-role planning artifact 삭제를 적용한 post-transaction state를 기준으로 각 affected Spec을 판정한다. 해당 Spec의 domain-local Design·Plan·Work Packet이 하나라도 남으면, 유일한 bold marker token은 기존 `**prelive**` 또는 `**sync-required**`로 유지하고 Spec whole-file의 byte·mode·path를 바꾸지 않는다. Domain-local lifecycle이 하나도 남지 않아 marker 전이 자격을 판정할 때는 각 surviving open terminal-rule revision에 대해 그 Plan이 해당 Spec을 **foreign-Spec direct-sync target**으로 명시했는지와 그 revision의 current candidate가 해당 Spec을 실제로 직접 동기화했는지를 current candidate와 active surface에서 각각 재구성한다. 재구성할 수 없거나 판정이 모호하거나 두 membership이 다르면 현재 transaction은 `not retirement-only`이며, 그 open revision을 reconcile하거나 현재 closeout을 보류한 뒤 다시 판정한다. 두 membership이 모두 참인 revision이 하나라도 surviving 상태라면 marker만 유지한 채 현재 closeout을 끝내지 않는다. 그 revision을 같은 proposed transaction에서 함께 retire하거나 먼저 별도 correction으로 claim을 제거한 뒤 전체 transaction을 다시 판정한다. Aggregate/dependency scope에만 Spec을 나열해 두 membership이 모두 거짓인 revision은 claimant가 아니다. Domain-local lifecycle과 surviving terminal claimant가 모두 0일 때만 단일 `## Lifecycle state` 절의 유일한 marker token을 `**live**`로 정확히 한 번 반드시 치환한다. 같은 Spec을 scope한 여러 claimant revision을 한 transaction에서 함께 retire할 때도 이 post-transaction 판정을 한 번 적용한다.
+4. **No other delta:** 위 삭제와 marker disposition이 요구한 치환 외 tracked/index/source-managed untracked change가 0이다. Addition·rename·copy·archive 이동, README/backlog/reference/active-owner/test 수정, lifecycle marker line의 다른 문면 수정은 허용하지 않는다. `log/**` operator report/evidence는 source delta가 아니다.
+
+이 predicate는 사람과 도구가 제안된 transaction의 전체 source delta를 대조할 수 있는 binding decision rule이지 새 checker·automatic stale detector·hard gate를 도입하는 명령이 아니다. 조건 하나라도 어긋나면 `not retirement-only`로 분류하고 변경을 candidate 단계로 되돌려 validation과 corrected-state review를 수행한다.
+
+Exact retirement-only closeout은 이미 검토된 target-state meaning을 바꾸지 않고 temporary lifecycle artifact를 retire하며 Spec lifecycle state만 전이하므로 canonical review 대상이 아니고 기존 corrected-state review를 stale하게 만들지 않는다. Review workflow는 pass를 만들지 않고 caller-side `no-reviewable-change`를 보고한다.
+
+Candidate promotion/discard는 candidate lifecycle을 먼저 닫는다. Promoted-lifecycle closeout은 위 readiness와 exact retirement transaction으로 Design/Plan/Work Packet을 처분한다. 각 temporary artifact는 자기 closeout에서 삭제되며 archive/`consumed/` folder를 만들지 않는다.
 
 ## Stage rewind
 
@@ -232,7 +253,7 @@ When a direct form/check dependency changes, the corresponding template/checklis
 
 Applying this rule to a legacy surface is a scoped batch with owner absorption, relevant reference correction, and review. A verdict grants no mutation, commit, push, publish, merge, release, or global/user-file approval.
 
-The normal corrected-state review gate applies from Design onward. It does not apply to `_incubation.md` during incubation; public-safe/no-secrets and explicit commit approval still apply there.
+The normal corrected-state review gate applies from Design through the final content-bearing candidate. It does not apply to `_incubation.md` during incubation; public-safe/no-secrets and explicit commit approval still apply there. A DWM-qualified retirement-only closeout has no reviewable content and does not re-run that gate; any predicate miss returns to the candidate stage and ordinary staleness/review instead.
 
 ## Tier
 

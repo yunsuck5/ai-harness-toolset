@@ -1,6 +1,6 @@
 # {{DOMAIN}} Design
 
-> 사용법: 이 형틀은 Design의 권장 기본 구조다. `<domain>_design.md` 로 복제해 필요한 의미를 채우되, 의미가 보존되면 heading을 합치거나 조정할 수 있다. Design은 영구 live가 아니며 closeout에서 흡수 후 삭제된다. 이 Design은 mutation/commit/push 승인이 아니다(1회 진술).
+> 사용법: 이 형틀은 Design의 권장 기본 구조다. `<domain>_design.md` 로 복제해 필요한 의미를 채우되, 의미가 보존되면 heading을 합치거나 조정할 수 있다. Design의 current-bearing 의미는 최종 corrected-state review 전에 owner에 흡수되고, Design 자체는 retirement-only closeout에서 삭제된다. 이 Design은 mutation/commit/push 승인이 아니다(1회 진술).
 
 ## Header
 

@@ -34,4 +34,4 @@
 
 ## Lifecycle state
 
-{{compact 상태 절. lifecycle marker를 **정확히 하나** 담는다 — `**prelive**` | `**sync-required**` | `**live**`. plain-prose 언급은 marker가 아니다. checker의 EN-2는 이 marker의 물리 subset만 진단한다.}}
+{{compact 상태 절. lifecycle marker를 **정확히 하나** 담는다 — `**prelive**` | `**sync-required**` | `**live**`. plain-prose 언급은 marker가 아니다. marker 밖 prose는 최종 corrected-state review 전에 state-independent한 target 문면으로 완성해 retirement-only closeout에서 marker token 외 byte를 바꾸지 않는다. checker의 EN-2는 marker의 물리 subset만 진단하며 retirement-only diff를 판정하지 않는다.}}

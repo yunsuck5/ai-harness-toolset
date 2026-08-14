@@ -8,6 +8,7 @@
 - [ ] Durable boundary 가 **지속 경계**인가(이번 회차가 끝나도 참인가; 회차 통제가 아닌가) — 충족/미충족 + evidence 한 줄
 - [ ] Cross-domain 참조가 interface 에 한정되는가(다른 도메인 semantics 재진술 0) — 충족/미충족 + evidence 한 줄
 - [ ] `## Lifecycle state` 절이 존재하고 그 marker 가 prelive / sync-required / live 중 **정확히 하나**(bolded `**…**`; plain-prose 언급은 marker 아님)인가 — 충족/미충족 + evidence 한 줄
+- [ ] retirement-only closeout을 사용할 Spec이면 marker 밖 lifecycle prose가 최종 review 전에 state-independent하게 완성돼, closeout에서 whole-file의 marker token 한 개 외 byte를 바꿀 필요가 없는가 — 충족/미충족 + evidence 한 줄
 - [ ] Header가 문서 정체성·결과·비승인 경계를 충분히 전달하며 승인 경계를 반복하지 않는가 — 관찰 + evidence 한 줄
 - [ ] Plan 일관성: Spec 이 Plan 의 batch boundary 를 위반하지 않는가(위반 시 rewind 표시) — 충족/미충족 + evidence 한 줄
 - [ ] 권장 stable filename과 package-local 형틀 구분이 명확하고 미치환 채움 표시가 없는가 — 관찰 + evidence 한 줄

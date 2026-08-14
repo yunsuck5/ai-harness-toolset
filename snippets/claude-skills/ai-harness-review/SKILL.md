@@ -36,6 +36,8 @@ Review style and target scope are independent. Follow an explicit mixed request.
 
 Cross-check the chosen files against status, the working-tree diff, and the stated-base diff as applicable. Disclose every deliberate omission under `## Known concerns`. Do not shrink scope for cost, latency, or an easier verdict. Ask at most one clarification only if the named subsystem does not resolve, spans unrelated trees, or Mode A/B intent is genuinely ambiguous.
 
+Before allocating a unit, apply any active project rule that defines a retirement-only closeout transaction predicate. Inspect the proposed closeout transaction itself and its complete source delta. If it exactly matches the rule's allowed retirement shape, issue `no-reviewable-change` and stop without prepare/run. If the predicate is missing or cannot be applied, or any additional changed path, byte, mode, or source-managed untracked artifact exists, treat the change as an ordinary content-bearing target; do not run a closeout review to legitimize the mismatch.
+
 Use repo-relative forward-slash paths and never list `log/` runtime artifacts as target files.
 
 ### 2. Allocate one write-once unit
@@ -108,7 +110,7 @@ Shape validity is not semantic usability. A `no` with no blocking finding, or `y
 
 Read runner provenance as machine run facts, not reviewer judgment. For review-system self-modification, confirm stable engine identity, reviewer-safe posture, applied effort, and any anomaly. Do not reproduce normal stdout/provenance as a long ceremonial report.
 
-If source/docs/templates/tests change after a unit, that unit is stale. If a prior claim, citation, count, framing, scope, or verdict intake proves wrong, explicitly retract what was wrong, why, and the current state.
+If the review-bound source-managed artifact set changes after a unit, or any reviewed artifact changes in source-managed bytes/content, path, Git mode, or target-relevant meaning, that unit is stale. An exact project-rule-qualified retirement-only closeout changes no reviewed target-state meaning; the project rule classifies its bounded lifecycle-artifact retirement and marker transition as no-reviewable, so it neither stales the unit nor creates a new review target. A predicate miss or any other change to the review-bound artifact set, source-managed bytes/content, path, Git mode, or target-relevant meaning uses ordinary staleness and returns to the corrected candidate; do not allocate a closeout pass as a substitute. If a prior claim, citation, count, framing, scope, or verdict intake proves wrong, explicitly retract what was wrong, why, and the current state.
 
 ### 6. Reduce and report
 

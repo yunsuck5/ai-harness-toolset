@@ -153,9 +153,11 @@ yes with risk
 
 ## 9. corrected-state review
 
-리뷰 후 소스나 문서가 바뀌면 이전 리뷰는 더 이상 그 상태를 설명하지 못합니다(stale).
+리뷰 후 review-bound source-managed artifact 집합이 달라지거나 검토 artifact의 **source-managed bytes/content·path·Git mode·target-relevant meaning**이 바뀌면 이전 리뷰는 더 이상 그 상태를 설명하지 못합니다(stale).
 
 `corrected-state review`는 수정 전 상태를 리뷰하고 끝내는 것이 아니라, **수정이 반영된 working tree를 같은 campaign·관점 아래 `-ContinueCampaign`으로 새 `pass-NN`을 배정해 다시 리뷰**하는 것을 뜻합니다. 그래서 "한 번 리뷰했으니 끝"이 아니라, 변경이 생기면 그 변경된 상태가 다시 검토 대상이 됩니다.
+
+예외는 applicable project lifecycle rule이 exact transaction shape로 자격을 부여한 `retirement-only closeout`뿐입니다. Review workflow는 그 qualification 결과만 소비합니다. 제안된 transaction이 applicable rule의 predicate와 정확히 일치하면 reviewed target-state meaning을 바꾸지 않으므로 새 pass를 만들지 않고 caller가 `no-reviewable-change`로 보고합니다. Predicate가 없거나 적용할 수 없거나 추가 review-bound 변경이 하나라도 있으면 ordinary change로 candidate 단계에 되돌려 corrected-state review합니다. Exact source-delta predicate, affected Spec과 marker disposition, owner stable-role path의 상세 의미는 applicable lifecycle rule이 단일 owner이며 이 가이드에서 복제하지 않습니다.
 
 ## 10. 사람이 결과를 해석하는 방법
 
