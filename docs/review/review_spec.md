@@ -98,6 +98,6 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 
 ## Lifecycle state
 
-- lifecycle 문서: `review_design.md` + `review_plan.md` active — campaign identity와 exclusive allocation의 target-state 변경을 진행한다. Work Packet은 만들지 않았다.
-- spec ↔ implementation: **sync-required** — public purpose/gate-bound campaign key, new/continue admission, exclusive pass allocation과 orphan/range 의미를 target state로 기록했으며 active implementation 동기화와 closeout reconciliation이 남아 있다.
+- lifecycle 문서: 없음 — campaign identity와 exclusive pass allocation의 current-bearing 의미는 이 Spec과 active owner surface에 흡수되었고 retired Design/Plan은 git history에 보존된다. Work Packet은 만들지 않았다.
+- spec ↔ implementation: **live** — public purpose/gate-bound campaign key, default-new/explicit continuation admission, static existing-entry reparse·shape fail-closed, exclusive pass allocation과 per-perspective orphan/range 의미가 behavior owner와 affected tests에 1:1 동기화되어 있다.
 - future work: open 항목·수용된 잔여 위험·idea-only 항목과 ID 발번(next ID)의 single home 은 `review_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
