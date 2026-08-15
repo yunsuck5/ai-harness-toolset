@@ -7,6 +7,7 @@ BeforeAll {
     $script:Script     = Join-Path $script:RepoRoot 'scripts/activate-global.ps1'
     $script:ClaudeSnip = Join-Path $script:RepoRoot 'snippets/CLAUDE_SNIPPET.md'
     $script:AgentsSnip = Join-Path $script:RepoRoot 'snippets/AGENTS_SNIPPET.md'
+    $script:RuleIndex  = Join-Path $script:RepoRoot 'snippets/rules/README.md'
     $script:SkillSrc   = Join-Path $script:RepoRoot 'snippets/claude-skills/ai-harness-review/SKILL.md'
     $script:SkillRel   = 'skills/ai-harness-review/SKILL.md'
 
@@ -87,6 +88,55 @@ Describe 'activate-global snippet -> target mapping' {
         $result.Output | Should -Match ([regex]::Escape('AGENTS_SNIPPET.md'))
         $result.Output | Should -Match ([regex]::Escape((Join-Path $cx 'AGENTS.md')))
         $result.Output | Should -Match 'activate-global: PASS'
+    }
+}
+
+Describe 'activate-global distributed rule trigger coverage' {
+    It 'AC-AG-RULE-EVIDENCE-CLAIMS: the source rule is indexed and both snippets route the same trigger exactly once' {
+        $ruleName = 'evidence-and-claim-discipline.md'
+        $rulePath = Join-Path $script:RepoRoot (Join-Path 'snippets/rules' $ruleName)
+
+        Test-Path -LiteralPath $rulePath -PathType Leaf | Should -BeTrue
+
+        $indexText = [System.IO.File]::ReadAllText($script:RuleIndex)
+        $indexPattern = '(?m)^' + [regex]::Escape("- [$ruleName]($ruleName) — ") + '.+$'
+        $indexMatches = [regex]::Matches($indexText, $indexPattern)
+        $rulesHeading = $indexText.IndexOf('## Rules in this tier', [System.StringComparison]::Ordinal)
+        $nextHeading = $indexText.IndexOf("`n## ", $rulesHeading + 1, [System.StringComparison]::Ordinal)
+        if ($nextHeading -lt 0) { $nextHeading = $indexText.Length }
+        $indexMatches.Count | Should -Be 1
+        $rulesHeading | Should -BeGreaterThan -1
+        $indexMatches[0].Index | Should -BeGreaterThan $rulesHeading
+        $indexMatches[0].Index | Should -BeLessThan $nextHeading
+
+        $triggerPattern = '(?m)^' + [regex]::Escape("  - ``$ruleName`` — ") + '.+$'
+        $triggerLines = @()
+        foreach ($snippetPath in @($script:ClaudeSnip, $script:AgentsSnip)) {
+            $snippetText = [System.IO.File]::ReadAllText($snippetPath)
+            $triggerMatches = [regex]::Matches($snippetText, $triggerPattern)
+            $gateStart = $snippetText.IndexOf('- **Rule trigger gate', [System.StringComparison]::Ordinal)
+            $topologyStart = $snippetText.IndexOf('- **Topology.**', $gateStart, [System.StringComparison]::Ordinal)
+            $managedBegins = [regex]::Matches(
+                $snippetText,
+                '(?m)^' + [regex]::Escape($script:Begin) + '\r?$')
+            $managedEnds = [regex]::Matches(
+                $snippetText,
+                '(?m)^' + [regex]::Escape($script:End) + '\r?$')
+
+            $triggerMatches.Count | Should -Be 1
+            $managedBegins.Count | Should -Be 1
+            $managedEnds.Count | Should -Be 1
+            $gateStart | Should -BeGreaterThan -1
+            $topologyStart | Should -BeGreaterThan $gateStart
+            $triggerMatches[0].Index | Should -BeGreaterThan $gateStart
+            $triggerMatches[0].Index | Should -BeLessThan $topologyStart
+            $triggerMatches[0].Index | Should -BeGreaterThan $managedBegins[0].Index
+            $triggerMatches[0].Index | Should -BeLessThan $managedEnds[0].Index
+            $triggerLines += $triggerMatches[0].Value
+        }
+
+        $triggerLines.Count | Should -Be 2
+        $triggerLines[0] | Should -BeExactly $triggerLines[1]
     }
 }
 

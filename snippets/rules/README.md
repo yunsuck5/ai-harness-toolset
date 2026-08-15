@@ -16,7 +16,7 @@ The snippet (`snippets/CLAUDE_SNIPPET.md` / `snippets/AGENTS_SNIPPET.md`) is the
 
 - Repository-development-only rules for this repo itself — those go in the **repo-only** tier `<repo-root>/rules/` (not distributed).
 - Anything that fits a skill / template / script — absorb it there instead.
-- Rationale / design records / contracts — those stay in `docs/` (source-repo only), never referenced as a runtime dependency from a distributed file.
+- Source-repository rationale and planning records — those stay in that repository's applicable planning or history surfaces, never referenced as a runtime dependency from a distributed file.
 
 ## Admission test for mixed content
 
@@ -35,6 +35,7 @@ A distributed rule never depends on its source repository's surfaces (`rules/`, 
 
 ## Rules in this tier
 
+- [evidence-and-claim-discipline.md](evidence-and-claim-discipline.md) — proportional evidence and precision; owner-gated prove-or-remove for challenged mechanisms; consumer-and-failure-bound risk and limitation claims.
 - [global-file-mutation-boundary.md](global-file-mutation-boundary.md) — global / user instruction file mutation boundary: managed-payload operations and a source repository's separately governed repo-authored root-instruction regions.
 - [no-background-or-hidden-state.md](no-background-or-hidden-state.md) — explicit authority and accountable execution: atomic protection against unowned / hidden / self-authorizing triggers and false completion; prospective `managed trigger` admission; owner-visible state and purpose-bound identity; owner-local mechanics and stricter policy.
 - [repository-change-safety.md](repository-change-safety.md) — commit / push need explicit approval; a verdict approves nothing; no automatic `.gitignore` mutation; temporary-file hygiene.
