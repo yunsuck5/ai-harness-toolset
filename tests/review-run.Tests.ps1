@@ -967,6 +967,9 @@ Describe 'review-run canonical pass directory' {
 
         $enc = New-Object System.Text.UTF8Encoding($false)
         $stdin = [System.IO.File]::ReadAllText($stdinCapture, $enc)
+        $beginMarker = $stdin.IndexOf('===== BEGIN REVIEW INPUT')
+        $beginMarker | Should -BeGreaterThan 0
+        $preamble = $stdin.Substring(0, $beginMarker)
 
         # Reviewer-mode declaration + the operator-side session/Brief/restore isolation guards.
         $stdin | Should -Match 'CODEX REVIEWER MODE'
@@ -977,6 +980,8 @@ Describe 'review-run canonical pass directory' {
         $stdin | Should -Match 'reconstruct missing evidence'
         $stdin | Should -Match 'expand the requested scope'
         $stdin | Should -Match 'missing, stale, ambiguous, or inaccessible material'
+        $rationalNoLine = '- Every `no` must be supported by at least one self-proving blocking finding. Each blocker must identify (1) a concrete failure mode or path, or a direct contract or acceptance breach, (2) the affected consumer or decision, and (3) the failed function, outcome, or contract. Unknown, missing, ambiguous, or inaccessible material alone is not a blocker unless that absence itself breaches an explicit required contract.'
+        @($preamble -split '\r?\n' | Where-Object { $_ -ceq $rationalNoLine }).Count | Should -Be 1
         $stdin | Should -Match '## Verdict'
         $stdin | Should -Match 'do NOT manufacture a verdict'
         $stdin | Should -Not -Match 'return "no" or "yes with risk"'
@@ -992,9 +997,9 @@ Describe 'review-run canonical pass directory' {
         # in the input.md. The delimiter line is anchored with the leading "=====" so it
         # does not collide with the descriptive sentence "...the BEGIN REVIEW INPUT
         # marker below..." earlier in the preamble.
-        $beginMarker = $stdin.IndexOf('===== BEGIN REVIEW INPUT')
-        $beginMarker | Should -BeGreaterThan 0
         ($stdin.IndexOf('Do NOT silently repair packet defects')) | Should -BeLessThan $beginMarker
+        ($stdin.IndexOf('Every `no` must be supported by at least one self-proving blocking finding')) | Should -BeLessThan $beginMarker
+        ($stdin.IndexOf('Unknown, missing, ambiguous, or inaccessible material alone is not a blocker')) | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Blocking findings'))     | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Non-blocking concerns')) | Should -BeLessThan $beginMarker
         ($stdin.IndexOf('## Review limitations'))    | Should -BeLessThan $beginMarker

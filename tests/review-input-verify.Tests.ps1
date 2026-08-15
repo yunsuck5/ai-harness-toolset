@@ -275,6 +275,18 @@ Describe 'source ai-harness-review skill compact judgment core' {
         $enc = New-Object System.Text.UTF8Encoding($false)
         $content = [System.IO.File]::ReadAllText($skillPath, $enc)
 
+        $preserveMatch = [regex]::Match($content, '(?ms)^### 0\. Preserve context and resolve roots\r?\n(?<body>.*?)(?=^### 1\. Bind the target accurately$)')
+        $runMatch = [regex]::Match($content, '(?ms)^### 4\. Run each review unit once\r?\n(?<body>.*?)(?=^### 5\. Perform semantic intake$)')
+        $intakeMatch = [regex]::Match($content, '(?ms)^### 5\. Perform semantic intake\r?\n(?<body>.*?)(?=^### 6\. Reduce and report$)')
+        $failureMatch = [regex]::Match($content, '(?ms)^## Failure and non-goals\r?\n(?<body>.*)\z')
+        foreach ($match in @($preserveMatch, $runMatch, $intakeMatch, $failureMatch)) {
+            $match.Success | Should -BeTrue
+        }
+        $preserve = $preserveMatch.Groups['body'].Value
+        $run = $runMatch.Groups['body'].Value
+        $intake = $intakeMatch.Groups['body'].Value
+        $failure = $failureMatch.Groups['body'].Value
+
         $content | Should -Match '`local-correctness` and `system-coherence`'
         $content | Should -Match '`coverage-limited`'
         $content | Should -Match 'caller-side `no-reviewable-change` report, not a verdict'
@@ -299,6 +311,27 @@ Describe 'source ai-harness-review skill compact judgment core' {
         $content | Should -Match 'stop and report instead of expanding scope'
         $content | Should -Match 'reviewer CLI is unavailable'
         $content | Should -Match 'do not install or refresh it'
+        $preserve | Should -Match 'existing facts available through authorized read-only inspection'
+        $preserve | Should -Match 'usable pre-change engine excluding every included review-machinery change'
+        $preserve | Should -Match 'Do not create a checkout or generate or persist a hash, preimage, byte/content binding, comparison artifact, or evidence bundle solely to prove engine eligibility\.'
+        $preserve | Should -Match 'stop and report an engine-eligibility gap'
+        $intake | Should -Match 'concrete failure mode or path, or a direct contract or acceptance breach'
+        $intake | Should -Match 'affected consumer or decision'
+        $intake | Should -Match 'failed function, outcome, or contract'
+        $intake | Should -Match 'Unknown or missing information, or an unperformed check, is not by itself a blocker unless that absence directly breaches an explicit contract requirement\.'
+        $intake | Should -Match '`in-scope correction`'
+        $intake | Should -Match '`out-of-scope stop`'
+        $intake | Should -Match '`reviewer overreach`'
+        $intake | Should -Match '`false-positive or evidence gap`'
+        $intake | Should -Match 'Classify every rational blocker into exactly one operator disposition'
+        $intake | Should -Match 'evidence-bound explanation and explicit user disposition'
+        $intake | Should -Match 'neither automatically dismisses the finding or converts `no` into another verdict'
+        $intake | Should -Match 'Preserve the prior `no` and its findings in the write-once canonical pass as historical fact'
+        $run | Should -Match 'Before any follow-up pass, record its closure basis'
+        $run | Should -Match 'corrected or clarified material claim/input that could change the review'
+        $run | Should -Match 'blocker-bound explicit user disposition that changes the allowed next action'
+        $run | Should -Match 'when the reviewed state, evidence, material claim, and blocker disposition are unchanged, stop and report instead of allocating another pass\.'
+        $failure | Should -Match 'repeat a pass with unchanged reviewed state/evidence/material claim/blocker disposition'
         $introMatch = [regex]::Match($content, '(?ms)\A(?<body>.*?)(?=^## Supported intents$)')
         $introMatch.Success | Should -BeTrue
         $intro = $introMatch.Groups['body'].Value

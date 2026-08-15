@@ -4,8 +4,11 @@
 
 - Commit, push, publish, merge, release, deploy, and upload each require **explicit user approval** per change set. A review verdict (`yes` / `no` / `yes with risk`) approves none of them — it is informational, and the next action is always a separate explicit user decision. `yes with risk` is not the automatic equivalent of `yes`.
 - A review stage or artifact boundary does not by itself require a separate commit. Commit boundaries follow independently verifiable, revertible, dependency-atomic change sets; every resulting change set still requires its own explicit user approval.
+- Determine commit readiness from the authorized source and Git facts that bear on the proposed change set. Do not require or create per-file hashes, preimages, byte/content bindings, or a separate persistent proof bundle to re-prove that a completed review still applies at commit time.
 - Before any state-changing git action, confirm the repository root, branch, and status.
+- Before commit, inspect the actual staged target for conflicts and missing, unintended, or otherwise incorrect staging.
 - **Staging changes the index.** Any check that reads the index or the tracked-file set must be **re-run after staging and before commit** — a prior pass on the unstaged tree does not carry over.
+- This completed-review boundary does not waive a hash, content-binding, or integrity contract that has a separate concrete consumer and protects an identified failure outside review re-proving.
 
 ## Instruction vs machine-enforced invariant
 
