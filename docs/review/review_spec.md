@@ -99,5 +99,5 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 ## Lifecycle state
 
 - lifecycle coordination: round-scoped Design/Plan/Work Packet inventory는 이 Spec에 기록하지 않는다. Domain-local revision은 review domain lifecycle이, foreign-rule direct interface sync는 해당 rule lifecycle과 operator report가 추적한다.
-- spec ↔ implementation: **sync-required** — content-bearing change의 ordinary staleness와 project-rule-qualified retirement-only closeout의 target-state interface는 active SKILL에 구현되며, lifecycle marker만 current revision의 approved closeout 완료 여부를 기록한다.
+- spec ↔ implementation: **live** — content-bearing change의 ordinary staleness와 project-rule-qualified retirement-only closeout의 target-state interface는 active SKILL에 구현되며, lifecycle marker만 current revision의 approved closeout 완료 여부를 기록한다.
 - future work: open 항목·수용된 잔여 위험·idea-only 항목과 ID 발번(next ID)의 single home 은 `review_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
