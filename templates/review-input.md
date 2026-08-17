@@ -22,7 +22,7 @@ Operator가 빈 `input.md`를 직접 작성할 때 참조하는 compact skeleton
 
 {{AI_TO_FILL_CONTEXT}}
 
-확정 사실과 open hypothesis를 구분하고, stage와 artifact boundary를 명시한다. off-repo/sibling 자료는 advisory로 표시해 exact path read를 먼저 시도하되, 현 runner에 explicit external-root transport가 없으므로 verdict가 의존하는 본문은 여기에 verbatim inline한다. 이전 기록을 load-bearing하게 인용할 때는 원본 path/section에서 exact text를 확인하고, 변동 가능한 count는 작성 직전 현재 상태에서 기계 재계산하며, 확인할 수 없으면 unverified로 적는다.
+확정 사실과 open hypothesis를 구분하고, stage와 artifact boundary를 명시한다. off-repo/sibling 자료는 advisory로 표시하고, caller가 `review-run.ps1`의 `-ExternalReadDirectory` / `-ExternalReadFile`로 절대·기존 경로를 전달한 뒤 아래에 exact load-bearing target을 적는다. Reviewer가 그 자료를 직접 읽게 하며 input·proxy·staging·workspace copy로 본문을 우회 복제하지 않는다. Load-bearing target을 읽을 수 없으면 verdict를 만들지 않고 review unavailable로 닫는다. 이전 기록을 load-bearing하게 인용할 때는 원본 path/section에서 exact text를 확인하고, 변동 가능한 count는 작성 직전 현재 상태에서 기계 재계산하며, 확인할 수 없으면 unverified로 적는다.
 
 ## Required inspection paths
 

@@ -21,7 +21,9 @@ param(
     # scalar config > (effort) built-in xhigh / (model) fail-fast.
     [string] $EffortCategory,
     [string] $ProjectRoot,
-    [string] $ToolRoot
+    [string] $ToolRoot,
+    [string[]] $ExternalReadDirectory,
+    [string[]] $ExternalReadFile
 )
 
 Set-StrictMode -Version Latest
@@ -138,12 +140,82 @@ function Resolve-CodexNativeLaunch {
     throw ('Unsupported Codex command type for byte-faithful stdin: {0}' -f $path)
 }
 
+function Resolve-ExternalReadPaths {
+    param(
+        [string[]] $Directory,
+        [string[]] $File
+    )
+
+    $seen = New-Object 'System.Collections.Generic.HashSet[string]' ([System.StringComparer]::OrdinalIgnoreCase)
+    $directories = New-Object 'System.Collections.Generic.List[string]'
+    $files = New-Object 'System.Collections.Generic.List[string]'
+    $entries = @(
+        @($Directory | Where-Object { $null -ne $_ } | ForEach-Object { [pscustomobject]@{ Path = $_; Type = 'directory' } }) +
+        @($File | Where-Object { $null -ne $_ } | ForEach-Object { [pscustomobject]@{ Path = $_; Type = 'file' } })
+    )
+
+    foreach ($entry in $entries) {
+        $path = [string]$entry.Path
+        if ([string]::IsNullOrWhiteSpace($path)) {
+            throw ('External read {0} path must not be empty.' -f $entry.Type)
+        }
+        if ($path.IndexOf("`r", [System.StringComparison]::Ordinal) -ge 0 -or
+            $path.IndexOf("`n", [System.StringComparison]::Ordinal) -ge 0) {
+            throw ('External read {0} path must be a single-line value: {1}' -f $entry.Type, $path)
+        }
+        if (-not [System.IO.Path]::IsPathRooted($path) -or
+            $path -match '^[A-Za-z]:[^\\/]' -or
+            $path -match '^[\\/](?![\\/])') {
+            throw ('External read {0} path must be absolute: {1}' -f $entry.Type, $path)
+        }
+
+        $full = [System.IO.Path]::GetFullPath($path)
+        $exists = if ($entry.Type -eq 'directory') {
+            Test-Path -LiteralPath $full -PathType Container
+        }
+        else {
+            Test-Path -LiteralPath $full -PathType Leaf
+        }
+        if (-not $exists) {
+            throw ('External read {0} path does not exist with the required type: {1}' -f $entry.Type, $full)
+        }
+
+        $normalized = $full
+        if ($entry.Type -eq 'directory') {
+            $root = [System.IO.Path]::GetPathRoot($full)
+            if ($full.Length -gt $root.Length) {
+                $normalized = $full.TrimEnd(
+                    [System.IO.Path]::DirectorySeparatorChar,
+                    [System.IO.Path]::AltDirectorySeparatorChar
+                )
+            }
+        }
+
+        if ($seen.Add($normalized)) {
+            if ($entry.Type -eq 'directory') {
+                [void]$directories.Add($normalized)
+            }
+            else {
+                [void]$files.Add($normalized)
+            }
+        }
+    }
+
+    return [pscustomobject]@{
+        Directories = @($directories)
+        Files = @($files)
+    }
+}
+
 function Invoke-CodexExec {
     param(
         [string] $InputPath,
         [string] $Model,
         [string] $Effort,
-        [string] $ResultMdPath
+        [string] $ResultMdPath,
+        [string] $ProjectRoot,
+        [string[]] $ExternalReadDirectories,
+        [string[]] $ExternalReadFiles
     )
 
     $content = Read-Utf8 -Path $InputPath
@@ -176,6 +248,19 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
 - Deliberately pressure-test your conclusion. For "yes" or "yes with risk", a "## Counter-argument" section articulating the strongest case AGAINST the verdict is strongly recommended but optional and NOT parser-required. If no material counter-argument exists, use "none" or "no material counter-argument identified" instead of ceremonial boilerplate. "## Notes" remains available for framing self-audit, evidence pointers, or other observations.
 - If the evidence identifies a concrete blocker or bounded risk, issue the corresponding verdict and disclose it. If the available input is too incomplete to determine whether a blocker exists, do NOT manufacture a verdict: return a concise failure explanation without a "## Verdict" heading so the runner preserves the pass as review-result unavailable.
 - Writing a question or an operator-side Brief / session-restore or continuation message is a review FAILURE. A final message without a canonical "## Verdict" heading is intentionally unusable as a reviewer judgment and the runner must fail the pass without manufacturing a source verdict.
+'@
+    $externalPathCount = @($ExternalReadDirectories).Count + @($ExternalReadFiles).Count
+    if ($externalPathCount -gt 0) {
+        $externalPathsJson = ([ordered]@{
+            directories = @($ExternalReadDirectories)
+            files = @($ExternalReadFiles)
+        } | ConvertTo-Json -Compress -Depth 4)
+        $reviewerPreamble += @"
+- Caller-declared external direct-read targets: $externalPathsJson
+- Read any load-bearing declared target directly. Do not proxy, inline, stage, or copy it into the workspace. If a load-bearing target is inaccessible, return a concise review-unavailable explanation without a "## Verdict" heading.
+"@
+    }
+    $reviewerPreamble += @'
 ===== BEGIN REVIEW INPUT (input.md) =====
 '@
     $payload = $reviewerPreamble + "`n" + $content
@@ -187,23 +272,27 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         $codexCmd = 'codex'
     }
 
-    $codexArgs = @(
-        '--ask-for-approval', 'never',
-        'exec',
-        '--sandbox', 'read-only',
-        # Reviewer-safe invocation hardening (Batch C). --ignore-user-config makes the
-        # reviewer-safe posture STRUCTURAL rather than dependent on flag-precedence over a
-        # permissive global config: the reviewer tool's $CODEX_HOME/config.toml (which may carry
-        # operator-convenience permissive settings such as sandbox_mode=danger-full-access /
-        # approval_policy=never) is NOT loaded at all, so it cannot weaken the explicit
-        # --sandbox read-only / --ask-for-approval never below. Auth still uses $CODEX_HOME.
-        # Everything review-run depends on (model, reasoning effort, web_search, sandbox,
-        # approval) is passed explicitly here, so dropping config.toml does not change behavior;
-        # the disclosed trade-off is that a user config carrying a custom model provider /
-        # base_url would also be dropped. reviewer-safe
-        # precedence is verified for tested write vectors only (scripts/review-safety-negtest.ps1),
-        # not a blanket guarantee. reviewer-tool-specific: re-derive if the reviewer tool changes.
-        '--ignore-user-config',
+    # User config is ignored so the adapter posture comes only from this invocation. External
+    # paths use a fixed Codex-specific broad-read profile; permission profiles and legacy
+    # --sandbox do not compose, so ordinary runs retain --sandbox read-only while external-path
+    # runs omit it. This is direct-read transport, not selected-path confinement or a safety proof.
+    $codexArgs = @('--ask-for-approval', 'never', 'exec')
+    if ($externalPathCount -gt 0) {
+        $codexArgs += @(
+            '--ignore-user-config',
+            '-C', $ProjectRoot,
+            '-c', 'default_permissions="ai-harness-review-broad-read"',
+            '-c', 'permissions.ai-harness-review-broad-read.filesystem={":root"="read"}'
+        )
+    }
+    else {
+        $codexArgs += @(
+            '--sandbox', 'read-only',
+            '--ignore-user-config',
+            '-C', $ProjectRoot
+        )
+    }
+    $codexArgs += @(
         '--model', $Model,
         '-c', 'web_search=disabled',
         '-c', ('model_reasoning_effort={0}' -f $Effort),
@@ -211,10 +300,9 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         '-'
     )
 
-    # Reviewer-safe posture run-fact (Batch D2): the STRUCTURAL safety flags actually
-    # present in $codexArgs for THIS invocation, surfaced for operator debugging. Derived
-    # from $codexArgs (not a free-floating literal) so it cannot drift from what is really
-    # sent to the reviewer CLI. This is the posture flags only — it is NOT a blanket safety
+    # Reviewer-safe posture run-fact (Batch D2): stable structural flags surfaced for operator
+    # debugging. Adapter-specific permission details stay internal instead of becoming a
+    # result contract. This is NOT a blanket safety
     # guarantee; reviewer-safe precedence is verified for tested write vectors only
     # (scripts/review-safety-negtest.ps1), and that tested-vectors-only caveat is kept in the
     # final report / docs layer, never asserted here.
@@ -563,6 +651,14 @@ catch {
 }
 
 $project = Get-ProjectRoot -ProjectRoot $ProjectRoot
+$externalReadPaths = $null
+try {
+    $externalReadPaths = Resolve-ExternalReadPaths -Directory $ExternalReadDirectory -File $ExternalReadFile
+}
+catch {
+    Write-Host ('review-run: FAIL invalid external read path: {0}' -f $_.Exception.Message)
+    exit 1
+}
 $tool    = Get-ToolRoot -ToolRoot $ToolRoot -ProjectRoot $project
 $logRoot = Get-ProjectLogRoot -ProjectRoot $project
 
@@ -671,7 +767,8 @@ if ($verifyInputExit -ne 0) {
 }
 
 try {
-    $codexResult = Invoke-CodexExec -InputPath $inputPath -Model $model -Effort $effort -ResultMdPath $resultMdPath
+    $codexResult = Invoke-CodexExec -InputPath $inputPath -Model $model -Effort $effort -ResultMdPath $resultMdPath `
+        -ProjectRoot $project -ExternalReadDirectories $externalReadPaths.Directories -ExternalReadFiles $externalReadPaths.Files
 }
 catch {
     Write-Host ('review-run: FAIL reviewer invocation unavailable: {0}' -f $_.Exception.Message)

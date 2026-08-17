@@ -257,6 +257,10 @@ function Invoke-NativeProcess {
         $body += '$hasStdinMarker = $false'
         $body += '$hasWebSearchDisabled = $false'
         $body += '$hasReadOnly = $false'
+        $body += '$hasBroadReadProfile = $false'
+        $body += '$hasRootRead = $false'
+        $body += '$hasAddDir = $false'
+        $body += '$cdPath = '''''
         $body += '$hasApprovalNever = $false'
         $body += '$hasEffort = $false'
         $body += '$effortValue = '''''
@@ -267,14 +271,19 @@ function Invoke-NativeProcess {
         $body += '    elseif ($a -ceq ''-'') { if ($i -eq $argv.Count - 1) { $hasStdinMarker = $true } }'
         $body += '    elseif ($a -ceq ''--ask-for-approval'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''never'') { $hasApprovalNever = $true } }'
         $body += '    elseif ($a -ceq ''--sandbox'') { if ($i + 1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''read-only'') { $hasReadOnly = $true } }'
+        $body += '    elseif ($a -ceq ''--add-dir'') { $hasAddDir = $true }'
+        $body += '    elseif ($a -ceq ''-C'' -or $a -ceq ''--cd'') { if ($i + 1 -lt $argv.Count) { $cdPath = [string]$argv[$i+1] } }'
         $body += '    elseif ($a -ceq ''--ignore-user-config'') { $hasIgnoreUserConfig = $true }'
-        $body += '    elseif ($a -ceq ''-c'') { if ($i + 1 -lt $argv.Count) { $cv = [string]$argv[$i+1]; if ($cv -ceq ''web_search=disabled'') { $hasWebSearchDisabled = $true } elseif ($cv -clike ''model_reasoning_effort=*'') { $hasEffort = $true; $effortValue = $cv.Substring(''model_reasoning_effort=''.Length) } } }'
+        $body += '    elseif ($a -ceq ''-c'') { if ($i + 1 -lt $argv.Count) { $cv = [string]$argv[$i+1]; if ($cv -ceq ''web_search=disabled'') { $hasWebSearchDisabled = $true } elseif ($cv -clike ''model_reasoning_effort=*'') { $hasEffort = $true; $effortValue = $cv.Substring(''model_reasoning_effort=''.Length) } elseif ($cv -ceq ''default_permissions="ai-harness-review-broad-read"'') { $hasBroadReadProfile = $true } elseif ($cv -ceq ''permissions.ai-harness-review-broad-read.filesystem={":root"="read"}'') { $hasRootRead = $true } } }'
         $body += '    elseif ($a -ceq ''--model'') { if ($i + 1 -lt $argv.Count) { $model = [string]$argv[$i+1] } }'
         $body += '    elseif ($a -ceq ''--output-last-message'') { if ($i + 1 -lt $argv.Count) { $out = [string]$argv[$i+1] } }'
         $body += '}'
         $body += 'if (-not $hasApprovalNever) { Write-Host ''codex-stub: FAIL --ask-for-approval never missing''; exit 91 }'
         $body += 'if (-not $hasExec) { Write-Host ''codex-stub: FAIL exec missing''; exit 92 }'
-        $body += 'if (-not $hasReadOnly) { Write-Host ''codex-stub: FAIL --sandbox read-only missing''; exit 93 }'
+        $body += 'if (-not $hasReadOnly -and -not ($hasBroadReadProfile -and $hasRootRead)) { Write-Host ''codex-stub: FAIL read-only posture missing''; exit 93 }'
+        $body += 'if ($hasReadOnly -and ($hasBroadReadProfile -or $hasRootRead)) { Write-Host ''codex-stub: FAIL legacy sandbox/profile mixed''; exit 93 }'
+        $body += 'if ($hasAddDir) { Write-Host ''codex-stub: FAIL --add-dir is not a read transport''; exit 93 }'
+        $body += 'if ([string]::IsNullOrEmpty($cdPath)) { Write-Host ''codex-stub: FAIL -C/--cd missing''; exit 93 }'
         $body += 'if ([string]::IsNullOrEmpty($model)) { Write-Host ''codex-stub: FAIL --model missing''; exit 94 }'
         $body += 'if (-not $hasWebSearchDisabled) { Write-Host ''codex-stub: FAIL -c web_search=disabled missing''; exit 95 }'
         $body += 'if ([string]::IsNullOrEmpty($out)) { Write-Host ''codex-stub: FAIL --output-last-message missing''; exit 96 }'
@@ -514,6 +523,8 @@ exit $LASTEXITCODE
             [string] $EffortCategory,
             [string] $ToolRoot,
             [string] $RunScriptPath,
+            [string[]] $ExternalReadDirectory,
+            [string[]] $ExternalReadFile,
             [bool] $UseArgsFileStub = $true,
             # Strict C1: -Perspective is required; default 'local-correctness', -OmitPerspective
             # drops it (for the "without -Perspective fails" tests).
@@ -542,6 +553,44 @@ exit $LASTEXITCODE
         }
         if (-not [string]::IsNullOrEmpty($EffortCategory)) {
             $procArgs += @('-EffortCategory', $EffortCategory)
+        }
+        $usesExternalArray = (@($ExternalReadDirectory).Count + @($ExternalReadFile).Count) -gt 0
+        if ($usesExternalArray) {
+            # Windows PowerShell 5.1 -File cannot transport array-valued script parameters.
+            # Use one encoded child command so the product still receives native string arrays.
+            $forward = [ordered]@{
+                ReviewTaskId = $ReviewTaskId
+                Pass = $Pass
+                Reviewer = $Reviewer
+                ProjectRoot = $ProjectRoot
+                ToolRoot = $ToolRoot
+                ExternalReadDirectory = @($ExternalReadDirectory)
+                ExternalReadFile = @($ExternalReadFile)
+            }
+            if (-not $OmitPerspective) { $forward.Perspective = $Perspective }
+            if (-not [string]::IsNullOrEmpty($Model)) { $forward.Model = $Model }
+            if (-not [string]::IsNullOrEmpty($Effort)) { $forward.Effort = $Effort }
+            if (-not [string]::IsNullOrEmpty($EffortCategory)) { $forward.EffortCategory = $EffortCategory }
+            $spec = [ordered]@{ RunScriptPath = $RunScriptPath; Parameters = $forward }
+            $specJson = $spec | ConvertTo-Json -Compress -Depth 5
+            $specBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($specJson))
+            $childCommand = @'
+$specJson = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('__PAYLOAD__'))
+$spec = $specJson | ConvertFrom-Json
+$forward = @{}
+foreach ($property in $spec.Parameters.PSObject.Properties) {
+    if ($property.Name -in @('ExternalReadDirectory', 'ExternalReadFile')) {
+        $forward[$property.Name] = @($property.Value)
+    }
+    else {
+        $forward[$property.Name] = $property.Value
+    }
+}
+& $spec.RunScriptPath @forward
+exit $LASTEXITCODE
+'@.Replace('__PAYLOAD__', $specBase64)
+            $encodedCommand = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($childCommand))
+            $procArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', $encodedCommand)
         }
 
         $previousEnv = $env:AI_HARNESS_CODEX_COMMAND
@@ -1156,6 +1205,91 @@ Describe 'review-run canonical pass directory' {
         $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $argv = [System.IO.File]::ReadAllLines($resultMd + '.argv.txt', (New-Object System.Text.UTF8Encoding($false)))
         $argv[0] | Should -Be ([System.IO.Path]::GetFullPath($codexJs))
+    }
+
+    It 'AC-RR11e: external directory/file paths select the adapter-local broad-read profile and reach the reviewer once' {
+        $project = script:New-RunCase -CaseName 'rr11e'
+        $taskId = 'rr11e-task'
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+        script:Set-InputFilled -InputPath $inputPath
+
+        # This WinPS -File integration case owns spaces/argv threading. It deliberately avoids
+        # claiming a separate Unicode-through-native-command-line contract.
+        $externalDirectory = Join-Path $TestDrive 'external review directory'
+        $externalFile = Join-Path $TestDrive 'external review file.md'
+        $null = New-Item -ItemType Directory -Path $externalDirectory -Force
+        script:Write-Utf8NoBomFile -Path $externalFile -Content 'external evidence'
+        $stub = script:Write-CodexStub -StubName 'rr11e-yes' -Mode 'verdict-yes'
+
+        $r = script:Invoke-ReviewRun `
+            -ProjectRoot $project `
+            -ReviewTaskId $taskId `
+            -Pass 'pass-01' `
+            -StubPath $stub `
+            -ExternalReadDirectory @($externalDirectory, ($externalDirectory + [System.IO.Path]::DirectorySeparatorChar)) `
+            -ExternalReadFile @($externalFile)
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+
+        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+        $enc = New-Object System.Text.UTF8Encoding($false)
+        $argv = [System.IO.File]::ReadAllLines($resultMd + '.argv.txt', $enc)
+        $stdin = [System.IO.File]::ReadAllText($resultMd + '.stdin.txt', $enc)
+        $projectFull = [System.IO.Path]::GetFullPath($project)
+        $directoryFull = [System.IO.Path]::GetFullPath($externalDirectory)
+        $fileFull = [System.IO.Path]::GetFullPath($externalFile)
+        $expectedJson = ([ordered]@{ directories = @($directoryFull); files = @($fileFull) } | ConvertTo-Json -Compress -Depth 4)
+
+        $argv | Should -Not -Contain '--sandbox'
+        $argv | Should -Not -Contain '--add-dir'
+        @($argv | Where-Object { $_ -ceq 'default_permissions="ai-harness-review-broad-read"' }).Count | Should -Be 1
+        @($argv | Where-Object { $_ -ceq 'permissions.ai-harness-review-broad-read.filesystem={":root"="read"}' }).Count | Should -Be 1
+        $cdIndex = [array]::IndexOf($argv, '-C')
+        $cdIndex | Should -BeGreaterThan -1
+        $argv[$cdIndex + 1] | Should -Be $projectFull
+        $stdin | Should -Match ([regex]::Escape($expectedJson))
+        $stdin | Should -Match 'Read any load-bearing declared target directly'
+        $stdin | Should -Match 'without a "## Verdict" heading'
+        $stdin | Should -Not -Match 'verbatim inline'
+        $r.Output | Should -Not -Match 'default_permissions'
+        ([System.IO.File]::ReadAllText($resultMd, $enc)) | Should -Not -Match 'default_permissions'
+    }
+
+    It 'AC-RR11f: invalid external read paths fail before reviewer invocation' {
+        $existingDirectory = Join-Path $TestDrive 'rr11f-existing-directory'
+        $existingFile = Join-Path $TestDrive 'rr11f-existing-file.md'
+        $null = New-Item -ItemType Directory -Path $existingDirectory -Force
+        script:Write-Utf8NoBomFile -Path $existingFile -Content 'fixture'
+        $cases = @(
+            [pscustomobject]@{ Name = 'relative-directory'; Directory = @('relative-directory'); File = @() },
+            [pscustomobject]@{ Name = 'missing-file'; Directory = @(); File = @((Join-Path $TestDrive 'missing.md')) },
+            [pscustomobject]@{ Name = 'file-as-directory'; Directory = @($existingFile); File = @() },
+            [pscustomobject]@{ Name = 'directory-as-file'; Directory = @(); File = @($existingDirectory) }
+        )
+
+        foreach ($case in $cases) {
+            $project = script:New-RunCase -CaseName ('rr11f-' + $case.Name)
+            $taskId = 'rr11f-task'
+            $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+            $prep.ExitCode | Should -Be 0 -Because $prep.Output
+            $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+            script:Set-InputFilled -InputPath $inputPath
+            $stub = script:Write-CodexStub -StubName ('rr11f-' + $case.Name) -Mode 'verdict-yes'
+
+            $r = script:Invoke-ReviewRun `
+                -ProjectRoot $project `
+                -ReviewTaskId $taskId `
+                -Pass 'pass-01' `
+                -StubPath $stub `
+                -ExternalReadDirectory $case.Directory `
+                -ExternalReadFile $case.File
+            $r.ExitCode | Should -Not -Be 0
+            $r.Output | Should -Match 'invalid external read path'
+            $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+            Test-Path -LiteralPath $resultMd | Should -BeFalse
+            Test-Path -LiteralPath ($resultMd + '.argv.txt') | Should -BeFalse
+        }
     }
 
     It 'AC-RR9: invalid -Pass (not pass-NN) is rejected before any Codex invocation' {

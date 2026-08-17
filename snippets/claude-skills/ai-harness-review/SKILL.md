@@ -77,7 +77,7 @@ Fill the compact informational positions when relevant:
 
 Before stating a regex/parser/script behavior as fact, run a narrow reproducible check or disclose it as unverified.
 
-**Off-repo/sibling material (exact-path read plus inline fallback until the separately gated runner integration for external read paths lands).** Treat it as advisory, never source-of-truth. The read-only reviewer can often access additional sibling and `log/` paths: attempt the exact path read first and report the actual outcome/error rather than assuming denial. Because the current runner has no explicit external-root transport, also inline the verbatim body of any load-bearing off-repo material inside `Context` so a path failure cannot change the evidence base. Keep this fallback until the separately gated external-path integration lands.
+**Off-repo/sibling material (direct read).** Treat it as advisory, never source-of-truth. Pass caller-declared absolute existing directories with `-ExternalReadDirectory` and files with `-ExternalReadFile`, and list the exact load-bearing targets under `Required inspection paths`. The reviewer reads them directly; do not proxy, inline, stage, or copy their content into the workspace. If a load-bearing target is inaccessible, consume no verdict and report the review as unavailable.
 
 ### 4. Run each review unit once
 

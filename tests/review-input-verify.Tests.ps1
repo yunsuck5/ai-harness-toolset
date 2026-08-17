@@ -262,6 +262,10 @@ Describe 'templates/review-input.md compact authoring reference' {
         $content | Should -Match '원본 path/section에서 exact text를 확인하고'
         $content | Should -Match '변동 가능한 count는 작성 직전 현재 상태에서 기계 재계산하며'
         $content | Should -Match 'false-positive 판정에는 evidence와 사용자의 명시 결정을 요구한다'
+        $content | Should -Match '`-ExternalReadDirectory` / `-ExternalReadFile`'
+        $content | Should -Match '직접 읽게 하며'
+        $content | Should -Match 'Load-bearing target을 읽을 수 없으면 verdict를 만들지 않고 review unavailable'
+        $content | Should -Not -Match 'verbatim inline|inline fallback'
         $content | Should -Not -Match '(?m)^## (Blocking findings|Non-blocking concerns|Review limitations|Assumptions relied on|Findings|Risks)$'
     }
 }
@@ -299,6 +303,10 @@ Describe 'source ai-harness-review skill compact judgment core' {
         $content | Should -Match 'original path and section and confirm the exact text'
         $content | Should -Match 'Recalculate mutable counts against current state immediately before authoring'
         $content | Should -Match 'false-positive dismissal requires evidence and an explicit user decision'
+        $content | Should -Match '`-ExternalReadDirectory` and files with `-ExternalReadFile`'
+        $content | Should -Match 'The reviewer reads them directly'
+        $content | Should -Match 'consume no verdict and report the review as unavailable'
+        $content | Should -Not -Match 'verbatim inline|inline fallback'
         $content | Should -Match 'usable member results conflict'
         $content | Should -Match 'no evidence-bound basis to reduce the conflict'
         $content | Should -Match 'stop and report it; do not merge or conclude'
