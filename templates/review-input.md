@@ -48,6 +48,8 @@ Reviewer가 read-only로 열어야 할 exact path와 각 path의 역할을 적�
 
 실행 claim이 있으면 `log/evidence/<scope>/<case>/validation-evidence.md` 같은 reviewer-readable Markdown bundle을 가리키고, 없으면 짧은 N/A를 쓴다. evidence는 supporting material이지 command 재실행·truth oracle·freshness binding·source-of-truth가 아니다. reviewer는 기본적으로 읽기만 한다. broad validation 재현을 원하면 exact command, cwd, 예상 read/write, 허용 output path, dependency, timeout, 해석 경계, sandbox failure 보고 방식을 명시적으로 authorize한다. 비재현은 자동 target risk가 아니며 누락/stale evidence·scope mismatch·정적 모순·명시적 고위험 공백 같은 독립 근거가 있어야 승격한다.
 
+Tool-native raw report를 `Required inspection paths`에 두면 reviewer가 원본을 직접 읽고 결정적인 report-native field/case identifier를 지목하며 report-derived fact, run provenance, source context를 구분하게 한다. 실제 존재하는 field/case만 소비하고, 없는 failure/skip detail이나 report 단독으로 성립하지 않는 timing/exit·source freshness/correctness·full-suite 성공·canonical authority는 별도 근거 없이 만들지 않는다. 접근 실패·부재 branch는 값을 제조하지 않고 limitation으로 남기며, load-bearing report를 읽지 못하면 위 review-unavailable 경계를 적용한다.
+
 Validation scope는 change class에 비례한다. 수행/미수행 범위·사유·잔여 위험을 정직하게 적는다. `git diff --check`는 tracked/index-visible 변경만 다루므로 staging 권한이 없을 때는 신규 untracked 파일을 직접 whitespace/encoding 점검하고 그 한계를 밝힌다.
 
 ## Known concerns
