@@ -257,7 +257,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         } | ConvertTo-Json -Compress -Depth 4)
         $reviewerPreamble += @"
 - Caller-declared external direct-read targets: $externalPathsJson
-- Read any load-bearing declared target directly. Do not proxy, inline, stage, or copy it into the workspace. If a load-bearing target is inaccessible, return a concise review-unavailable explanation without a "## Verdict" heading.
+- Read any load-bearing declared target directly. Do not proxy, inline, stage, or copy it into the workspace. For each load-bearing target, one rejected read/list is inconclusive; try one simpler direct read/list; return review-unavailable without a "## Verdict" heading only if that target remains inaccessible.
 "@
     }
     $reviewerPreamble += @'

@@ -1250,6 +1250,7 @@ Describe 'review-run canonical pass directory' {
         $argv[$cdIndex + 1] | Should -Be $projectFull
         $stdin | Should -Match ([regex]::Escape($expectedJson))
         $stdin | Should -Match 'Read any load-bearing declared target directly'
+        $stdin | Should -Match 'For each load-bearing target, one rejected read/list is inconclusive; try one simpler direct read/list; return review-unavailable without a "## Verdict" heading only if that target remains inaccessible'
         $stdin | Should -Match 'without a "## Verdict" heading'
         $stdin | Should -Not -Match 'verbatim inline'
         $r.Output | Should -Not -Match 'default_permissions'

@@ -84,7 +84,7 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 ## Validation expectation
 
 - review-system suite(`tests/review-adapter` · `review-input-verify` · `review-prepare` · `review-run` · `review-verify` 의 `.Tests.ps1`)와 `tests/path.Tests.ps1` PASS 가 성립해야 한다. `tests/review-safety-negtest.Tests.ps1` 은 실 reviewer 실행을 동반하므로 의도된 실행에 한한다.
-- external directory/file의 absolute·existing·type·정규화·중복 제거, ProjectRoot/CWD adapter 전달, no-inline direct-read instruction, load-bearing 접근 실패의 no-verdict/review-unavailable 경계를 기존 runner/input contract tests에서 검증한다. Selected-path confinement·permission 보증은 검증 대상으로 승격하지 않는다.
+- external directory/file의 absolute·existing·type·정규화·중복 제거, ProjectRoot/CWD adapter 전달, no-inline direct-read, load-bearing target별 첫 read/list 거부의 비결론성·단순 direct read/list 1회·후속 실패만의 no-verdict/review-unavailable 지시를 기존 runner/input contract tests에서 검증한다. Selected-path confinement·permission 보증은 검증 대상으로 승격하지 않는다.
 - campaign allocation은 sequential new/continue, 독립 campaign collision, task/perspective 격리, project log root부터 선택 write parent까지의 static existing reparse/wrong-shape ancestry, legacy/anchor, crash orphan과 per-perspective `pass-99` exhaustion·post-claim 재확인 경계를 검증해야 한다. exactly-one success·loser nonzero·무덮어쓰기·무자동 retry는 같은 preselected pass 좌표 경쟁에 적용한다. deterministic 증거는 helper-level same-candidate barrier와 entrypoint explicit/explicit same-coordinate 경쟁으로 구성하며 direct auto/explicit entrypoint barrier를 수행했다고 주장하지 않는다. explicit 선점 뒤 auto가 새 scan에서 다른 좌표를 고른 두 성공은 유효한 distinct allocation이다.
 - `.ps1` 표면은 repo 정책(UTF-8 BOM + CRLF, `scripts/verify-ps1.ps1` PASS)을, 이 spec 과 `.md` 표면은 UTF-8 no BOM + LF 를 따른다.
 - 이 spec 의 normative 문장은 구현에서 확인 가능해야 하고(방향 1), 구현의 외부 관찰 가능 행동·소유 경계 변경은 spec 문장 변경을 동반해야 한다(방향 2; spec 문장 변경이 불필요한 구현 변경은 리팩토링). 대응 근거의 기록처는 operator report / `log/evidence/**` 다.
@@ -100,5 +100,5 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 ## Lifecycle state
 
 - lifecycle coordination: round-scoped Design/Plan/Work Packet inventory는 이 Spec에 기록하지 않는다. Domain-local revision은 review domain lifecycle이, foreign-rule direct interface sync는 해당 rule lifecycle과 operator report가 추적한다.
-- spec ↔ implementation: **live**
+- spec ↔ implementation: **sync-required**
 - future work: open 항목·수용된 잔여 위험·idea-only 항목과 ID 발번(next ID)의 single home 은 `review_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.
