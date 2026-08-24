@@ -34,7 +34,7 @@ Review style and target scope are independent. Follow an explicit mixed request.
 
 **Mode B:** resolve the named subsystem from `git ls-files`, regardless of dirty state. Prefer a directory match, then filename match; exclude tests/fixtures only when the request does not cover them. Current diff is context and must not redefine the named subsystem.
 
-Cross-check the chosen files against status, the working-tree diff, and the stated-base diff as applicable. Disclose every deliberate omission under `## Known concerns`. Do not shrink scope for cost, latency, or an easier verdict. Ask at most one clarification only if the named subsystem does not resolve, spans unrelated trees, or Mode A/B intent is genuinely ambiguous.
+Disclose every deliberate omission under `## Known concerns`. Do not shrink scope for cost, latency, or an easier verdict. Ask at most one clarification only if the named subsystem does not resolve, spans unrelated trees, or Mode A/B intent is genuinely ambiguous.
 
 Before allocating a unit, apply any active project rule that defines a retirement-only closeout transaction predicate. Inspect the proposed closeout transaction itself and its complete source delta. If it exactly matches the rule's allowed retirement shape, issue `no-reviewable-change` and stop without prepare/run. If the predicate is missing or cannot be applied, or any additional changed path, byte, mode, or source-managed untracked artifact exists, treat the change as an ordinary content-bearing target; do not run a closeout review to legitimize the mismatch.
 
@@ -67,22 +67,19 @@ Use `<ToolRoot>/templates/review-input.md` as the writing reference. The input v
 Fill the compact informational positions when relevant:
 
 - **Stage / Purpose / Review perspective / Target files:** identify this unit and exact artifact boundary. Do not merge planning approval with implementation corrected-state acceptance.
-- **Claim provenance / freshness:** before quoting a load-bearing prior or external record, open its original path and section and confirm the exact text. Recalculate mutable counts against current state immediately before authoring; when either check is unavailable, mark the claim unverified.
 - **Artifact persistence:** require `Constraints` to tell the reviewer to state persistence in finding prose when it affects severity or closure. Transience alone does not make a finding non-blocking, and a committed temporary artifact remains a real review target while it exists. Do not add a verdict, H2, parser field, or tag for this.
 - **Task-grade adjudication:** use a user-supplied task-grade table only when it was actually provided; invent no default. After results, do not lower its threshold or automatically reclassify a blocking finding as non-blocking. A false-positive dismissal requires evidence and an explicit user decision.
 - **Validation evidence:** cite a reviewer-readable Markdown bundle under `log/evidence/**` when making execution claims, otherwise say N/A. Evidence is supporting material, not re-execution, a truth oracle, freshness binding, or source-of-truth. The reviewer reads it by default; broad build/test reproduction requires explicit authorization with the exact command, cwd, expected writes, allowed output path, dependencies, timeout, interpretation boundary, and sandbox-failure reporting. Non-reproduction is a limitation, not automatically target risk. Validation scope is proportional to change class; script/runtime/parser/test/install changes normally require the full suite, while docs/wording may use targeted checks. Disclose what ran, what did not, why, and residual risk. `git diff --check` covers tracked/index-visible changes; without staging authority, inspect new untracked files directly for whitespace/encoding and disclose that narrower coverage. Do not use `git add -N` as a read-only tip.
-- **Tool-native reports:** when one is listed under `Required inspection paths`, have the reviewer read the original and cite the decisive report-native element, attribute, field, or case identifier, separating report-derived facts from run provenance and source context. Consume only fields/cases that are present: without separate evidence do not infer absent or ambiguous failure/skip detail, exact timing or process exit, source freshness/correctness, full-suite success, or canonical authority. Record access failure or an absent branch as a limitation without manufacturing a value; if the inaccessible report is load-bearing, apply the existing review-unavailable rule below.
-- **Known concerns:** separate confirmed compromises/limitations from neutral open hypotheses. Never disguise a known fact as a hypothesis. An omitted known concern makes the pass stale-by-omission.
-- **Framing self-check:** record remaining conclusion pressure, previous-verdict/closeout pressure, and wording neutralization. Write review questions open-endedly and ask the reviewer to surface input tilt without turning that tilt into a verdict.
-- **Reference sweep:** for rename/move/delete/identifier/structure/wording reconciliation, record the searched patterns/paths and four classes: path references, bare tokens/IDs, folder-as-bucket wording, and semantic phrasing. Deletions require case/variant/bare-section checks.
+- **Known concerns:** separate confirmed compromises/limitations and caller-known conclusion or previous-verdict pressure from neutral open hypotheses. Never disguise a known fact as a hypothesis. An omitted known concern makes the pass stale-by-omission.
 
-Before stating a regex/parser/script behavior as fact, run a narrow reproducible check or disclose it as unverified.
-
-**Off-repo/sibling material (direct read).** Treat it as advisory, never source-of-truth. Pass caller-declared absolute existing directories with `-ExternalReadDirectory` and files with `-ExternalReadFile`, and list the exact load-bearing targets under `Required inspection paths`. The reviewer reads them directly; do not proxy, inline, stage, or copy their content into the workspace. If a load-bearing target is inaccessible, consume no verdict and report the review as unavailable.
+**Off-repo/sibling material (direct read).** Treat it as advisory, never source-of-truth. Pass caller-declared absolute existing directories with `-ExternalReadDirectory` and files with `-ExternalReadFile`, and list the exact load-bearing targets under `Required inspection paths`. The reviewer reads them directly; do not proxy, inline, stage, or copy their content into the workspace.
 
 ### 4. Run each review unit once
 
 Invoke `review-run.ps1` once with the same ReviewTaskId, perspective, pass, ProjectRoot, and ToolRoot. It verifies input, invokes the reviewer once under the reviewer-safe posture, validates candidate shape, attempts provenance append, and re-validates final canonical shape in its tail. Do not call a second verifier as a mandatory workflow step.
+
+Canonical review를 호출할 때 caller timeout을 명시적으로 1000년으로 설정한다.
+Timeout으로 종료된 실행은 canonical reviewer verdict `no`가 아니다.
 
 Rules:
 

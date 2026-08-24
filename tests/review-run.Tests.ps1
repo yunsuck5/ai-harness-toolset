@@ -1026,13 +1026,16 @@ Describe 'review-run canonical pass directory' {
         $stdin | Should -Match 'session-restore'
         $stdin | Should -Match 'Do NOT ask the user any question'
         $stdin | Should -Match 'Do NOT silently repair packet defects'
-        $stdin | Should -Match 'reconstruct missing evidence'
-        $stdin | Should -Match 'expand the requested scope'
-        $stdin | Should -Match 'missing, stale, ambiguous, or inaccessible material'
+        $referenceInspectionLine = '- Directly inspect the declared target, required paths, and relevant repository context with available read-only tools; for a Git delta, inspect live status and the applicable working-tree and stated-base diffs. For a change that renames, moves, deletes, or otherwise changes a name, path, identifier, or structure, use read-only inspection to check residual references across filename/path, bare token/ID, folder-as-bucket, and semantic-phrasing classes; for deletions, include case-insensitive searches, spelling/case variants, and bare-section references. Do NOT silently repair packet defects, mutate, or redefine the intended target. Do NOT substitute a limitation for an available material read-only check.'
+        @($preamble -split '\r?\n' | Where-Object { $_ -ceq $referenceInspectionLine }).Count | Should -Be 1
         $rationalNoLine = '- Every `no` must be supported by at least one self-proving blocking finding. Each blocker must identify (1) a concrete failure mode or path, or a direct contract or acceptance breach, (2) the affected consumer or decision, and (3) the failed function, outcome, or contract. Unknown, missing, ambiguous, or inaccessible material alone is not a blocker unless that absence itself breaches an explicit required contract.'
         @($preamble -split '\r?\n' | Where-Object { $_ -ceq $rationalNoLine }).Count | Should -Be 1
         $stdin | Should -Match '## Verdict'
-        $stdin | Should -Match 'do NOT manufacture a verdict'
+        $stdin | Should -Match 'Always issue exactly one canonical verdict'
+        $stdin | Should -Match 'Disclose a non-material reviewer capability gap as a limitation and still issue a normal verdict'
+        $stdin | Should -Match 'if the gap materially blocks required inspection or target completeness'
+        $stdin | Should -Match 'never as a substitute for an unavailable check'
+        $stdin | Should -Not -Match 'intentionally unusable'
         $stdin | Should -Not -Match 'return "no" or "yes with risk"'
         # The four required disclosure H2s must be named in the preamble so
         # the reviewer produces them; without this the post-Codex review-verify
@@ -1207,54 +1210,65 @@ Describe 'review-run canonical pass directory' {
         $argv[0] | Should -Be ([System.IO.Path]::GetFullPath($codexJs))
     }
 
-    It 'AC-RR11e: external directory/file paths select the adapter-local broad-read profile and reach the reviewer once' {
-        $project = script:New-RunCase -CaseName 'rr11e'
-        $taskId = 'rr11e-task'
-        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
-        $prep.ExitCode | Should -Be 0 -Because $prep.Output
-        $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
-        script:Set-InputFilled -InputPath $inputPath
-
+    It 'AC-RR11e: each external path shape selects the broad-read profile and injects the preamble' {
         # This WinPS -File integration case owns spaces/argv threading. It deliberately avoids
         # claiming a separate Unicode-through-native-command-line contract.
         $externalDirectory = Join-Path $TestDrive 'external review directory'
         $externalFile = Join-Path $TestDrive 'external review file.md'
         $null = New-Item -ItemType Directory -Path $externalDirectory -Force
         script:Write-Utf8NoBomFile -Path $externalFile -Content 'external evidence'
-        $stub = script:Write-CodexStub -StubName 'rr11e-yes' -Mode 'verdict-yes'
+        $shapes = @(
+            [pscustomobject]@{ Name = 'dir-file'; Directory = @($externalDirectory, ($externalDirectory + [System.IO.Path]::DirectorySeparatorChar)); File = @($externalFile) },
+            [pscustomobject]@{ Name = 'dir-only'; Directory = @($externalDirectory); File = @() },
+            [pscustomobject]@{ Name = 'file-only'; Directory = @(); File = @($externalFile) }
+        )
 
-        $r = script:Invoke-ReviewRun `
-            -ProjectRoot $project `
-            -ReviewTaskId $taskId `
-            -Pass 'pass-01' `
-            -StubPath $stub `
-            -ExternalReadDirectory @($externalDirectory, ($externalDirectory + [System.IO.Path]::DirectorySeparatorChar)) `
-            -ExternalReadFile @($externalFile)
-        $r.ExitCode | Should -Be 0 -Because $r.Output
+        foreach ($shape in $shapes) {
+            $project = script:New-RunCase -CaseName ('rr11e-' + $shape.Name)
+            $taskId = 'rr11e-task'
+            $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
+            $prep.ExitCode | Should -Be 0 -Because $prep.Output
+            $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
+            script:Set-InputFilled -InputPath $inputPath
+            $stub = script:Write-CodexStub -StubName ('rr11e-' + $shape.Name + '-yes') -Mode 'verdict-yes'
 
-        $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
-        $enc = New-Object System.Text.UTF8Encoding($false)
-        $argv = [System.IO.File]::ReadAllLines($resultMd + '.argv.txt', $enc)
-        $stdin = [System.IO.File]::ReadAllText($resultMd + '.stdin.txt', $enc)
-        $projectFull = [System.IO.Path]::GetFullPath($project)
-        $directoryFull = [System.IO.Path]::GetFullPath($externalDirectory)
-        $fileFull = [System.IO.Path]::GetFullPath($externalFile)
-        $expectedJson = ([ordered]@{ directories = @($directoryFull); files = @($fileFull) } | ConvertTo-Json -Compress -Depth 4)
+            $r = script:Invoke-ReviewRun `
+                -ProjectRoot $project `
+                -ReviewTaskId $taskId `
+                -Pass 'pass-01' `
+                -StubPath $stub `
+                -ExternalReadDirectory $shape.Directory `
+                -ExternalReadFile $shape.File
+            $r.ExitCode | Should -Be 0 -Because $r.Output
 
-        $argv | Should -Not -Contain '--sandbox'
-        $argv | Should -Not -Contain '--add-dir'
-        @($argv | Where-Object { $_ -ceq 'default_permissions="ai-harness-review-broad-read"' }).Count | Should -Be 1
-        @($argv | Where-Object { $_ -ceq 'permissions.ai-harness-review-broad-read.filesystem={":root"="read"}' }).Count | Should -Be 1
-        $cdIndex = [array]::IndexOf($argv, '-C')
-        $cdIndex | Should -BeGreaterThan -1
-        $argv[$cdIndex + 1] | Should -Be $projectFull
-        $stdin | Should -Match ([regex]::Escape($expectedJson))
-        $stdin | Should -Match 'Read any load-bearing declared target directly'
-        $stdin | Should -Match 'For each load-bearing target, one rejected read/list is inconclusive; try one simpler direct read/list; return review-unavailable without a "## Verdict" heading only if that target remains inaccessible'
-        $stdin | Should -Match 'without a "## Verdict" heading'
-        $stdin | Should -Not -Match 'verbatim inline'
-        $r.Output | Should -Not -Match 'default_permissions'
-        ([System.IO.File]::ReadAllText($resultMd, $enc)) | Should -Not -Match 'default_permissions'
+            $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
+            $enc = New-Object System.Text.UTF8Encoding($false)
+            $argv = [System.IO.File]::ReadAllLines($resultMd + '.argv.txt', $enc)
+            $stdin = [System.IO.File]::ReadAllText($resultMd + '.stdin.txt', $enc)
+            $projectFull = [System.IO.Path]::GetFullPath($project)
+            [string[]] $expectedDirectories = @()
+            [string[]] $expectedFiles = @()
+            if (@($shape.Directory).Count -gt 0) { $expectedDirectories = @([System.IO.Path]::GetFullPath($externalDirectory)) }
+            if (@($shape.File).Count -gt 0) { $expectedFiles = @([System.IO.Path]::GetFullPath($externalFile)) }
+            $expectedJson = ([ordered]@{ directories = $expectedDirectories; files = $expectedFiles } | ConvertTo-Json -Compress -Depth 4)
+
+            $argv | Should -Not -Contain '--sandbox'
+            $argv | Should -Not -Contain '--add-dir'
+            @($argv | Where-Object { $_ -ceq 'default_permissions="ai-harness-review-broad-read"' }).Count | Should -Be 1
+            @($argv | Where-Object { $_ -ceq 'permissions.ai-harness-review-broad-read.filesystem={":root"="read"}' }).Count | Should -Be 1
+            $cdIndex = [array]::IndexOf($argv, '-C')
+            $cdIndex | Should -BeGreaterThan -1
+            $argv[$cdIndex + 1] | Should -Be $projectFull
+            $stdin | Should -Match ([regex]::Escape($expectedJson))
+            $stdin | Should -Match 'Read any load-bearing declared target directly'
+            $stdin | Should -Match 'For each load-bearing target, one rejected read/list is inconclusive; try one simpler direct read/list'
+            $stdin | Should -Match 'If that target remains inaccessible, identify the required-inspection or target-completeness acceptance breach as a blocker and issue "no"'
+            $stdin | Should -Match 'do not substitute "yes with risk" for the unavailable check'
+            $stdin | Should -Not -Match 'return review-unavailable without a "## Verdict" heading'
+            $stdin | Should -Not -Match 'verbatim inline'
+            $r.Output | Should -Not -Match 'default_permissions'
+            ([System.IO.File]::ReadAllText($resultMd, $enc)) | Should -Not -Match 'default_permissions'
+        }
     }
 
     It 'AC-RR11f: invalid external read paths fail before reviewer invocation' {
