@@ -78,8 +78,7 @@ Fill the compact informational positions when relevant:
 
 Invoke `review-run.ps1` once with the same ReviewTaskId, perspective, pass, ProjectRoot, and ToolRoot. It verifies input, invokes the reviewer once under the reviewer-safe posture, validates candidate shape, attempts provenance append, and re-validates final canonical shape in its tail. Do not call a second verifier as a mandatory workflow step.
 
-Canonical review를 호출할 때 caller timeout을 명시적으로 1000년으로 설정한다.
-Timeout으로 종료된 실행은 canonical reviewer verdict `no`가 아니다.
+timeout은 7day로 설정한다.   사용자 지시 없이 호출 취소는 금지한다
 
 Rules:
 
