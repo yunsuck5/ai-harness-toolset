@@ -229,6 +229,7 @@ function Invoke-NativeProcess {
             [bool] $EmitEffortHeader = $true,
             [bool] $EmitVersionHeader = $true,
             [bool] $EmitSessionEvent = $true,
+            [string[]] $SessionJsonlLines = @('{"type":"thread.started","thread_id":"0199a213-81c0-7800-8aa1-bbab2a035a53"}'),
             [bool] $MakeResultReadOnly = $false
         )
         $stubDir = Join-Path $TestDrive 'pester-review-run-stubs'
@@ -313,7 +314,10 @@ function Invoke-NativeProcess {
         $body += '$stdinText = [Console]::In.ReadToEnd()'
         $body += '[System.IO.File]::WriteAllText(($out + ''.stdin.txt''), $stdinText, $enc)'
         if ($EmitSessionEvent) {
-            $body += '[Console]::Out.WriteLine(''{"type":"thread.started","thread_id":"0199a213-81c0-7800-8aa1-bbab2a035a53"}'')'
+            foreach ($sessionJsonlLine in @($SessionJsonlLines)) {
+                $escapedSessionJsonlLine = ([string] $sessionJsonlLine).Replace("'", "''")
+                $body += ("[Console]::Out.WriteLine('{0}')" -f $escapedSessionJsonlLine)
+            }
         }
 
         switch ($Mode) {
@@ -1606,7 +1610,16 @@ Describe 'review-run canonical pass directory' {
         $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
-        $stub = script:Write-CodexStub -StubName 'rr25-yes' -Mode 'verdict-yes'
+        # malformed/무관 event를 건너뛰고 복수 thread.started 중 첫 유효 ID를 선택해야 한다.
+        $sessionJsonlLines = @(
+            '{malformed-json'
+            '{"type":"item.completed","thread_id":"irrelevant-decoy"}'
+            '{"type":"thread.started"}'
+            '{"type":"thread.started","thread_id":""}'
+            '{"type":"thread.started","thread_id":"0199a213-81c0-7800-8aa1-bbab2a035a53"}'
+            '{"type":"thread.started","thread_id":"0299a213-81c0-7800-8aa1-bbab2a035a53"}'
+        )
+        $stub = script:Write-CodexStub -StubName 'rr25-yes' -Mode 'verdict-yes' -SessionJsonlLines $sessionJsonlLines
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Be 0 -Because $r.Output
         # Exact-line anchored: new reviewer kind/version run-facts.

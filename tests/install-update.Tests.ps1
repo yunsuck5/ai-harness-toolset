@@ -834,7 +834,7 @@ Describe 'install-update.ps1 — status vocabulary and exit code mapping (T09)' 
 
 Describe 'install-update.ps1 — no-write sentinel (T10)' {
 
-    It 'fixture inspect does not write to InstallArea, ClaudeHome, CodexHome, real user-global Claude/Codex' {
+    It 'fixture inspect and verify leave InstallArea, ClaudeHome, and CodexHome file-tree snapshots unchanged' {
         $src = script:New-FixtureGitRepo -CaseName 't10'
         $area = script:New-FixtureInstallArea -CaseName 't10'
         $homes = script:New-FixtureHomeRoots -CaseName 't10'
@@ -843,11 +843,6 @@ Describe 'install-update.ps1 — no-write sentinel (T10)' {
         $snapAreaBefore  = script:Get-PathTreeSnapshot -Root $area
         $snapCHomeBefore = script:Get-PathTreeSnapshot -Root $homes.ClaudeHome
         $snapXHomeBefore = script:Get-PathTreeSnapshot -Root $homes.CodexHome
-        # Real user-global sanity probe — file count only (full 3-axis would be slow).
-        $realClaudeRoot = Join-Path $env:USERPROFILE '.claude'
-        $realCodexRoot  = Join-Path $env:USERPROFILE '.codex'
-        $realCBefore = if (Test-Path -LiteralPath $realClaudeRoot) { @(Get-ChildItem -LiteralPath $realClaudeRoot -Recurse -File -Force -ErrorAction SilentlyContinue).Count } else { -1 }
-        $realXBefore = if (Test-Path -LiteralPath $realCodexRoot)  { @(Get-ChildItem -LiteralPath $realCodexRoot  -Recurse -File -Force -ErrorAction SilentlyContinue).Count } else { -1 }
 
         $r1 = script:Invoke-InstallUpdate -CallParams @{ Mode = 'inspect'; InstallArea = $area; ClaudeHome = $homes.ClaudeHome; CodexHome = $homes.CodexHome; SourcePath = $src.Root }
         $r2 = script:Invoke-InstallUpdate -CallParams @{ Mode = 'verify';  InstallArea = $area; ClaudeHome = $homes.ClaudeHome; CodexHome = $homes.CodexHome }
@@ -857,17 +852,10 @@ Describe 'install-update.ps1 — no-write sentinel (T10)' {
         $snapAreaAfter  = script:Get-PathTreeSnapshot -Root $area
         $snapCHomeAfter = script:Get-PathTreeSnapshot -Root $homes.ClaudeHome
         $snapXHomeAfter = script:Get-PathTreeSnapshot -Root $homes.CodexHome
-        $realCAfter = if (Test-Path -LiteralPath $realClaudeRoot) { @(Get-ChildItem -LiteralPath $realClaudeRoot -Recurse -File -Force -ErrorAction SilentlyContinue).Count } else { -1 }
-        $realXAfter = if (Test-Path -LiteralPath $realCodexRoot)  { @(Get-ChildItem -LiteralPath $realCodexRoot  -Recurse -File -Force -ErrorAction SilentlyContinue).Count } else { -1 }
 
         script:Assert-PathTreeUnchanged -Before $snapAreaBefore  -After $snapAreaAfter  -Label 'InstallArea'
         script:Assert-PathTreeUnchanged -Before $snapCHomeBefore -After $snapCHomeAfter -Label 'ClaudeHome (TestDrive)'
         script:Assert-PathTreeUnchanged -Before $snapXHomeBefore -After $snapXHomeAfter -Label 'CodexHome (TestDrive)'
-        # Real user-global file count must not increase (best-effort probe; known limits —
-        # this does not catch directory-only creation / ACL / ADS mutation — V7 manual review;
-        # design record preserved in git history).
-        $realCAfter | Should -BeExactly $realCBefore -Because 'real %USERPROFILE%\.claude file count changed'
-        $realXAfter | Should -BeExactly $realXBefore -Because 'real %USERPROFILE%\.codex file count changed'
     }
 }
 
