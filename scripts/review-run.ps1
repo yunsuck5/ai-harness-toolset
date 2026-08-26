@@ -65,56 +65,73 @@ function Get-CodexAdapterVersion {
     # reviewer-tool-specific: a different reviewer adapter supplies its OWN version-reporting
     # reader; this function is only the codex adapter's path and is NOT a general durable
     # rule. Keep the vendor-specific banner shape isolated behind this helper.
-    param([string] $StderrText)
+    param([string] $BannerText)
 
-    if ([string]::IsNullOrEmpty($StderrText)) {
+    if ([string]::IsNullOrEmpty($BannerText)) {
         return ''
     }
     # Capture a semantic version that follows a codex / "OpenAI Codex" banner marker, so a
     # model name or other digit-bearing banner line (e.g. the model: line) cannot be
     # mistaken for the adapter version. The version literal itself is captured at runtime,
     # never hardcoded as a default or expectation.
-    if ($StderrText -match '(?im)(?:codex[-\s]cli|OpenAI\s+Codex|codex)\s+v?(\d+\.\d+\.\d+(?:[-+.][0-9A-Za-z.-]+)?)') {
+    if ($BannerText -match '(?im)(?:codex[-\s]cli|OpenAI\s+Codex|codex)\s+v?(\d+\.\d+\.\d+(?:[-+.][0-9A-Za-z.-]+)?)') {
         return $matches[1]
     }
     return ''
 }
 
-function Get-CodexReviewerSessionId {
-    # Codex JSONL stdout의 동일 invocation 시작 event에서 공개 trace pointer를 읽는다.
-    # 별도 process나 session-log 탐색은 하지 않으며, event가 없거나 쓸 수 없으면
-    # 빈 문자열을 반환해 caller가 not-observed로 정직하게 보고하게 한다.
-    param([string] $StdoutText)
+function Get-CodexRunBannerText {
+    # version line은 첫 separator 앞에 있고 effort/session field는 separator pair 안에 있다.
+    # 두 번째 separator까지 확인된 prefix만 반환해 그 뒤의 caller prompt echo가 세 run-fact
+    # reader 어느 쪽에도 입력되지 않도록 한다. 불완전한 banner는 관측 불가로 처리한다.
+    param([string] $StderrText)
 
-    if ([string]::IsNullOrEmpty($StdoutText)) {
+    if ([string]::IsNullOrEmpty($StderrText)) {
         return ''
     }
 
-    foreach ($line in @($StdoutText -split "`r?`n")) {
-        if ([string]::IsNullOrWhiteSpace($line)) {
+    $lines = @($StderrText -split "`r?`n")
+    $separatorCount = 0
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i].Trim() -cne '--------') {
             continue
         }
-        try {
-            $event = $line | ConvertFrom-Json -ErrorAction Stop
+        $separatorCount++
+        if ($separatorCount -eq 2) {
+            return (@($lines[0..$i]) -join "`n")
         }
-        catch {
-            continue
-        }
-        if ($null -eq $event) {
-            continue
-        }
-        $typeProperty = $event.PSObject.Properties['type']
-        $idProperty = $event.PSObject.Properties['thread_id']
-        if ($null -eq $typeProperty -or $null -eq $idProperty -or
-            ([string] $typeProperty.Value) -cne 'thread.started') {
-            continue
-        }
+    }
 
-        $sessionId = ([string] $idProperty.Value).Trim()
-        if (-not [string]::IsNullOrEmpty($sessionId) -and
-            $sessionId.IndexOf("`r", [System.StringComparison]::Ordinal) -lt 0 -and
-            $sessionId.IndexOf("`n", [System.StringComparison]::Ordinal) -lt 0) {
-            return $sessionId
+    return ''
+}
+
+function Get-CodexBannerSessionId {
+    # Codex 일반 모드의 동일 invocation stderr banner에서 공개 trace pointer를 읽는다.
+    # 별도 process나 session-log 탐색은 하지 않으며, field가 없거나 비어 있으면
+    # 빈 문자열을 반환해 caller가 not-observed로 정직하게 보고하게 한다.
+    param([string] $BannerText)
+
+    if ([string]::IsNullOrEmpty($BannerText)) {
+        return ''
+    }
+
+    $insideBanner = $false
+    foreach ($line in @($BannerText -split "`r?`n")) {
+        if ($line.Trim() -ceq '--------') {
+            if (-not $insideBanner) {
+                $insideBanner = $true
+                continue
+            }
+            break
+        }
+        if (-not $insideBanner) {
+            continue
+        }
+        if ($line -match '^[ \t]*session[ \t]+id:[ \t]*(.+?)[ \t]*$') {
+            $sessionId = ([string] $matches[1]).Trim()
+            if (-not [string]::IsNullOrEmpty($sessionId)) {
+                return $sessionId
+            }
         }
     }
 
@@ -337,7 +354,6 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         '--model', $Model,
         '-c', 'web_search=disabled',
         '-c', ('model_reasoning_effort={0}' -f $Effort),
-        '--json',
         '--output-last-message', $ResultMdPath,
         '-'
     )
@@ -402,14 +418,15 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
     }
 
     $code = $processResult.ExitCode
-    $reviewerSessionId = Get-CodexReviewerSessionId -StdoutText $processResult.Stdout
     $errText = $processResult.Stderr
-    if ($errText -match 'reasoning effort:\s*(none|minimal|low|medium|high|xhigh)\b') {
+    $bannerText = Get-CodexRunBannerText -StderrText $errText
+    $reviewerSessionId = Get-CodexBannerSessionId -BannerText $bannerText
+    if ($bannerText -match 'reasoning effort:\s*(none|minimal|low|medium|high|xhigh)\b') {
         $appliedEffort = $matches[1]
     }
     # Adapter version run-fact (P2): runtime-observed from the same reviewer run banner.
     # Isolated behind the codex adapter reader; absence -> '' (caller reports not-observed).
-    $reviewerVersion = Get-CodexAdapterVersion -StderrText $errText
+    $reviewerVersion = Get-CodexAdapterVersion -BannerText $bannerText
     if ($code -ne 0 -and -not [string]::IsNullOrEmpty($errText)) {
         [Console]::Error.Write($errText)
     }

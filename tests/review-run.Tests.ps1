@@ -228,8 +228,7 @@ function Invoke-NativeProcess {
             [string] $Mode = 'verdict-yes',
             [bool] $EmitEffortHeader = $true,
             [bool] $EmitVersionHeader = $true,
-            [bool] $EmitSessionEvent = $true,
-            [string[]] $SessionJsonlLines = @('{"type":"thread.started","thread_id":"0199a213-81c0-7800-8aa1-bbab2a035a53"}'),
+            [bool] $EmitSessionHeader = $true,
             [bool] $MakeResultReadOnly = $false
         )
         $stubDir = Join-Path $TestDrive 'pester-review-run-stubs'
@@ -294,32 +293,32 @@ function Invoke-NativeProcess {
         $body += 'if (-not $hasStdinMarker) { Write-Host ''codex-stub: FAIL stdin marker - missing''; exit 97 }'
         $body += 'if (-not $hasEffort) { Write-Host ''codex-stub: FAIL -c model_reasoning_effort= missing''; exit 98 }'
         $body += 'if (-not $hasIgnoreUserConfig) { Write-Host ''codex-stub: FAIL --ignore-user-config missing''; exit 99 }'
-        $body += 'if (-not $hasJson) { Write-Host ''codex-stub: FAIL --json missing''; exit 100 }'
+        $body += 'if ($hasJson) { Write-Host ''codex-stub: FAIL --json must be absent''; exit 100 }'
         $body += '[System.IO.File]::WriteAllText(($out + ''.argv.txt''), ($argv -join "`n"), $enc)'
-        # Mimic the real Codex exec header line on stderr so review-run.ps1 can capture
-        # the applied reasoning-effort run-fact (the real CLI prints it to stderr).
-        # EmitEffortHeader $false exercises review-run's not-observed honesty path.
+        # 실제 Codex 일반 모드 stderr banner와 같은 field shape를 모사한다. version은
+        # controlled non-real value이므로 test가 외부 설치 version에 결박되지 않는다.
+        # EmitVersionHeader $false exercises review-run's not-observed honesty path.
+        if ($EmitVersionHeader) {
+            $body += '[Console]::Error.WriteLine(''OpenAI Codex v9.9.9-stub'')'
+        }
+        $body += '[Console]::Error.WriteLine(''--------'')'
         if ($EmitEffortHeader) {
             $body += '[Console]::Error.WriteLine(''reasoning effort: '' + $effortValue)'
         }
-        # Mimic the codex run banner version line on stderr so review-run.ps1 can observe the
-        # adapter-version run-fact (P2). The emitted version is a CONTROLLED, non-real stub
-        # value (9.9.9-stub) so tests never bind to a real external version.
-        # EmitVersionHeader $false exercises review-run's not-observed honesty path.
-        if ($EmitVersionHeader) {
-            $body += '[Console]::Error.WriteLine(''codex-cli 9.9.9-stub'')'
+        if ($EmitSessionHeader) {
+            $body += '[Console]::Error.WriteLine(''session id: 0199a213-81c0-7800-8aa1-bbab2a035a53'')'
         }
+        $body += '[Console]::Error.WriteLine(''--------'')'
+        $body += '[Console]::Error.WriteLine(''user'')'
+        # 실제 CLI의 banner 뒤 prompt echo를 모사한다. 각 banner field가 빠진 case에서
+        # 이 decoy들을 잡으면 not-observed 계약이 깨진다.
+        $body += '[Console]::Error.WriteLine(''OpenAI Codex v8.8.8-prompt-decoy'')'
+        $body += '[Console]::Error.WriteLine(''reasoning effort: minimal'')'
+        $body += '[Console]::Error.WriteLine(''session id: prompt-decoy'')'
         # Capture the stdin payload review-run.ps1 sends as raw bytes so tests can assert the
         # deterministic reviewer-mode preamble is injected ahead of the input.md content.
         $body += '$stdinText = [Console]::In.ReadToEnd()'
         $body += '[System.IO.File]::WriteAllText(($out + ''.stdin.txt''), $stdinText, $enc)'
-        if ($EmitSessionEvent) {
-            foreach ($sessionJsonlLine in @($SessionJsonlLines)) {
-                $escapedSessionJsonlLine = ([string] $sessionJsonlLine).Replace("'", "''")
-                $body += ("[Console]::Out.WriteLine('{0}')" -f $escapedSessionJsonlLine)
-            }
-        }
-
         switch ($Mode) {
             'verdict-yes' {
                 $body += '$content = "# Review Result`r`n`r`n## Verdict`r`n`r`nyes`r`n`r`n## Blocking findings`r`n`r`nnone`r`n`r`n## Non-blocking concerns`r`n`r`nnone`r`n`r`n## Review limitations`r`n`r`nnone`r`n`r`n## Assumptions relied on`r`n`r`nnone`r`n"'
@@ -700,9 +699,15 @@ internal static class NativeCodexCapture
             "## Review limitations\n\nnone\n\n" +
             "## Assumptions relied on\n\nnone\n",
             new UTF8Encoding(false));
-        Console.Error.WriteLine("codex-cli 9.9.9-native-capture");
+        Console.Error.WriteLine("OpenAI Codex v9.9.9-native-capture");
+        Console.Error.WriteLine("--------");
         Console.Error.WriteLine("reasoning effort: xhigh");
-        Console.Out.WriteLine("{\"type\":\"thread.started\",\"thread_id\":\"0199a213-81c0-7800-8aa1-bbab2a035a53\"}");
+        Console.Error.WriteLine("session id: 0199a213-81c0-7800-8aa1-bbab2a035a53");
+        Console.Error.WriteLine("--------");
+        Console.Error.WriteLine("user");
+        Console.Error.WriteLine("OpenAI Codex v8.8.8-prompt-decoy");
+        Console.Error.WriteLine("reasoning effort: minimal");
+        Console.Error.WriteLine("session id: prompt-decoy");
         return 0;
     }
 }
@@ -1151,7 +1156,7 @@ Describe 'review-run canonical pass directory' {
         $stdin = [System.IO.File]::ReadAllBytes($resultMd + '.stdin.bin')
         $decodedStdin = (New-Object System.Text.UTF8Encoding($false, $true)).GetString($stdin)
         $argv[0] | Should -Be ([System.IO.Path]::GetFullPath($codexJs))
-        $argv | Should -Contain '--json'
+        $argv | Should -Not -Contain '--json'
         $argv | Should -Contain '--output-last-message'
         $sandboxIndex = [array]::IndexOf($argv, '--sandbox')
         $approvalIndex = [array]::IndexOf($argv, '--ask-for-approval')
@@ -1610,16 +1615,7 @@ Describe 'review-run canonical pass directory' {
         $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
-        # malformed/무관 event를 건너뛰고 복수 thread.started 중 첫 유효 ID를 선택해야 한다.
-        $sessionJsonlLines = @(
-            '{malformed-json'
-            '{"type":"item.completed","thread_id":"irrelevant-decoy"}'
-            '{"type":"thread.started"}'
-            '{"type":"thread.started","thread_id":""}'
-            '{"type":"thread.started","thread_id":"0199a213-81c0-7800-8aa1-bbab2a035a53"}'
-            '{"type":"thread.started","thread_id":"0299a213-81c0-7800-8aa1-bbab2a035a53"}'
-        )
-        $stub = script:Write-CodexStub -StubName 'rr25-yes' -Mode 'verdict-yes' -SessionJsonlLines $sessionJsonlLines
+        $stub = script:Write-CodexStub -StubName 'rr25-yes' -Mode 'verdict-yes'
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Be 0 -Because $r.Output
         # Exact-line anchored: new reviewer kind/version run-facts.
@@ -1859,8 +1855,8 @@ Describe 'review-run canonical pass directory' {
         }
     }
 
-    It 'AC-RR28: P3 — not-observed version and session pointer persist without silent success' {
-        # Honesty path persisted: with no version banner or session event, the block and H1 stdout
+    It 'AC-RR28: P3 — not-observed banner run-facts persist without prompt-echo contamination' {
+        # Honesty path persisted: with no version, effort, or session field in the run banner, the block and H1 stdout
         # record not-observed values rather than fabricating identifiers; review-verify still passes.
         $project = script:New-RunCase -CaseName 'rr28'
         $taskId  = 'rr28-task'
@@ -1869,10 +1865,12 @@ Describe 'review-run canonical pass directory' {
         $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
-        $stub = script:Write-CodexStub -StubName 'rr28-full' -Mode 'verdict-yes-full' -EmitVersionHeader $false -EmitSessionEvent $false
+        $stub = script:Write-CodexStub -StubName 'rr28-full' -Mode 'verdict-yes-full' -EmitEffortHeader $false -EmitVersionHeader $false -EmitSessionHeader $false
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^reviewer-version: not-observed$'
         $r.Output | Should -Match '(?m)^reviewer-session-id: not-observed$'
+        $r.Output | Should -Match '(?m)^applied-effort: not-observed$'
 
         $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
@@ -1880,6 +1878,7 @@ Describe 'review-run canonical pass directory' {
         $content | Should -Match '(?m)^## Reviewer run provenance$'
         $content | Should -Match '(?m)^reviewer-version: not-observed$'
         $content | Should -Match '(?m)^reviewer-session-id: not-observed$'
+        $content | Should -Match '(?m)^applied-effort: not-observed$'
 
         $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $v.ExitCode | Should -Be 0 -Because $v.Output
