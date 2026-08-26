@@ -330,10 +330,13 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         $codexCmd = 'codex'
     }
 
-    # User config is ignored so the adapter posture comes only from this invocation. External
-    # paths use a fixed Codex-specific broad-read profile; permission profiles and legacy
-    # --sandbox do not compose, so ordinary runs retain --sandbox read-only while external-path
-    # runs omit it. This is direct-read transport, not selected-path confinement or a safety proof.
+    # User config is ignored so the adapter posture comes only from this invocation. Select the
+    # documented elevated native Windows sandbox explicitly because --ignore-user-config also
+    # removes that implementation choice; filesystem authority remains owned by read-only or the
+    # fixed broad-read permission profile below. Permission profiles and legacy --sandbox do not
+    # compose, so ordinary runs retain --sandbox read-only while external-path runs omit it. This
+    # is direct-read transport, not selected-path confinement or a safety proof.
+    $windowsSandboxOverride = 'windows.sandbox="elevated"'
     $codexArgs = @('--ask-for-approval', 'never', 'exec')
     if ($externalPathCount -gt 0) {
         $codexArgs += @(
@@ -351,6 +354,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         )
     }
     $codexArgs += @(
+        '-c', $windowsSandboxOverride,
         '--model', $Model,
         '-c', 'web_search=disabled',
         '-c', ('model_reasoning_effort={0}' -f $Effort),
@@ -375,6 +379,9 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
     }
     if ($codexArgs -contains '--ignore-user-config') {
         $postureParts += '--ignore-user-config'
+    }
+    if ($codexArgs -contains $windowsSandboxOverride) {
+        $postureParts += $windowsSandboxOverride
     }
     if ($codexArgs -contains 'web_search=disabled') {
         $postureParts += 'web_search=disabled'

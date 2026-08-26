@@ -266,6 +266,7 @@ function Invoke-NativeProcess {
         $body += '$hasEffort = $false'
         $body += '$effortValue = '''''
         $body += '$hasIgnoreUserConfig = $false'
+        $body += '$hasWindowsSandboxElevated = $false'
         $body += '$hasJson = $false'
         $body += 'for ($i = 0; $i -lt $argv.Count; $i++) {'
         $body += '    $a = [string]$argv[$i]'
@@ -277,7 +278,7 @@ function Invoke-NativeProcess {
         $body += '    elseif ($a -ceq ''-C'' -or $a -ceq ''--cd'') { if ($i + 1 -lt $argv.Count) { $cdPath = [string]$argv[$i+1] } }'
         $body += '    elseif ($a -ceq ''--ignore-user-config'') { $hasIgnoreUserConfig = $true }'
         $body += '    elseif ($a -ceq ''--json'') { $hasJson = $true }'
-        $body += '    elseif ($a -ceq ''-c'') { if ($i + 1 -lt $argv.Count) { $cv = [string]$argv[$i+1]; if ($cv -ceq ''web_search=disabled'') { $hasWebSearchDisabled = $true } elseif ($cv -clike ''model_reasoning_effort=*'') { $hasEffort = $true; $effortValue = $cv.Substring(''model_reasoning_effort=''.Length) } elseif ($cv -ceq ''default_permissions="ai-harness-review-broad-read"'') { $hasBroadReadProfile = $true } elseif ($cv -ceq ''permissions.ai-harness-review-broad-read.filesystem={":root"="read"}'') { $hasRootRead = $true } } }'
+        $body += '    elseif ($a -ceq ''-c'') { if ($i + 1 -lt $argv.Count) { $cv = [string]$argv[$i+1]; if ($cv -ceq ''web_search=disabled'') { $hasWebSearchDisabled = $true } elseif ($cv -ceq ''windows.sandbox="elevated"'') { $hasWindowsSandboxElevated = $true } elseif ($cv -clike ''model_reasoning_effort=*'') { $hasEffort = $true; $effortValue = $cv.Substring(''model_reasoning_effort=''.Length) } elseif ($cv -ceq ''default_permissions="ai-harness-review-broad-read"'') { $hasBroadReadProfile = $true } elseif ($cv -ceq ''permissions.ai-harness-review-broad-read.filesystem={":root"="read"}'') { $hasRootRead = $true } } }'
         $body += '    elseif ($a -ceq ''--model'') { if ($i + 1 -lt $argv.Count) { $model = [string]$argv[$i+1] } }'
         $body += '    elseif ($a -ceq ''--output-last-message'') { if ($i + 1 -lt $argv.Count) { $out = [string]$argv[$i+1] } }'
         $body += '}'
@@ -294,6 +295,7 @@ function Invoke-NativeProcess {
         $body += 'if (-not $hasEffort) { Write-Host ''codex-stub: FAIL -c model_reasoning_effort= missing''; exit 98 }'
         $body += 'if (-not $hasIgnoreUserConfig) { Write-Host ''codex-stub: FAIL --ignore-user-config missing''; exit 99 }'
         $body += 'if ($hasJson) { Write-Host ''codex-stub: FAIL --json must be absent''; exit 100 }'
+        $body += 'if (-not $hasWindowsSandboxElevated) { Write-Host ''codex-stub: FAIL -c windows.sandbox="elevated" missing''; exit 101 }'
         $body += '[System.IO.File]::WriteAllText(($out + ''.argv.txt''), ($argv -join "`n"), $enc)'
         # 실제 Codex 일반 모드 stderr banner와 같은 field shape를 모사한다. version은
         # controlled non-real value이므로 test가 외부 설치 version에 결박되지 않는다.
@@ -1165,6 +1167,7 @@ Describe 'review-run canonical pass directory' {
         $argv[$sandboxIndex + 1] | Should -Be 'read-only'
         $argv[$approvalIndex + 1] | Should -Be 'never'
         $argv | Should -Contain '--ignore-user-config'
+        $argv | Should -Contain 'windows.sandbox="elevated"'
         $argv | Should -Contain 'web_search=disabled'
         $decodedStdin | Should -Match 'CODEX REVIEWER MODE'
         $decodedStdin | Should -Match '리뷰'
@@ -1272,6 +1275,7 @@ Describe 'review-run canonical pass directory' {
 
             $argv | Should -Not -Contain '--sandbox'
             $argv | Should -Not -Contain '--add-dir'
+            $argv | Should -Contain 'windows.sandbox="elevated"'
             @($argv | Where-Object { $_ -ceq 'default_permissions="ai-harness-review-broad-read"' }).Count | Should -Be 1
             @($argv | Where-Object { $_ -ceq 'permissions.ai-harness-review-broad-read.filesystem={":root"="read"}' }).Count | Should -Be 1
             $cdIndex = [array]::IndexOf($argv, '-C')
@@ -1562,7 +1566,7 @@ Describe 'review-run canonical pass directory' {
     It 'AC-RR23: reviewer-safe-posture run-fact lists the structural safety flags only (Batch D2)' {
         # The posture run-fact reflects the structural flags actually passed in this invocation;
         # it is the posture flags only, never a blanket safety guarantee (the tested-vectors-only
-        # caveat lives in the docs/report layer). All four flags appear on the single posture line.
+        # caveat lives in the docs/report layer). All five settings appear on the single posture line.
         $project = script:New-RunCase -CaseName 'rr23'
         $taskId  = 'rr23-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
@@ -1573,9 +1577,9 @@ Describe 'review-run canonical pass directory' {
         $stub = script:Write-CodexStub -StubName 'rr23-yes' -Mode 'verdict-yes'
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Be 0 -Because $r.Output
-        # Exact-line: the posture run-fact is the four structural flags in this fixed order
+        # Exact-line: the posture run-fact is the five structural settings in this fixed order
         # and nothing else (no blanket-guarantee text appended).
-        $r.Output | Should -Match '(?m)^reviewer-safe-posture: --ask-for-approval never --sandbox read-only --ignore-user-config web_search=disabled$'
+        $r.Output | Should -Match '(?m)^reviewer-safe-posture: --ask-for-approval never --sandbox read-only --ignore-user-config windows\.sandbox="elevated" web_search=disabled$'
     }
 
     It 'AC-RR24: engine identity run-facts (tool-root / project-root / tool-root-source) are emitted (Batch D2)' {
@@ -1626,7 +1630,7 @@ Describe 'review-run canonical pass directory' {
         # Additive: existing Batch D2 run-facts are preserved alongside the new lines.
         $r.Output | Should -Match '(?m)^model-source: config$'
         $r.Output | Should -Match '(?m)^applied-effort: xhigh$'
-        $r.Output | Should -Match '(?m)^reviewer-safe-posture: --ask-for-approval never --sandbox read-only --ignore-user-config web_search=disabled$'
+        $r.Output | Should -Match '(?m)^reviewer-safe-posture: --ask-for-approval never --sandbox read-only --ignore-user-config windows\.sandbox="elevated" web_search=disabled$'
         $r.Output | Should -Match '(?m)^tool-root-source: explicit$'
     }
 
@@ -1683,7 +1687,7 @@ Describe 'review-run canonical pass directory' {
         $content | Should -Match '(?m)^requested-effort: xhigh$'
         $content | Should -Match '(?m)^effort-source: config$'
         $content | Should -Match '(?m)^applied-effort: xhigh$'
-        $content | Should -Match '(?m)^reviewer-safe-posture: --ask-for-approval never --sandbox read-only --ignore-user-config web_search=disabled$'
+        $content | Should -Match '(?m)^reviewer-safe-posture: --ask-for-approval never --sandbox read-only --ignore-user-config windows\.sandbox="elevated" web_search=disabled$'
         $content | Should -Match '(?m)^tool-root-source: explicit$'
         # The model value is read dynamically from config (no concrete version hardcoded in this test).
         $cfgModel = (([System.IO.File]::ReadAllText((Join-Path $script:RepoRoot 'config/reviewer.json'), $enc)) | ConvertFrom-Json).model

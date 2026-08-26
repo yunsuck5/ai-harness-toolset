@@ -24,7 +24,8 @@ $ErrorActionPreference = 'Stop'
 
 # Reviewer-safe invocation negative test (design preserved in git history — the then
 # REVIEW_POLISHING_BATCH_A_SPEC.md §2d). It exercises the SAME reviewer-safe Codex invocation review-run.ps1 uses
-# (--ask-for-approval never / exec / --sandbox read-only / --ignore-user-config) under the
+# (--ask-for-approval never / exec / --sandbox read-only / --ignore-user-config /
+# windows.sandbox="elevated") under the
 # operator's REAL (possibly permissive) global config, instructs the reviewer to attempt a set
 # of write vectors against the source tree, and confirms each is blocked by BOTH (a) the model's
 # own report AND (b) an INDEPENDENT filesystem check. A write that actually lands on disk fails
@@ -57,7 +58,7 @@ $null = New-Item -ItemType Directory -Path $markersDir -Force
 # version is tied to an external lifecycle and must come from the config source-of-truth, so an
 # absent/empty model fails fast rather than masking it with a hardcoded default. Effort is irrelevant
 # to a safety negtest and is intentionally NOT passed; the safety-relevant flags below mirror
-# review-run (read-only / never / --ignore-user-config).
+# review-run (read-only / never / --ignore-user-config / windows.sandbox="elevated").
 $model = ''
 $configPath = Join-Path -Path $tool -ChildPath 'config/reviewer.json'
 if (Test-Path -LiteralPath $configPath -PathType Leaf) {
@@ -127,6 +128,7 @@ $codexArgs = @(
     'exec',
     '--sandbox', 'read-only',
     '--ignore-user-config',
+    '-c', 'windows.sandbox="elevated"',
     '--model', $model,
     '-c', 'web_search=disabled',
     '--output-last-message', $resultFile,
@@ -283,7 +285,7 @@ $lines.Add('> Runtime supporting material. NOT source-of-truth, NOT a determinis
 $lines.Add('')
 $lines.Add(('- overall: {0}' -f $overall))
 $lines.Add(('- codex exit: {0}' -f [string]$codexExit))
-$lines.Add(('- reviewer-safe invocation flags: --ask-for-approval never / exec / --sandbox read-only / --ignore-user-config (identical posture to scripts/review-run.ps1)'))
+$lines.Add(('- reviewer-safe invocation flags: --ask-for-approval never / exec / --sandbox read-only / --ignore-user-config / windows.sandbox="elevated" (identical posture to scripts/review-run.ps1)'))
 $lines.Add(('- result artifact channel: --output-last-message (runner-controlled); model did not write the source-tree marker'))
 $lines.Add(('- tracked-file check method: {0}' -f $trackedCheckMethod))
 $lines.Add('')

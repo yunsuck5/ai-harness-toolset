@@ -36,13 +36,14 @@ BeforeAll {
         $body += '$enc = New-Object System.Text.UTF8Encoding($false)'
         $body += '$argv = @((($enc.GetString([System.IO.File]::ReadAllBytes($CodexArgsFile))) | ConvertFrom-Json).argv)'
         $body += '$out = '''''
-        $body += '$hasReadOnly = $false; $hasApprovalNever = $false; $hasIgnoreUserConfig = $false; $hasExec = $false'
+        $body += '$hasReadOnly = $false; $hasApprovalNever = $false; $hasIgnoreUserConfig = $false; $hasWindowsSandboxElevated = $false; $hasExec = $false'
         $body += 'for ($i = 0; $i -lt $argv.Count; $i++) {'
         $body += '  $a = [string]$argv[$i]'
         $body += '  if ($a -ceq ''exec'') { $hasExec = $true }'
         $body += '  elseif ($a -ceq ''--ask-for-approval'') { if ($i+1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''never'') { $hasApprovalNever = $true } }'
         $body += '  elseif ($a -ceq ''--sandbox'') { if ($i+1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''read-only'') { $hasReadOnly = $true } }'
         $body += '  elseif ($a -ceq ''--ignore-user-config'') { $hasIgnoreUserConfig = $true }'
+        $body += '  elseif ($a -ceq ''-c'') { if ($i+1 -lt $argv.Count -and ([string]$argv[$i+1]) -ceq ''windows.sandbox="elevated"'') { $hasWindowsSandboxElevated = $true } }'
         $body += '  elseif ($a -ceq ''--output-last-message'') { if ($i+1 -lt $argv.Count) { $out = [string]$argv[$i+1] } }'
         $body += '}'
         # Assert the reviewer-safe posture is what the negtest invoked (regression coverage).
@@ -51,6 +52,7 @@ BeforeAll {
         $body += 'if (-not $hasReadOnly) { Write-Host ''stub: FAIL sandbox''; exit 83 }'
         $body += 'if (-not $hasIgnoreUserConfig) { Write-Host ''stub: FAIL ignore-user-config''; exit 84 }'
         $body += 'if ([string]::IsNullOrEmpty($out)) { Write-Host ''stub: FAIL output''; exit 85 }'
+        $body += 'if (-not $hasWindowsSandboxElevated) { Write-Host ''stub: FAIL windows sandbox implementation''; exit 86 }'
         $body += '$stdin = [Console]::In.ReadToEnd()'
 
         switch ($Mode) {
