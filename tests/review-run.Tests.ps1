@@ -228,6 +228,7 @@ function Invoke-NativeProcess {
             [string] $Mode = 'verdict-yes',
             [bool] $EmitEffortHeader = $true,
             [bool] $EmitVersionHeader = $true,
+            [bool] $EmitSessionEvent = $true,
             [bool] $MakeResultReadOnly = $false
         )
         $stubDir = Join-Path $TestDrive 'pester-review-run-stubs'
@@ -265,6 +266,7 @@ function Invoke-NativeProcess {
         $body += '$hasEffort = $false'
         $body += '$effortValue = '''''
         $body += '$hasIgnoreUserConfig = $false'
+        $body += '$hasJson = $false'
         $body += 'for ($i = 0; $i -lt $argv.Count; $i++) {'
         $body += '    $a = [string]$argv[$i]'
         $body += '    if ($a -ceq ''exec'') { $hasExec = $true }'
@@ -274,6 +276,7 @@ function Invoke-NativeProcess {
         $body += '    elseif ($a -ceq ''--add-dir'') { $hasAddDir = $true }'
         $body += '    elseif ($a -ceq ''-C'' -or $a -ceq ''--cd'') { if ($i + 1 -lt $argv.Count) { $cdPath = [string]$argv[$i+1] } }'
         $body += '    elseif ($a -ceq ''--ignore-user-config'') { $hasIgnoreUserConfig = $true }'
+        $body += '    elseif ($a -ceq ''--json'') { $hasJson = $true }'
         $body += '    elseif ($a -ceq ''-c'') { if ($i + 1 -lt $argv.Count) { $cv = [string]$argv[$i+1]; if ($cv -ceq ''web_search=disabled'') { $hasWebSearchDisabled = $true } elseif ($cv -clike ''model_reasoning_effort=*'') { $hasEffort = $true; $effortValue = $cv.Substring(''model_reasoning_effort=''.Length) } elseif ($cv -ceq ''default_permissions="ai-harness-review-broad-read"'') { $hasBroadReadProfile = $true } elseif ($cv -ceq ''permissions.ai-harness-review-broad-read.filesystem={":root"="read"}'') { $hasRootRead = $true } } }'
         $body += '    elseif ($a -ceq ''--model'') { if ($i + 1 -lt $argv.Count) { $model = [string]$argv[$i+1] } }'
         $body += '    elseif ($a -ceq ''--output-last-message'') { if ($i + 1 -lt $argv.Count) { $out = [string]$argv[$i+1] } }'
@@ -290,6 +293,7 @@ function Invoke-NativeProcess {
         $body += 'if (-not $hasStdinMarker) { Write-Host ''codex-stub: FAIL stdin marker - missing''; exit 97 }'
         $body += 'if (-not $hasEffort) { Write-Host ''codex-stub: FAIL -c model_reasoning_effort= missing''; exit 98 }'
         $body += 'if (-not $hasIgnoreUserConfig) { Write-Host ''codex-stub: FAIL --ignore-user-config missing''; exit 99 }'
+        $body += 'if (-not $hasJson) { Write-Host ''codex-stub: FAIL --json missing''; exit 100 }'
         $body += '[System.IO.File]::WriteAllText(($out + ''.argv.txt''), ($argv -join "`n"), $enc)'
         # Mimic the real Codex exec header line on stderr so review-run.ps1 can capture
         # the applied reasoning-effort run-fact (the real CLI prints it to stderr).
@@ -308,6 +312,9 @@ function Invoke-NativeProcess {
         # deterministic reviewer-mode preamble is injected ahead of the input.md content.
         $body += '$stdinText = [Console]::In.ReadToEnd()'
         $body += '[System.IO.File]::WriteAllText(($out + ''.stdin.txt''), $stdinText, $enc)'
+        if ($EmitSessionEvent) {
+            $body += '[Console]::Out.WriteLine(''{"type":"thread.started","thread_id":"0199a213-81c0-7800-8aa1-bbab2a035a53"}'')'
+        }
 
         switch ($Mode) {
             'verdict-yes' {
@@ -691,6 +698,7 @@ internal static class NativeCodexCapture
             new UTF8Encoding(false));
         Console.Error.WriteLine("codex-cli 9.9.9-native-capture");
         Console.Error.WriteLine("reasoning effort: xhigh");
+        Console.Out.WriteLine("{\"type\":\"thread.started\",\"thread_id\":\"0199a213-81c0-7800-8aa1-bbab2a035a53\"}");
         return 0;
     }
 }
@@ -1139,6 +1147,7 @@ Describe 'review-run canonical pass directory' {
         $stdin = [System.IO.File]::ReadAllBytes($resultMd + '.stdin.bin')
         $decodedStdin = (New-Object System.Text.UTF8Encoding($false, $true)).GetString($stdin)
         $argv[0] | Should -Be ([System.IO.Path]::GetFullPath($codexJs))
+        $argv | Should -Contain '--json'
         $argv | Should -Contain '--output-last-message'
         $sandboxIndex = [array]::IndexOf($argv, '--sandbox')
         $approvalIndex = [array]::IndexOf($argv, '--ask-for-approval')
@@ -1586,11 +1595,10 @@ Describe 'review-run canonical pass directory' {
         $r.Output | Should -Match ('(?m)^tool-root: ' + [regex]::Escape($expectedTool) + '$')
     }
 
-    It 'AC-RR25: reviewer kind and adapter-version run-facts are emitted, additive to Batch D2 (P2)' {
-        # P2: emit the active reviewer adapter kind and a runtime-observed adapter version as
-        # H1 stdout run-facts. reviewer = the resolved adapter (codex in MVP); reviewer-version
-        # is parsed from the adapter run banner. The stub emits a CONTROLLED non-real version
-        # (9.9.9-stub), so this assertion is not coupled to any real external version.
+    It 'AC-RR25: reviewer kind, adapter-version, and session-pointer run-facts are emitted, additive to Batch D2 (P2)' {
+        # P2: emit the active reviewer adapter kind, runtime-observed adapter version, and public
+        # session trace pointer as H1 stdout run-facts. The controlled stub values are non-real, so
+        # these assertions are not coupled to any real external version or session.
         $project = script:New-RunCase -CaseName 'rr25'
         $taskId  = 'rr25-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
@@ -1604,6 +1612,7 @@ Describe 'review-run canonical pass directory' {
         # Exact-line anchored: new reviewer kind/version run-facts.
         $r.Output | Should -Match '(?m)^reviewer: codex$'
         $r.Output | Should -Match '(?m)^reviewer-version: 9\.9\.9-stub$'
+        $r.Output | Should -Match '(?m)^reviewer-session-id: 0199a213-81c0-7800-8aa1-bbab2a035a53$'
         $r.Output | Should -Not -Match '(?m)^reviewer-version: not-observed$'
         # Additive: existing Batch D2 run-facts are preserved alongside the new lines.
         $r.Output | Should -Match '(?m)^model-source: config$'
@@ -1660,6 +1669,7 @@ Describe 'review-run canonical pass directory' {
         # Exact-line provenance values (controlled stub values; no real external version asserted).
         $content | Should -Match '(?m)^reviewer: codex$'
         $content | Should -Match '(?m)^reviewer-version: 9\.9\.9-stub$'
+        $content | Should -Match '(?m)^reviewer-session-id: 0199a213-81c0-7800-8aa1-bbab2a035a53$'
         $content | Should -Match '(?m)^model-source: config$'
         $content | Should -Match '(?m)^requested-effort: xhigh$'
         $content | Should -Match '(?m)^effort-source: config$'
@@ -1836,9 +1846,9 @@ Describe 'review-run canonical pass directory' {
         }
     }
 
-    It 'AC-RR28: P3 — not-observed version is persisted in the provenance block (no silent success)' {
-        # Honesty path persisted: with no version banner, the block records reviewer-version:
-        # not-observed (not a fabricated or hardcoded value), and review-verify still passes.
+    It 'AC-RR28: P3 — not-observed version and session pointer persist without silent success' {
+        # Honesty path persisted: with no version banner or session event, the block and H1 stdout
+        # record not-observed values rather than fabricating identifiers; review-verify still passes.
         $project = script:New-RunCase -CaseName 'rr28'
         $taskId  = 'rr28-task'
         $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
@@ -1846,15 +1856,17 @@ Describe 'review-run canonical pass directory' {
         $inputPath = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/input.md')
         script:Set-InputFilled -InputPath $inputPath
 
-        $stub = script:Write-CodexStub -StubName 'rr28-full' -Mode 'verdict-yes-full' -EmitVersionHeader $false
+        $stub = script:Write-CodexStub -StubName 'rr28-full' -Mode 'verdict-yes-full' -EmitVersionHeader $false -EmitSessionEvent $false
         $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01' -StubPath $stub
         $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^reviewer-session-id: not-observed$'
 
         $resultMd = Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')
         $enc = New-Object System.Text.UTF8Encoding($false)
         $content = [System.IO.File]::ReadAllText($resultMd, $enc)
         $content | Should -Match '(?m)^## Reviewer run provenance$'
         $content | Should -Match '(?m)^reviewer-version: not-observed$'
+        $content | Should -Match '(?m)^reviewer-session-id: not-observed$'
 
         $v = script:Invoke-ReviewVerify -ProjectRoot $project -ReviewTaskId $taskId -Pass 'pass-01'
         $v.ExitCode | Should -Be 0 -Because $v.Output

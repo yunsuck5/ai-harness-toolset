@@ -80,6 +80,47 @@ function Get-CodexAdapterVersion {
     return ''
 }
 
+function Get-CodexReviewerSessionId {
+    # Codex JSONL stdout의 동일 invocation 시작 event에서 공개 trace pointer를 읽는다.
+    # 별도 process나 session-log 탐색은 하지 않으며, event가 없거나 쓸 수 없으면
+    # 빈 문자열을 반환해 caller가 not-observed로 정직하게 보고하게 한다.
+    param([string] $StdoutText)
+
+    if ([string]::IsNullOrEmpty($StdoutText)) {
+        return ''
+    }
+
+    foreach ($line in @($StdoutText -split "`r?`n")) {
+        if ([string]::IsNullOrWhiteSpace($line)) {
+            continue
+        }
+        try {
+            $event = $line | ConvertFrom-Json -ErrorAction Stop
+        }
+        catch {
+            continue
+        }
+        if ($null -eq $event) {
+            continue
+        }
+        $typeProperty = $event.PSObject.Properties['type']
+        $idProperty = $event.PSObject.Properties['thread_id']
+        if ($null -eq $typeProperty -or $null -eq $idProperty -or
+            ([string] $typeProperty.Value) -cne 'thread.started') {
+            continue
+        }
+
+        $sessionId = ([string] $idProperty.Value).Trim()
+        if (-not [string]::IsNullOrEmpty($sessionId) -and
+            $sessionId.IndexOf("`r", [System.StringComparison]::Ordinal) -lt 0 -and
+            $sessionId.IndexOf("`n", [System.StringComparison]::Ordinal) -lt 0) {
+            return $sessionId
+        }
+    }
+
+    return ''
+}
+
 function Resolve-CodexNativeLaunch {
     # Codex adapter-local launcher resolution. Windows PowerShell resolves the npm
     # global command to codex.ps1, whose pipeline-input branch re-encodes text under
@@ -296,6 +337,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         '--model', $Model,
         '-c', 'web_search=disabled',
         '-c', ('model_reasoning_effort={0}' -f $Effort),
+        '--json',
         '--output-last-message', $ResultMdPath,
         '-'
     )
@@ -360,6 +402,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
     }
 
     $code = $processResult.ExitCode
+    $reviewerSessionId = Get-CodexReviewerSessionId -StdoutText $processResult.Stdout
     $errText = $processResult.Stderr
     if ($errText -match 'reasoning effort:\s*(none|minimal|low|medium|high|xhigh)\b') {
         $appliedEffort = $matches[1]
@@ -371,7 +414,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
         [Console]::Error.Write($errText)
     }
 
-    return [pscustomobject]@{ ExitCode = $code; AppliedEffort = $appliedEffort; ReviewerSafePosture = $reviewerSafePosture; ReviewerVersion = $reviewerVersion }
+    return [pscustomobject]@{ ExitCode = $code; AppliedEffort = $appliedEffort; ReviewerSafePosture = $reviewerSafePosture; ReviewerVersion = $reviewerVersion; ReviewerSessionId = $reviewerSessionId }
 }
 
 function Get-VerdictFromResultMd {
@@ -572,6 +615,7 @@ function Add-ReviewerProvenanceBlock {
         [string] $ResultMdPath,
         [string] $Reviewer,
         [string] $ReviewerVersion,
+        [string] $ReviewerSessionId,
         [string] $Model,
         [string] $ModelSource,
         [string] $RequestedEffort,
@@ -586,6 +630,7 @@ function Add-ReviewerProvenanceBlock {
     )
 
     $verVal = if ([string]::IsNullOrEmpty($ReviewerVersion)) { 'not-observed' } else { $ReviewerVersion }
+    $sessionVal = if ([string]::IsNullOrEmpty($ReviewerSessionId)) { 'not-observed' } else { $ReviewerSessionId }
     $appliedVal = if ([string]::IsNullOrEmpty($AppliedEffort)) { 'not-observed' } else { $AppliedEffort }
 
     $note = '_Machine-emitted by `review-run.ps1` (runner-appended). Runtime-observed run facts identifying this review run -- NOT authored by the reviewer adapter and NOT a reviewer verdict/judgment. Source: runtime / config / active reviewer adapter / reviewer self-report (never `input.md` caller declaration). Informational only; `review-verify.ps1` does not gate on it._'
@@ -598,6 +643,7 @@ function Add-ReviewerProvenanceBlock {
     $body += '```text'
     $body += ('reviewer: {0}' -f $Reviewer)
     $body += ('reviewer-version: {0}' -f $verVal)
+    $body += ('reviewer-session-id: {0}' -f $sessionVal)
     $body += ('model: {0}' -f $Model)
     $body += ('model-source: {0}' -f $ModelSource)
     $body += ('requested-effort: {0}' -f $RequestedEffort)
@@ -838,6 +884,7 @@ $provenanceError = ''
 try {
     Add-ReviewerProvenanceBlock -ResultMdPath $resultMdPath `
         -Reviewer $Reviewer -ReviewerVersion $codexResult.ReviewerVersion `
+        -ReviewerSessionId $codexResult.ReviewerSessionId `
         -Model $model -ModelSource $modelSource `
         -RequestedEffort $effort -EffortSource $effortSource -AppliedEffort $codexResult.AppliedEffort `
         -EffortCategory $effortCategory -EffortPolicyMatch $effortPolicyMatch `
@@ -898,6 +945,12 @@ if ([string]::IsNullOrEmpty($codexResult.ReviewerVersion)) {
 }
 else {
     Write-Host ('reviewer-version: {0}' -f $codexResult.ReviewerVersion)
+}
+if ([string]::IsNullOrEmpty($codexResult.ReviewerSessionId)) {
+    Write-Host 'reviewer-session-id: not-observed'
+}
+else {
+    Write-Host ('reviewer-session-id: {0}' -f $codexResult.ReviewerSessionId)
 }
 Write-Host ('model: {0}' -f $model)
 Write-Host ('model-source: {0}' -f $modelSource)
