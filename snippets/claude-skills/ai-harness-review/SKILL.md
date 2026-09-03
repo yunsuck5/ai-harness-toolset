@@ -34,7 +34,7 @@ Review style and target scope are independent. Follow an explicit mixed request.
 
 **Mode B:** resolve the named subsystem from `git ls-files`, regardless of dirty state. Prefer a directory match, then filename match; exclude tests/fixtures only when the request does not cover them. Current diff is context and must not redefine the named subsystem.
 
-Disclose every deliberate omission under `## Known concerns`. Do not shrink scope for cost, latency, or an easier verdict. Ask at most one clarification only if the named subsystem does not resolve, spans unrelated trees, or Mode A/B intent is genuinely ambiguous.
+Put target/scope and required-evidence omissions under `## Known concerns`. Do not shrink scope for cost, latency, or an easier verdict. Ask at most one clarification only if the named subsystem does not resolve, spans unrelated trees, or Mode A/B intent is genuinely ambiguous.
 
 Before allocating a unit, apply any active project rule that defines a retirement-only closeout transaction predicate. Inspect the proposed closeout transaction itself and its complete source delta. If it exactly matches the rule's allowed retirement shape, issue `no-reviewable-change` and stop without prepare/run. If the predicate is missing or cannot be applied, or any additional changed path, byte, mode, or source-managed untracked artifact exists, treat the change as an ordinary content-bearing target; do not run a closeout review to legitimize the mismatch.
 
@@ -70,7 +70,7 @@ Fill the compact informational positions when relevant:
 - **Artifact persistence:** require `Constraints` to tell the reviewer to state persistence in finding prose when it affects severity or closure. Transience alone does not make a finding non-blocking, and a committed temporary artifact remains a real review target while it exists. Do not add a verdict, H2, parser field, or tag for this.
 - **Task-grade adjudication:** use a user-supplied task-grade table only when it was actually provided; invent no default. After results, do not lower its threshold or automatically reclassify a blocking finding as non-blocking. A false-positive dismissal requires evidence and an explicit user decision.
 - **Validation evidence:** cite a reviewer-readable Markdown bundle under `log/evidence/**` when making execution claims, otherwise say N/A. Evidence is supporting material, not re-execution, a truth oracle, freshness binding, or source-of-truth. The reviewer reads it by default; broad build/test reproduction requires explicit authorization with the exact command, cwd, expected writes, allowed output path, dependencies, timeout, interpretation boundary, and sandbox-failure reporting. Non-reproduction is a limitation, not automatically target risk. Validation scope is proportional to change class; script/runtime/parser/test/install changes normally require the full suite, while docs/wording may use targeted checks. Disclose what ran, what did not, why, and residual risk. `git diff --check` covers tracked/index-visible changes; without staging authority, inspect new untracked files directly for whitespace/encoding and disclose that narrower coverage. Do not use `git add -N` as a read-only tip.
-- **Known concerns:** separate confirmed compromises/limitations and caller-known conclusion or previous-verdict pressure from neutral open hypotheses. Never disguise a known fact as a hypothesis. An omitted known concern makes the pass stale-by-omission.
+- **Known concerns:** separate target-material facts/limits from material open questions; do not recast facts. Omit caller conclusions, expected/prior verdicts, and advocacy. If a prior artifact is target or required evidence, give its exact direct-read path, not a paraphrase. Omitting such material/evidence stales the pass.
 
 **Off-repo/sibling material (direct read).** Treat it as advisory, never source-of-truth. Pass caller-declared absolute existing directories with `-ExternalReadDirectory` and files with `-ExternalReadFile`, and list the exact load-bearing targets under `Required inspection paths`. The reviewer reads them directly; do not proxy, inline, stage, or copy their content into the workspace.
 
@@ -87,14 +87,14 @@ Rules:
 - Once `review-run` starts, do not edit `input.md`. During this run step, the newly prepared canonical pass directory is the only runtime artifact location this workflow may write. Do not edit an existing or failed pass; if continuation or recovery requires mutation outside the new pass directory or approved review scope, stop and report instead of expanding scope.
 - If the reviewer CLI is unavailable, report the environment gap and stop; do not install or refresh it.
 - Model/effort come from explicit values or `config/reviewer.json`; missing model and malformed matched category fail fast. Effort never substitutes for coverage. Do not downgrade contract, boundary, system-coherence, or review-subsystem changes.
-- A new/changed template, contract, perspective, or artifact-binding in the engine pipeline being used uses canary-first: complete one unit `prepare → run (tail verify included) → read` before the remaining units. A standard dual review on an already-proven pipeline needs no canary.
-- An already-proven read-only dual review records its fixed two-member set and runs the two units concurrently by default. After a required canary, launch only the remaining set; run a single remainder singly, or multiple remainders concurrently with separate pass paths, isolated output, and a complete join. Prepare allocation and all mutation/git operations stay foreground and serial. Do not shard system-coherence, drop a slow member, poll, or conclude with a missing/stale member.
+- A new/changed template, contract, perspective, or artifact-binding in the used engine pipeline requires canary-first: complete one unit `prepare → run (tail verify included) → read` before the remainder. Canary is outside the same wave; a usable result cannot drop/reshape the remainder. A proven pipeline needs no canary.
+- A proven read-only dual fixes two members, runs them concurrently with isolated output, and joins terminal/launch-failed/not-launched-with-reason accounting before any result's semantic use. After a canary, run the remainder only. Allocation and mutation/git stay foreground serial. An early result cannot cancel/reshape a member; do not shard system-coherence, drop a slow member, poll, or conclude before fixed-set accounting and then member-failure handling.
 - If usable member results conflict and there is no evidence-bound basis to reduce the conflict, stop and report it; do not merge or conclude.
 - If runner exits nonzero, classify reviewer invocation unavailable vs review result unavailable, report exit/last status/result existence, preserve the pass, and stop. Neither state has a verdict.
 
 ### 5. Perform semantic intake
 
-After a clean runner exit, read the entire `result.md`, not only the H1 token. Consume:
+After clean exit, read authored `input.md` with full `result.md`, not H1 alone. Unaddressed material fact/question stays unresolved without becoming an echo gate. Consume:
 
 - `## Blocking findings`
 - `## Non-blocking concerns` — the single canonical location for named risks, including a `yes with risk` risk
@@ -102,7 +102,7 @@ After a clean runner exit, read the entire `result.md`, not only the H1 token. C
 - `## Assumptions relied on`
 - optional `## Counter-argument` and `## Notes`
 
-Counter-argument is optional, strongly recommended, and non-parser: for a yes-family verdict it should pressure-test the conclusion; `none` is preferable to ceremonial boilerplate when no material counterexample exists. Omission alone is not a parser failure.
+Counter-argument is optional, strongly recommended, and non-parser. For yes-family, pressure-test the conclusion; use `none` instead of boilerplate. Omission is not a parser failure.
 
 Shape validity is not semantic usability. A `no` is semantically usable only when every blocking finding identifies (1) a concrete failure mode or path, or a direct contract or acceptance breach, (2) the affected consumer or decision, and (3) the failed function, outcome, or contract. Unknown or missing information, or an unperformed check, is not by itself a blocker unless that absence directly breaches an explicit contract requirement. A `no` without this rational blocker basis, or `yes with risk` without named risk substance under Non-blocking concerns, is review result unavailable: preserve the actual provenance, consume no verdict, and do not create a fourth verdict. Treat limitation/assumption/risk-bearing content as part of next-action judgment.
 

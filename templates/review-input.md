@@ -22,7 +22,7 @@ Operator가 빈 `input.md`를 직접 작성할 때 참조하는 compact skeleton
 
 {{AI_TO_FILL_CONTEXT}}
 
-확정 사실과 open hypothesis를 구분하고, stage와 artifact boundary를 명시한다. off-repo/sibling 자료는 advisory로 표시하고, caller가 `review-run.ps1`의 `-ExternalReadDirectory` / `-ExternalReadFile`로 절대·기존 경로를 전달한 뒤 아래에 exact load-bearing target을 적는다. Reviewer가 그 자료를 직접 읽게 하며 input·proxy·staging·workspace copy로 본문을 우회 복제하지 않는다. 이전·외부 claim에는 exact provenance pointer를 적고, caller가 확인하지 못한 claim은 `unverified`로 표시한다.
+Target 판단에 material한 확정 사실과 open question을 구분하고, stage와 artifact boundary를 명시한다. off-repo/sibling 자료는 advisory로 표시하고, caller가 `review-run.ps1`의 `-ExternalReadDirectory` / `-ExternalReadFile`로 절대·기존 경로를 전달한 뒤 아래에 exact load-bearing target을 적는다. Reviewer가 그 자료를 직접 읽게 하며 input·proxy·staging·workspace copy로 본문을 우회 복제하지 않는다. 외부 claim에는 exact provenance pointer를 적고, caller가 확인하지 못한 claim은 `unverified`로 표시한다.
 
 ## Required inspection paths
 
@@ -34,7 +34,7 @@ Reviewer가 read-only로 열어야 할 exact path와 각 path의 역할을 적�
 
 {{AI_TO_FILL_REVIEW_QUESTIONS}}
 
-결론을 유도하지 않는 open-ended 질문을 쓴다. 마지막에는 input의 framing tilt가 있는지 별도로 surface하도록 요청한다.
+결론을 유도하지 않는 open-ended 질문을 쓴다.
 
 ## Constraints
 
@@ -56,7 +56,7 @@ Validation scope는 change class에 비례한다. 수행/미수행 범위·사�
 
 {{AI_TO_FILL_KNOWN_CONCERNS}}
 
-confirmed disclosure(실제 compromise·baseline failure·validation limitation·operator assumption)와 open hypothesis를 분리한다. caller가 알고 있는 previous-verdict·closeout·advocacy 압력도 여기에 숨기지 않는다. 확정 사실을 가설로 약화하지 않는다. 없으면 명시적 N/A를 쓴다.
+Target-material fact·compromise·validation limitation과 material open question을 구분하고 사실을 question으로 약화하지 않는다. Caller conclusion·expected/prior verdict·advocacy는 제외한다. 이전 artifact가 target 또는 required evidence이면 `Required inspection paths`에 exact direct-read path를 적고 요약하지 않는다. 없으면 명시적 N/A를 쓴다.
 
 ## Final verdict
 
