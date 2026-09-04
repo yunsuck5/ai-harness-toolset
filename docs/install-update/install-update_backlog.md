@@ -1,6 +1,6 @@
 # install-update — backlog (future-work queue)
 
-next ID: IU-B-20 (open/idea `IU-B-*` rows) · IU-D-13 (deferred `IU-D-*` rows)
+next ID: IU-B-21 (open/idea `IU-B-*` rows) · IU-D-13 (deferred `IU-D-*` rows)
 
 install-update 도메인의 future-work queue — open / deferred / idea-only rows. 각 row 는 한 줄 + reopen/start 조건이다. **이 파일이 install-update 의 open-work entrypoint 다**; spec-of-record 는 `docs/install-update/install-update_spec.md`. 어느 row 도 구현 승인이 아니다 — 각각 별도 scoped goal + Codex review gate 가 필요하다. 닫힌 row 는 기본 삭제한다(보존 = git history). 구계열 ledger(완료·운영 closeout·상세 narrative)는 git history 에 보존된다.
 
@@ -18,6 +18,7 @@ install-update 도메인의 future-work queue — open / deferred / idea-only ro
 | IU-B-17 | `uninstall-global.ps1`의 result 안내와 install root 비삭제 상태 사이 output predicate 정확성 재검토 | uninstall output-contract scoped investigation 승인 시 착수 |
 | IU-B-18 | Install-update trigger 실제 도입 여부 재검토 — 전역 admission rule은 도입 승인이 아니며 현행 비도입을 유지 | 구체 managed-trigger 제안·install-update owner의 별도 lifecycle·사용자 승인이 모두 있을 때 착수 |
 | IU-B-19 | `update-global.ps1` delegate 결과의 update-source status 허용 집합과 process/JSON exitCode 정합 검증 보강 | 허용 status/exit pair를 fail-closed로 잠그는 별도 wrapper-result hardening goal 승인 시 착수하거나, status/exit mapping 변경 또는 미허용 status·불일치 exit pair 관측 시 재개 |
+| IU-B-20 | fresh clone helper 의 source-cache cleanup ownership(latent · exact-ref 변경 이전부터) — clone 실패 시 cleanup ownership flag 가 세워지지 않아 partial source-cache 가 잔류할 수 있고, 일부 cleanup failure path 는 `SilentlyContinue` 뒤 leftover 를 구조화 보고하지 않는다(대상 = `scripts/lib/install-pipeline-core.ps1` 의 fresh clone helper·cleanup failure paths). 비후보 = 보고 없는 silent cleanup 확대 | cleanup-owner flag·leftover 구조화 보고를 보강하는 별도 hardening scoped goal 승인 시 착수 |
 
 ## Deferred rows (accepted residual risks under LTS — reopen 조건 보존)
 
