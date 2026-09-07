@@ -1,18 +1,121 @@
 {
-  "model": "gpt-5.6-sol",
+  "model": "gpt-6-astra",
   "reasoningEffort": "xhigh",
   "categoryPolicy": {
-    "default": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "simple-local": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "medium-scope": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "complex-broad": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "system-coherence-heavy": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "contract-sensitive": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "boundary-sensitive": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "script-runtime": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "test-code": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "mechanical-audit": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "docs-planning": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" },
-    "docs-wording": { "model": "gpt-5.6-sol", "reasoningEffort": "xhigh" }
+    "default": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "검증 목적·영향이 모호하거나 기본 수준을 명시 요청한 리뷰. 모호함을 쉬움으로 취급하지 않는다. 복합 목적이 분명하면 complex-broad를 고른다. default는 명시 선택용이며 category miss의 scalar fallback과 다르다. 대기시간을 허용하고 조건을 깊게 추적할 이유가 있으면 gpt-6-astra / max를 고려한다."
+    },
+    "simple-local": {
+      "model": "gpt-5.6-luna",
+      "reasoningEffort": "xhigh",
+      "description": "기대 결과·판정 기준·필요 문맥이 명확한 국소 정확성: 확정 자료 대조, 명백한 오타, 규칙이 주어진 값 계산. 단일 파일·한 줄이라는 이유만으로 선택하지 않으며 숨은 전제나 중요한 영향은 제외한다. 속도 절충은 gpt-5.6-luna / high, 닫힌 입력 안의 여러 예외를 오래 추적할 때는 gpt-5.6-luna / max를 고려한다. 단순 대조에는 기본값을 유지한다. 실전 입력 조건 분석에서의 적용 가설이며 국소 목적만의 비교 우위는 미측정이다."
+    },
+    "meaning-preservation": {
+      "model": "gpt-5.6-terra",
+      "reasoningEffort": "xhigh",
+      "description": "표현 개선·재배치·이름 변경 전후의 뜻·조건·결과가 유지되는지 검토한다. 원문 사실의 타당성은 evidence-validity와 구별한다. 중요 영향이 없을 때 속도 절충은 gpt-5.6-terra / high, 전후 의미와 필요한 문맥이 명확한 사용량 우선 검토는 gpt-5.6-luna / xhigh를 고려한다. 조건 관계를 길게 추적할 유휴 검토는 gpt-5.6-terra / max가 대안이다. 직접 문서 비교가 없는 적용 가설이다."
+    },
+    "reasoning-validity": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "description": "전제에서 결론이 이어지는지, 인과·비교·반례·내부 모순을 검토한다. 전제의 출처는 evidence-validity, 실행 가능성은 planning-feasibility와 구별한다. 중요 영향이 없을 때 속도 절충은 gpt-6-astra / high, 전제와 논증 범위가 명시된 사용량 우선 검토는 gpt-5.6-terra / xhigh, 긴 인과·반례·조건 사슬을 추적할 유휴 검토는 gpt-5.6-sol / max를 고려한다. 이미 gpt-5.6-sol을 지정한 경우 기본 xhigh를 유지하되 명시 속도 절충은 gpt-5.6-sol / high로 구별한다. 조건 연결의 실전 관측을 다른 논증에 적용하는 가설이며 속도·사용량 이점을 보장하지 않는다."
+    },
+    "scope-completeness": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "description": "목표에 필요한 대상·요구·예외·의존성이 빠지지 않았는지 검토한다. 적힌 문장의 모순보다 누락이 중심이며 현재 목표에 없는 과잉 요구도 구별한다. 중요 영향이 없을 때 속도 절충은 gpt-6-astra / high, 목표·자료가 주어진 한정된 업무의 사용량 우선 검토는 gpt-5.6-terra / xhigh, 의존성·예외를 길게 추적할 유휴 검토는 gpt-5.6-sol / max를 고려한다. 비코드 완전성의 비교 우위는 미측정이다."
+    },
+    "evidence-validity": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "출처·관측·인용이 주장을 뒷받침하고 일반화와 결론의 강도가 적절한지 검토한다. 사실·추정·권고를 구별하며 주어진 수식 재계산은 quantitative-validity가 중심이다. 중요 영향이 없을 때 속도 절충은 gpt-6-astra / high, 출처가 제공된 한정된 주장 대조의 사용량 절충은 gpt-5.6-sol / xhigh를 고려한다. 반례를 깊게 추적할 유휴 검토는 gpt-6-astra / max가 대안이다. 품질 여유를 둔 선택이며 사실성 보장이 아니다."
+    },
+    "quantitative-validity": {
+      "model": "gpt-5.6-terra",
+      "reasoningEffort": "xhigh",
+      "description": "계산·단위·분모·집계·조건별 수치의 일치를 검토한다. 수치로 정책을 정당화하는 논리·근거와 중요한 저장·계약 판단을 단순 계산으로 낮추지 않는다. 중요 영향이 없을 때 속도 절충은 gpt-5.6-terra / high, 단위·공식이 명시된 국소 계산의 사용량 절충은 gpt-5.6-luna / xhigh, 조건부 수식·단위·반례를 오래 추적할 때는 gpt-5.6-terra / max를 고려한다. 일반 정량 업무로의 적용 가설이며 통계·정량 분야의 비교 우위는 미측정이다."
+    },
+    "planning-feasibility": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "기획·설계가 자원·일정·의존성·전환 비용 안에서 실행 가능한지, 대안과 수정안의 비용이 문제에 비례하는지 검토한다. 요구 목록 완전성과 구별하며 결함 발견을 전면 교체의 우월성으로 확대하지 않는다. 중요 영향이 없는 되돌릴 수 있는 초기안은 속도 절충으로 gpt-6-astra / high, 한정된 초기안의 사용량 절충으로 gpt-5.6-sol / xhigh를 고려한다. 유휴 심화는 gpt-6-astra / max가 대안이다. 비코드 실행성에 대한 추천은 적용 가설이다."
+    },
+    "contract-sensitive": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "다른 소비자가 의존하는 약속·형식·조건·호환성: 업무·신청·인계 조건, API·schema·출력·판정 계약을 검토한다. 한 줄 변경도 중요할 수 있다. 속도·사용량 조건만으로 하향하지 않으며 긴 소비자 조건을 추적할 유휴 검토는 gpt-6-astra / max를 고려한다."
+    },
+    "boundary-sensitive": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "누가 무엇을 할 수 있는지와 책임·정보·접근·변경 범위를 검토한다. 승인권·공유 범위·sandbox·credentials·global/user 경계가 포함되며 일반 소비자 약속과 구별한다. 속도·사용량 조건만으로 하향하지 않으며 복잡한 권한·책임 조건을 추적할 유휴 검토는 gpt-6-astra / max를 고려한다."
+    },
+    "system-coherence-heavy": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "여러 자료·구성요소의 용어·역할·수치·약속·동작이 함께 성립하는지 검토한다. 기획서·일정·안내문 묶음과 문서·config·script·test의 연결을 포함한다. 정합성이 주목적이면 complex-broad 대신 선택할 수 있으며 canonical perspective와는 별개다. 속도·사용량 조건만으로 하향하지 않고 긴 연결 추적의 유휴 검토는 gpt-6-astra / max를 고려한다."
+    },
+    "procedure-runtime": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "description": "순서·분기·반복·실패·복구·종료대로 진행했을 때 목표를 지키는지 검토한다. 업무 인수인계·행사 운영·실행 로직을 포함한다. 중요 영향이 없을 때 속도 절충은 gpt-6-astra / high, 성공·실패 조건이 주어진 제한된 절차의 사용량 절충은 gpt-5.6-terra / xhigh, 긴 조건 연결의 유휴 검토는 gpt-5.6-sol / max를 고려한다. 사용량을 우선하며 한정된 반복·인계 조건을 오래 추적할 때는 gpt-5.6-terra / max도 전문 대안이다. 반복 검사에 관한 실전 관측이 근거지만 그 목적만의 시간·사용량 우위는 미측정이다."
+    },
+    "code-state-lifecycle": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "코드 또는 기술 설계의 interleaving·취소·종료·재진입·지연 완료·실제 자원 소유권을 검토한다. 파일 종류보다 상태·수명 의미가 선택 기준이다. 일반 유휴 심화는 gpt-6-astra / max를 고려한다. 실제 자원·소유권 연결의 전문 관점은 gpt-5.6-sol / xhigh, 더 긴 인과 추적은 gpt-5.6-sol / max가 대안이다. 중요 영향이 없는 한정된 반복·인계 조건에 사용량과 대기시간의 절충을 명시하면 gpt-5.6-terra / max도 고려한다. 실전의 서로 다른 발견이 근거이며 전문 대안의 보편적 우위나 자동 추가 reviewer를 뜻하지 않는다."
+    },
+    "code-data-boundary": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "데이터 표현·길이·offset·정수 변환·버퍼·직렬화 구현의 경계를 검토한다. 추상 소비자 약속 자체의 변경은 contract-sensitive와 함께 본다. 기본은 최상위 품질 여유이며 이 영역의 우승 판정이 아니다. 일반 유휴 심화는 gpt-6-astra / max, 메모리·실제 자원·지연 완료를 연결하는 전문 관점은 gpt-5.6-sol / xhigh 또는 더 긴 인과 추적의 gpt-5.6-sol / max를 고려한다. 전체 평가가 높은 모델에도 있었던 공통 누락을 보완하는 선택이며 자동 추가 reviewer가 아니다."
+    },
+    "verification-adequacy": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "description": "검증계획·인수 점검표·테스트·fixture·assertion이 잘못된 상태를 드러내는지 검토한다. 제품 요구보다 검증 수단의 누락·오탐·탐지력이 중심이다. acceptance·review 판정 기준의 변경은 중요한 영향으로 상향한다. 그 영향이 없는 일반 검토의 속도 절충은 gpt-6-astra / high, 판정 기준이 명시된 국소 검증의 사용량 절충은 gpt-5.6-terra / xhigh, 긴 반례 추적의 유휴 검토는 gpt-5.6-sol / max를 고려한다. 전제·계약 해석에서의 적용 가설이다."
+    },
+    "complex-broad": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "여러 검증 목적의 상호작용을 함께 판단하는 종합 리뷰. 기획·운영·검증의 전면 개편, 구조·이식·계약이 섞인 변경 등이 해당하며 단순 파일 수로 선택하지 않는다. 전체 프로젝트 실전 리뷰에 가까운 목적이지만 비코드 종합으로의 적용은 가설이다. 속도·사용량 조건만으로 하향하지 않으며 긴 교차 추적의 유휴 검토는 gpt-6-astra / max를 고려한다."
+    },
+    "highest": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "ultra",
+      "description": "사용자가 현존 최고 수준의 리뷰를 명시 요청했을 때의 자원 선택. 검증 목적·coverage는 별도로 유지하며 중요하다는 표현만으로 선택하지 않는다. 다른 모델 계열의 최고 effort로 대신하지 않는다. gpt-5.6-sol 자체를 지정한 최고 effort 또는 그 전문 관점의 최고 자원 요청은 gpt-5.6-sol / ultra로 구별해 적용한다. 구체 모델·effort 명시값은 각 축에서 우선한다. 속도·사용량 요청과 최고 요청이 충돌하면 임의 하향하지 않고 충돌을 설명한다."
+    },
+    "medium-scope": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "description": "기존 입력 호환: 중간 규모의 비구조적 단일 영역 검토를 수용한다. 규모만으로 자원을 정하지 말고 새 호출은 실제 질문에 따라 procedure-runtime·scope-completeness·reasoning-validity 등 목적별 항목을 선택한다. 중요한 영향은 일반 문맥 검토의 기본값보다 우선하며 자동 alias 변환은 하지 않는다."
+    },
+    "script-runtime": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "description": "기존 입력 호환: 테스트·문서와 구별되는 프로그램 실행 동작 검토. 새 호출은 일반 순서·실패·복구의 procedure-runtime, 코드 상태·수명의 code-state-lifecycle, 데이터 경계의 code-data-boundary 등 실제 목적을 선택한다. 중요한 영향은 기본값보다 우선하며 기존 키는 자동 변환하지 않는다."
+    },
+    "test-code": {
+      "model": "gpt-5.6-sol",
+      "reasoningEffort": "xhigh",
+      "description": "기존 입력 호환: 테스트 코드·fixture 검토. 새 호출은 검증 수단의 탐지력·오탐·누락을 보는 verification-adequacy를 중심으로 선택하며 비코드 검증계획도 같은 목적에 포함한다. acceptance·review 판정 기준 변경은 중요한 영향으로 다룬다."
+    },
+    "mechanical-audit": {
+      "model": "gpt-5.6-terra",
+      "reasoningEffort": "xhigh",
+      "description": "기존 입력 호환: 동작 변경 없는 기계적 대조·inspection 검토. 새 호출은 실제 변경의 의미 보존이면 meaning-preservation, 산술이면 quantitative-validity, 주장·출처 대조면 evidence-validity를 선택한다. 대상 없는 closeout에 리뷰를 새로 만들지 않으며 중요한 의미 변경을 기계 대조로 낮추지 않는다."
+    },
+    "docs-planning": {
+      "model": "gpt-6-astra",
+      "reasoningEffort": "xhigh",
+      "description": "기존 입력 호환: 기획·설계·결정 문서 검토. 새 호출은 실행성의 planning-feasibility, 논리의 reasoning-validity, 범위의 scope-completeness, 근거의 evidence-validity 등 주목적을 선택한다. 문서 형식 자체로 중요도를 정하지 않는다."
+    },
+    "docs-wording": {
+      "model": "gpt-5.6-terra",
+      "reasoningEffort": "xhigh",
+      "description": "기존 입력 호환: 계약 의미를 바꾸지 않는 문구·명료화 검토. 새 호출은 전후 조건·의미 보존의 meaning-preservation, 기대값과 문맥이 명확한 대조의 simple-local을 선택한다. 문구처럼 보이는 계약 변경에는 중요한 영향의 기준을 적용한다."
+    }
   }
 }

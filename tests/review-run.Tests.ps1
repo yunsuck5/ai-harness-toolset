@@ -64,8 +64,7 @@ BeforeAll {
         # ToolRoot, and an explicit -ToolRoot suppresses the $PSScriptRoot script fallback, so the
         # real scripts/ tree is copied in; only config/reviewer.json is fixture-custom. The fixture
         # 'broken' category (out-of-enum effort) exercises the matched-category fail-fast path; it
-        # is harmless unless selected. The real repo config (all categories xhigh) is used by the
-        # no-category / miss / safety-floor tests instead.
+        # 오류 category는 선택할 때만 실패한다. 출하 config는 별도의 카탈로그 호환 검사로 확인한다.
         param([string] $CaseName)
         $tr = Join-Path $TestDrive ('pester-category-toolroot-' + $CaseName)
         if (Test-Path -LiteralPath $tr) {
@@ -229,7 +228,8 @@ function Invoke-NativeProcess {
             [bool] $EmitEffortHeader = $true,
             [bool] $EmitVersionHeader = $true,
             [bool] $EmitSessionHeader = $true,
-            [bool] $MakeResultReadOnly = $false
+            [bool] $MakeResultReadOnly = $false,
+            [string] $BannerEffort
         )
         $stubDir = Join-Path $TestDrive 'pester-review-run-stubs'
         if (-not (Test-Path -LiteralPath $stubDir -PathType Container)) {
@@ -305,7 +305,12 @@ function Invoke-NativeProcess {
         }
         $body += '[Console]::Error.WriteLine(''--------'')'
         if ($EmitEffortHeader) {
-            $body += '[Console]::Error.WriteLine(''reasoning effort: '' + $effortValue)'
+            if ([string]::IsNullOrEmpty($BannerEffort)) {
+                $body += '[Console]::Error.WriteLine(''reasoning effort: '' + $effortValue)'
+            }
+            else {
+                $body += ('[Console]::Error.WriteLine(''reasoning effort: {0}'')' -f $BannerEffort)
+            }
         }
         if ($EmitSessionHeader) {
             $body += '[Console]::Error.WriteLine(''session id: 0199a213-81c0-7800-8aa1-bbab2a035a53'')'
@@ -2135,20 +2140,140 @@ Describe 'review-run canonical pass directory' {
         Test-Path -LiteralPath (Join-Path $project ('log/review/' + $taskId + '/local-correctness/pass-01/result.md')) -PathType Leaf | Should -BeFalse
     }
 
-    It 'AC-RR35: shipped config/reviewer.json categoryPolicy keeps every category at the safe floor (xhigh)' {
-        # Safety regression: this batch ships every category at the safe default (xhigh). A category
-        # accidentally tuned below xhigh would lower review effort silently; pin the floor as a test.
-        # Per-category VALUE tuning below the floor is a deliberate, separately-reviewed future step.
-        $enc = New-Object System.Text.UTF8Encoding($false)
-        $cfg = [System.IO.File]::ReadAllText((Join-Path $script:RepoRoot 'config/reviewer.json'), $enc) | ConvertFrom-Json
-        $cfg.PSObject.Properties['categoryPolicy'] | Should -Not -BeNullOrEmpty -Because 'shipped config must carry the U9 categoryPolicy map'
-        $entries = @($cfg.categoryPolicy.PSObject.Properties)
-        $entries.Count | Should -BeGreaterThan 0
-        foreach ($p in $entries) {
-            ([string]$p.Value.reasoningEffort) | Should -BeExactly 'xhigh' -Because ('category ' + $p.Name + ' must ship at the safe floor xhigh')
+    It 'AC-RR35: 출하 카탈로그는 기존 키와 목적 설명을 보존하고 최고 요청을 구별한다' {
+        $cfg = Get-Content -LiteralPath (Join-Path $script:RepoRoot 'config/reviewer.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+        $keys = @($cfg.categoryPolicy.PSObject.Properties.Name)
+        $legacyKeys = @('default', 'simple-local', 'medium-scope', 'complex-broad', 'system-coherence-heavy', 'contract-sensitive', 'boundary-sensitive', 'script-runtime', 'test-code', 'mechanical-audit', 'docs-planning', 'docs-wording')
+        $newPurposeKeys = @('meaning-preservation', 'reasoning-validity', 'scope-completeness', 'evidence-validity', 'quantitative-validity', 'planning-feasibility', 'procedure-runtime', 'code-state-lifecycle', 'code-data-boundary', 'verification-adequacy', 'highest')
+        foreach ($key in ($legacyKeys + $newPurposeKeys)) {
+            $keys | Should -Contain $key
         }
-        # Scalar default unchanged.
-        ([string]$cfg.reasoningEffort) | Should -BeExactly 'xhigh'
+        foreach ($entry in $cfg.categoryPolicy.PSObject.Properties) {
+            $entry.Value.description | Should -Not -BeNullOrEmpty -Because ('용도 설명: ' + $entry.Name)
+        }
+        $cfg.categoryPolicy.default.model | Should -BeExactly $cfg.model
+        $cfg.categoryPolicy.default.reasoningEffort | Should -BeExactly $cfg.reasoningEffort
+        $cfg.reasoningEffort | Should -BeExactly 'xhigh'
+        $cfg.categoryPolicy.highest.model | Should -BeExactly $cfg.model
+        $cfg.categoryPolicy.highest.reasoningEffort | Should -BeExactly 'ultra'
+    }
+
+    It 'AC-RR40: max와 ultra가 explicit/config/category에서 argv와 관측 provenance까지 전달된다' -ForEach @(
+        @{ Source = 'explicit'; EffortValue = 'max' }, @{ Source = 'explicit'; EffortValue = 'ultra' },
+        @{ Source = 'config'; EffortValue = 'max' }, @{ Source = 'config'; EffortValue = 'ultra' },
+        @{ Source = 'category'; EffortValue = 'max' }, @{ Source = 'category'; EffortValue = 'ultra' }
+    ) {
+        $caseName = 'rr40-' + $Source + '-' + $EffortValue
+        $project = script:New-RunCase -CaseName $caseName
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $caseName -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $passDir = Join-Path $project ('log/review/' + $caseName + '/local-correctness/pass-01')
+        script:Set-InputFilled -InputPath (Join-Path $passDir 'input.md')
+        $toolRoot = script:New-CategoryToolRoot -CaseName $caseName
+        $configPath = Join-Path $toolRoot 'config/reviewer.json'
+        $cfg = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $invokeArgs = @{
+            ProjectRoot = $project; ReviewTaskId = $caseName; Pass = 'pass-01'; ToolRoot = $toolRoot
+            StubPath = script:Write-CodexStub -StubName $caseName
+        }
+        if ($Source -eq 'explicit') { $invokeArgs.Effort = $EffortValue }
+        elseif ($Source -eq 'config') { $cfg.reasoningEffort = $EffortValue }
+        else {
+            $cfg.categoryPolicy.'simple-local'.reasoningEffort = $EffortValue
+            $invokeArgs.EffortCategory = 'simple-local'
+        }
+        script:Write-Utf8NoBomFile -Path $configPath -Content ($cfg | ConvertTo-Json -Depth 8)
+        $r = script:Invoke-ReviewRun @invokeArgs
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match ('(?m)^requested-effort: ' + $EffortValue + '$')
+        $r.Output | Should -Match ('(?m)^effort-source: ' + $Source + '$')
+        $r.Output | Should -Match ('(?m)^applied-effort: ' + $EffortValue + '$')
+        $resultPath = Join-Path $passDir 'result.md'
+        $argv = Get-Content -LiteralPath ($resultPath + '.argv.txt') -Raw -Encoding UTF8
+        $argv | Should -Match ('(?m)^model_reasoning_effort=' + $EffortValue + '$')
+        $content = Get-Content -LiteralPath $resultPath -Raw -Encoding UTF8
+        $content | Should -Match ('(?m)^requested-effort: ' + $EffortValue + '$')
+        $content | Should -Match ('(?m)^effort-source: ' + $Source + '$')
+        $content | Should -Match ('(?m)^applied-effort: ' + $EffortValue + '$')
+    }
+
+    It 'AC-RR41: 같은 목적의 대안은 완성된 양축 override로만 적용하고 description을 실행하지 않는다' -ForEach @(
+        @{ CaseName = 'default-pair'; ModelValue = ''; EffortValue = ''; ExpectedModel = 'fixture-simple-model'; ExpectedEffort = 'medium'; ExpectedSource = 'category' },
+        @{ CaseName = 'alternative'; ModelValue = 'fixture-alternative-model'; EffortValue = 'max'; ExpectedModel = 'fixture-alternative-model'; ExpectedEffort = 'max'; ExpectedSource = 'explicit' },
+        @{ CaseName = 'user-model'; ModelValue = 'fixture-user-model'; EffortValue = 'max'; ExpectedModel = 'fixture-user-model'; ExpectedEffort = 'max'; ExpectedSource = 'explicit' },
+        @{ CaseName = 'user-effort'; ModelValue = 'fixture-alternative-model'; EffortValue = 'high'; ExpectedModel = 'fixture-alternative-model'; ExpectedEffort = 'high'; ExpectedSource = 'explicit' }
+    ) {
+        # caller가 선택을 마친 인자의 전달 계약이다. 자유문 선택의 품질을 검증하지 않는다.
+        $caseId = 'rr41-' + $CaseName
+        $project = script:New-RunCase -CaseName $caseId
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $caseId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $passDir = Join-Path $project ('log/review/' + $caseId + '/local-correctness/pass-01')
+        script:Set-InputFilled -InputPath (Join-Path $passDir 'input.md')
+        $toolRoot = script:New-CategoryToolRoot -CaseName $caseId
+        $configPath = Join-Path $toolRoot 'config/reviewer.json'
+        $cfg = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $cfg.categoryPolicy.'simple-local' | Add-Member -NotePropertyName description -NotePropertyValue '국소 대조. 대기시간을 허용하는 대안은 fixture-alternative-model / max.'
+        script:Write-Utf8NoBomFile -Path $configPath -Content ($cfg | ConvertTo-Json -Depth 8)
+        $stub = script:Write-CodexStub -StubName $caseId
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $caseId -Pass 'pass-01' -ToolRoot $toolRoot -StubPath $stub -EffortCategory 'simple-local' -Model $ModelValue -Effort $EffortValue
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^effort-category: simple-local$'
+        $r.Output | Should -Match '(?m)^effort-policy-match: matched$'
+        $r.Output | Should -Match ('(?m)^model: ' + $ExpectedModel + '$')
+        $r.Output | Should -Match ('(?m)^model-source: ' + $ExpectedSource + '$')
+        $r.Output | Should -Match ('(?m)^requested-effort: ' + $ExpectedEffort + '$')
+        $r.Output | Should -Match ('(?m)^effort-source: ' + $ExpectedSource + '$')
+        $argv = Get-Content -LiteralPath (Join-Path $passDir 'result.md.argv.txt') -Raw -Encoding UTF8
+        $argv | Should -Match ('(?m)^' + $ExpectedModel + '$')
+        $argv | Should -Match ('(?m)^model_reasoning_effort=' + $ExpectedEffort + '$')
+    }
+
+    It 'AC-RR42: ultra 요청의 적용값 미관측과 max 불일치를 실제 banner대로 보존한다' -ForEach @(
+        @{ CaseName = 'missing'; EmitHeader = $false; BannerValue = ''; AppliedValue = 'not-observed'; ExpectedLine = 'applied-effort: not-observed' },
+        @{ CaseName = 'mismatch'; EmitHeader = $true; BannerValue = 'max'; AppliedValue = 'max'; ExpectedLine = 'applied-effort: max (WARNING: differs from requested ultra)' }
+    ) {
+        $caseId = 'rr42-' + $CaseName
+        $project = script:New-RunCase -CaseName $caseId
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $caseId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $passDir = Join-Path $project ('log/review/' + $caseId + '/local-correctness/pass-01')
+        script:Set-InputFilled -InputPath (Join-Path $passDir 'input.md')
+        $stub = script:Write-CodexStub -StubName $caseId -EmitEffortHeader $EmitHeader -BannerEffort $BannerValue
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $caseId -Pass 'pass-01' -StubPath $stub -Effort 'ultra'
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match '(?m)^requested-effort: ultra$'
+        $r.Output | Should -Match ('(?m)^' + [regex]::Escape($ExpectedLine) + '$')
+        $content = Get-Content -LiteralPath (Join-Path $passDir 'result.md') -Raw -Encoding UTF8
+        $content | Should -Match ('(?m)^applied-effort: ' + $AppliedValue + '$')
+    }
+
+    It 'AC-RR43: 명시 default entry는 category miss의 scalar fallback과 다르다' -ForEach @(
+        @{ Category = 'default'; ExpectedModel = 'fixture-default-model'; ExpectedEffort = 'ultra'; ExpectedMatch = 'matched'; ExpectedSource = 'category' },
+        @{ Category = 'missing-default'; ExpectedModel = 'fixture-scalar-model'; ExpectedEffort = 'xhigh'; ExpectedMatch = 'missed'; ExpectedSource = 'config' }
+    ) {
+        $caseId = 'rr43-' + $Category
+        $project = script:New-RunCase -CaseName $caseId
+        $prep = script:Invoke-ReviewPrepare -ProjectRoot $project -ReviewTaskId $caseId -Pass 'pass-01'
+        $prep.ExitCode | Should -Be 0 -Because $prep.Output
+        $passDir = Join-Path $project ('log/review/' + $caseId + '/local-correctness/pass-01')
+        script:Set-InputFilled -InputPath (Join-Path $passDir 'input.md')
+        $toolRoot = script:New-CategoryToolRoot -CaseName $caseId
+        $configPath = Join-Path $toolRoot 'config/reviewer.json'
+        $cfg = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $cfg.categoryPolicy.default.model = 'fixture-default-model'
+        $cfg.categoryPolicy.default.reasoningEffort = 'ultra'
+        script:Write-Utf8NoBomFile -Path $configPath -Content ($cfg | ConvertTo-Json -Depth 8)
+        $stub = script:Write-CodexStub -StubName $caseId
+        $r = script:Invoke-ReviewRun -ProjectRoot $project -ReviewTaskId $caseId -Pass 'pass-01' -ToolRoot $toolRoot -StubPath $stub -EffortCategory $Category
+        $r.ExitCode | Should -Be 0 -Because $r.Output
+        $r.Output | Should -Match ('(?m)^model: ' + $ExpectedModel + '$')
+        $r.Output | Should -Match ('(?m)^requested-effort: ' + $ExpectedEffort + '$')
+        $r.Output | Should -Match ('(?m)^effort-policy-match: ' + $ExpectedMatch + '$')
+        $r.Output | Should -Match ('(?m)^effort-source: ' + $ExpectedSource + '$')
+        $argv = Get-Content -LiteralPath (Join-Path $passDir 'result.md.argv.txt') -Raw -Encoding UTF8
+        $argv | Should -Match ('(?m)^' + $ExpectedModel + '$')
+        $argv | Should -Match ('(?m)^model_reasoning_effort=' + $ExpectedEffort + '$')
     }
 
     It 'AC-RR36: U9 category run-facts are persisted in the result.md provenance block (P3 parallel)' {
