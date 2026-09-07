@@ -38,4 +38,4 @@ blocking은 아니지만 사용자가 알아야 할 concern과 named risk의 단
 
 ## Notes
 
-(optional) framing self-audit, evidence pointer, 후속 inspection 같은 freeform 관찰만 둔다.
+(optional) framing self-audit, evidence pointer 같은 freeform 관찰. 같은 실행에서 관측한 서브에이전트 역할·모델·effort·깊이를 아는 만큼 적고, 없거나 모르는 상태는 none/unknown으로 표현한다. 깊이는 현재 reviewer를 0으로 센다. 부모 값의 상속을 추정하거나 이를 위해 추가 세션 조회·collector를 만들지 않는다. 이 관측은 machine provenance가 아니며 위임 깊이·토큰·재귀 제한이나 새 필수 결과 조건을 만들지 않는다.

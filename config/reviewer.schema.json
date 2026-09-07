@@ -2,60 +2,74 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://github.com/yunsuck5/ai-harness-toolset/config/reviewer.schema.json",
   "title": "ai-harness-toolset reviewer config",
-  "description": "Schema and key reference for config/reviewer.json. The reviewer config file itself must stay pure JSON with no comments; this adjacent schema carries the per-key documentation. Only currently implemented runtime keys are described. Per-key resolution: 'model' is REQUIRED and has NO built-in fallback — review-run.ps1 and review-safety-negtest.ps1 fail-fast if it is absent or empty (a concrete model version is tied to an external lifecycle and must come from this source-of-truth; precedence: explicit -Model CLI parameter > matched categoryPolicy entry 'model' > this scalar value > fail-fast). A model value is single-line; review-run.ps1 rejects CR/LF after resolution regardless of source before reviewer invocation. 'reasoningEffort' is optional and resolves explicit -Effort CLI parameter > matched categoryPolicy entry 'reasoningEffort' > this scalar value > policy safe-default 'xhigh'. 'categoryPolicy' is an optional config-backed category->{model,reasoningEffort} lookup selected per-invocation by review-run.ps1 -EffortCategory (U9). NOTE: review-run.ps1 reads this config as plain JSON and does NOT validate it against this schema at runtime — the schema documents intent; runtime enforcement is the precedence/validation logic in review-run.ps1 (an out-of-enum reasoningEffort, scalar or category, and a CR/LF-bearing resolved model fail fast there).",
+  "description": "reviewer config의 형식·입력 해소 계약. 구체 모델·effort 값과 상황별 용도·선택 조건은 config/reviewer.json이 소유한다. model은 명시 -Model > matched category의 model > scalar model 순서로 해소하고 결손 시 fail-fast한다. reasoningEffort는 명시 -Effort > matched category > scalar > 내장 xhigh 순서다. review-run.ps1은 JSON을 직접 읽으며 이 schema를 runtime validator로 사용하지 않는다. 실제 강제는 runner의 단일행 model/category 검증, effort 허용값 및 matched malformed 사전 검사이며 schema 전체 형식을 강제한다는 뜻은 아니다.",
   "type": "object",
   "properties": {
     "model": {
       "type": "string",
       "minLength": 1,
       "pattern": "^[^\\r\\n]+$",
-      "description": "Reviewer model. REQUIRED and single-line. Read by review-run.ps1 (and review-safety-negtest.ps1) and passed to the Codex CLI as --model. Precedence: explicit -Model CLI parameter > matched categoryPolicy entry 'model' > this scalar value > fail-fast. review-run.ps1 rejects CR/LF in the resolved value before reviewer invocation. There is NO built-in model default/fallback: a concrete model version is tied to an external lifecycle, so an absent/empty model fails fast rather than being masked by a hardcoded version. fallbackModel is not auto-used."
+      "description": "scalar reviewer 모델. review-run.ps1과 review-safety-negtest.ps1이 읽어 Codex CLI의 --model로 전달한다. 내장 모델 기본값·자동 대체 모델은 없다. 해소된 model에 CR/LF가 있으면 review-run이 호출 전에 거부한다."
     },
     "reasoningEffort": {
       "type": "string",
-      "enum": ["none", "minimal", "low", "medium", "high", "xhigh"],
-      "description": "Per-invocation reviewer reasoning effort (scalar default). Read by review-run.ps1 and passed to the Codex CLI as -c model_reasoning_effort=<value> when invoking the reviewer. Precedence: explicit -Effort CLI parameter > matched categoryPolicy entry 'reasoningEffort' > this scalar value > built-in safe default 'xhigh'. The safe default is 'xhigh' (adopted policy: latest model + xhigh; only clearly-simple local-correctness packets downgrade via an explicit -Effort or a tuned categoryPolicy entry). An out-of-enum value fails fast in review-run (no silent fallback). This config-driven enforcement is not by itself a blanket reviewer-safety claim — the reviewer-safe invocation is verified for tested write vectors only (scripts/review-safety-negtest.ps1)."
+      "enum": [
+        "none",
+        "minimal",
+        "low",
+        "medium",
+        "high",
+        "xhigh",
+        "max",
+        "ultra"
+      ],
+      "description": "scalar reasoning effort. review-run이 -c model_reasoning_effort=<value>로 전달한다. 생략 시 내장 기본은 xhigh이며 범위를 벗어난 해소값은 조용한 fallback 없이 실패한다. 입력 허용과 특정 모델의 지원은 별개다. 추천·중요 영향·명시 요청 판단은 호출자가 config의 용도 설명과 review skill에 따라 수행한다."
     },
     "categoryPolicy": {
       "type": "object",
-      "description": "Optional config-backed review category policy: a map from a review category key to a {model, reasoningEffort} entry (category->{model,effort} mapping lookup). Selected per-invocation by review-run.ps1 -EffortCategory <key>; the operator chooses the category explicitly (judgment), the config supplies the mechanical {model,effort} for it (lookup), and review-run applies it. There is NO automatic category inference (not from changed files, not from -Stage, not LLM-based). A supplied category that is NOT present here is a soft miss: review-run falls back to the scalar 'model' / 'reasoningEffort' above (observable as effort-policy-match: missed), it does not fail hard. The schema portability contract: the category KEY set and the per-entry VALUES are per-project tunable (additionalProperties is a strict categoryEntry), while the canonical keys below are the documented starting set. The canonical set is intentionally GENERIC (universal software change classes), so the same global-install config is portable across projects; a project may add its own project-specific keys, but the shipped set carries none. SAFETY: this batch ships every canonical entry at the safe default (latest model + xhigh); per-category effort/model VALUE tuning below the safe default is deliberately deferred until first-cycle operational data.",
-      "properties": {
-        "default": { "$ref": "#/$defs/categoryEntry", "description": "Ambiguous / context-important review, or an explicit request for the documented default tier. Safe default; ambiguity resolves here. NOTE: a category MISS does not fall back to this entry — it falls back to the scalar 'model' / 'reasoningEffort'. This entry is used only when -EffortCategory default is passed explicitly." },
-        "simple-local": { "$ref": "#/$defs/categoryEntry", "description": "Clearly-simple local-correctness packet (single file, one-line code/sentence change, docs typo). The only class allowed to downgrade below the safe default — but the shipped value stays at the safe default; downgrading is a deliberate future value-tuning step." },
-        "medium-scope": { "$ref": "#/$defs/categoryEntry", "description": "Mid-size, non-structural single-subsystem change (e.g. ~2 docs, single subsystem non-structural edit)." },
-        "complex-broad": { "$ref": "#/$defs/categoryEntry", "description": "Broad/deep review: whole-turn review, delete/rename/restructure, skill/contract/script change, multi-subsystem. Downgrade-forbidden class." },
-        "system-coherence-heavy": { "$ref": "#/$defs/categoryEntry", "description": "system coherence review-heavy work (cross-doc/contract/skill/script/test coherence). Downgrade-forbidden class." },
-        "contract-sensitive": { "$ref": "#/$defs/categoryEntry", "description": "Contract-sensitive change: an API / interface / schema / machine-readable-output / parser / validator-gate / verdict contract that other code or consumers depend on. Downgrade-forbidden class." },
-        "boundary-sensitive": { "$ref": "#/$defs/categoryEntry", "description": "Security / permission / sandbox / credentials / global·user config boundary-sensitive change. Downgrade-forbidden class." },
-        "script-runtime": { "$ref": "#/$defs/categoryEntry", "description": "Runtime / executable code behavior change (the program's own logic, not its tests or docs)." },
-        "test-code": { "$ref": "#/$defs/categoryEntry", "description": "Test-code change (test suites / fixtures)." },
-        "mechanical-audit": { "$ref": "#/$defs/categoryEntry", "description": "Mechanical / inspection-only audit closeout (no behavior change)." },
-        "docs-planning": { "$ref": "#/$defs/categoryEntry", "description": "Planning / design / decision document change." },
-        "docs-wording": { "$ref": "#/$defs/categoryEntry", "description": "Docs-only wording / clarification change (no contract-meaning change)." }
-      },
-      "additionalProperties": { "$ref": "#/$defs/categoryEntry" }
+      "description": "검증 목적별 카탈로그. 호출자가 -EffortCategory로 하나의 키를 선택하고 config는 조합을 제공하며 runner는 lookup·적용을 수행한다. runner의 자동 분류나 alias 변환은 없다. 키와 값은 조정 가능하며 각 목적·운영/전문 대안은 entry의 description이 설명한다. 부재 키는 scalar로 soft miss하며 명시 default entry를 선택하는 것과 다르다. 존재하는 entry가 null이거나 필수 reasoningEffort가 없거나 허용값 밖이면 명시 Model/Effort가 있어도 실패한다. 명시값은 유효한 category의 각 축보다 우선한다.",
+      "additionalProperties": {
+        "$ref": "#/$defs/categoryEntry"
+      }
     }
   },
-  "required": ["model"],
+  "required": [
+    "model"
+  ],
   "additionalProperties": false,
   "$defs": {
     "categoryEntry": {
       "type": "object",
-      "description": "A single review category policy entry. 'reasoningEffort' is required; 'model' is optional (when omitted, review-run falls back to the scalar config 'model' for that category — a deliberate simplicity choice so a project can tune effort alone). Strict shape: no other keys.",
+      "description": "상황별 기본 조합과 선택 설명. reasoningEffort는 필수이고 model은 선택적이다. model 생략 시 scalar model을 사용하며 description 없는 기존 custom entry도 허용한다. description은 호출자를 위한 정보이고 runner의 조합 해소에 관여하지 않는다.",
       "properties": {
         "model": {
           "type": "string",
           "minLength": 1,
           "pattern": "^[^\\r\\n]+$",
-          "description": "Optional single-line per-category reviewer model. When present and non-empty, review-run uses it (model-source: category) instead of the scalar 'model'. When absent, the scalar 'model' applies. review-run rejects CR/LF in the resolved value before reviewer invocation. A concrete model version is never hardcoded in a script — it lives here / in the scalar 'model'."
+          "description": "선택적 상황별 모델. 명시 -Model이 없을 때 scalar보다 우선하며 해소된 값은 단일행이어야 한다."
         },
         "reasoningEffort": {
           "type": "string",
-          "enum": ["none", "minimal", "low", "medium", "high", "xhigh"],
-          "description": "Per-category reviewer reasoning effort. Required. Passed to the Codex CLI as -c model_reasoning_effort=<value> when this category is selected and no explicit -Effort overrides it (effort-source: category). An out-of-enum value fails fast in review-run (source: category), same as the scalar path."
+          "enum": [
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max",
+            "ultra"
+          ],
+          "description": "상황별 기본 effort. 필수이며 명시 -Effort가 없을 때 적용된다. 누락·빈 값·범위 밖 값은 matched category 오류이고 scalar로 대체되지 않는다."
+        },
+        "description": {
+          "type": "string",
+          "description": "무엇을 검증하는지, 언제 고르고 무엇과 구별하는지, 필요한 경우 운영·전문 대안의 구체 모델·effort·조건을 담는 자유문 설명. caller는 같은 목적 category에 기존 -Model/-Effort로 선택한 대안을 전달하고 사용자 명시 축을 우선한다. 별도 기계 문법·실행 지시 parser가 아니며 runner는 이 문자열을 해석하지 않는다."
         }
       },
-      "required": ["reasoningEffort"],
+      "required": [
+        "reasoningEffort"
+      ],
       "additionalProperties": false
     }
   }

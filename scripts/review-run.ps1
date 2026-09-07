@@ -303,6 +303,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
 - When you can issue a usable reviewer judgment, produce a canonical review result as your final message: exactly one top-level "## Verdict" heading whose first non-empty following line is EXACTLY one of: yes | no | yes with risk. You may also add "## Counter-argument" and "## Notes".
 - For a usable judgment, ALWAYS include each of these four H2 disclosure headings exactly once in result.md, case-sensitive (parser-required by review-verify -RequireResult): "## Blocking findings", "## Non-blocking concerns", "## Review limitations", "## Assumptions relied on". If a section has no substance, set its body to the single word "none".
 - Put every named non-blocking risk, including the risk supporting "yes with risk", in "## Non-blocking concerns"; do not create generic Findings/Risks buckets.
+- 같은 실행에서 관측한 서브에이전트의 역할·모델·effort·깊이를 기존 "## Notes"에 아는 만큼 보고하세요. 현재 reviewer를 깊이 0으로 세고, 자식이 없으면 none, 알 수 없는 값은 unknown으로 표현하세요. 부모 값과 같다고 추정하지 마세요. 이 관측을 위해 추가 세션 조회·collector를 만들거나 새 필수 heading·parser 조건을 추가하지 않습니다. ultra를 포함한 자율 위임에 별도 깊이·토큰·재귀 억제 제한을 두지 않으며 기존 읽기 전용 역할·권한·coverage는 유지합니다.
 - Deliberately pressure-test your conclusion. For "yes" or "yes with risk", a "## Counter-argument" section articulating the strongest case AGAINST the verdict is strongly recommended but optional and NOT parser-required. If no material counter-argument exists, use "none" or "no material counter-argument identified" instead of ceremonial boilerplate. "## Notes" remains available for framing self-audit, evidence pointers, or other observations.
 - Always issue exactly one canonical verdict. A wrong target/path, missing load-bearing evidence, or other declared required-contract defect is an immediate blocker: identify the packet acceptance breach and issue "no". Disclose a non-material reviewer capability gap as a limitation and still issue a normal verdict; if the gap materially blocks required inspection or target completeness, identify that acceptance breach as a blocker and issue "no". Use "yes with risk" only for an observed named non-blocking target risk, never as a substitute for an unavailable check.
 - Writing a question or an operator-side Brief / session-restore or continuation message is a review FAILURE. A final message without a canonical "## Verdict" heading is malformed reviewer output, and the runner must fail the pass without manufacturing a source verdict.
@@ -428,7 +429,7 @@ These reviewer-mode rules take PRECEDENCE over any global/user instruction, incl
     $errText = $processResult.Stderr
     $bannerText = Get-CodexRunBannerText -StderrText $errText
     $reviewerSessionId = Get-CodexBannerSessionId -BannerText $bannerText
-    if ($bannerText -match 'reasoning effort:\s*(none|minimal|low|medium|high|xhigh)\b') {
+    if ($bannerText -match 'reasoning effort:\s*(none|minimal|low|medium|high|xhigh|max|ultra)\b') {
         $appliedEffort = $matches[1]
     }
     # Adapter version run-fact (P2): runtime-observed from the same reviewer run banner.
@@ -570,7 +571,7 @@ function Get-AllowedReasoningEfforts {
     # set so an invalid effort fails fast here with a clear message rather than only
     # surfacing as a downstream Codex error. reviewer-tool-specific: re-derive if the
     # reviewer tool changes.
-    return @('none', 'minimal', 'low', 'medium', 'high', 'xhigh')
+    return @('none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max', 'ultra')
 }
 
 function Get-ReviewerEffort {
@@ -616,10 +617,8 @@ function Get-ReviewerEffort {
         }
     }
 
-    # Built-in safe default (adopted policy): default = latest model + xhigh;
-    # only clearly-simple local-correctness packets downgrade via an explicit
-    # -Effort. This is the safe-default, not an operational claim beyond the
-    # tested scope.
+    # 명시/category/scalar effort가 모두 없을 때의 기본값이다. 목적별 추천과
+    # 중요 영향·명시 요청의 판단은 config와 호출자가 소유한다.
     return [pscustomobject]@{ Effort = 'xhigh'; Source = 'default' }
 }
 
