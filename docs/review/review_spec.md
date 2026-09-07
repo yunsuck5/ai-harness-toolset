@@ -36,7 +36,40 @@
 
 **Script 책임 (deterministic gate only).** review scripts 는 의미 판단을 하지 않는다. 기계 책임은: campaign new/continue admission과 canonical anchor 확인 · project log root/task/anchor/selected write ancestry의 static reparse·shape fail-closed · pass 경로의 review-root + task-root containment 검증 · auto/explicit 단일 후보의 exclusive directory claim과 no-clobber 빈 input 발급 · lower allocation 뒤 selected perspective `pass-99` terminal 재확인 · input 의 required H2/본문/placeholder 기계 gate · reviewer preamble과 `input.md`를 caller가 조립한 strict UTF-8 no-BOM byte sequence 그대로 stdin에 전달 · 한 `(perspective, pass)` review unit당 reviewer CLI 정확히 1회 실행 · 동일 invocation의 공개 reviewer session pointer 관측 · invocation 성공과 result 존재·candidate shape 선검증 · provenance append 시도 뒤 final canonical shape 재검증 · 종료 코드 전달 — 이것뿐이다. scripts 는 campaign purpose의 실질 동일성, hostile mid-invocation path replacement, finding 의 의미·재검토 필요·후속 단계를 판단하지 않고, 같은 preselected 좌표 collision을 다른 pass로 자동 retry하거나 orphan을 cleanup하지 않으며, verdict 를 읽어 어떤 것도 자동 트리거하지 않고 본문을 sidecar 파일로 분산하지 않는다. runner 는 final shape가 성공한 경우에만 단일 invocation 의 H1 run-facts를 stdout 으로 emit 하고 동일 실행 사실을 provenance 블록으로 result 에 append 한다. H1 token은 operator semantic intake 전에 consumable reviewer verdict가 아니다.
 
-**Config (전부 config-driven).** reviewer model 과 effort 는 config 가 source-of-truth 다. model 은 내장 default/fallback 없이 결손 시 **fail-fast** 하고, 구체 model version 은 외부 lifecycle 에 종속되므로 config 한 곳 외의 durable 표면에 적지 않는다. explicit/category/config 어느 source에서 resolve되든 model은 machine run-fact와 provenance의 단일행 값이므로 CR/LF를 포함하면 reviewer 호출 전에 fail-fast 한다. effort 의 유일한 내장 default 는 safe default(`xhigh`)다. `categoryPolicy` 는 **분류 = operator 명시 선택(judgment), 매핑 = config 기계 lookup, 적용 = runner** 의 분리를 따른다 — 자동 추론(변경 파일/Stage/LLM 기반)은 없다. `-EffortCategory` 입력은 machine run-fact와 provenance의 단일행 값이므로 CR/LF를 포함하면 reviewer 호출 전에 fail-fast 한다. 공급되었으나 부재한 key 는 soft miss(스칼라 fallback)이고, 존재하는 entry 의 결함은 fail-fast 다. 출하 key set 은 범용 변경 class 로 generic 하고 모든 entry 가 safe floor 로 출하된다 — floor 아래 값 튜닝은 운용 데이터 후의 별도 결정이다. per-key 의미·강제 상태의 기술 home 은 config schema 다.
+**Config (전부 config-driven).** reviewer model과 effort의 구체 값은 config가 source-of-truth다. model은 내장 default/fallback 없이 결손 시 **fail-fast**하고, 구체 model version은 외부 lifecycle에 종속되므로 config 한 곳 외의 durable 표면에 고정하지 않는다. explicit/category/config 어느 source에서 resolve되든 model은 단일행 값이며 CR/LF를 포함하면 reviewer 호출 전에 fail-fast한다. effort의 유일한 내장 default는 `xhigh`다. `categoryPolicy`는 **분류 = operator 명시 선택(judgment), 매핑 = config 기계 lookup, 적용 = runner**의 분리를 따른다. runner가 변경 파일·Stage·내용으로 category를 자동 추론하지 않는다. `-EffortCategory`도 단일행이며 CR/LF를 거부한다. 부재 key는 soft miss로 scalar에 해소되고, 존재하는 entry의 결함은 명시 override가 있더라도 fail-fast한다. 명시 Model/Effort는 각 축에서 우선하며 생략한 축은 기존 category/scalar 해소를 따른다. 명시 `default` entry와 category miss의 scalar fallback은 별개다. 상황별 용도·선택 조건·구체 조합은 config의 카탈로그와 description이 소유하고, schema는 형식·정보성 설명의 의미·입력 해소/강제 계약을 기술한다. description이 없는 custom entry도 기존 입력 계약을 유지하며 description은 runner의 실행값 해소에 직접 관여하지 않는다.
+
+### 모델·effort 선정 기준
+
+**검증 목적이 출발점이다.** 대상은 기획·계획·조사 보고서·운영 문서·설계·코드 등 범용이며, 무엇을 검증하는지와 실패가 영향을 주는 소비자·판단을 먼저 식별한다. 파일 수·길이·확장자만으로 자원을 정하지 않는다. 서로 다른 검증 목적은 같은 조합을 사용해도 용도를 설명하며, 모델 이름과 effort의 조합 목록으로 카탈로그를 대체하지 않는다. 세부 목적별 키·값·용도 설명은 config에서 관리한다.
+
+| 검증 목적 | 모델을 고르는 기준과 effort의 역할 |
+|---|---|
+| 국소 정확성 | 기대 결과·판정 기준·필요 문맥이 명확한 경우의 저사용량 후보. 단일 파일이라는 이유만으로 낮추지 않으며 xhigh의 추론 여유를 기본 후보로 둔다. |
+| 의미 보존 | 문구·배치·정리 전후의 조건 관계를 유지할 문맥 추적 능력을 본다. 원문 사실의 타당성과 구별하고, 직접 문서 비교가 없는 배치는 적용 가설로 설명한다. |
+| 논리·요구 완전성·검증 탐지력 | 인과·반례·누락·과잉 요구를 연결할 능력을 본다. 문서나 테스트라는 형식만으로 국소 대조로 낮추지 않는다. xhigh를 중심으로 하고 긴 조건 사슬이 있으면 max 대안을 고려한다. |
+| 수치 타당성 | 공식·단위·분모·집계 조건의 대조와 수치가 실제로 무엇을 의미하는지 구별한다. 조건이 주어진 계산의 저사용량 후보를 중요한 저장·계약·의사결정 검토에 그대로 적용하지 않는다. |
+| 주장·근거·실현 가능성 | 관측/추정·일반화·반례·대안·전환 비용을 연결하는 능력을 본다. 상위 모델의 품질 여유를 두며 결함 발견을 제안된 수리·계획의 우월성으로 확대하지 않는다. |
+| 계약·권한/책임 경계·교차 정합성 | 실제 소비자의 약속·허용 범위·여러 구성요소의 연결을 확인한다. 중요 영향과 함께 최상위 모델의 xhigh를 기준으로 한다. |
+| 절차·실패/복구 | 실행 순서·분기·반복 지속성·종료 이후 상태를 연결한다. 일반 절차 후보와 중요한 운영 영향의 상향 조건을 구별한다. |
+| 코드 상태·수명 / 코드 데이터 경계 | 동시성·취소·지연 완료·실제 자원 소유권, 길이·표현·버퍼·직렬화 경계를 검토한다. 중요 기본과 별도로 해당 난점에 실전 근거가 있는 모델의 xhigh/max를 전문 대안으로 설명할 수 있다. |
+| 복합 종합·default | 여러 목적의 상호작용이 있거나 목적·영향이 아직 모호하면 최상위 모델의 xhigh를 기준으로 한다. 모호함을 쉬움으로 간주하지 않는다. |
+| 명시 최고 수준 | 검증 목적·coverage를 유지한 채 최상위 모델과 ultra를 선택한다. “중요”라는 표현만으로 최고 요청을 추론하지 않는다. |
+
+**품질 여유와 자원 선택.** 통상 추천은 high/xhigh 범위에서 검토하되 xhigh를 중심으로 효율 지점보다 한 단계 여유를 둔다. 중요 리뷰는 최상위 모델의 xhigh를 기준으로 한다. 이 여유는 운영 선택이며 high의 충분성이나 xhigh의 추가 결함 검출을 보장하는 주장이 아니다. 속도·구독 사용량·유휴시간을 서로 다른 조건으로 다루며, 하위 모델의 높은 effort를 상위 모델의 낮은 effort보다 항상 빠르거나 저렴하거나 우수한 단계로 취급하지 않는다.
+
+| effort | 선택 이유와 조건 |
+|---|---|
+| high | 중요 영향이 없고 사용자가 결과 대기를 우선할 때 고려하는 절충. 특정 실행의 시간 이점을 일반 속도 보장으로 바꾸지 않는다. |
+| xhigh | 목적에 맞는 모델에서 추론 여유를 둔 일반 기본 후보. 중요한 계약·권한·정합성·손실·review 판단 경계에는 최상위 모델 기준을 적용한다. |
+| max | 긴 인과·소유권·반복 조건·반례를 더 추적할 이유가 있고 대기시간을 허용할 때의 대안. 모델마다 독립적으로 판단하며 유휴라는 이유만으로 일괄 적용하지 않는다. |
+| ultra | 사용자가 최고 수준을 명시했을 때의 별도 자원 선택. 사용자가 특정 모델을 지정했다면 그 모델의 명시 요청과 범용 최고 요청을 구별한다. |
+
+**우선순위와 호환.** 중요한 영향이 국소·문구·수치·테스트 같은 목적의 낮은 기본값에 가려지지 않도록 한다. 속도·사용량·무인이라는 조건만으로 중요 리뷰를 자동 하향하지 않는다. 구체 모델·effort 명시 요청은 각 축에서 우선하며, 최상위 모델의 갱신은 config 유지관리에서 수행한다. 매 호출에 모델 순위를 탐색하는 registry나 자동 대체 모델은 두지 않는다. 최고 요청을 이행할 설정이 없으면 caller가 그 상태를 설명하고 구체 명시값으로 적용할 수 있으며, category miss를 최고 요청의 정상 이행으로 보고하지 않는다. 추천 목록과 입력 지원은 별개로 두고 기존 effort 입력에 max/ultra를 추가한다. 기존 키의 검증 의도와 lookup을 보존하면서 새 호출에 목적별 선택을 안내하며 자동 alias 변환을 추가하지 않는다.
+
+**운영·전문 대안의 적용.** category entry의 model·reasoningEffort는 기본 조합이고, 목적에 맞는 운영·전문 대안의 구체 모델·effort와 선택 조건은 같은 config entry의 description에 보존한다. description은 caller가 읽는 자유문 설명이며 runner가 파싱하는 실행 규칙이 아니다. caller는 목적·중요 영향·운영 조건에 맞는 대안을 선택하면 검증 목적의 category를 유지하면서 그 조합을 기존 `-Model`·`-Effort`로 명시한다. 사용자 명시 축은 대안보다 우선하고 대안을 적용할 때에도 덮어쓰지 않는다. 대안을 선택하지 않은 축별 명시 입력은 기존 category/scalar 해소를 유지하며, description이나 적용 가능한 대안이 없다고 기존 custom entry가 실패하지 않는다. caller가 정한 대안과 사용자 명시값을 결합한 선택 이유는 caller가 설명하고, runner의 `explicit` source는 CLI 입력에서 해소됐다는 사실만 나타낸다. 대안을 위한 별도 lookup·alias·기계 문법·자동 분류기를 추가하지 않는다.
+**선정 근거의 해석.** C# 소켓 서버 프레임워크의 전체 프로젝트 정적 리뷰에서 다루는 메모리 경계·실제 자원 소유권·지연 완료·반복 검사·종료/복구는 서로 다른 분석 난점을 보여 주는 실전 사례다. 목적별 추천은 이와 같은 실제 대상에서의 조건 추적·누락·수리 제안 차이를 참고한다. 전체 프로젝트에서의 개별 발견을 국소 목적만의 비교 실험이나 기획·문서 리뷰 전반의 성능 입증으로 확대하지 않는다. 직접 관측·다른 용도로의 적용 가설·품질 여유를 둔 운영 선택을 구별하고, 미측정 목적의 추천을 실측 우위로 설명하지 않는다. 높은 전체 평가를 받은 모델의 공통 누락도 전문 대안의 선정 근거가 될 수 있다. 구독 크레딧 환산과 실제 계정 한도 차감률을 구별하며 실행 조건이 다른 시간·사용량에서 보편적 비용 순위를 도출하지 않는다.
+
+**위임 관측.** reviewer는 같은 실행에서 관측한 서브에이전트의 역할·모델·effort·깊이를 기존 Notes에 아는 만큼 보고한다. 모르는 값은 unknown으로 두고 부모와 같다고 추정하지 않는다. 이 정보는 reviewer 관측이며 runner의 machine run-fact와 구별된다. 추가 collector·세션 조회·새 필수 heading·parser gate를 요구하지 않는다. ultra를 포함한 자율 위임에 별도 깊이·토큰·재귀 억제 제한을 추가하지 않으며, 기존 읽기 전용 역할·권한·coverage는 유지한다.
 
 **Reviewer-safe invocation (구조적).** reviewer 호출의 안전은 global user config 에 의존하지 않는다 — runner 가 매 호출에 승인 없음·user-config 무시·통제된 output channel 과 read-only posture를 명시하고, 결과 기록은 runner 가 통제한다(model 의 source-tree write 가 아니다). External path가 없으면 기존 read-only transport를, 있으면 broad read를 허용하되 write를 허용하지 않는 adapter-local transport를 사용한다. Broad read는 caller-declared path만 읽었다는 confinement나 실제 접근 성공의 증명이 아니다. 이 보장은 **시험된 write vector 에 한정**되며 blanket guarantee 가 아니다 — 미시험 vector·타 플랫폼·도구 버전 변경은 한계로 남고, reviewer tool 교체 시 effort/model override·output shape·safety override 는 재도출 대상이다.
 
@@ -50,13 +83,14 @@
 |---|---|
 | `scripts/review-prepare.ps1` | Stage 닫힌 값 검증 + campaign new/continue admission + 단일 pass 후보의 exclusive allocation + no-clobber 빈 input 생성 + 실패 자기설명 |
 | `scripts/review-input-verify.ps1` | input.md 의 required H2·본문·placeholder·금지 문구의 기계 gate |
-| `scripts/review-run.ps1` | rational-`no`를 포함한 reviewer output runtime 지시 · absolute existing external directory/file parameter 검증·정규화·중복 제거 · adapter-local direct-read transport·launcher·ProjectRoot/CWD 결박 · strict UTF-8 raw-byte stdin 1회 실행 · reviewer-safe posture 강제 · invocation/result-unavailable 실패 분리 · model/effort/category 해소 · candidate shape 선검증 · provenance append 시도 뒤 final shape 재검증 · 성공 H1 run-fact emit |
+| `scripts/review-run.ps1` | rational-`no`를 포함한 reviewer output runtime 지시 · absolute existing external directory/file parameter 검증·정규화·중복 제거 · adapter-local direct-read transport·launcher·ProjectRoot/CWD 결박 · strict UTF-8 raw-byte stdin 1회 실행 · reviewer-safe posture 강제 · invocation/result-unavailable 실패 분리 · model/effort/category 해소·max/ultra 입력 및 applied effort 관측·Notes의 위임 관측 안내 · candidate shape 선검증 · provenance append 시도 뒤 final shape 재검증 · 성공 H1 run-fact emit |
 | `scripts/review-verify.ps1` | input shape + (RequireResult) result 존재·verdict shape·4 disclosure H2 count 의 기계 gate |
 | `scripts/review-safety-negtest.ps1` | reviewer-safe posture 의 부정 시험(의도된 실 실행; 통상 suite 밖) |
 | `scripts/lib/path.ps1` | task-id/perspective/pass 의 segment 검증과 review-root/task-root containment + pass 후보 산정·exclusive directory claim + 0-byte no-clobber input allocation primitive |
 | `templates/review-input.md` / `templates/review-result.md` | 자동 seed가 아닌 compact 작성 reference + 두 artifact의 최소 skeleton/point-of-use 의미 |
-| `snippets/claude-skills/ai-harness-review/SKILL.md` | Mode A/B·target/scope·엔진 독립·campaign key/new·continue prepare point-of-use·Stage 호출 전 안내·input atomic-duty class allocation·compact authoring index·caller/reviewer verdict 주체 경계·caller timeout·in-flight 취소 권한·semantic intake·stale/retraction·parallel join·verdict→next-action·compact 최종 보고를 소유하는 self-contained 배포 표면 |
-| `config/reviewer.json` + `config/reviewer.schema.json` | model/effort/categoryPolicy 의 **값** + per-key 의미·강제 상태 기술 |
+| `snippets/claude-skills/ai-harness-review/SKILL.md` | Mode A/B·target/scope·엔진 독립·campaign key/new·continue prepare point-of-use·Stage 호출 전 안내·input atomic-duty class allocation·compact authoring index·caller/reviewer verdict 주체 경계·caller timeout·in-flight 취소 권한·semantic intake·stale/retraction·parallel join·verdict→next-action·목적·중요 영향·운영 조건에 따른 모델/effort 선택·같은 category의 대안을 기존 명시 인자로 적용·명시 최고 요청·compact 최종 보고를 소유하는 self-contained 배포 표면 |
+| `config/reviewer.json` | 기본 model/effort 값 + 검증 목적별 카탈로그·운영/전문 대안의 구체 조합·조건을 담은 description |
+| `config/reviewer.schema.json` | config/entry 형식·정보성 description·입력 해소/강제 계약 |
 | `tests/review-*.Tests.ps1` · `tests/path.Tests.ps1` | 위 행동의 지속 검증(suite 용어의 정의 home 은 `tests/README.md`) |
 
 behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이 spec 은 명세하고 대조될 뿐이며, spec 과 구현이 어긋나면 행동 변경이 아닌 한 spec 이 정정 대상이다.
@@ -66,8 +100,8 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 - **발행 가능한 verdict 어휘는 `yes` / `no` / `yes with risk` 셋으로 불변이다.** 기계적으로 완전한 candidate는 정확히 1개 token을 가지며, 사용 가능한 judgment는 operator intake 뒤 그 token을 정확히 1개 소비한다. invocation/result unavailable 또는 semantic-unusable candidate는 consumable verdict 0개다. 새 token·inline 형태·대소문자 변형·네 번째 verdict는 도입하지 않는다.
 - **canonical layout 과 2-file 규약은 불변이다** — three-level·public purpose/gate-bound campaign key·per-perspective pass·write-once·pass 당 input/result 두 파일. sidecar JSON·hash binding·외부 staging·machine-readable verdict 사본·flat run-id layout·hidden person/machine/session identity 는 도입하지 않는다. 동일 invocation에서 관측해 `result.md` provenance에 공개한 purpose-bound reviewer session pointer는 수동 trace-back용 정보성 metadata이며, campaign key·권한·verdict·자동 후속 trigger가 아니다.
 - **parser gate 는 확대하지 않는다.** 현행 기계 gate(입력 5-H2·verdict shape·4 disclosure H2 count) 너머의 semantic adequacy/concern completeness/evidence sufficiency lint·sub-shape lint·자동 검증은 도입하지 않는다 — semantic 판단은 reviewer/operator judgment 로 남는다(기계화 금지). 재개는 unsound verdict 를 유발한 구체 증거에 한정된다.
-- **자동화 금지 경계**: review history 집계·DB·dashboard·multi-reviewer orchestration·fallback model 자동 사용·retry/auto-fix loop·verdict 로 후속 단계를 트리거하는 wrapper·CI 통합·daemon/watcher/scheduler·자동 retention·stale 자동 검출·evidence freshness/hash/mtime binding·deterministic validation runner 는 도입하지 않는다.
-- **effort ⟂ coverage.** effort 는 coverage·evidence·packet 품질의 대체물이 아니다 — 낮은 effort 가 좁은 coverage 를 정당화하지 않고, 높은 effort 가 부실한 packet 을 보상하지 못한다. safe default 에서의 downgrade 는 명확히 단순한 local correctness packet 에 한정되며, review subsystem 자체의 변경·contract 의미·cross-subsystem 경계·보안/권한 민감 변경은 downgrade 하지 않는다.
+- **자동화 금지 경계**: review history 집계·DB·dashboard·toolset 차원의 multi-reviewer orchestration·fallback model 자동 사용·retry/auto-fix loop·verdict 로 후속 단계를 트리거하는 wrapper·CI 통합·daemon/watcher/scheduler·자동 retention·stale 자동 검출·evidence freshness/hash/mtime binding·deterministic validation runner 는 도입하지 않는다.
+- **model/effort ⟂ coverage.** 자원 선택은 coverage·evidence·입력 품질의 대체물이 아니다. 목적별 조합·속도·사용량·유휴 조건으로 관점이나 자료 범위를 줄이지 않는다. 중요한 계약·cross-subsystem 정합성·보안/권한·review 판단 경계를 일반 국소 항목이나 절약 조건이 덮지 않으며 구체 사용자 명시값은 별도로 존중한다.
 - **model 비고정.** 구체 reviewer model version 을 scripts/docs/templates 의 durable 기본값으로 박지 않는다 — config 가 유일한 source-of-truth 이고 결손은 fail-fast 다.
 - **evidence 는 승격되지 않는다** — runtime artifact 이며 commit/push 대상이 아니고 truth oracle 이 아니다. source 트리에 evidence 파일을 두지 않는다.
 - **review 는 Brief 와 비경계다.** Brief 는 review 의 input 도 output 도 아니고, brief shape 검사의 PASS/FAIL 은 verdict 가 아니다.
@@ -86,6 +120,8 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 ## Validation expectation
 
 - review-system suite(`tests/review-adapter` · `review-input-verify` · `review-prepare` · `review-run` · `review-verify` 의 `.Tests.ps1`)와 `tests/path.Tests.ps1` PASS 가 성립해야 한다. `tests/review-safety-negtest.Tests.ps1` 은 실 reviewer 실행을 동반하므로 의도된 실행에 한한다.
+- 목적별 카탈로그·기존 키 lookup·description 없는 custom entry·description 자체의 runner 해소 비간섭·같은 category에서 대안의 양축 override·사용자 명시 축 보존·대안 없는 부분 명시 해소, explicit/category/scalar 축별 해소, soft miss/matched malformed, 기존 effort 및 max/ultra 전달·실제 applied effort 관측을 관련 기능 테스트로 확인한다. Notes는 새 결과 parser gate가 아니며 관측 부재를 요청값으로 채우지 않는다.
+- 선택 기준의 실전 품질 근거는 실제 대상과 연결 문맥을 가진 분석으로 대조한다. 기존 결과를 우선 활용하고 추가 실행은 선택을 바꿀 질문에 비례한다. 대상 없는 단문 분류 스모크나 입력 해소 테스트를 모델의 실전 리뷰 품질 증명으로 사용하지 않는다.
 - external directory/file의 absolute·existing·type·정규화·중복 제거, ProjectRoot/CWD adapter 전달, no-inline direct-read, load-bearing target별 첫 read/list 거부의 비결론성·단순 direct read/list 1회·후속 실패의 materiality 기반 3-verdict 지시를 기존 runner/input contract tests에서 검증한다. Selected-path confinement·permission 보증은 검증 대상으로 승격하지 않는다.
 - campaign allocation은 sequential new/continue, 독립 campaign collision, task/perspective 격리, project log root부터 선택 write parent까지의 static existing reparse/wrong-shape ancestry, legacy/anchor, crash orphan과 per-perspective `pass-99` exhaustion·post-claim 재확인 경계를 검증해야 한다. exactly-one success·loser nonzero·무덮어쓰기·무자동 retry는 같은 preselected pass 좌표 경쟁에 적용한다. deterministic 증거는 helper-level same-candidate barrier와 entrypoint explicit/explicit same-coordinate 경쟁으로 구성하며 direct auto/explicit entrypoint barrier를 수행했다고 주장하지 않는다. explicit 선점 뒤 auto가 새 scan에서 다른 좌표를 고른 두 성공은 유효한 distinct allocation이다.
 - `.ps1` 표면은 repo 정책(UTF-8 BOM + CRLF, `scripts/verify-ps1.ps1` PASS)을, 이 spec 과 `.md` 표면은 UTF-8 no BOM + LF 를 따른다.
@@ -94,6 +130,7 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 ## Review focus
 
 - 이 spec 이 **목표 상태 명세로 유지되는가** — 회차 candidate 목록·실행 시퀀스·staging·review result·readiness 판정·시점성 상태가 유입되지 않는가.
+- **선정 기준의 전달** — 검증 목적·품질 여유·속도/사용량/유휴·전문 대안·명시 최고 요청·잠정 근거가 구별되는가. config/skill이 Spec 없이도 기본·대안의 조합과 선택 조건을 운반하고, 같은 검증 목적의 category와 기존 명시 인자로 이어지는가. C# 소켓 서버 프레임워크 같은 실전 대상의 관측을 범용 성능 보장으로 확대하지 않는가.
 - **single home 유지** — runtime output 지시가 runner preamble+verifier 밖에서 반복되지 않는가, 기계 세부(정확한 H2 enumeration·regex·precedence 분기·run-fact 라인 목록)가 prose mirror 로 복제되지 않는가, operator 판단 core가 기계 중복 제거와 함께 유실되지 않는가.
 - **behavior/비-behavior 경계** — review scripts/skill/templates/config 의 변경이 maintenance-mode 와 이 spec 의 행동 명세 안에 있는가; docs 측 정정과 행동 변경을 구분했는가(구현이 판정 기준).
 - **어휘·layout·금지 경계의 불변** — verdict 어휘·purpose/gate-bound campaign key·default new/explicit continuation·three-level/2-file/write-once·parser gate 비확대·sidecar/hidden identity/자동화 금지가 약화되지 않는가.
@@ -102,5 +139,5 @@ behavior 의 authority 는 위 surface 들이다(root *Final hard rule*) — 이
 ## Lifecycle state
 
 - lifecycle coordination: round-scoped Design/Plan/Work Packet inventory는 이 Spec에 기록하지 않는다. Domain-local revision은 review domain lifecycle이, foreign-rule direct interface sync는 해당 rule lifecycle과 operator report가 추적한다.
-- spec ↔ implementation: **live**
+- spec ↔ implementation: **sync-required**
 - future work: open 항목·수용된 잔여 위험·idea-only 항목과 ID 발번(next ID)의 single home 은 `review_backlog.md` 다 — 항목 enumeration 과 next-ID 는 그 backlog 만 소유하며 본 spec 은 pointer 로만 참조한다.

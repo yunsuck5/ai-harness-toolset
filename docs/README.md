@@ -58,6 +58,7 @@ This file is the single orientation home: §5 above is the placement map; the ta
 |---|---|
 | install / update / uninstall behavior | `INSTALL.md` (self-contained operative contract) + `docs/install-update/install-update_spec.md` |
 | review workflow / result contract | `docs/review/review_spec.md` + `snippets/claude-skills/ai-harness-review/SKILL.md` |
+| 리뷰 목적별 모델·effort 선정 기준 | `docs/review/review_spec.md`의 선정 기준 + `config/reviewer.json`의 용도·값 + 배포 review skill의 선택 안내 |
 | Brief save / restore | `docs/brief/brief_spec.md` + `snippets/claude-skills/ai-harness-brief/SKILL.md` |
 | Blind 결함 후보 prefilter | `docs/blind-advisory/blind-advisory_spec.md` + `snippets/claude-skills/ai-harness-blind-advisory/SKILL.md` |
 | 독립 의견 / 재조율 | `docs/consultation/consultation_spec.md` + `snippets/claude-skills/ai-harness-consultation/SKILL.md` |
